@@ -25,7 +25,7 @@ final class CurlNormalizerTest extends TestCase
 
         self::assertSame(<<<'CANONICAL'
 POST
-https://api.example.test/users?a=one&b=two
+/users?a=one&b=two
 content-type:application/json; charset=utf-8
 x-alpha:first
 z-last:final
@@ -41,7 +41,34 @@ CANONICAL, $normalized->value);
 
         $normalized = (new CurlNormalizer)->normalize($request);
 
-        self::assertStringContainsString('https://example.test/?a=first&a=second&z=1', $normalized->value);
+        self::assertStringContainsString('/?a=first&a=second&z=1', $normalized->value);
+    }
+
+    public function test_it_ignores_scheme_host_and_port(): void
+    {
+        $first = new ParsedCurl('GET', 'https://api.example.test:8443/items?limit=10', []);
+        $second = new ParsedCurl('GET', 'http://localhost:18473/items?limit=10', []);
+
+        self::assertSame(
+            (new CurlNormalizer)->normalize($first)->hash,
+            (new CurlNormalizer)->normalize($second)->hash,
+        );
+    }
+
+    public function test_it_ignores_client_generated_transport_headers(): void
+    {
+        $request = new ParsedCurl('GET', 'https://example.test/items', [
+            ['name' => 'Host', 'value' => 'example.test'],
+            ['name' => 'Accept', 'value' => '*/*'],
+            ['name' => 'User-Agent', 'value' => 'curl/8.0'],
+            ['name' => 'X-Version', 'value' => '2'],
+        ]);
+
+        $normalized = (new CurlNormalizer)->normalize($request);
+
+        self::assertStringNotContainsString('host:', $normalized->value);
+        self::assertStringNotContainsString('user-agent:', $normalized->value);
+        self::assertStringContainsString('x-version:2', $normalized->value);
     }
 
     public function test_invalid_json_falls_back_to_trimmed_raw_body(): void

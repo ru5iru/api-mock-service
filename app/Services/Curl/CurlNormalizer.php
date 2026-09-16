@@ -41,12 +41,13 @@ final class CurlNormalizer
     private function canonicalHeaders(array $headers, bool $excludeCookies, bool $excludeAuth): array
     {
         $authNames = array_map('strtolower', config('mock.auth_header_names', ['authorization']));
+        $transportNames = array_map('strtolower', config('mock.transport_header_names', []));
         $canonical = [];
 
         foreach ($headers as $header) {
             $name = strtolower(trim($header['name']));
 
-            if ($name === '' || ($excludeCookies && $name === 'cookie')) {
+            if ($name === '' || in_array($name, $transportNames, true) || ($excludeCookies && $name === 'cookie')) {
                 continue;
             }
 
@@ -70,34 +71,11 @@ final class CurlNormalizer
             throw new InvalidArgumentException('The request URL is invalid.');
         }
 
-        $canonical = '';
-        if (isset($parts['scheme'])) {
-            $canonical .= strtolower($parts['scheme']).'://';
-        } elseif (isset($parts['host'])) {
-            $canonical .= '//';
-        }
-
-        if (isset($parts['user'])) {
-            $canonical .= $parts['user'];
-            if (isset($parts['pass'])) {
-                $canonical .= ':'.$parts['pass'];
-            }
-            $canonical .= '@';
-        }
-
-        if (isset($parts['host'])) {
-            $canonical .= strtolower($parts['host']);
-        }
-
-        if (isset($parts['port'])) {
-            $canonical .= ':'.$parts['port'];
-        }
-
         $path = $parts['path'] ?? '';
-        if ($path === '' && isset($parts['host'])) {
+        if ($path === '') {
             $path = '/';
         }
-        $canonical .= $path;
+        $canonical = $path;
 
         if (array_key_exists('query', $parts) && $parts['query'] !== '') {
             $canonical .= '?'.$this->canonicalQuery($parts['query']);

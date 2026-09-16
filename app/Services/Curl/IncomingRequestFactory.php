@@ -11,15 +11,9 @@ final class IncomingRequestFactory
 {
     public function fromRequest(Request $request): ParsedCurl
     {
-        $originalUrlHeader = strtolower((string) config('mock.original_url_header', 'X-Mock-Original-Url'));
-        $url = $request->headers->get($originalUrlHeader) ?: $request->fullUrl();
         $headers = [];
 
         foreach ($request->headers->all() as $name => $values) {
-            if (strtolower($name) === $originalUrlHeader) {
-                continue;
-            }
-
             foreach ($values as $value) {
                 $headers[] = ['name' => $name, 'value' => (string) $value];
             }
@@ -27,7 +21,7 @@ final class IncomingRequestFactory
 
         return new ParsedCurl(
             strtoupper($request->method()),
-            (string) $url,
+            $request->fullUrl(),
             $headers,
             (string) $request->getContent(),
         );

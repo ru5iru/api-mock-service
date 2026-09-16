@@ -22,7 +22,7 @@ APP_URL=http://localhost:19483
 
 Only nginx is published to the host. PHP-FPM's port `9000` and PostgreSQL's port `5432` remain internal to the Compose network, so they do not conflict with services running on the host.
 
-The app container runs migrations on startup. The Compose file ships with a predictable development `APP_KEY`; replace it in `.env` before deploying anywhere shared:
+The app container runs migrations on startup, including rebuilding older endpoint signatures when canonicalization changes. The Compose file ships with a predictable development `APP_KEY`; replace it in `.env` before deploying anywhere shared:
 
 ```dotenv
 APP_KEY=base64:replace-with-32-random-bytes-in-base64
@@ -45,19 +45,16 @@ make down       # stop services, retaining named volumes
 4. Review the parsed request, canonical string, variant, and SHA-256 digest.
 5. Save it and add at least one response.
 
-Because the full absolute URL participates in matching, redirecting a request to `localhost` changes its host. Preserve the original URL with the control header below; MockDeck removes this header before canonicalizing request headers:
+Choose **Copy mock curl** beside an endpoint to copy an invocation command using `APP_URL`. No original-URL header is required: matching deliberately ignores the scheme, host, and port, so endpoints configured for `api.example.test` and `api2.example.test` with the same path, query, method, headers, and body share the same signature.
 
 ```bash
 curl 'http://localhost:18473/v1/items?limit=10' \
-  -H 'X-Mock-Original-Url: https://api.example.test/v1/items?limit=10' \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer replace-me' \
   --data '{"name":"Example"}'
 ```
 
-If your proxy or test harness preserves the original scheme and `Host`, the control header is unnecessary. Its name is configurable through `MOCK_ORIGINAL_URL_HEADER`.
-
-Header-inclusive variants are intentionally exact. The curl saved in the dashboard must describe the same headers the caller sends; use **Ignore all headers** when client-added transport headers should not matter.
+Header-inclusive variants are exact for explicitly meaningful headers. Automatically supplied transport headers (`Host`, `Content-Length`, `User-Agent`, `Accept`, `Accept-Language`, `Accept-Charset`, `Accept-Encoding`, and `Connection`) are always ignored because clients and proxies generate them. Use **Ignore all headers** when every remaining request header should be excluded.
 
 ## Matching pipeline
 
@@ -65,7 +62,7 @@ Every request becomes a canonical string:
 
 ```text
 METHOD
-FULL_URL_WITH_SORTED_QUERY
+URL_PATH_WITH_SORTED_QUERY
 lowercase-header:value
 
 CANONICAL_BODY
@@ -77,11 +74,11 @@ At invocation time, MockDeck computes these candidates:
 
 | Variant | Included in the signature |
 |---|---|
-| V1 | Method, URL, all headers, body |
+| V1 | Method, URL path/query, all headers, body |
 | V2 | V1 without `Cookie` |
 | V3 | V1 without configured auth headers |
 | V4 | V1 without cookies or auth headers |
-| V5 | Method, URL, and body only |
+| V5 | Method, URL path/query, and body only |
 
 The candidates are queried in one indexed `WHERE IN` lookup. The endpoint's own exclusion flags determine which one was stored. If that tier misses, the matcher performs a method-scoped lookup using the five canonical strings themselves. A fallback match is logged at warning level because it normally indicates hash-version drift or a digest defect.
 
@@ -102,7 +99,7 @@ An endpoint with no response returns a diagnostic `500`. A request with no endpo
 {
   "error": "No mock configured for this request",
   "method": "GET",
-  "url": "https://api.example.test/not-configured"
+  "url": "http://localhost:18473/not-configured"
 }
 ```
 

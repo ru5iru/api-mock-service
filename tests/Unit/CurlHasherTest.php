@@ -30,7 +30,7 @@ final class CurlHasherTest extends TestCase
         self::assertStringNotContainsString('authorization:', $variants['V3']->normalized);
         self::assertStringNotContainsString('cookie:', $variants['V4']->normalized);
         self::assertStringNotContainsString('authorization:', $variants['V4']->normalized);
-        self::assertSame("GET\nhttps://example.test/data\n\n", $variants['V5']->normalized);
+        self::assertSame("GET\n/data\n\n", $variants['V5']->normalized);
     }
 
     public function test_endpoint_options_map_to_the_expected_variant_name(): void

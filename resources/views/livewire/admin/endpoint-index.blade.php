@@ -29,6 +29,11 @@
                 </div>
 
                 <div class="endpoint-actions">
+                    <button class="icon-button" type="button"
+                            data-copy-curl="{{ $mockCurls[$endpoint->id] }}"
+                            aria-label="Copy mock curl for {{ $endpoint->name ?: 'endpoint' }}">
+                        Copy mock curl
+                    </button>
                     <a class="icon-button" href="{{ route('dashboard.endpoints.edit', $endpoint) }}" wire:navigate aria-label="Edit {{ $endpoint->name ?: 'endpoint' }}">Edit</a>
                     <button class="icon-button danger" type="button"
                             wire:click="delete({{ $endpoint->id }})"

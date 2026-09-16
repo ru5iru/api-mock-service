@@ -50,5 +50,20 @@
     </div>
 
     @livewireScripts
+    <script>
+        document.addEventListener('click', async (event) => {
+            const button = event.target.closest('[data-copy-curl]');
+            if (!button) return;
+
+            const originalLabel = button.textContent.trim();
+            try {
+                await navigator.clipboard.writeText(button.dataset.copyCurl);
+                button.textContent = 'Copied';
+            } catch (error) {
+                button.textContent = 'Copy failed';
+            }
+            window.setTimeout(() => button.textContent = originalLabel, 1500);
+        });
+    </script>
 </body>
 </html>

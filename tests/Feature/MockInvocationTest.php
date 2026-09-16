@@ -43,7 +43,6 @@ CURL;
             [],
             [],
             [
-                'HTTP_X_MOCK_ORIGINAL_URL' => 'https://api.example.test/v1/users?a=1&b=2',
                 'HTTP_X_EXTRA_CLIENT_HEADER' => 'ignored-by-v5',
                 'CONTENT_TYPE' => 'application/json',
             ],
@@ -66,7 +65,6 @@ CURL;
             [],
             [],
             [
-                'HTTP_X_MOCK_ORIGINAL_URL' => 'https://api.example.test/v1/users?a=1&b=2',
                 'HTTP_X_EXTRA_CLIENT_HEADER' => 'ignored-by-v5',
                 'CONTENT_TYPE' => 'application/json',
             ],
@@ -80,15 +78,40 @@ CURL;
 
     public function test_unmatched_request_returns_diagnostic_json_404(): void
     {
-        $response = $this->withHeader(
-            'X-Mock-Original-Url',
-            'https://api.example.test/not-configured?x=1',
-        )->get('/not-configured?x=1');
+        $response = $this->get('/not-configured?x=1');
 
         $response->assertNotFound()
             ->assertJsonPath('error', 'No mock configured for this request')
             ->assertJsonPath('method', 'GET')
-            ->assertJsonPath('url', 'https://api.example.test/not-configured?x=1');
+            ->assertJsonPath('url', rtrim((string) config('app.url'), '/').'/not-configured?x=1');
+    }
+
+    public function test_original_origin_is_not_required_for_header_inclusive_matching(): void
+    {
+        $endpoint = $this->storeEndpoint(<<<'CURL'
+curl --request POST 'https://api.example.test/v1/items?limit=10' \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer replace-me' \
+  --data '{"name":"Example"}'
+CURL);
+
+        $captured = app(IncomingRequestFactory::class)->fromRequest(Request::create(
+            'http://localhost:18473/v1/items?limit=10',
+            'POST',
+            [],
+            [],
+            [],
+            [
+                'HTTP_AUTHORIZATION' => 'Bearer replace-me',
+                'HTTP_USER_AGENT' => 'curl/8.0',
+                'HTTP_ACCEPT' => '*/*',
+                'CONTENT_TYPE' => 'application/json',
+                'CONTENT_LENGTH' => '18',
+            ],
+            '{"name":"Example"}',
+        ));
+
+        self::assertSame($endpoint->id, app(EndpointMatcher::class)->match($captured)?->endpoint->id);
     }
 
     public function test_normalized_string_fallback_matches_when_stored_hash_has_drifted(): void
@@ -116,8 +139,7 @@ CURL;
         self::assertSame('fallback', $match->tier);
         self::assertSame($endpoint->id, $match->endpoint->id);
 
-        $this->withHeader('X-Mock-Original-Url', 'https://api.example.test/health')
-            ->get('/health')
+        $this->get('/health')
             ->assertNoContent();
     }
 
@@ -125,8 +147,7 @@ CURL;
     {
         $endpoint = $this->storeEndpoint("curl 'https://api.example.test/empty'", excludeHeaders: true);
 
-        $this->withHeader('X-Mock-Original-Url', 'https://api.example.test/empty')
-            ->get('/empty')
+        $this->get('/empty')
             ->assertStatus(500)
             ->assertJsonPath('endpoint_id', $endpoint->id);
     }

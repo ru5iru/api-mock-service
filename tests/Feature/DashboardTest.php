@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Admin\ResponseManager;
+use App\Livewire\Admin\EndpointIndex;
 use App\Models\MockEndpoint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -45,5 +46,17 @@ final class DashboardTest extends TestCase
 
         $component->call('delete', $response->id);
         $this->assertDatabaseMissing('mock_responses', ['id' => $response->id]);
+    }
+
+    public function test_endpoint_list_offers_a_mock_curl_copy_button(): void
+    {
+        config(['app.url' => 'http://localhost:18473']);
+        $endpoint = MockEndpoint::factory()->create([
+            'raw_curl' => "curl 'https://api.example.test/v1/items?limit=10'",
+        ]);
+
+        Livewire::test(EndpointIndex::class)
+            ->assertSee('Copy mock curl')
+            ->assertSee("curl 'http://localhost:18473/v1/items?limit=10'");
     }
 }
