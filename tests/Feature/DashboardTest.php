@@ -57,6 +57,6 @@ final class DashboardTest extends TestCase
 
         Livewire::test(EndpointIndex::class)
             ->assertSee('Copy mock curl')
-            ->assertSee("curl 'http://localhost:18473/v1/items?limit=10'", escape: false);
+            ->assertSee("curl 'http://localhost:18473/v1/items?limit=10'");
     }
 }

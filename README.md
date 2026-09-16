@@ -54,7 +54,7 @@ curl 'http://localhost:18473/v1/items?limit=10' \
   --data '{"name":"Example"}'
 ```
 
-Header-inclusive variants are exact for explicitly meaningful headers. Automatically supplied transport headers (`Host`, `Content-Length`, `User-Agent`, `Accept`, `Accept-Encoding`, and `Connection`) are always ignored because clients and proxies generate them. Use **Ignore all headers** when every remaining request header should be excluded.
+Header-inclusive variants are exact for explicitly meaningful headers. Automatically supplied transport headers (`Host`, `Content-Length`, `User-Agent`, `Accept`, `Accept-Language`, `Accept-Charset`, `Accept-Encoding`, and `Connection`) are always ignored because clients and proxies generate them. Use **Ignore all headers** when every remaining request header should be excluded.
 
 ## Matching pipeline
 

@@ -13,6 +13,8 @@ return [
         'content-length',
         'user-agent',
         'accept',
+        'accept-language',
+        'accept-charset',
         'accept-encoding',
         'connection',
     ],

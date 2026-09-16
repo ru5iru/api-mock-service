@@ -83,7 +83,7 @@ CURL;
         $response->assertNotFound()
             ->assertJsonPath('error', 'No mock configured for this request')
             ->assertJsonPath('method', 'GET')
-            ->assertJsonPath('url', 'http://localhost/not-configured?x=1');
+            ->assertJsonPath('url', rtrim((string) config('app.url'), '/').'/not-configured?x=1');
     }
 
     public function test_original_origin_is_not_required_for_header_inclusive_matching(): void
