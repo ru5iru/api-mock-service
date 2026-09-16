@@ -3,6 +3,8 @@
 namespace App\Livewire\Admin;
 
 use App\Models\MockEndpoint;
+use App\Services\Curl\CurlParser;
+use App\Services\Curl\MockCurlBuilder;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -38,6 +40,12 @@ final class EndpointIndex extends Component
             ->latest('updated_at')
             ->paginate(15);
 
-        return view('livewire.admin.endpoint-index', compact('endpoints'));
+        $parser = app(CurlParser::class);
+        $builder = app(MockCurlBuilder::class);
+        $mockCurls = $endpoints->getCollection()->mapWithKeys(
+            fn (MockEndpoint $endpoint): array => [$endpoint->id => $builder->build($parser->parse($endpoint->raw_curl))],
+        );
+
+        return view('livewire.admin.endpoint-index', compact('endpoints', 'mockCurls'));
     }
 }

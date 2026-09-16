@@ -34,10 +34,10 @@ Both `CurlParser` output and `IncomingRequestFactory` output are `ParsedCurl` va
 The contract is:
 
 - uppercase method;
-- absolute URL retained, with scheme/host lowercased and empty host paths normalized to `/`;
+- scheme, host, user info, and port ignored; only the path and query participate in matching;
 - query pairs sorted by decoded key, while repeated values for a key retain their original order;
 - percent encoding emitted consistently with `rawurlencode`;
-- header names lowercased, values trimmed, and rows sorted by name/value;
+- automatically generated transport headers dropped, then remaining header names lowercased, values trimmed, and rows sorted by name/value;
 - configured exclusions applied after content type is detected;
 - JSON objects sorted recursively, JSON arrays kept in order;
 - invalid JSON and non-JSON bodies retained as trimmed text;
@@ -46,11 +46,9 @@ The contract is:
 
 Changing any rule changes stored signatures. If a change is unavoidable, plan a signature version column or a data migration. The current canonical-string fallback only protects against digest changes when canonical text remains compatible; it is not a substitute for versioning the canonical format.
 
-## Absolute URL preservation
+## Origin-independent matching
 
-The stored curl describes the real upstream URL. Requests redirected to another host would otherwise hash that mock host. `IncomingRequestFactory` accepts the configured `X-Mock-Original-Url` control header and uses its value as the canonical URL. It removes that control header from the captured header list.
-
-In an untrusted deployment, only allow this header from a trusted proxy or isolate the service. It influences matching by design.
+The stored curl can describe any real upstream origin. `CurlNormalizer` drops that origin and retains the path and normalized query, allowing the same invocation through the configured mock host without a control header. Consequently, two configured URLs whose only difference is origin have the same signature; the oldest endpoint ID wins if both are saved.
 
 ## Matching behavior
 
@@ -103,7 +101,7 @@ Request logs never enter PostgreSQL. Deleting an endpoint cascades to its respon
 
 | Condition | Result |
 |---|---|
-| No endpoint | JSON `404` with method and effective absolute URL |
+| No endpoint | JSON `404` with method and received mock URL |
 | Endpoint has no response | JSON `500` naming the endpoint ID |
 | Endpoint and response found | Configured status, headers, exact body, and bounded delay |
 | Internal exception | Structured error-class log event, then normal Laravel exception handling |
@@ -116,4 +114,3 @@ These diagnostics are intentional API behavior and should be preserved in client
 - Telescope can be installed for development inspection independently of mock request logs.
 - Promtail/Loki/Grafana can consume stdout or the mounted rotating files without changing application logging.
 - nginx basic auth can protect the dashboard immediately; Laravel Breeze or Fortify can later replace the middleware alias.
-

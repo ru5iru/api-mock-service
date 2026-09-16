@@ -1,16 +1,20 @@
 <?php
 
 return [
-    /*
-    | The control header allows callers that cannot preserve the original Host
-    | header to tell MockDeck which absolute URL should participate in matching.
-    | It is removed before request headers are canonicalized.
-    */
-    'original_url_header' => env('MOCK_ORIGINAL_URL_HEADER', 'X-Mock-Original-Url'),
-
     'auth_header_names' => [
         'authorization',
         'proxy-authorization',
+    ],
+
+    // Automatically supplied HTTP transport headers are not part of a curl's
+    // explicit request definition and can change between clients/proxies.
+    'transport_header_names' => [
+        'host',
+        'content-length',
+        'user-agent',
+        'accept',
+        'accept-encoding',
+        'connection',
     ],
 
     'max_delay_ms' => (int) env('MOCK_MAX_DELAY_MS', 30000),

@@ -29,7 +29,7 @@
 
         <fieldset class="field option-group">
             <legend>Matching policy</legend>
-            <label class="toggle-row">
+                <label class="toggle-row">
                 <span>
                     <strong>Ignore cookies</strong>
                     <small>Removes the Cookie header from the signature.</small>
@@ -46,7 +46,7 @@
             <label class="toggle-row">
                 <span>
                     <strong>Ignore all headers</strong>
-                    <small>Matches only method, full URL, and body.</small>
+                    <small>Matches only method, URL path and query, and body.</small>
                 </span>
                 <input type="checkbox" wire:model.live="excludeHeaders">
             </label>
@@ -115,8 +115,8 @@
         </section>
 
         <div class="info-note">
-            <strong>Calling from a different host?</strong>
-            <p>Send the original absolute URL in <code>{{ config('mock.original_url_header') }}</code> so full-URL matching remains exact after redirecting traffic here.</p>
+            <strong>Mock hosts are interchangeable</strong>
+            <p>Matching uses the URL path and query, so no original-URL header is needed when calling this mock host.</p>
         </div>
     </aside>
 </form>

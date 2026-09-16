@@ -12,7 +12,7 @@ final class MockEndpointFactory extends Factory
 
     public function definition(): array
     {
-        $normalized = "GET\nhttps://api.example.test/users\n\n";
+        $normalized = "GET\n/users\n\n";
 
         return [
             'name' => fake()->words(3, true),
