@@ -25,11 +25,11 @@ final class MockResponse extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (MockResponse $response): void {
+        self::creating(function (MockResponse $response): void {
             $response->uuid ??= (string) Str::uuid7();
         });
 
-        static::updating(function (MockResponse $response): void {
+        self::updating(function (MockResponse $response): void {
             if ($response->isDirty('uuid')) {
                 throw new LogicException('Response UUIDs are immutable.');
             }
