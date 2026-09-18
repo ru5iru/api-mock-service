@@ -15,11 +15,15 @@ final class EndpointForm extends Component
 
     public string $name = '';
 
+    public bool $enabled = true;
+
+    public int $priority = 0;
+
     public string $rawCurl = '';
 
     public bool $excludeCookies = false;
 
-    public bool $excludeAuth = false;
+    public bool $excludeAuth = true;
 
     public bool $excludeHeaders = false;
 
@@ -38,6 +42,8 @@ CURL;
 
         $this->endpointId = $endpoint->id;
         $this->name = (string) $endpoint->name;
+        $this->enabled = $endpoint->enabled;
+        $this->priority = $endpoint->priority;
         $this->rawCurl = $endpoint->raw_curl;
         $this->excludeCookies = $endpoint->exclude_cookies;
         $this->excludeAuth = $endpoint->exclude_auth;
@@ -56,6 +62,8 @@ CURL;
     {
         $this->validate([
             'name' => ['nullable', 'string', 'max:255'],
+            'enabled' => ['boolean'],
+            'priority' => ['required', 'integer', 'between:-1000,1000'],
             'rawCurl' => ['required', 'string', 'max:1048576'],
             'excludeCookies' => ['boolean'],
             'excludeAuth' => ['boolean'],
@@ -76,16 +84,32 @@ CURL;
             return null;
         }
 
+        $duplicate = MockEndpoint::query()
+            ->where('curl_hash', $variant->hash)
+            ->when($this->endpointId !== null, fn ($query) => $query->where('id', '!=', $this->endpointId))
+            ->orderBy('id')
+            ->first();
+
+        if ($duplicate !== null) {
+            $label = $duplicate->name ?: 'Endpoint #'.$duplicate->id;
+            $this->addError('rawCurl', "This request signature is already used by {$label}.");
+
+            return null;
+        }
+
         $endpoint = $this->endpointId === null
             ? new MockEndpoint
             : MockEndpoint::query()->findOrFail($this->endpointId);
 
         $endpoint->fill([
             'name' => trim($this->name) ?: null,
+            'enabled' => $this->enabled,
+            'priority' => $this->priority,
             'method' => $parsed->method,
             'raw_curl' => $this->rawCurl,
             'normalized_curl' => $variant->normalized,
             'curl_hash' => $variant->hash,
+            'signature_version' => 2,
             'exclude_cookies' => $this->excludeHeaders ? false : $this->excludeCookies,
             'exclude_auth' => $this->excludeHeaders ? false : $this->excludeAuth,
             'exclude_headers' => $this->excludeHeaders,

@@ -2,8 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\Admin\ResponseManager;
+use App\Livewire\Admin\EndpointForm;
 use App\Livewire\Admin\EndpointIndex;
+use App\Livewire\Admin\ResponseManager;
 use App\Models\MockEndpoint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -48,15 +49,78 @@ final class DashboardTest extends TestCase
         $this->assertDatabaseMissing('mock_responses', ['id' => $response->id]);
     }
 
-    public function test_endpoint_list_offers_a_mock_curl_copy_button(): void
+    public function test_endpoint_form_rejects_an_exact_duplicate_signature(): void
+    {
+        $normalized = "GET\n/duplicate\n\n";
+        MockEndpoint::factory()->create([
+            'name' => 'Existing endpoint',
+            'raw_curl' => "curl 'https://api.example.test/duplicate'",
+            'normalized_curl' => $normalized,
+            'curl_hash' => hash('sha256', $normalized),
+            'exclude_headers' => true,
+        ]);
+
+        Livewire::test(EndpointForm::class)
+            ->set('rawCurl', "curl 'https://another-origin.example/duplicate'")
+            ->set('excludeHeaders', true)
+            ->call('save')
+            ->assertHasErrors(['rawCurl']);
+
+        self::assertSame(1, MockEndpoint::query()->count());
+    }
+
+    public function test_endpoint_list_filters_and_toggles_runtime_state(): void
+    {
+        $getEndpoint = MockEndpoint::factory()->create([
+            'name' => 'Enabled GET endpoint',
+            'method' => 'GET',
+            'enabled' => true,
+        ]);
+        MockEndpoint::factory()->create([
+            'name' => 'Disabled POST endpoint',
+            'method' => 'POST',
+            'enabled' => false,
+        ]);
+
+        Livewire::test(EndpointIndex::class)
+            ->assertSee('Enabled GET endpoint')
+            ->assertSee('Disabled POST endpoint')
+            ->set('method', 'GET')
+            ->assertSee('Enabled GET endpoint')
+            ->assertDontSee('Disabled POST endpoint')
+            ->set('method', '')
+            ->set('state', 'disabled')
+            ->assertDontSee('Enabled GET endpoint')
+            ->assertSee('Disabled POST endpoint')
+            ->set('state', 'all')
+            ->call('toggleEnabled', $getEndpoint->id)
+            ->assertSee('Enable');
+
+        self::assertFalse($getEndpoint->fresh()->enabled);
+    }
+
+    public function test_endpoint_list_offers_a_mock_host_curl_copy_button(): void
     {
         config(['app.url' => 'http://localhost:18473']);
-        $endpoint = MockEndpoint::factory()->create([
+        MockEndpoint::factory()->create([
+            'name' => 'Copyable endpoint',
             'raw_curl' => "curl 'https://api.example.test/v1/items?limit=10'",
         ]);
 
         Livewire::test(EndpointIndex::class)
             ->assertSee('Copy mock curl')
             ->assertSee("curl 'http://localhost:18473/v1/items?limit=10'");
+    }
+
+    public function test_endpoint_list_survives_an_invalid_legacy_curl(): void
+    {
+        MockEndpoint::factory()->create([
+            'name' => 'Broken legacy endpoint',
+            'raw_curl' => 'curl --unknown-option',
+        ]);
+
+        Livewire::test(EndpointIndex::class)
+            ->assertSee('Broken legacy endpoint')
+            ->assertSee('Copy unavailable');
     }
 }

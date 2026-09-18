@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\DashboardAccess;
 use App\Services\Response\ResponseSelectorInterface;
 use App\Services\Response\WeightedRandomSelector;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 final class AppServiceProvider extends ServiceProvider
 {
@@ -15,7 +17,8 @@ final class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Application bootstrapping is intentionally small; dashboard access is
-        // isolated behind its middleware alias in bootstrap/app.php.
+        Livewire::addPersistentMiddleware([
+            DashboardAccess::class,
+        ]);
     }
 }

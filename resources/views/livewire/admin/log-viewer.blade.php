@@ -1,14 +1,44 @@
 <div class="card log-card" wire:poll.5s>
     <div class="log-toolbar">
         <div class="live-indicator"><i></i> Refreshing every 5 seconds</div>
-        <label>
-            Show
-            <select wire:model.live="limit">
-                <option value="25">25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-            </select>
-        </label>
+        <div class="log-filters">
+            <label>
+                <span class="sr-only">Filter log by method</span>
+                <select wire:model.live="method">
+                    <option value="">All methods</option>
+                    @foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as $option)
+                        <option value="{{ $option }}">{{ $option }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label>
+                <span class="sr-only">Filter log by match result</span>
+                <select wire:model.live="match">
+                    <option value="all">All matches</option>
+                    <option value="matched">Matched</option>
+                    <option value="missed">Missed</option>
+                    <option value="fallback">Fallback only</option>
+                </select>
+            </label>
+            <label>
+                <span class="sr-only">Filter log by status family</span>
+                <select wire:model.live="status">
+                    <option value="all">All statuses</option>
+                    <option value="2xx">2xx</option>
+                    <option value="3xx">3xx</option>
+                    <option value="4xx">4xx</option>
+                    <option value="5xx">5xx</option>
+                </select>
+            </label>
+            <label>
+                Show
+                <select wire:model.live="limit">
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </label>
+        </div>
     </div>
 
     <div class="table-scroll">
@@ -29,7 +59,7 @@
                         <td class="nowrap">{{ isset($event['timestamp']) ? Str::after($event['timestamp'], 'T') : '—' }}</td>
                         <td>
                             <span class="mini-method">{{ $event['method'] ?? '—' }}</span>
-                            <code>{{ $event['url'] ?? '—' }}</code>
+                            <code title="Request ID: {{ $event['request_id'] ?? 'unavailable' }}">{{ $event['url'] ?? '—' }}</code>
                         </td>
                         <td>
                             <span class="match-chip {{ ($event['matched'] ?? false) ? 'matched' : 'missed' }}">
@@ -37,12 +67,12 @@
                             </span>
                         </td>
                         <td>{{ $event['endpoint_id'] ?? '—' }}</td>
-                        <td><strong>{{ $event['status_code'] ?? '—' }}</strong></td>
+                        <td><strong class="status-code status-code-{{ isset($event['status_code']) ? intdiv((int) $event['status_code'], 100) : 'unknown' }}xx">{{ $event['status_code'] ?? '—' }}</strong></td>
                         <td class="nowrap">{{ $event['duration_ms'] ?? '—' }} ms</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="empty-table">No invocation events yet. Send a request to any non-dashboard path.</td>
+                        <td colspan="6" class="empty-table">No invocation events match the current filters.</td>
                     </tr>
                 @endforelse
             </tbody>

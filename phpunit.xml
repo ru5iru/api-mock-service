@@ -28,5 +28,6 @@
         <env name="SESSION_DRIVER" value="array"/>
         <env name="MOCK_LOG_STDOUT" value="false"/>
         <env name="MOCK_LOG_FILE" value="false"/>
+        <env name="MOCK_DASHBOARD_AUTH_ENABLED" value="false"/>
     </php>
 </phpunit>

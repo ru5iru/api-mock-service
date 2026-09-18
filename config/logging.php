@@ -43,7 +43,7 @@ return [
         'mock_requests' => [
             'driver' => 'stack',
             'channels' => $mockChannels,
-            'ignore_exceptions' => false,
+            'ignore_exceptions' => true,
         ],
         'mock_requests_stdout' => [
             'driver' => 'monolog',

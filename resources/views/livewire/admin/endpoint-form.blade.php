@@ -14,6 +14,22 @@
             @error('name') <p class="field-error">{{ $message }}</p> @enderror
         </div>
 
+        <div class="field-row two endpoint-controls">
+            <label class="toggle-row compact-toggle">
+                <span>
+                    <strong>Endpoint enabled</strong>
+                    <small>Disabled endpoints remain configured but never match requests.</small>
+                </span>
+                <input type="checkbox" wire:model="enabled">
+            </label>
+            <div class="field">
+                <label for="endpoint-priority">Priority <span>-1000 to 1000</span></label>
+                <input id="endpoint-priority" type="number" min="-1000" max="1000" wire:model="priority">
+                <small class="field-help">Higher priority wins before signature specificity.</small>
+                @error('priority') <p class="field-error">{{ $message }}</p> @enderror
+            </div>
+        </div>
+
         <div class="field">
             <div class="label-row">
                 <label for="raw-curl">Curl command</label>
@@ -29,7 +45,7 @@
 
         <fieldset class="field option-group">
             <legend>Matching policy</legend>
-                <label class="toggle-row">
+            <label class="toggle-row">
                 <span>
                     <strong>Ignore cookies</strong>
                     <small>Removes the Cookie header from the signature.</small>
@@ -46,7 +62,7 @@
             <label class="toggle-row">
                 <span>
                     <strong>Ignore all headers</strong>
-                    <small>Matches only method, URL path and query, and body.</small>
+                    <small>Matches only method, URL path/query, and body.</small>
                 </span>
                 <input type="checkbox" wire:model.live="excludeHeaders">
             </label>
@@ -116,7 +132,7 @@
 
         <div class="info-note">
             <strong>Mock hosts are interchangeable</strong>
-            <p>Matching uses the URL path and query, so no original-URL header is needed when calling this mock host.</p>
+            <p>Matching uses the URL path and query, not the scheme, host, or port. Use <strong>Copy mock curl</strong> from the endpoint list to generate a command for this deployment.</p>
         </div>
     </aside>
 </form>

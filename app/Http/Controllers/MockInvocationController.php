@@ -8,6 +8,8 @@ use App\Services\Matching\EndpointMatch;
 use App\Services\Matching\EndpointMatcher;
 use App\Services\Response\ResponseSelectorInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -31,9 +33,12 @@ final class MockInvocationController extends Controller
         $selected = null;
         $statusCode = 500;
         $delayMs = 0;
+        $requestId = $this->requestId($request);
+        $effectiveUrl = $request->fullUrl();
 
         try {
             $captured = $this->requestFactory->fromRequest($request);
+            $effectiveUrl = $captured->url;
             $match = $this->matcher->match($captured);
 
             if ($match === null) {
@@ -44,7 +49,8 @@ final class MockInvocationController extends Controller
                     'url' => $captured->url,
                 ], $statusCode);
 
-                $this->writeLog($request, $startedAt, null, null, $statusCode, 0);
+                $response->headers->set('X-Request-ID', $requestId);
+                $this->writeLog($request, $effectiveUrl, $requestId, $startedAt, null, null, $statusCode, 0);
 
                 return $response;
             }
@@ -56,7 +62,8 @@ final class MockInvocationController extends Controller
                     'endpoint_id' => $match->endpoint->id,
                 ], $statusCode);
 
-                $this->writeLog($request, $startedAt, $match, null, $statusCode, 0);
+                $response->headers->set('X-Request-ID', $requestId);
+                $this->writeLog($request, $effectiveUrl, $requestId, $startedAt, $match, null, $statusCode, 0);
 
                 return $response;
             }
@@ -74,12 +81,36 @@ final class MockInvocationController extends Controller
                 $response->headers->set((string) $name, (string) $value);
             }
 
-            $this->writeLog($request, $startedAt, $match, $selected->id, $statusCode, $delayMs);
+            $response->headers->set('X-Request-ID', $requestId);
+            $this->writeLog($request, $effectiveUrl, $requestId, $startedAt, $match, $selected->id, $statusCode, $delayMs);
+
+            return $response;
+        } catch (InvalidArgumentException $exception) {
+            $statusCode = 400;
+            $this->writeLog(
+                $request,
+                $effectiveUrl,
+                $requestId,
+                $startedAt,
+                $match,
+                $selected?->id,
+                $statusCode,
+                $delayMs,
+                $exception::class,
+            );
+
+            $response = response()->json([
+                'error' => 'The request could not be normalized',
+                'detail' => $exception->getMessage(),
+            ], $statusCode);
+            $response->headers->set('X-Request-ID', $requestId);
 
             return $response;
         } catch (Throwable $exception) {
             $this->writeLog(
                 $request,
+                $effectiveUrl,
+                $requestId,
                 $startedAt,
                 $match,
                 $selected?->id,
@@ -94,6 +125,8 @@ final class MockInvocationController extends Controller
 
     private function writeLog(
         Request $request,
+        string $effectiveUrl,
+        string $requestId,
         int $startedAt,
         ?EndpointMatch $match,
         ?int $responseId,
@@ -102,8 +135,9 @@ final class MockInvocationController extends Controller
         ?string $error = null,
     ): void {
         $context = [
+            'request_id' => $requestId,
             'method' => strtoupper($request->method()),
-            'url' => $request->getRequestUri(),
+            'url' => $effectiveUrl,
             'matched' => $match !== null,
             'match_tier' => $match?->tier ?? 'none',
             'matched_variant' => $match?->variant,
@@ -119,5 +153,14 @@ final class MockInvocationController extends Controller
         }
 
         $this->logger->write($context);
+    }
+
+    private function requestId(Request $request): string
+    {
+        $provided = trim((string) $request->headers->get('X-Request-ID'));
+
+        return preg_match('/^[A-Za-z0-9._:-]{1,128}$/D', $provided) === 1
+            ? $provided
+            : (string) Str::uuid();
     }
 }

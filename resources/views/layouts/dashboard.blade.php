@@ -28,7 +28,14 @@
                     Endpoints
                 </a>
                 <a href="{{ route('dashboard.endpoints.index') }}#request-log">Request log</a>
-                <span class="access-chip"><i></i> Internal access</span>
+                @if (config('mock.dashboard_auth.enabled'))
+                    <form method="POST" action="{{ route('dashboard.logout') }}" class="nav-form">
+                        @csrf
+                        <button class="nav-logout" type="submit">Sign out</button>
+                    </form>
+                @else
+                    <span class="access-chip"><i></i> Local access</span>
+                @endif
             </nav>
         </header>
 
@@ -51,18 +58,47 @@
 
     @livewireScripts
     <script>
+        const copyText = async (value) => {
+            if (navigator.clipboard?.writeText && window.isSecureContext) {
+                await navigator.clipboard.writeText(value);
+                return;
+            }
+
+            const textarea = document.createElement('textarea');
+            textarea.value = value;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+
+            try {
+                if (!document.execCommand('copy')) {
+                    throw new Error('Copy command was rejected.');
+                }
+            } finally {
+                textarea.remove();
+            }
+        };
+
         document.addEventListener('click', async (event) => {
             const button = event.target.closest('[data-copy-curl]');
-            if (!button) return;
+            if (!button || button.disabled) return;
 
             const originalLabel = button.textContent.trim();
+            button.disabled = true;
+
             try {
-                await navigator.clipboard.writeText(button.dataset.copyCurl);
+                await copyText(button.dataset.copyCurl);
                 button.textContent = 'Copied';
             } catch (error) {
                 button.textContent = 'Copy failed';
             }
-            window.setTimeout(() => button.textContent = originalLabel, 1500);
+
+            window.setTimeout(() => {
+                button.textContent = originalLabel;
+                button.disabled = false;
+            }, 1500);
         });
     </script>
 </body>
