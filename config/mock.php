@@ -6,17 +6,25 @@ return [
         'proxy-authorization',
     ],
 
-    // Automatically supplied HTTP transport headers are not part of a curl's
-    // explicit request definition and can change between clients/proxies.
+    // Client/proxy-generated transport metadata is unstable and therefore is
+    // never part of a saved or incoming request signature.
     'transport_header_names' => [
         'host',
         'content-length',
+        'transfer-encoding',
         'user-agent',
         'accept',
         'accept-language',
         'accept-charset',
         'accept-encoding',
         'connection',
+        'x-request-id',
+    ],
+
+    'dashboard_auth' => [
+        'enabled' => env('MOCK_DASHBOARD_AUTH_ENABLED', true),
+        'username' => env('MOCK_DASHBOARD_USERNAME'),
+        'password' => env('MOCK_DASHBOARD_PASSWORD'),
     ],
 
     'max_delay_ms' => (int) env('MOCK_MAX_DELAY_MS', 30000),

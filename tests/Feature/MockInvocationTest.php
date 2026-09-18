@@ -35,6 +35,7 @@ CURL;
 
         $endpoint = MockEndpoint::query()->sole();
         self::assertTrue($endpoint->exclude_headers);
+        self::assertSame(2, $endpoint->signature_version);
 
         $captured = app(IncomingRequestFactory::class)->fromRequest(Request::create(
             '/v1/users?b=2&a=1',
@@ -66,6 +67,7 @@ CURL;
             [],
             [
                 'HTTP_X_EXTRA_CLIENT_HEADER' => 'ignored-by-v5',
+                'HTTP_X_REQUEST_ID' => 'feature-test-123',
                 'CONTENT_TYPE' => 'application/json',
             ],
             '{"role":"admin","name":"Ada"}',
@@ -73,6 +75,7 @@ CURL;
 
         $response->assertCreated()
             ->assertHeader('X-Mock', 'yes')
+            ->assertHeader('X-Request-ID', 'feature-test-123')
             ->assertContent('{"created":true}');
     }
 
@@ -86,7 +89,7 @@ CURL;
             ->assertJsonPath('url', rtrim((string) config('app.url'), '/').'/not-configured?x=1');
     }
 
-    public function test_original_origin_is_not_required_for_header_inclusive_matching(): void
+    public function test_upstream_origin_is_not_required_for_header_inclusive_matching(): void
     {
         $endpoint = $this->storeEndpoint(<<<'CURL'
 curl --request POST 'https://api.example.test/v1/items?limit=10' \
@@ -105,13 +108,18 @@ CURL);
                 'HTTP_AUTHORIZATION' => 'Bearer replace-me',
                 'HTTP_USER_AGENT' => 'curl/8.0',
                 'HTTP_ACCEPT' => '*/*',
+                'HTTP_X_REQUEST_ID' => 'origin-test-001',
                 'CONTENT_TYPE' => 'application/json',
                 'CONTENT_LENGTH' => '18',
             ],
             '{"name":"Example"}',
         ));
 
-        self::assertSame($endpoint->id, app(EndpointMatcher::class)->match($captured)?->endpoint->id);
+        $match = app(EndpointMatcher::class)->match($captured);
+
+        self::assertNotNull($match);
+        self::assertSame($endpoint->id, $match->endpoint->id);
+        self::assertSame('V1', $match->variant);
     }
 
     public function test_normalized_string_fallback_matches_when_stored_hash_has_drifted(): void
@@ -139,8 +147,7 @@ CURL);
         self::assertSame('fallback', $match->tier);
         self::assertSame($endpoint->id, $match->endpoint->id);
 
-        $this->get('/health')
-            ->assertNoContent();
+        $this->get('/health')->assertNoContent();
     }
 
     public function test_matched_endpoint_without_responses_returns_configuration_error(): void
@@ -152,11 +159,76 @@ CURL);
             ->assertJsonPath('endpoint_id', $endpoint->id);
     }
 
+    public function test_more_specific_signature_wins_when_priorities_are_equal(): void
+    {
+        $generic = $this->storeEndpoint(
+            "curl 'https://api.example.test/customers'",
+            excludeHeaders: true,
+        );
+        $specific = $this->storeEndpoint(<<<'CURL'
+curl 'https://api.example.test/customers' \
+  --header 'X-Tenant: blue'
+CURL);
+
+        $match = app(EndpointMatcher::class)->match(new ParsedCurl(
+            'GET',
+            'https://api.example.test/customers',
+            [['name' => 'X-Tenant', 'value' => 'blue']],
+        ));
+
+        self::assertNotNull($match);
+        self::assertSame($specific->id, $match->endpoint->id);
+        self::assertNotSame($generic->id, $match->endpoint->id);
+        self::assertSame('V1', $match->variant);
+    }
+
+    public function test_explicit_priority_overrides_signature_specificity(): void
+    {
+        $generic = $this->storeEndpoint(
+            "curl 'https://api.example.test/customers'",
+            excludeHeaders: true,
+            priority: 20,
+        );
+        $this->storeEndpoint(<<<'CURL'
+curl 'https://api.example.test/customers' \
+  --header 'X-Tenant: blue'
+CURL);
+
+        $match = app(EndpointMatcher::class)->match(new ParsedCurl(
+            'GET',
+            'https://api.example.test/customers',
+            [['name' => 'X-Tenant', 'value' => 'blue']],
+        ));
+
+        self::assertNotNull($match);
+        self::assertSame($generic->id, $match->endpoint->id);
+        self::assertSame('V5', $match->variant);
+    }
+
+    public function test_disabled_endpoint_is_not_considered_for_matching(): void
+    {
+        $this->storeEndpoint(
+            "curl 'https://api.example.test/disabled'",
+            excludeHeaders: true,
+            enabled: false,
+        );
+
+        $match = app(EndpointMatcher::class)->match(new ParsedCurl(
+            'GET',
+            'https://api.example.test/disabled',
+            [],
+        ));
+
+        self::assertNull($match);
+    }
+
     private function storeEndpoint(
         string $curl,
         bool $excludeCookies = false,
         bool $excludeAuth = false,
         bool $excludeHeaders = false,
+        int $priority = 0,
+        bool $enabled = true,
     ): MockEndpoint {
         $parsed = app(CurlParser::class)->parse($curl);
         $variant = app(CurlHasher::class)->forOptions(
@@ -168,10 +240,13 @@ CURL);
 
         return MockEndpoint::query()->create([
             'name' => 'Feature test endpoint',
+            'enabled' => $enabled,
+            'priority' => $priority,
             'method' => $parsed->method,
             'raw_curl' => $curl,
             'normalized_curl' => $variant->normalized,
             'curl_hash' => $variant->hash,
+            'signature_version' => 2,
             'exclude_cookies' => $excludeCookies,
             'exclude_auth' => $excludeAuth,
             'exclude_headers' => $excludeHeaders,

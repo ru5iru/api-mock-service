@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Services\Curl\CurlNormalizer;
 use App\Services\Curl\ParsedCurl;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 final class CurlNormalizerTest extends TestCase
@@ -44,7 +45,7 @@ CANONICAL, $normalized->value);
         self::assertStringContainsString('/?a=first&a=second&z=1', $normalized->value);
     }
 
-    public function test_it_ignores_scheme_host_and_port(): void
+    public function test_scheme_host_and_port_do_not_change_the_signature(): void
     {
         $first = new ParsedCurl('GET', 'https://api.example.test:8443/items?limit=10', []);
         $second = new ParsedCurl('GET', 'http://localhost:18473/items?limit=10', []);
@@ -55,12 +56,13 @@ CANONICAL, $normalized->value);
         );
     }
 
-    public function test_it_ignores_client_generated_transport_headers(): void
+    public function test_client_generated_transport_headers_are_ignored(): void
     {
         $request = new ParsedCurl('GET', 'https://example.test/items', [
             ['name' => 'Host', 'value' => 'example.test'],
             ['name' => 'Accept', 'value' => '*/*'],
             ['name' => 'User-Agent', 'value' => 'curl/8.0'],
+            ['name' => 'X-Request-ID', 'value' => 'request-123'],
             ['name' => 'X-Version', 'value' => '2'],
         ]);
 
@@ -68,7 +70,22 @@ CANONICAL, $normalized->value);
 
         self::assertStringNotContainsString('host:', $normalized->value);
         self::assertStringNotContainsString('user-agent:', $normalized->value);
+        self::assertStringNotContainsString('x-request-id:', $normalized->value);
         self::assertStringContainsString('x-version:2', $normalized->value);
+    }
+
+    public function test_custom_headers_are_not_given_control_header_behavior(): void
+    {
+        $normalized = (new CurlNormalizer)->normalize(new ParsedCurl(
+            'GET',
+            'https://example.test/items',
+            [['name' => 'X-Upstream-Url', 'value' => 'https://another.example/items']],
+        ));
+
+        self::assertStringContainsString(
+            'x-upstream-url:https://another.example/items',
+            $normalized->value,
+        );
     }
 
     public function test_invalid_json_falls_back_to_trimmed_raw_body(): void
@@ -83,5 +100,19 @@ CANONICAL, $normalized->value);
         $normalized = (new CurlNormalizer)->normalize($request, excludeHeaders: true);
 
         self::assertStringEndsWith("\n\n{not-json}", $normalized->value);
+    }
+
+    public function test_it_rejects_relative_non_http_and_credentialed_urls(): void
+    {
+        $normalizer = new CurlNormalizer;
+
+        foreach (['/relative', 'ftp://example.test/file', 'https://user:secret@example.test/'] as $url) {
+            try {
+                $normalizer->normalize(new ParsedCurl('GET', $url, []));
+                self::fail("Expected {$url} to be rejected.");
+            } catch (InvalidArgumentException) {
+                self::assertTrue(true);
+            }
+        }
     }
 }

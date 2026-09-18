@@ -14,10 +14,13 @@ final class MockEndpoint extends Model
 
     protected $fillable = [
         'name',
+        'enabled',
+        'priority',
         'method',
         'raw_curl',
         'normalized_curl',
         'curl_hash',
+        'signature_version',
         'exclude_cookies',
         'exclude_auth',
         'exclude_headers',
@@ -26,6 +29,9 @@ final class MockEndpoint extends Model
     protected function casts(): array
     {
         return [
+            'enabled' => 'boolean',
+            'priority' => 'integer',
+            'signature_version' => 'integer',
             'exclude_cookies' => 'boolean',
             'exclude_auth' => 'boolean',
             'exclude_headers' => 'boolean',

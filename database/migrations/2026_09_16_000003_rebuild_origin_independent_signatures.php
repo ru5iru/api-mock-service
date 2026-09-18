@@ -4,6 +4,7 @@ use App\Services\Curl\CurlHasher;
 use App\Services\Curl\CurlParser;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -11,8 +12,9 @@ return new class extends Migration
     {
         $parser = app(CurlParser::class);
         $hasher = app(CurlHasher::class);
+        $hasSignatureVersion = Schema::hasColumn('mock_endpoints', 'signature_version');
 
-        DB::table('mock_endpoints')->orderBy('id')->eachById(function (object $endpoint) use ($parser, $hasher): void {
+        DB::table('mock_endpoints')->orderBy('id')->eachById(function (object $endpoint) use ($parser, $hasher, $hasSignatureVersion): void {
             $variant = $hasher->forOptions(
                 $parser->parse($endpoint->raw_curl),
                 (bool) $endpoint->exclude_cookies,
@@ -20,16 +22,22 @@ return new class extends Migration
                 (bool) $endpoint->exclude_headers,
             );
 
-            DB::table('mock_endpoints')->where('id', $endpoint->id)->update([
+            $values = [
                 'normalized_curl' => $variant->normalized,
                 'curl_hash' => $variant->hash,
-            ]);
+            ];
+
+            if ($hasSignatureVersion) {
+                $values['signature_version'] = 2;
+            }
+
+            DB::table('mock_endpoints')->where('id', $endpoint->id)->update($values);
         });
     }
 
     public function down(): void
     {
-        // Origin data remains available in raw_curl, but the retired canonical
-        // format is intentionally not maintained by current application code.
+        // raw_curl retains the upstream origin, but current code intentionally
+        // does not recreate the retired origin-dependent canonical format.
     }
 };
