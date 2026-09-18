@@ -32,6 +32,14 @@ final class DashboardAuthenticationTest extends TestCase
         ])->assertRedirect('/dashboard/endpoints/create');
     }
 
+    public function test_guest_cannot_access_config_transfer_routes(): void
+    {
+        $this->get('/dashboard/config')->assertRedirect('/dashboard/login');
+        $this->post('/dashboard/config/exports')->assertRedirect('/dashboard/login');
+        $this->post('/dashboard/config/imports/preview')->assertRedirect('/dashboard/login');
+        $this->post('/dashboard/config/imports/apply')->assertRedirect('/dashboard/login');
+    }
+
     public function test_invalid_credentials_are_rejected(): void
     {
         $this->from('/dashboard/login')->post('/dashboard/login', [

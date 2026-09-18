@@ -6,6 +6,8 @@ use Database\Factories\MockResponseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
+use LogicException;
 
 final class MockResponse extends Model
 {
@@ -13,12 +15,26 @@ final class MockResponse extends Model
     use HasFactory;
 
     protected $fillable = [
+        'uuid',
         'status_code',
         'headers',
         'body',
         'delay_ms',
         'weight',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (MockResponse $response): void {
+            $response->uuid ??= (string) Str::uuid7();
+        });
+
+        static::updating(function (MockResponse $response): void {
+            if ($response->isDirty('uuid')) {
+                throw new LogicException('Response UUIDs are immutable.');
+            }
+        });
+    }
 
     protected function casts(): array
     {

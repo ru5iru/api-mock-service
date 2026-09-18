@@ -96,7 +96,23 @@ Open `http://localhost:18473/dashboard`. Verify:
 - endpoint search, method, and enabled-state filters work;
 - an endpoint can be disabled and re-enabled without deletion;
 - **Copy mock curl** targets `APP_URL` and copies successfully;
+- **Import / export** downloads a redacted JSON file and previews it without writing;
 - request-log method, match, status, and row-limit filters work on desktop and narrow layouts.
+
+Import/export smoke check:
+
+1. Export one endpoint with secret redaction enabled.
+2. Confirm the JSON has `format: "mockdeck"`, `format_version: 1`, and no numeric database IDs or derived hashes.
+3. If the source curl contained auth, cookies, an API-key header, or a configured sensitive query key, confirm the value is absent and the endpoint is disabled with `requires_secret_replacement: true`.
+4. Preview the file in `clone` mode; confirm no rows are written before **Apply import**.
+5. Review and acknowledge warnings, apply, and confirm endpoint/response counts.
+
+CLI equivalent:
+
+```bash
+docker compose exec app php artisan mockdeck:export --output=storage/app/mockdeck-smoke.json
+docker compose exec app php artisan mockdeck:import storage/app/mockdeck-smoke.json --dry-run --mode=upsert
+```
 
 ## Runtime smoke test
 
@@ -144,6 +160,7 @@ Confirm both migrations are marked as run:
 
 - `2026_09_16_000003_rebuild_origin_independent_signatures`
 - `2026_09_18_000003_add_runtime_controls_to_mock_endpoints_table`
+- `2026_09_19_000001_add_portable_uuids`
 
 Existing endpoints should report signature version `2` after migration.
 
@@ -167,6 +184,7 @@ Repeat that check with a different scheme/host but the same path; it must also b
 | Signature variants | V1 through V5 and selected policy |
 | Matching | hash, fallback, specificity, priority, disabled endpoints, empty response handling |
 | Dashboard | CRUD, cross-origin duplicate prevention, copy-curl generation, filters, state toggling, authentication/logout |
+| Portable config | UUIDs, deterministic/redacted export, validation, preview token/digest, exact/overlap conflicts, atomic create/upsert, HTTP and CLI flows |
 | Responses | create, update, delete, weighted selection |
 | Logging | non-fatal handler failure, request IDs, rotated-file tailing, malformed-line tolerance |
 

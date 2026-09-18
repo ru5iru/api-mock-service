@@ -14,15 +14,6 @@ use Illuminate\Support\Collection;
  */
 final readonly class EndpointMatcher
 {
-    /** More specific signatures win when endpoints have the same priority. */
-    private const VARIANT_SPECIFICITY = [
-        'V1' => 50,
-        'V2' => 40,
-        'V3' => 40,
-        'V4' => 30,
-        'V5' => 10,
-    ];
-
     public function __construct(private CurlHasher $hasher) {}
 
     public function match(ParsedCurl $request): ?EndpointMatch
@@ -92,7 +83,7 @@ final readonly class EndpointMatcher
                 'endpoint' => $endpoint,
                 'variant' => $variantName,
                 'priority' => (int) $endpoint->priority,
-                'specificity' => self::VARIANT_SPECIFICITY[$variantName],
+                'specificity' => MatchPrecedence::specificity($variantName),
             ];
         }
 

@@ -15,6 +15,7 @@ The stack is Laravel 13, Livewire 4, PostgreSQL 16, PHP-FPM, nginx, and Docker C
 - Password-protected dashboard with rate-limited login
 - Responsive endpoint and request-log filtering
 - One-click mock-host curl generation with clipboard fallback
+- Versioned JSON import/export with default secret redaction and atomic preview/apply
 - Flat JSON request logs, request IDs, rotation, and bounded cross-file tailing
 - Production startup guards for placeholder secrets
 - PHPUnit regression suite, Pint checks, Compose validation, and CI workflow
@@ -80,6 +81,25 @@ curl 'http://localhost:18473/v1/items?limit=10' \
 No original-URL header is required. Signatures deliberately ignore scheme, host, and port, so an endpoint configured for `https://api.example.test/v1/items` can be invoked through `http://localhost:18473/v1/items`. Absolute HTTP/HTTPS input is still required when configuring an endpoint, and URL-embedded credentials remain rejected.
 
 Every response includes `X-Request-ID`. A valid caller-provided ID is retained; otherwise MockDeck generates a UUID.
+
+## Import and export configuration
+
+Open **Import / export** in the dashboard to download all endpoints or a selected subset. Native exports include endpoint and response UUIDs, request matching options, and response behavior. Numeric database IDs and derived hashes are never exported.
+
+Secret redaction is enabled by default. It removes configured authentication, cookie, API-key headers, and sensitive query values. Any affected endpoint is exported disabled with `requires_secret_replacement: true`; after import, review its curl and add deployment-appropriate credentials before enabling it.
+
+Imports are preview-first. Choose `create-only`, `upsert`, or `clone`, upload the JSON file, review errors and overlap warnings, then explicitly apply it. The apply step verifies the preview digest, repeats conflict checks under database locks, and commits all endpoint/response writes in one transaction.
+
+Equivalent commands are available for repeatable workflows:
+
+```bash
+php artisan mockdeck:export --output=mockdeck.json
+php artisan mockdeck:export --endpoint=<endpoint-uuid> --output=subset.json
+php artisan mockdeck:import mockdeck.json --dry-run --json
+php artisan mockdeck:import mockdeck.json --mode=upsert --acknowledge-warnings
+```
+
+`--include-sensitive` is an explicit opt-in for CLI exports. Treat those files as credentials. See [docs/CONFIG_IMPORT_EXPORT.md](docs/CONFIG_IMPORT_EXPORT.md) for the document contract, HTTP endpoints, limits, conflict rules, and recovery guidance.
 
 ## Matching model
 
@@ -212,6 +232,7 @@ app/
   Http/Controllers/                dashboard auth and invocation boundaries
   Livewire/Admin/                  dashboard endpoint, response, and log UI
   Services/Curl/                   parser, canonicalizer, signature variants, and mock-curl builder
+  Services/Config/                 native document export, validation, preview, and atomic import
   Services/Matching/               deterministic endpoint resolution
   Services/Response/               weighted selection strategy
   Services/Logging/                non-fatal writer and bounded rotated-log reader
@@ -230,7 +251,7 @@ Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before changing canonicalizati
 - Upstream origin is intentionally not a discriminator; two otherwise identical requests on different upstream hosts share a signature.
 - Responses are weighted, not rule-selected or scenario-state driven.
 - Response templating, OpenAPI generation, recording/proxying, and verification assertions are planned, not implemented.
-- Configuration import/export is intentionally specified in detail but remains the next implementation milestone.
+- Native JSON import/export is implemented; third-party OpenAPI, Postman, WireMock, Mockoon, and Hoverfly adapters remain planned.
 
 ## Framework references
 

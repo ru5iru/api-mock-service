@@ -11,6 +11,21 @@ MockDeck deliberately separates administration from invocation:
 
 This keeps dashboard authentication, presentation, and response selection independent of exact-request matching.
 
+## Portable configuration boundary
+
+`Services/Config` is the only model-to-document and document-to-model boundary. The dashboard, protected HTTP routes, and Artisan commands all call `ConfigExporter`, `ConfigValidator`, and `ConfigImporter`; presentation layers do not reproduce transformation or conflict rules.
+
+The native format version is independent of the endpoint signature version. Exports contain stable endpoint/response UUIDs and source curl commands but never numeric IDs, canonical strings, or hashes. Import parses every curl and recomputes its selected variant through `CurlParser` and `CurlHasher`.
+
+An import has two phases:
+
+1. validate structure and configured limits, derive signatures, classify UUID/signature/response conflicts, warn about broad/narrow overlap, and cache the document behind a random expiring token plus SHA-256 digest;
+2. verify the token and digest, repeat conflict checks with referenced rows locked, and create/update all records in one database transaction.
+
+Warnings require explicit acknowledgement. A validation or conflict error makes the plan non-applicable. Upsert merges responses by UUID unless `replace responses` is selected. Clone mode generates new endpoint and response UUIDs.
+
+`SecretRedactor` removes configured sensitive headers and query keys without executing the curl. An affected export is disabled and marked `requires_secret_replacement`; import enforces the disabled state even if a document incorrectly also says `enabled: true`.
+
 ## Why incoming requests need five variants
 
 An endpoint stores one digest based on the exclusions selected when it was saved. An incoming request does not carry that configuration, so the service cannot compute one authoritative digest before looking up an endpoint.
@@ -104,8 +119,8 @@ The dashboard can display raw curl, canonical text, request bodies, and headers.
 
 Only two domain tables exist:
 
-- `mock_endpoints` stores the original curl, one canonical representation, one digest, signature version, enabled state, priority, and exclusion flags;
-- `mock_responses` stores status, header JSON, body, delay, and weight.
+- `mock_endpoints` stores an immutable portable UUID, the original curl, one canonical representation, one digest, signature version, enabled state, priority, and exclusion flags;
+- `mock_responses` stores an immutable portable UUID, status, header JSON, body, delay, and weight.
 
 Request logs never enter PostgreSQL. Deleting an endpoint cascades to its responses.
 

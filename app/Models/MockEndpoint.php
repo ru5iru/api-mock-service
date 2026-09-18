@@ -6,6 +6,8 @@ use Database\Factories\MockEndpointFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
+use LogicException;
 
 final class MockEndpoint extends Model
 {
@@ -13,6 +15,7 @@ final class MockEndpoint extends Model
     use HasFactory;
 
     protected $fillable = [
+        'uuid',
         'name',
         'enabled',
         'priority',
@@ -25,6 +28,19 @@ final class MockEndpoint extends Model
         'exclude_auth',
         'exclude_headers',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (MockEndpoint $endpoint): void {
+            $endpoint->uuid ??= (string) Str::uuid7();
+        });
+
+        static::updating(function (MockEndpoint $endpoint): void {
+            if ($endpoint->isDirty('uuid')) {
+                throw new LogicException('Endpoint UUIDs are immutable.');
+            }
+        });
+    }
 
     protected function casts(): array
     {

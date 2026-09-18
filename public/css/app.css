@@ -243,10 +243,54 @@ code, pre, .code-input { font-family: "SFMono-Regular", Consolas, "Liberation Mo
 .status-code-4xx, .status-code-5xx { color: #a44343; }
 .empty-table { padding: 35px !important; color: #8993a0 !important; text-align: center; }
 
+.transfer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }
+.transfer-card { padding: 27px; }
+.selection-toolbar { margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; color: #485466; font-size: 12px; }
+.selection-toolbar span { display: flex; gap: 9px; }
+.config-endpoint-list { max-height: 280px; margin-bottom: 16px; border: 1px solid var(--line); border-radius: 9px; overflow-y: auto; }
+.config-endpoint-list > p { padding: 16px; }
+.config-endpoint-option { padding: 11px 13px; border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.config-endpoint-option:last-child { border-bottom: 0; }
+.config-endpoint-option:hover { background: #fafbfc; }
+.config-endpoint-option input { margin-top: 4px; accent-color: var(--teal); }
+.config-endpoint-option strong, .config-endpoint-option small { display: block; }
+.config-endpoint-option strong { font-size: 13px; }
+.config-endpoint-option small { margin-top: 2px; color: var(--muted); font-size: 11px; }
+.transfer-toggle { margin-top: 8px !important; }
+.confirmation-row { margin: 13px 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; display: flex; align-items: flex-start; gap: 9px; color: #556172; background: #fafbfc; cursor: pointer; font-size: 12px; }
+.confirmation-row input { margin-top: 2px; accent-color: var(--teal); }
+.transfer-actions { flex-wrap: wrap; }
+.radio-option { margin-bottom: 8px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.radio-option:has(input:checked) { border-color: #78bcb4; background: #f2fbf9; box-shadow: 0 0 0 2px rgba(13, 139, 125, .06); }
+.radio-option input { margin-top: 4px; accent-color: var(--teal); }
+.radio-option strong, .radio-option small { display: block; }
+.radio-option strong { font-size: 13px; }
+.radio-option small { margin-top: 2px; color: var(--muted); font-weight: 450; }
+.import-preview { margin-top: 22px; padding: 27px; }
+.import-preview h2 { margin: 3px 0 4px; }
+.summary-grid { margin: 0 0 20px; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.summary-grid div { padding: 13px; border-right: 1px solid var(--line); background: #fafbfc; }
+.summary-grid div:last-child { border-right: 0; }
+.summary-grid dt { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.summary-grid dd { margin: 2px 0 0; font-size: 20px; font-weight: 800; }
+.validation-panel { margin: 12px 0; padding: 14px 16px; border: 1px solid; border-radius: 9px; font-size: 12px; }
+.validation-panel ul { margin: 7px 0 0; padding-left: 19px; }
+.validation-panel li + li { margin-top: 4px; }
+.error-panel { color: #8e3838; border-color: #efc4c4; background: var(--red-soft); }
+.warning-panel { color: #785116; border-color: #edd4a7; background: #fff8e9; }
+.import-table { margin-top: 15px; border: 1px solid var(--line); }
+.import-table td:first-child { min-width: 250px; }
+.import-table code { font-size: 10px; }
+.action-chip { padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.action-chip.create { color: #17695f; background: var(--teal-soft); }
+.action-chip.update { color: #355f9b; background: var(--blue-soft); }
+.action-chip.error { color: #9a3c3c; background: var(--red-soft); }
+.preview-confirmation { margin-top: 18px; }
+
 .footer { width: min(1240px, calc(100% - 48px)); margin: 0 auto; padding: 24px 0 34px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; color: #8b95a3; font-size: 11px; }
 
 @media (max-width: 900px) {
-    .editor-grid, .response-grid { grid-template-columns: 1fr; }
+    .editor-grid, .response-grid, .transfer-grid { grid-template-columns: 1fr; }
     .sticky-card, .response-form { position: static; }
     .topnav a { display: none; }
     .access-chip { margin-left: 0; }
@@ -278,4 +322,8 @@ code, pre, .code-input { font-family: "SFMono-Regular", Consolas, "Liberation Mo
     .footer span { display: block; margin-top: 3px; }
     .log-toolbar { display: block; }
     .log-filters { margin-top: 10px; justify-content: flex-start; }
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .summary-grid div { border-bottom: 1px solid var(--line); }
+    .summary-grid div:nth-child(2n) { border-right: 0; }
+    .transfer-card, .import-preview { padding: 20px; }
 }

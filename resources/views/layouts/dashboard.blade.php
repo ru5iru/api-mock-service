@@ -28,6 +28,10 @@
                     Endpoints
                 </a>
                 <a href="{{ route('dashboard.endpoints.index') }}#request-log">Request log</a>
+                <a href="{{ route('dashboard.config.index') }}" wire:navigate
+                   class="{{ request()->routeIs('dashboard.config.*') ? 'active' : '' }}">
+                    Import / export
+                </a>
                 @if (config('mock.dashboard_auth.enabled'))
                     <form method="POST" action="{{ route('dashboard.logout') }}" class="nav-form">
                         @csrf
