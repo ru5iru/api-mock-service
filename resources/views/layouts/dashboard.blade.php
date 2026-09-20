@@ -6,10 +6,12 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'MockDeck' }} · Exact-request API mocking</title>
     <meta name="description" content="Configure deterministic and weighted mock API responses from curl commands.">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <meta name="theme-color" content="#6750A4">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
     @livewireStyles
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="app-shell">
         <header class="topbar">
             <a class="brand" href="{{ route('dashboard.endpoints.index') }}" wire:navigate>
@@ -24,12 +26,14 @@
 
             <nav class="topnav" aria-label="Dashboard navigation">
                 <a href="{{ route('dashboard.endpoints.index') }}" wire:navigate
-                   class="{{ request()->routeIs('dashboard.endpoints.*') ? 'active' : '' }}">
+                   class="{{ request()->routeIs('dashboard.endpoints.*') ? 'active' : '' }}"
+                   @if (request()->routeIs('dashboard.endpoints.*')) aria-current="page" @endif>
                     Endpoints
                 </a>
                 <a href="{{ route('dashboard.endpoints.index') }}#request-log">Request log</a>
                 <a href="{{ route('dashboard.config.index') }}" wire:navigate
-                   class="{{ request()->routeIs('dashboard.config.*') ? 'active' : '' }}">
+                   class="{{ request()->routeIs('dashboard.config.*') ? 'active' : '' }}"
+                   @if (request()->routeIs('dashboard.config.*')) aria-current="page" @endif>
                     Import / export
                 </a>
                 @if (config('mock.dashboard_auth.enabled'))
@@ -41,9 +45,34 @@
                     <span class="access-chip"><i></i> Local access</span>
                 @endif
             </nav>
+
+            <details class="mobile-nav">
+                <summary aria-label="Open dashboard navigation">Menu</summary>
+                <nav class="mobile-nav-panel" aria-label="Mobile dashboard navigation">
+                    <a href="{{ route('dashboard.endpoints.index') }}" wire:navigate
+                       class="{{ request()->routeIs('dashboard.endpoints.*') ? 'active' : '' }}"
+                       @if (request()->routeIs('dashboard.endpoints.*')) aria-current="page" @endif>
+                        Endpoints
+                    </a>
+                    <a href="{{ route('dashboard.endpoints.index') }}#request-log">Request log</a>
+                    <a href="{{ route('dashboard.config.index') }}" wire:navigate
+                       class="{{ request()->routeIs('dashboard.config.*') ? 'active' : '' }}"
+                       @if (request()->routeIs('dashboard.config.*')) aria-current="page" @endif>
+                        Import / export
+                    </a>
+                    @if (config('mock.dashboard_auth.enabled'))
+                        <form method="POST" action="{{ route('dashboard.logout') }}" class="nav-form">
+                            @csrf
+                            <button class="nav-logout" type="submit">Sign out</button>
+                        </form>
+                    @else
+                        <span class="access-chip"><i></i> Local access</span>
+                    @endif
+                </nav>
+            </details>
         </header>
 
-        <main class="page-shell">
+        <main id="main-content" class="page-shell" tabindex="-1">
             @if (session('status'))
                 <div class="flash" role="status">
                     <span class="flash-icon">✓</span>

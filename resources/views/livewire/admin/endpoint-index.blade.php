@@ -2,7 +2,9 @@
     <div class="toolbar card">
         <label class="search-field">
             <span class="sr-only">Search endpoints</span>
-            <span aria-hidden="true">⌕</span>
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
             <input type="search" wire:model.live.debounce.250ms="search" placeholder="Search by name, method, or curl…">
         </label>
         <div class="toolbar-controls">
@@ -23,6 +25,9 @@
                     <option value="disabled">Disabled</option>
                 </select>
             </label>
+            @if ($search !== '' || $method !== '' || $state !== 'all')
+                <button class="text-button filter-reset" type="button" wire:click="clearFilters">Clear filters</button>
+            @endif
             <span class="muted small result-count">{{ $endpoints->total() }} {{ Str::plural('endpoint', $endpoints->total()) }}</span>
         </div>
     </div>
@@ -80,9 +85,11 @@
                 @php($filtered = $search !== '' || $method !== '' || $state !== 'all')
                 <h3>{{ $filtered ? 'No endpoints match these filters' : 'Your mock registry is empty' }}</h3>
                 <p>{{ $filtered ? 'Try a different search, method, or state.' : 'Paste your first curl command and return a configured response in minutes.' }}</p>
-                @unless ($filtered)
+                @if ($filtered)
+                    <button class="button button-secondary" type="button" wire:click="clearFilters">Clear filters</button>
+                @else
                     <a class="button button-primary" href="{{ route('dashboard.endpoints.create') }}" wire:navigate>Create first endpoint</a>
-                @endunless
+                @endif
             </div>
         @endforelse
     </div>
