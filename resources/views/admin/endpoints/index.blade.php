@@ -18,8 +18,8 @@
                 <span class="eyebrow">Diagnostics</span>
                 <h2>Recent request log</h2>
             </div>
-            <p>Newest structured events from the rotating JSON log.</p>
+            <a class="text-link" href="{{ route('dashboard.requests.index') }}" wire:navigate>View full request log →</a>
         </div>
-        <livewire:admin.log-viewer />
+        <livewire:admin.log-viewer :full="false" />
     </section>
 </x-layouts.dashboard>

@@ -31,11 +31,11 @@ final class MockEndpoint extends Model
 
     protected static function booted(): void
     {
-        self::creating(function (MockEndpoint $endpoint): void {
+        static::creating(function (MockEndpoint $endpoint): void {
             $endpoint->uuid ??= (string) Str::uuid7();
         });
 
-        self::updating(function (MockEndpoint $endpoint): void {
+        static::updating(function (MockEndpoint $endpoint): void {
             if ($endpoint->isDirty('uuid')) {
                 throw new LogicException('Endpoint UUIDs are immutable.');
             }
@@ -58,5 +58,46 @@ final class MockEndpoint extends Model
     public function responses(): HasMany
     {
         return $this->hasMany(MockResponse::class)->orderBy('id');
+    }
+
+    public function displayName(): string
+    {
+        $name = trim((string) $this->name);
+
+        return $name !== '' ? $name : strtoupper($this->method).' '.$this->requestPath();
+    }
+
+    public function requestPath(): string
+    {
+        return explode('?', $this->requestTarget(), 2)[0] ?: '/';
+    }
+
+    public function requestTarget(): string
+    {
+        $lines = preg_split('/\R/', $this->normalized_curl) ?: [];
+        $target = trim((string) ($lines[1] ?? ''));
+
+        return $target !== '' ? $target : '/';
+    }
+
+    /** @return array{headers: int, body_bytes: int} */
+    public function requestStats(): array
+    {
+        [$head, $body] = array_pad(explode("\n\n", $this->normalized_curl, 2), 2, '');
+        $lines = preg_split('/\R/', $head) ?: [];
+
+        return [
+            'headers' => max(0, count($lines) - 2),
+            'body_bytes' => strlen($body),
+        ];
+    }
+
+    public function signatureVariant(): string
+    {
+        return $this->exclude_headers
+            ? 'V5'
+            : ($this->exclude_cookies && $this->exclude_auth
+                ? 'V4'
+                : ($this->exclude_auth ? 'V3' : ($this->exclude_cookies ? 'V2' : 'V1')));
     }
 }

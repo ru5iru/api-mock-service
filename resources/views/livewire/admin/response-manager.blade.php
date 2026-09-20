@@ -20,7 +20,7 @@
                 </div>
                 <div class="endpoint-actions">
                     <button class="icon-button" type="button" wire:click="edit({{ $response->id }})">Edit</button>
-                    <button class="icon-button danger" type="button" wire:click="delete({{ $response->id }})" wire:confirm="Delete this response?">Delete</button>
+                    <button class="icon-button danger" type="button" wire:click="delete({{ $response->id }})" wire:confirm="Delete response #{{ $response->id }} (HTTP {{ $response->status_code }}) from this endpoint? It will no longer be available for matching requests.">Delete</button>
                 </div>
             </article>
         @empty

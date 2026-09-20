@@ -38,7 +38,7 @@ final class ConfigTransferController extends Controller
 
         return response($json, 200, [
             'Content-Type' => 'application/vnd.mockdeck.config+json; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="mockdeck-config-'.now()->utc()->format('Y-m-d').'.json"',
+            'Content-Disposition' => 'attachment; filename="mockdeck-export-'.now()->utc()->format('Ymd').'.json"',
         ]);
     }
 

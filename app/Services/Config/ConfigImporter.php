@@ -135,6 +135,11 @@ final readonly class ConfigImporter
                     (bool) $matching['exclude_auth'],
                     (bool) $matching['exclude_headers'],
                 );
+                if (trim((string) ($source['name'] ?? '')) === '') {
+                    $parts = parse_url($parsed->url) ?: [];
+                    $target = (string) ($parts['path'] ?? '/');
+                    $name = strtoupper($parsed->method).' '.$target;
+                }
             } catch (Throwable $exception) {
                 $errors[] = "Endpoint {$name} has an invalid curl: ".$exception->getMessage();
                 $items[] = $this->item($index, $uuid, $name, 'error', 'The curl cannot be normalized.');
