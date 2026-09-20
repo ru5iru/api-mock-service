@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class UiShellTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_dashboard_shell_exposes_accessible_navigation_and_clean_footer(): void
     {
         $this->get('/dashboard')

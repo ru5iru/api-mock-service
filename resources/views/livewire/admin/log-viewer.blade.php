@@ -127,7 +127,9 @@
                 </tr>
             </thead>
             <tbody>
-                @php($previousDay = null)
+                @php
+                    $previousDay = null;
+                @endphp
                 @forelse ($events as $event)
                     @php
                         $timestamp = $event['_timestamp'] ? \Illuminate\Support\Carbon::parse($event['_timestamp']) : null;
@@ -138,7 +140,9 @@
                     @endphp
                     @if ($dayKey !== $previousDay)
                         <tr class="day-separator"><th colspan="6" scope="rowgroup">{{ $dayLabel }}</th></tr>
-                        @php($previousDay = $dayKey)
+                        @php
+                            $previousDay = $dayKey;
+                        @endphp
                     @endif
                     <tr
                         class="log-row {{ $expanded ? 'expanded' : '' }}"
