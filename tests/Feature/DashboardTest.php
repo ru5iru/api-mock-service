@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Admin\EndpointForm;
 use App\Livewire\Admin\EndpointIndex;
+use App\Livewire\Admin\LogViewer;
 use App\Livewire\Admin\ResponseManager;
 use App\Models\MockEndpoint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -93,10 +94,27 @@ final class DashboardTest extends TestCase
             ->assertDontSee('Enabled GET endpoint')
             ->assertSee('Disabled POST endpoint')
             ->set('state', 'all')
+            ->set('search', 'Enabled')
+            ->call('clearFilters')
+            ->assertSet('search', '')
+            ->assertSet('method', '')
+            ->assertSet('state', 'all')
             ->call('toggleEnabled', $getEndpoint->id)
             ->assertSee('Enable');
 
         self::assertFalse($getEndpoint->fresh()->enabled);
+    }
+
+    public function test_request_log_filters_can_be_cleared(): void
+    {
+        Livewire::test(LogViewer::class)
+            ->set('method', 'POST')
+            ->set('match', 'missed')
+            ->set('status', '4xx')
+            ->call('clearFilters')
+            ->assertSet('method', '')
+            ->assertSet('match', 'all')
+            ->assertSet('status', 'all');
     }
 
     public function test_endpoint_list_offers_a_mock_host_curl_copy_button(): void

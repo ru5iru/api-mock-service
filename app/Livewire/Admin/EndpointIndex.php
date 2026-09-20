@@ -35,6 +35,13 @@ final class EndpointIndex extends Component
         $this->resetPage();
     }
 
+    public function clearFilters(): void
+    {
+        $this->reset(['search', 'method', 'state']);
+        $this->state = 'all';
+        $this->resetPage();
+    }
+
     public function toggleEnabled(int $endpointId): void
     {
         $endpoint = MockEndpoint::query()->findOrFail($endpointId);

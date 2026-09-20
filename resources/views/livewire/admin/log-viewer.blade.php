@@ -38,6 +38,9 @@
                     <option value="100">100</option>
                 </select>
             </label>
+            @if ($method !== '' || $match !== 'all' || $status !== 'all')
+                <button class="text-button filter-reset" type="button" wire:click="clearFilters">Clear filters</button>
+            @endif
         </div>
     </div>
 

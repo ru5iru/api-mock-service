@@ -16,6 +16,13 @@ final class LogViewer extends Component
 
     public string $status = 'all';
 
+    public function clearFilters(): void
+    {
+        $this->reset(['method', 'match', 'status']);
+        $this->match = 'all';
+        $this->status = 'all';
+    }
+
     public function render(): View
     {
         $limit = in_array($this->limit, [25, 50, 100], true) ? $this->limit : 50;

@@ -6,7 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Sign in · MockDeck</title>
     <meta name="description" content="Sign in to the MockDeck administration dashboard.">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <meta name="theme-color" content="#6750A4">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
 </head>
 <body class="auth-page">
     <main class="auth-shell">
