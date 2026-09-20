@@ -127,7 +127,11 @@ final class LogViewer extends Component
             $event['_mocked_server_response'] = $statusCode >= 500 && ($event['match_tier'] ?? null) === 'hash';
             $event['_timestamp'] = $timestamp;
             $event['_repeat_count'] = 1;
-            $event['_reconstructed_curl'] = "curl --request ".strtoupper((string) ($event['method'] ?? 'GET'))." '".str_replace("'", "'\\''", $url)."'";
+            $event['_reconstructed_curl'] = sprintf(
+                'curl --request %s %s',
+                strtoupper((string) ($event['method'] ?? 'GET')),
+                escapeshellarg($url),
+            );
             $event['_nearest'] = in_array($event['match_tier'] ?? 'none', ['none', 'fallback'], true)
                 ? $candidateEndpoints
                     ->map(function (MockEndpoint $candidate) use ($event, $path): array {
@@ -231,6 +235,7 @@ final class LogViewer extends Component
 
             if ($lastIndex >= 0 && ($grouped[$lastIndex]['_identity'] ?? null) === $identity) {
                 $grouped[$lastIndex]['_repeat_count']++;
+
                 continue;
             }
 

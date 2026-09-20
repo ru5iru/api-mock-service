@@ -31,11 +31,11 @@ final class MockEndpoint extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (MockEndpoint $endpoint): void {
+        self::creating(function (MockEndpoint $endpoint): void {
             $endpoint->uuid ??= (string) Str::uuid7();
         });
 
-        static::updating(function (MockEndpoint $endpoint): void {
+        self::updating(function (MockEndpoint $endpoint): void {
             if ($endpoint->isDirty('uuid')) {
                 throw new LogicException('Endpoint UUIDs are immutable.');
             }
