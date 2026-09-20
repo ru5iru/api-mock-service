@@ -6,14 +6,17 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Sign in · MockDeck</title>
     <meta name="description" content="Sign in to the MockDeck administration dashboard.">
-    <meta name="theme-color" content="#6750A4">
+    <meta name="theme-color" content="#FAFAF8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=Playfair+Display:wght@500;600&amp;family=Source+Sans+3:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
 </head>
 <body class="auth-page">
     <main class="auth-shell">
         <section class="card auth-card">
             <div class="auth-brand">
-                <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+                <span class="brand-mark" aria-hidden="true">M</span>
                 <div><strong>MockDeck</strong><small>Administration dashboard</small></div>
             </div>
 

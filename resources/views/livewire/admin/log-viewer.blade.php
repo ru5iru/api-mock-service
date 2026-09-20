@@ -2,8 +2,8 @@
     <div class="log-toolbar">
         <div class="live-indicator"><i></i> Refreshing every 5 seconds</div>
         <div class="log-filters">
-            <label>
-                <span class="sr-only">Filter log by method</span>
+            <label class="select-field">
+                <span class="select-caption">Method</span>
                 <select wire:model.live="method">
                     <option value="">All methods</option>
                     @foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as $option)
@@ -11,8 +11,8 @@
                     @endforeach
                 </select>
             </label>
-            <label>
-                <span class="sr-only">Filter log by match result</span>
+            <label class="select-field">
+                <span class="select-caption">Match</span>
                 <select wire:model.live="match">
                     <option value="all">All matches</option>
                     <option value="matched">Matched</option>
@@ -20,8 +20,8 @@
                     <option value="fallback">Fallback only</option>
                 </select>
             </label>
-            <label>
-                <span class="sr-only">Filter log by status family</span>
+            <label class="select-field">
+                <span class="select-caption">Response</span>
                 <select wire:model.live="status">
                     <option value="all">All statuses</option>
                     <option value="2xx">2xx</option>
@@ -30,8 +30,8 @@
                     <option value="5xx">5xx</option>
                 </select>
             </label>
-            <label>
-                Show
+            <label class="select-field select-field-compact">
+                <span class="select-caption">Rows</span>
                 <select wire:model.live="limit">
                     <option value="25">25</option>
                     <option value="50">50</option>

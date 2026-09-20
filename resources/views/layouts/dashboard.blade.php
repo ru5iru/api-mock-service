@@ -6,7 +6,10 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'MockDeck' }} · Exact-request API mocking</title>
     <meta name="description" content="Configure deterministic and weighted mock API responses from curl commands.">
-    <meta name="theme-color" content="#6750A4">
+    <meta name="theme-color" content="#FAFAF8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=Playfair+Display:wght@500;600&amp;family=Source+Sans+3:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
     @livewireStyles
 </head>
@@ -15,9 +18,7 @@
     <div class="app-shell">
         <header class="topbar">
             <a class="brand" href="{{ route('dashboard.endpoints.index') }}" wire:navigate>
-                <span class="brand-mark" aria-hidden="true">
-                    <span></span><span></span><span></span>
-                </span>
+                <span class="brand-mark" aria-hidden="true">M</span>
                 <span>
                     <strong>MockDeck</strong>
                     <small>Exact-request API mocking</small>

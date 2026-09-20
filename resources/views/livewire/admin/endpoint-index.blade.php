@@ -8,8 +8,8 @@
             <input type="search" wire:model.live.debounce.250ms="search" placeholder="Search by name, method, or curl…">
         </label>
         <div class="toolbar-controls">
-            <label>
-                <span class="sr-only">Filter by method</span>
+            <label class="select-field">
+                <span class="select-caption">Method</span>
                 <select wire:model.live="method">
                     <option value="">All methods</option>
                     @foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as $option)
@@ -17,8 +17,8 @@
                     @endforeach
                 </select>
             </label>
-            <label>
-                <span class="sr-only">Filter by state</span>
+            <label class="select-field">
+                <span class="select-caption">Status</span>
                 <select wire:model.live="state">
                     <option value="all">Any state</option>
                     <option value="enabled">Enabled</option>
