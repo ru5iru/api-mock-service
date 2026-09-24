@@ -89,6 +89,7 @@
                 $jsonContentType = $contentType === null || str_contains(strtolower((string) $contentType), 'json');
                 $errorIssues = collect($templateIssues)->where('severity', 'error');
                 $warningIssues = collect($templateIssues)->where('severity', 'warning');
+                $builderUnavailableMessage = "Builder unavailable. This template uses features the builder can't show — edit as JSON";
             @endphp
 
             @if (! $jsonContentType)
@@ -100,7 +101,7 @@
 
             <div class="template-toolbar">
                 <div class="segmented-control" aria-label="Template editor view">
-                    <span class="disabled-tooltip" @if (! $builderSupported) tabindex="0" aria-label="Builder unavailable. This template uses features the builder can't show — edit as JSON" title="This template uses features the builder can't show — edit as JSON" @endif>
+                    <span class="disabled-tooltip" @if (! $builderSupported) tabindex="0" aria-label="{{ $builderUnavailableMessage }}" title="{{ $builderUnavailableMessage }}" @endif>
                         <button type="button" wire:click="setEditorView('builder')" aria-pressed="{{ $editorView === 'builder' ? 'true' : 'false' }}" @disabled(! $builderSupported)>Builder</button>
                     </span>
                     <button type="button" wire:click="setEditorView('json')" aria-pressed="{{ $editorView === 'json' ? 'true' : 'false' }}">JSON</button>

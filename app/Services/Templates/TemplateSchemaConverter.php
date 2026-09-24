@@ -192,6 +192,7 @@ final class TemplateSchemaConverter
             }
             if (! is_string($value)) {
                 $options[$key] = $value;
+
                 continue;
             }
 
@@ -201,15 +202,18 @@ final class TemplateSchemaConverter
             }
             if (preg_match('/^-?\d+$/D', $trimmed) === 1) {
                 $options[$key] = (int) $trimmed;
+
                 continue;
             }
             if (is_numeric($trimmed)) {
                 $options[$key] = (float) $trimmed;
+
                 continue;
             }
             if (str_starts_with($trimmed, '[') || str_starts_with($trimmed, '{')) {
                 try {
                     $options[$key] = json_decode($trimmed, true, 64, JSON_THROW_ON_ERROR);
+
                     continue;
                 } catch (JsonException) {
                     // Keep invalid JSON as text so method validation can report it.

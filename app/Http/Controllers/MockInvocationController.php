@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\Curl\IncomingRequestFactory;
 use App\Services\Curl\CurlHasher;
+use App\Services\Curl\IncomingRequestFactory;
 use App\Services\Logging\MockRequestLogger;
 use App\Services\Matching\EndpointMatch;
 use App\Services\Matching\EndpointMatcher;

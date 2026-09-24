@@ -199,6 +199,8 @@ final class ResponseManager extends Component
         $this->builderSupported = $projected !== null;
         if ($projected !== null) {
             $this->builderSchema = $projected;
+        } elseif ($this->editorView === 'builder') {
+            $this->editorView = 'json';
         }
         $this->clearPreview();
         if (! collect($this->templateIssues)->contains(static fn (array $issue): bool => $issue['severity'] === 'error')) {

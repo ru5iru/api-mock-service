@@ -18,7 +18,7 @@ Artisan::command(
                 $this->option('endpoint') ?: null,
                 ! $this->option('include-sensitive'),
             )->toJson();
-        } catch (\InvalidArgumentException $exception) {
+        } catch (InvalidArgumentException $exception) {
             $this->error($exception->getMessage());
 
             return Command::FAILURE;
@@ -94,7 +94,7 @@ Artisan::command(
                 $plan->digest,
                 (bool) $this->option('acknowledge-warnings'),
             );
-        } catch (\InvalidArgumentException $exception) {
+        } catch (InvalidArgumentException $exception) {
             $this->error($exception->getMessage());
 
             return Command::FAILURE;
