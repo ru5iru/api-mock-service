@@ -14,7 +14,9 @@ final class TemplateCompiler
 
     private string $source = '';
 
-    public function __construct(private readonly FakerMethodCatalog $catalog) {}
+    public function __construct(private readonly FakerMethodCatalog $catalog)
+    {
+    }
 
     public function compile(string $source, string $locale = 'en'): TemplateValidationResult
     {

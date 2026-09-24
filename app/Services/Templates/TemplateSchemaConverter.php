@@ -73,7 +73,7 @@ final class TemplateSchemaConverter
         $schema = $this->emptySchema();
         if ($root instanceof stdClass && $this->isDirective($root, '$repeat')) {
             $values = get_object_vars($root);
-            if (array_diff(array_keys($values), ['$repeat', '$item']) !== [] || ! ($values['$item'] ?? null) instanceof stdClass) {
+            if (array_diff(array_keys($values), ['$repeat', '$item']) !== [] || !($values['$item'] ?? null) instanceof stdClass) {
                 return null;
             }
             $schema['root'] = 'list';

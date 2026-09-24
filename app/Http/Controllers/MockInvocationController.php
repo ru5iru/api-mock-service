@@ -29,7 +29,8 @@ final class MockInvocationController extends Controller
         private readonly MockRequestLogger $logger,
         private readonly CurlHasher $hasher,
         private readonly ResponseTemplateEngine $templates,
-    ) {}
+    ) {
+    }
 
     public function __invoke(Request $request): Response
     {

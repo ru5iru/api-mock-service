@@ -6,6 +6,7 @@ use App\Services\Templates\FakerMethodCatalog;
 use App\Services\Templates\ResponseTemplateEngine;
 use App\Services\Templates\TemplateRenderer;
 use App\Services\Templates\TemplateRenderException;
+use App\Services\Templates\TemplateRenderer;
 use Tests\TestCase;
 
 final class ResponseTemplateEngineTest extends TestCase
