@@ -12,6 +12,7 @@
     <title>{{ $status }} · {{ $title }} · MockDeck</title>
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="">
+    <x-favicon-links />
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}" data-navigate-once></script>
     <link rel="preload" href="{{ asset('fonts/jetbrains-mono/jetbrains-mono-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}?v={{ filemtime(public_path('css/tokens.css')) }}">
@@ -22,7 +23,7 @@
     <main class="auth-shell">
         <section class="card auth-card error-card">
             <div class="auth-brand">
-                <span class="brand-mark" aria-hidden="true">M</span>
+                <x-brand-mark />
                 <div><strong>MockDeck</strong><small>Error {{ $status }}</small></div>
             </div>
             <x-page-header :title="$title" :description="$message" />
