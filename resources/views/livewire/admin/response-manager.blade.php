@@ -20,7 +20,7 @@
                 </div>
                 <div class="endpoint-actions">
                     <button class="icon-button" type="button" wire:click="edit({{ $response->id }})">Edit</button>
-                    <button class="icon-button danger" type="button" wire:click="delete({{ $response->id }})" wire:confirm="Delete this response?">Delete</button>
+                    <button class="icon-button danger" type="button" wire:click="delete({{ $response->id }})" wire:confirm="Delete response #{{ $response->id }} (HTTP {{ $response->status_code }}) from this endpoint? It will no longer be available for matching requests.">Delete</button>
                 </div>
             </article>
         @empty
@@ -33,10 +33,7 @@
 
     <form class="card response-form" wire:submit="save">
         <div class="form-title-row">
-            <div>
-                <span class="eyebrow">{{ $editingId ? 'Editing #'.$editingId : 'New response' }}</span>
-                <h3>{{ $editingId ? 'Update response' : 'Add to response pool' }}</h3>
-            </div>
+            <h3>{{ $editingId ? 'Edit response #'.$editingId : 'Add response' }}</h3>
             @if ($editingId)
                 <button class="text-button" type="button" wire:click="createNew">Cancel edit</button>
             @endif

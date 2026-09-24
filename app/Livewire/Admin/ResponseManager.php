@@ -97,6 +97,7 @@ final class ResponseManager extends Component
         }
 
         session()->flash('response-status', $this->editingId === null ? 'Response added.' : 'Response updated.');
+        $this->dispatch('toast', message: $this->editingId === null ? 'Response added.' : 'Response updated.');
         $this->resetForm();
     }
 
@@ -107,6 +108,7 @@ final class ResponseManager extends Component
             $this->resetForm();
         }
         session()->flash('response-status', 'Response deleted.');
+        $this->dispatch('toast', message: 'Response deleted.');
     }
 
     public function render(): View
