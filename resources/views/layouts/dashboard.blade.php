@@ -8,6 +8,7 @@
     <meta name="description" content="Configure deterministic and weighted mock API responses from curl commands.">
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="">
+    <x-favicon-links />
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}" data-navigate-once></script>
     <link rel="preload" href="{{ asset('fonts/jetbrains-mono/jetbrains-mono-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}?v={{ filemtime(public_path('css/tokens.css')) }}">
@@ -27,7 +28,7 @@
     <div class="app-shell">
         <header class="topbar">
             <a class="brand" href="{{ route('dashboard.endpoints.index') }}" wire:navigate>
-                <span class="brand-mark" aria-hidden="true">M</span>
+                <x-brand-mark />
                 <span>
                     <strong>MockDeck</strong>
                     <small>Exact-request API mocking</small>

@@ -390,6 +390,8 @@ Use exactly one visible theme control in each navigation context. Do not add pag
 - Effective System theme comes from `matchMedia('(prefers-color-scheme: dark)')`.
 - Applied attributes: `data-theme` contains the effective light/dark theme; `data-theme-mode` contains the selected mode.
 - `color-scheme` and `<meta name="theme-color">` are synchronized with the effective theme.
+- Browser icon links are centralized in `resources/views/components/favicon-links.blade.php`. The primary `favicon.svg` switches its gold/cream and gold/dark-navy artwork with `prefers-color-scheme`; the ICO is a 16/32/48px fallback, and the Apple/PWA icons are declared through the same component and `site.webmanifest`. Keep the static light and dark SVG copies available for integrations that cannot evaluate the theme-aware SVG.
+- The in-app brand badge is `resources/views/components/brand-mark.blade.php`. It uses the static light and dark SVG copies and follows the effective `data-theme`, including an explicit Light or Dark override. Use this component in navigation and authentication/error branding; do not recreate the former bordered “M” placeholder.
 - Storage access is inside `try/catch`; theme switching still works for the current page when storage is unavailable.
 - OS changes update the app live only while System is selected.
 - `livewire:navigated` reapplies the singleton state because Livewire can morph the root attributes.

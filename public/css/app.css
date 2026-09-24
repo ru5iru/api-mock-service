@@ -45,8 +45,12 @@ code, pre, .code-input { font-family: var(--font-code); font-variant-ligatures: 
 .brand { min-width: max-content; display: inline-flex; align-items: center; gap: 13px; }
 .brand strong { display: block; font-family: var(--font-ui); font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); }
 .brand small { display: block; color: var(--text-muted); font-family: var(--font-code); font-size: var(--font-size-xs); }
-.brand-mark { width: 36px; height: 36px; border: 1px solid var(--accent); border-radius: 50%; display: grid; place-items: center; color: var(--accent-link); background: var(--surface); font-family: var(--font-ui); font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); box-shadow: var(--shadow-sm); transition: color var(--motion-base), background-color var(--motion-base), box-shadow var(--motion-base); }
-.brand:hover .brand-mark { color: var(--on-accent); background: var(--accent); box-shadow: var(--shadow-md); }
+.brand-mark { width: 36px; height: 36px; border-radius: 50%; display: grid; flex: 0 0 auto; overflow: hidden; box-shadow: var(--shadow-sm); transition: box-shadow var(--motion-base); }
+.brand-mark img { width: 100%; height: 100%; grid-area: 1 / 1; display: block; }
+.brand-mark-dark { visibility: hidden; }
+[data-theme="dark"] .brand-mark-light { visibility: hidden; }
+[data-theme="dark"] .brand-mark-dark { visibility: visible; }
+.brand:hover .brand-mark { box-shadow: var(--shadow-md); }
 .topnav { display: flex; align-items: center; justify-content: flex-end; gap: 22px; }
 .topnav > a, .mobile-nav-panel > a {
     min-height: 44px;
