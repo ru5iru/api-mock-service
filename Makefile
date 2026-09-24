@@ -1,6 +1,6 @@
-.PHONY: up down build validation-image logs shell test test-unit test-feature lint format composer-validate compose-config validate health
+.PHONY: up down build validation-image logs shell test test-unit test-feature frontend-test design-validate lint format composer-validate compose-config validate health
 
-TEST_ENV = -e APP_ENV=testing -e APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= -e DB_CONNECTION=sqlite -e DB_DATABASE=:memory: -e MOCK_DASHBOARD_AUTH_ENABLED=false -e RUN_MIGRATIONS=false
+TEST_ENV = -e APP_ENV=testing -e APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= -e DB_CONNECTION=sqlite -e DB_DATABASE=:memory: -e CACHE_STORE=array -e SESSION_DRIVER=array -e MOCK_DASHBOARD_AUTH_ENABLED=false -e MOCK_LOG_STDOUT=false -e MOCK_LOG_FILE=false -e RUN_MIGRATIONS=false
 APP_URL ?= http://localhost:18473
 
 up:
@@ -31,6 +31,12 @@ test-unit:
 test-feature:
 	docker compose run --rm $(TEST_ENV) app php artisan test --testsuite=Feature
 
+frontend-test:
+	node --test tests/Frontend/*.test.mjs
+
+design-validate:
+	python3 scripts/validate_design_tokens.py
+
 lint:
 	docker compose run --rm $(TEST_ENV) app vendor/bin/pint --test
 
@@ -43,7 +49,7 @@ composer-validate:
 compose-config:
 	docker compose config --quiet
 
-validate: compose-config validation-image composer-validate lint test
+validate: compose-config design-validate frontend-test validation-image composer-validate lint test
 
 health:
 	@if curl --fail --silent --show-error --retry 5 --retry-delay 2 "$(APP_URL)/up"; then \

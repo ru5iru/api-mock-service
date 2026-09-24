@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Admin\ConfigTransfer;
 use App\Models\MockEndpoint;
 use App\Services\Config\ConfigExporter;
 use App\Services\Config\ConfigImporter;
@@ -14,6 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class ConfigTransferTest extends TestCase
@@ -31,8 +33,55 @@ final class ConfigTransferTest extends TestCase
     {
         $this->get('/dashboard/config')
             ->assertOk()
-            ->assertSee('Import &amp; export', false)
+            ->assertSee('Import / export')
             ->assertSee('Redact request secrets');
+    }
+
+    public function test_create_only_is_the_selected_safe_default(): void
+    {
+        $component = Livewire::test(ConfigTransfer::class)
+            ->assertSet('mode', ImportMode::CreateOnly->value)
+            ->assertSee('Create only')
+            ->assertSee('Safe default');
+
+        self::assertSame(1, substr_count($component->html(), ' checked'));
+        self::assertStringContainsString('value="create-only" checked', $component->html());
+    }
+
+    public function test_transfer_ui_uses_derived_endpoint_names_and_search(): void
+    {
+        MockEndpoint::factory()->create([
+            'name' => null,
+            'method' => 'GET',
+            'normalized_curl' => "GET\n/v1/customers?active=1\n\n",
+        ]);
+        MockEndpoint::factory()->create(['name' => 'Orders endpoint']);
+
+        Livewire::test(ConfigTransfer::class)
+            ->assertSee('GET /v1/customers')
+            ->assertSee('Orders endpoint')
+            ->set('exportSearch', 'customers')
+            ->assertSee('GET /v1/customers')
+            ->assertDontSee('Orders endpoint');
+    }
+
+    public function test_import_file_is_parsed_immediately_and_can_be_removed(): void
+    {
+        Livewire::test(ConfigTransfer::class)
+            ->set('configFile', UploadedFile::fake()->createWithContent('invalid.json', '{broken'))
+            ->assertHasErrors(['configFile'])
+            ->call('removeFile')
+            ->assertSet('configFile', null)
+            ->assertHasNoErrors(['configFile']);
+    }
+
+    public function test_import_conflict_recovery_can_switch_to_clone_mode(): void
+    {
+        Livewire::test(ConfigTransfer::class)
+            ->set('mode', 'create-only')
+            ->call('switchToClone')
+            ->assertSet('mode', 'clone')
+            ->assertSet('plan', []);
     }
 
     public function test_export_is_deterministic_and_redacts_request_secrets(): void
@@ -223,6 +272,16 @@ final class ConfigTransferTest extends TestCase
         ])->assertOk()->assertJsonPath('summary.endpoints_created', 1);
 
         self::assertSame(1, MockEndpoint::query()->count());
+    }
+
+    public function test_http_export_uses_the_previewed_filename_convention(): void
+    {
+        Carbon::setTestNow('2026-09-20 12:00:00 UTC');
+        MockEndpoint::factory()->create();
+
+        $this->post('/dashboard/config/exports', ['redact_secrets' => true])
+            ->assertOk()
+            ->assertHeader('Content-Disposition', 'attachment; filename="mockdeck-export-20260920.json"');
     }
 
     public function test_cli_dry_run_does_not_write_and_apply_imports_the_document(): void

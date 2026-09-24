@@ -7,7 +7,9 @@ use App\Services\Config\ConfigExporter;
 use App\Services\Config\ConfigImporter;
 use App\Services\Config\ImportMode;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use InvalidArgumentException;
+use JsonException;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -17,16 +19,22 @@ final class ConfigTransfer extends Component
 {
     use WithFileUploads;
 
+    private const DEFAULT_IMPORT_MODE = 'create-only';
+
     /** @var list<string> */
     public array $selectedEndpointUuids = [];
 
+    public string $exportSearch = '';
+
     public bool $redactSecrets = true;
+
+    public bool $showRedactionPreview = false;
 
     public bool $confirmSensitiveExport = false;
 
     public ?TemporaryUploadedFile $configFile = null;
 
-    public string $mode = 'create-only';
+    public string $mode = self::DEFAULT_IMPORT_MODE;
 
     public bool $replaceResponses = false;
 
@@ -38,9 +46,12 @@ final class ConfigTransfer extends Component
     /** @var array<string, int> */
     public array $summary = [];
 
+    /** @var list<string> */
+    public array $importedEndpointUuids = [];
+
     public function selectAll(): void
     {
-        $this->selectedEndpointUuids = MockEndpoint::query()->orderBy('uuid')->pluck('uuid')->all();
+        $this->selectedEndpointUuids = $this->exportQuery()->pluck('uuid')->all();
     }
 
     public function clearSelection(): void
@@ -62,6 +73,41 @@ final class ConfigTransfer extends Component
     {
         $this->clearPreview();
         $this->resetValidation();
+
+        if ($this->configFile === null) {
+            return;
+        }
+
+        $this->validateOnly('configFile', [
+            'configFile' => ['required', 'file', 'max:'.(int) ceil(config('mock.portable_config.max_bytes', 2097152) / 1024)],
+        ]);
+
+        if (strtolower((string) $this->configFile->getClientOriginalExtension()) !== 'json') {
+            $this->addError('configFile', 'Choose a .json MockDeck configuration file.');
+
+            return;
+        }
+
+        $json = file_get_contents($this->configFile->getRealPath());
+        try {
+            json_decode((string) $json, true, 64, JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            $this->addError('configFile', 'This file is not valid JSON: '.$exception->getMessage());
+        }
+    }
+
+    public function removeFile(): void
+    {
+        $this->configFile = null;
+        $this->clearPreview();
+        $this->resetValidation('configFile');
+    }
+
+    public function switchToClone(): void
+    {
+        $this->mode = ImportMode::Clone->value;
+        $this->clearPreview();
+        $this->dispatch('toast', message: 'Clone mode selected. Preview the file again to generate new UUIDs.');
     }
 
     public function exportAll(ConfigExporter $exporter): ?StreamedResponse
@@ -116,6 +162,15 @@ final class ConfigTransfer extends Component
             return;
         }
 
+        $mode = (string) ($this->plan['mode'] ?? $this->mode);
+        $lastEndpointId = (int) (MockEndpoint::query()->max('id') ?? 0);
+        $this->importedEndpointUuids = array_values(array_filter(array_map(
+            static fn (array $item): ?string => in_array($item['action'] ?? null, ['create', 'update'], true)
+                ? ($item['uuid'] ?? null)
+                : null,
+            $this->plan['items'] ?? [],
+        )));
+
         try {
             $this->summary = $importer
                 ->apply(
@@ -130,19 +185,25 @@ final class ConfigTransfer extends Component
             return;
         }
 
+        if ($mode === ImportMode::Clone->value) {
+            $this->importedEndpointUuids = MockEndpoint::query()
+                ->where('id', '>', $lastEndpointId)
+                ->pluck('uuid')
+                ->all();
+        }
+
         $this->plan = [];
         $this->configFile = null;
         session()->flash('status', 'Configuration imported successfully.');
+        $this->dispatch('toast', message: 'Configuration imported successfully.');
     }
 
     public function render(): View
     {
         return view('livewire.admin.config-transfer', [
-            'endpoints' => MockEndpoint::query()
-                ->withCount('responses')
-                ->orderBy('name')
-                ->orderBy('uuid')
-                ->get(),
+            'endpoints' => $this->exportQuery()->get(),
+            'endpointTotal' => MockEndpoint::query()->count(),
+            'importedEndpoints' => MockEndpoint::query()->whereIn('uuid', $this->importedEndpointUuids)->get(),
             'modes' => ImportMode::cases(),
         ]);
     }
@@ -165,7 +226,7 @@ final class ConfigTransfer extends Component
 
             return null;
         }
-        $filename = 'mockdeck-config-'.now()->utc()->format('Y-m-d').'.json';
+        $filename = 'mockdeck-export-'.now()->utc()->format('Ymd').'.json';
 
         return response()->streamDownload(
             static function () use ($json): void {
@@ -180,6 +241,27 @@ final class ConfigTransfer extends Component
     {
         $this->plan = [];
         $this->summary = [];
+        $this->importedEndpointUuids = [];
         $this->acknowledgeWarnings = false;
+    }
+
+    /** @return Builder<MockEndpoint> */
+    private function exportQuery(): Builder
+    {
+        $term = trim($this->exportSearch);
+
+        return MockEndpoint::query()
+            ->withCount('responses')
+            ->when($term !== '', function (Builder $query) use ($term): void {
+                $needle = '%'.strtolower($term).'%';
+                $query->where(function (Builder $query) use ($needle): void {
+                    $query->whereRaw('LOWER(name) LIKE ?', [$needle])
+                        ->orWhereRaw('LOWER(method) LIKE ?', [$needle])
+                        ->orWhereRaw('LOWER(raw_curl) LIKE ?', [$needle])
+                        ->orWhereRaw('LOWER(normalized_curl) LIKE ?', [$needle]);
+                });
+            })
+            ->orderBy('name')
+            ->orderBy('uuid');
     }
 }
