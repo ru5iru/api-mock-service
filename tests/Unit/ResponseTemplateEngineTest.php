@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Services\Templates\FakerMethodCatalog;
 use App\Services\Templates\ResponseTemplateEngine;
 use App\Services\Templates\TemplateRenderException;
+use App\Services\Templates\TemplateRenderer;
 use Tests\TestCase;
 
 final class ResponseTemplateEngineTest extends TestCase
@@ -114,7 +115,7 @@ JSON, 'en', 'fixed', 11);
         self::assertSame($fixedA['output']->value, $fixedB['output']->value);
 
         $validation = $this->engine()->validate($template);
-        $renderer = app(\App\Services\Templates\TemplateRenderer::class);
+        $renderer = app(TemplateRenderer::class);
         $requestA = $renderer->render($validation->compiled, 'en', 'request', null, str_repeat('a', 64));
         $requestB = $renderer->render($validation->compiled, 'en', 'request', null, str_repeat('a', 64));
         self::assertSame($requestA->json, $requestB->json);

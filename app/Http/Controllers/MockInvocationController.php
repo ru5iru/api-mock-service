@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\Curl\IncomingRequestFactory;
 use App\Services\Curl\CurlHasher;
+use App\Services\Curl\IncomingRequestFactory;
 use App\Services\Logging\MockRequestLogger;
 use App\Services\Matching\EndpointMatch;
 use App\Services\Matching\EndpointMatcher;
@@ -29,7 +29,8 @@ final class MockInvocationController extends Controller
         private readonly MockRequestLogger $logger,
         private readonly CurlHasher $hasher,
         private readonly ResponseTemplateEngine $templates,
-    ) {}
+    ) {
+    }
 
     public function __invoke(Request $request): Response
     {

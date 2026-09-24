@@ -14,7 +14,9 @@ final class TemplateCompiler
 
     private string $source = '';
 
-    public function __construct(private readonly FakerMethodCatalog $catalog) {}
+    public function __construct(private readonly FakerMethodCatalog $catalog)
+    {
+    }
 
     public function compile(string $source, string $locale = 'en'): TemplateValidationResult
     {
@@ -167,6 +169,7 @@ final class TemplateCompiler
         if (isset($values['$format']) && ! in_array($values['$format'], ['iso', 'date', 'epochMs', 'epochS'], true)) {
             $this->issue('error', 'BAD_ARGS', $this->pointer($path, '$format'), '$format must be iso, date, epochMs, or epochS.');
         }
+
         if (isset($values['$format'])) {
             $resolved = $this->catalog->resolve($method);
             if (in_array($resolved['status'], ['current', 'renamed'], true) && ! str_starts_with($resolved['id'], 'date.')) {
@@ -224,6 +227,7 @@ final class TemplateCompiler
                 foreach ($weights as $weight) {
                     if ((! is_int($weight) && ! is_float($weight)) || $weight <= 0) {
                         $this->issue('error', 'BAD_ARGS', $this->pointer($path, '$weights'), '$weights must contain only positive numbers.');
+
                         break;
                     }
                 }
@@ -249,6 +253,7 @@ final class TemplateCompiler
         }
 
         $this->walk($values['$value'], $this->pointer($path, '$value'), $depth + 1, $insideRepeat, false);
+
         if (array_key_exists('$else', $values)) {
             $this->walk($values['$else'], $this->pointer($path, '$else'), $depth + 1, $insideRepeat, false);
         }
@@ -290,6 +295,7 @@ final class TemplateCompiler
 
                 if (preg_match('/^([A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*)(?:\((.*)\))?$/s', $expression, $methodMatch) !== 1) {
                     $this->issue('error', 'UNKNOWN_METHOD', $path, "Unknown interpolation token: {{$expression}}.", '{{'.$expression.'}}');
+
                     continue;
                 }
 
@@ -416,6 +422,7 @@ final class TemplateCompiler
 
             return $normalized;
         }
+
         if (is_array($value)) {
             return array_map(fn (mixed $item): mixed => $this->normalizeJsonArray($item), $value);
         }

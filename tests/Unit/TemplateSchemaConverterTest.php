@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Services\Templates\ResponseTemplateEngine;
 use App\Services\Templates\TemplateSchemaConverter;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -121,7 +122,7 @@ final class TemplateSchemaConverterTest extends TestCase
         $schema['fields'] = [$row];
 
         $template = $converter->schemaToTemplate($schema);
-        self::assertTrue(app(\App\Services\Templates\ResponseTemplateEngine::class)->validate($template)->hasErrors());
+        self::assertTrue(app(ResponseTemplateEngine::class)->validate($template)->hasErrors());
         self::assertNull($converter->templateToSchema($template));
     }
 
@@ -136,7 +137,7 @@ final class TemplateSchemaConverterTest extends TestCase
         $schema['fields'] = [$fakerLike, $interpolationLike];
 
         $template = $converter->schemaToTemplate($schema);
-        $rendered = app(\App\Services\Templates\ResponseTemplateEngine::class)->preview($template, 'en', 'fixed', 1)['output'];
+        $rendered = app(ResponseTemplateEngine::class)->preview($template, 'en', 'fixed', 1)['output'];
         self::assertSame('$person.firstName {{person.lastName}}', $rendered->fakerLike);
         self::assertSame('Hello {{person.firstName}}', $rendered->interpolationLike);
         self::assertSame($template, $converter->schemaToTemplate($converter->templateToSchema($template)));

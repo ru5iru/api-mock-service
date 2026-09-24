@@ -73,7 +73,7 @@ final class TemplateSchemaConverter
         $schema = $this->emptySchema();
         if ($root instanceof stdClass && $this->isDirective($root, '$repeat')) {
             $values = get_object_vars($root);
-            if (array_diff(array_keys($values), ['$repeat', '$item']) !== [] || ! ($values['$item'] ?? null) instanceof stdClass) {
+            if (array_diff(array_keys($values), ['$repeat', '$item']) !== [] || !($values['$item'] ?? null) instanceof stdClass) {
                 return null;
             }
             $schema['root'] = 'list';
@@ -192,6 +192,7 @@ final class TemplateSchemaConverter
             }
             if (! is_string($value)) {
                 $options[$key] = $value;
+
                 continue;
             }
 
@@ -201,10 +202,12 @@ final class TemplateSchemaConverter
             }
             if (preg_match('/^-?\d+$/D', $trimmed) === 1) {
                 $options[$key] = (int) $trimmed;
+
                 continue;
             }
             if (is_numeric($trimmed)) {
                 $options[$key] = (float) $trimmed;
+
                 continue;
             }
             if (str_starts_with($trimmed, '[') || str_starts_with($trimmed, '{')) {
