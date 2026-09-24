@@ -19,17 +19,23 @@ final class MockResponse extends Model
         'status_code',
         'headers',
         'body',
+        'body_mode',
+        'template',
+        'editor_view',
+        'seed_mode',
+        'seed',
+        'locale',
         'delay_ms',
         'weight',
     ];
 
     protected static function booted(): void
     {
-        self::creating(function (MockResponse $response): void {
+        static::creating(function (MockResponse $response): void {
             $response->uuid ??= (string) Str::uuid7();
         });
 
-        self::updating(function (MockResponse $response): void {
+        static::updating(function (MockResponse $response): void {
             if ($response->isDirty('uuid')) {
                 throw new LogicException('Response UUIDs are immutable.');
             }
@@ -43,6 +49,7 @@ final class MockResponse extends Model
             'status_code' => 'integer',
             'delay_ms' => 'integer',
             'weight' => 'integer',
+            'seed' => 'integer',
         ];
     }
 

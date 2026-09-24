@@ -169,6 +169,48 @@ final class ConfigTransferTest extends TestCase
         self::assertSame(1, MockEndpoint::query()->sole()->responses()->count());
     }
 
+    public function test_template_fields_round_trip_and_version_one_imports_remain_static(): void
+    {
+        $endpoint = MockEndpoint::factory()->create();
+        $endpoint->responses()->create([
+            'body' => '{"legacy":"$100"}',
+            'body_mode' => 'template',
+            'template' => '{"username":"$internet.userName"}',
+            'editor_view' => 'json',
+            'seed_mode' => 'fixed',
+            'seed' => 41,
+            'locale' => 'en_GB',
+        ]);
+
+        $json = app(ConfigExporter::class)->export(redactSecrets: false)->toJson();
+        $document = json_decode($json, true, 64, JSON_THROW_ON_ERROR);
+        self::assertSame('1.1', $document['format_version']);
+        self::assertSame('{"username":"$internet.userName"}', $document['endpoints'][0]['responses'][0]['template']);
+        $endpoint->delete();
+
+        $plan = app(ConfigImporter::class)->preview($json, ImportMode::CreateOnly);
+        app(ConfigImporter::class)->apply($plan->token, $plan->digest, true);
+        $imported = MockEndpoint::query()->sole()->responses()->sole();
+        self::assertSame('template', $imported->body_mode);
+        self::assertSame(41, $imported->seed);
+        self::assertSame('en_GB', $imported->locale);
+
+        $old = $document;
+        $old['format_version'] = 1;
+        foreach ($old['endpoints'][0]['responses'] as &$response) {
+            unset($response['body_mode'], $response['template'], $response['editor_view'], $response['seed_mode'], $response['seed'], $response['locale']);
+            $response['uuid'] = (string) Str::uuid7();
+        }
+        unset($response);
+        $old['endpoints'][0]['uuid'] = (string) Str::uuid7();
+        $old['endpoints'][0]['request']['curl'] = "curl 'https://api.example.test/old-format'";
+        $oldJson = json_encode($old, JSON_THROW_ON_ERROR);
+        $oldPlan = app(ConfigImporter::class)->preview($oldJson, ImportMode::CreateOnly);
+        self::assertTrue($oldPlan->canApply());
+        app(ConfigImporter::class)->apply($oldPlan->token, $oldPlan->digest, true);
+        self::assertSame('static', MockEndpoint::query()->orderByDesc('id')->first()->responses()->sole()->body_mode);
+    }
+
     public function test_exact_signature_conflict_prevents_every_write(): void
     {
         $endpoint = MockEndpoint::factory()->create([

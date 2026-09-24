@@ -4,6 +4,7 @@ use App\Services\Config\ConfigExporter;
 use App\Services\Config\ConfigImporter;
 use App\Services\Config\ImportMode;
 use Illuminate\Support\Facades\Artisan;
+use InvalidArgumentException;
 use Symfony\Component\Console\Command\Command;
 
 Artisan::command('mock:about', function (): void {

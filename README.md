@@ -12,6 +12,7 @@ The stack is Laravel 13, Livewire 4, PostgreSQL 16, PHP-FPM, nginx, and Docker C
 - Deterministic conflict resolution by priority, specificity, then endpoint ID
 - Endpoint enable/disable controls and duplicate-signature prevention
 - Multiple responses with weighted random selection and bounded delay
+- Opt-in JSON response templates with a schema builder, FakerPHP-backed Faker.js method mapping, validation, preview, and deterministic seeds
 - Password-protected dashboard with rate-limited login
 - Responsive endpoint and request-log filtering
 - One-click mock-host curl generation with clipboard fallback
@@ -146,6 +147,8 @@ A response provides:
 - exact body text without re-encoding;
 - artificial delay bounded by `MOCK_MAX_DELAY_MS`.
 
+The body can remain static or opt into JSON templating. Template mode includes a schema builder and raw JSON editor, a server-built Faker catalog, fixed/request-derived seeds, locale selection, inline validation, and server-rendered preview. Static response bodies containing `$` or `{{` remain exact text. The PHP backend maps the supported Faker.js-shaped method names to `fakerphp/faker`; it does not ship Faker in the browser bundle.
+
 Runtime failure semantics:
 
 | Condition | Result |
@@ -154,6 +157,7 @@ Runtime failure semantics:
 | No enabled endpoint matches | diagnostic JSON `404` |
 | Endpoint has no response | diagnostic JSON `500` with endpoint ID |
 | Endpoint and response match | configured status, headers, body, and delay |
+| Saved template fails at runtime | JSON `500` with `X-MockDeck-Template-Error: 1` and the failing template path/token |
 | Unexpected internal exception | structured error-class event, then Laravel exception handling |
 
 ## Dashboard access
@@ -236,6 +240,7 @@ app/
   Services/Matching/               deterministic endpoint resolution
   Services/Response/               weighted selection strategy
   Services/Logging/                non-fatal writer and bounded rotated-log reader
+  Services/Templates/              template compiler, mapped Faker catalog, schema projection, and renderer
 database/migrations/               endpoint and response schema
 docs/                              architecture, validation, and feature roadmap
 routes/web.php                     authenticated dashboard routes
@@ -245,12 +250,14 @@ tests/                             unit and feature regression coverage
 
 Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before changing canonicalization or matching. Read [docs/NEXT_FEATURE_IMPLEMENTATION_PLAN.md](docs/NEXT_FEATURE_IMPLEMENTATION_PLAN.md) for the researched roadmap; native configuration import/export is the mandatory first feature.
 
+Read [docs/UI_GUIDE.md](docs/UI_GUIDE.md) before creating or changing dashboard UI. It records the current design tokens, typography, layout primitives, component states, theme behavior, copy conventions, code-surface rules, and accessibility baseline.
+
 ## Current limitations
 
 - Matching is exact within one of five fixed header policies; selective query/header/body predicates are not yet available.
 - Upstream origin is intentionally not a discriminator; two otherwise identical requests on different upstream hosts share a signature.
 - Responses are weighted, not rule-selected or scenario-state driven.
-- Response templating, OpenAPI generation, recording/proxying, and verification assertions are planned, not implemented.
+- OpenAPI generation, recording/proxying, and verification assertions are planned, not implemented.
 - Native JSON import/export is implemented; third-party OpenAPI, Postman, WireMock, Mockoon, and Hoverfly adapters remain planned.
 
 ## Framework references

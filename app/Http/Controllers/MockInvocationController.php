@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Services\Curl\IncomingRequestFactory;
+use App\Services\Curl\CurlHasher;
 use App\Services\Logging\MockRequestLogger;
 use App\Services\Matching\EndpointMatch;
 use App\Services\Matching\EndpointMatcher;
 use App\Services\Response\ResponseSelectorInterface;
+use App\Services\Templates\ResponseTemplateEngine;
+use App\Services\Templates\TemplateRenderException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -24,6 +27,8 @@ final class MockInvocationController extends Controller
         private readonly EndpointMatcher $matcher,
         private readonly ResponseSelectorInterface $selector,
         private readonly MockRequestLogger $logger,
+        private readonly CurlHasher $hasher,
+        private readonly ResponseTemplateEngine $templates,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -33,6 +38,8 @@ final class MockInvocationController extends Controller
         $selected = null;
         $statusCode = 500;
         $delayMs = 0;
+        $templated = false;
+        $renderMs = null;
         $requestId = $this->requestId($request);
         $effectiveUrl = $request->fullUrl();
 
@@ -76,13 +83,60 @@ final class MockInvocationController extends Controller
                 usleep($delayMs * 1000);
             }
 
-            $response = response((string) ($selected->body ?? ''), $statusCode);
-            foreach ($selected->headers ?? [] as $name => $value) {
+            $headers = $selected->headers ?? [];
+            $body = (string) ($selected->body ?? '');
+            if ($selected->body_mode === 'template') {
+                $templated = true;
+                $variant = $match->variant ?? 'V1';
+                $requestHash = $this->hasher->variants($captured)[$variant]->hash;
+                $rendered = $this->templates->renderResponse($selected, $requestHash);
+                $body = $rendered->json;
+                $renderMs = $rendered->renderMs;
+
+                $hasContentType = collect(array_keys($headers))->contains(
+                    static fn (string|int $name): bool => strcasecmp((string) $name, 'Content-Type') === 0,
+                );
+                if (! $hasContentType) {
+                    $headers['Content-Type'] = 'application/json';
+                }
+            }
+
+            $response = response($body, $statusCode);
+            foreach ($headers as $name => $value) {
                 $response->headers->set((string) $name, (string) $value);
             }
 
             $response->headers->set('X-Request-ID', $requestId);
-            $this->writeLog($request, $effectiveUrl, $requestId, $startedAt, $match, $selected->id, $statusCode, $delayMs);
+            $this->writeLog($request, $effectiveUrl, $requestId, $startedAt, $match, $selected->id, $statusCode, $delayMs, null, $templated, $renderMs);
+
+            return $response;
+        } catch (TemplateRenderException $exception) {
+            $statusCode = 500;
+            $this->writeLog(
+                $request,
+                $effectiveUrl,
+                $requestId,
+                $startedAt,
+                $match,
+                $selected?->id,
+                $statusCode,
+                $delayMs,
+                $exception::class,
+                true,
+                $renderMs,
+                $exception->issueCode,
+                $exception->templatePath,
+                $exception->token,
+            );
+
+            $response = response()->json([
+                'error' => 'template_render_failed',
+                'path' => $exception->templatePath,
+                'token' => $exception->token,
+                'message' => $exception->getMessage(),
+            ], $statusCode);
+            $response->headers->set('X-MockDeck-Template-Error', '1');
+            $response->headers->set('X-Request-ID', $requestId);
 
             return $response;
         } catch (InvalidArgumentException $exception) {
@@ -133,6 +187,11 @@ final class MockInvocationController extends Controller
         int $statusCode,
         int $delayMs,
         ?string $error = null,
+        bool $templated = false,
+        ?float $renderMs = null,
+        ?string $templateError = null,
+        ?string $templatePath = null,
+        ?string $templateToken = null,
     ): void {
         $context = [
             'request_id' => $requestId,
@@ -150,6 +209,15 @@ final class MockInvocationController extends Controller
 
         if ($error !== null) {
             $context['error'] = $error;
+        }
+        if ($templated) {
+            $context['templated'] = true;
+            $context['render_ms'] = $renderMs;
+        }
+        if ($templateError !== null) {
+            $context['template_error'] = $templateError;
+            $context['template_path'] = $templatePath;
+            $context['template_token'] = $templateToken;
         }
 
         $this->logger->write($context);

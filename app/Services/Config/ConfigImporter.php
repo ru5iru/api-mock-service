@@ -424,6 +424,12 @@ final readonly class ConfigImporter
                     'status_code' => $responseSource['status'],
                     'headers' => array_map(static fn (mixed $value): string => (string) $value, $responseSource['headers']),
                     'body' => $responseSource['body'],
+                    'body_mode' => $responseSource['body_mode'] ?? 'static',
+                    'template' => $responseSource['template'] ?? null,
+                    'editor_view' => $responseSource['editor_view'] ?? 'builder',
+                    'seed_mode' => $responseSource['seed_mode'] ?? 'random',
+                    'seed' => $responseSource['seed'] ?? null,
+                    'locale' => $responseSource['locale'] ?? 'en',
                     'delay_ms' => $responseSource['delay_ms'],
                     'weight' => $responseSource['weight'],
                 ])->save();

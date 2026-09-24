@@ -267,8 +267,9 @@ All variants need hover, active, and outline-based `:focus-visible` states. Disa
 - `.toggle-row`: labelled settings row, at least 62px high; use when the explanation belongs with the switch.
 - `.toggle-inline`: checkbox plus short label, at least 38px high; use in dense toolbars.
 - `.clock-toggle` and `.density-toggle`: two-option segmented choices with 36px-high segments and `aria-pressed` active state.
+- `.segmented-control`: general two- or three-option choice with a 1px strong border, 4px inset padding, 36px-high segments, and `aria-pressed` active state. The active segment uses `--accent-subtle` with an inset `--accent-border`; disabled segments use the disabled tokens.
 
-Use a switch for immediate binary state. Use a checkbox where the value is submitted with a form or grouped with filters. Use the current segmented treatment only for a small mutually exclusive display preference. A reusable segmented-control Blade component is **undecided — pick on first use, then add here**.
+Use a switch for immediate binary state. Use a checkbox where the value is submitted with a form or grouped with filters. Use `.segmented-control` for a small mutually exclusive mode or view choice such as Static/Template, Builder/JSON, or Object/List of objects. Do not use it when options need supporting descriptions or when more than three options would wrap.
 
 ### Chips and badges
 
@@ -295,6 +296,20 @@ Badges label concise state; they are not buttons and must not be used as section
 - Disabled controls use disabled tokens, not opacity alone.
 
 Every visible form control needs a real `label`. Placeholder text does not replace a label.
+
+### Faker method picker
+
+`.faker-picker` is a native `details` disclosure composed from the existing input, search, badge, and raised-popover primitives. Its summary is a 40px control showing the current `module.method`; the panel is at most 480px wide and 420px high, uses `--surface-raised`, `--border-strong`, `--radius-lg`, and `--shadow-lg`, and repositions within the viewport. Methods are grouped by module. Each 48px option shows the method, a sample value, and a `.safe-badge` when renamed aliases exist.
+
+The search field filters method IDs and aliases. Arrow keys move through visible options; Home/End jump to the limits; Escape closes and restores focus. The adjacent native disclosure labelled “Configure Faker arguments” renders catalog-driven fields and retains raw JSON arguments as an advanced fallback.
+
+Use this picker only to choose a supported Faker method from the server catalog. Do not duplicate the catalog in browser code or use a general-purpose select for the full method list.
+
+### JSON template autocomplete
+
+`.template-json-editor` extends the existing `.code-input` surface; it remains a plain textarea and JSON is its single source of truth. `.template-autocomplete` is a fixed raised popover, at most 420px wide and 260px high, using the picker surface/border/radius tokens. Typing `$` or `{{` filters the server catalog; each 40px option shows a method and sample in monospace. Arrow keys change the active option, Enter/Tab inserts it, and Escape closes the list. The popover chooses above or below the editor and clamps to the viewport edge.
+
+Validation remains inline below the editor. Renamed-method warnings use the existing warning panel and `.text-button` quick fix. Use this pattern only for JSON response templates; raw JSON fields without catalog tokens remain ordinary `.code-input` controls.
 
 ### Disclosure and accordion
 
@@ -339,6 +354,8 @@ Use for short supplementary explanations. The essential label, error, or instruc
 - Deleted endpoint references remain in the column as 11px muted text.
 
 Use a table for aligned, comparable records. Use cards for heterogeneous records or primary row actions that need more room.
+
+The response-template schema builder is a feature-specific composition of these primitives: `.schema-row` uses labelled inputs/selects, existing icon row actions, a decorative drag handle plus keyboard move buttons, and native disclosure for nested object fields. Nested rows use the strong-border indentation rule and stop at six levels. Keep JSON as the source of truth; do not reuse schema rows as a general data table.
 
 ### Empty states
 
@@ -411,6 +428,8 @@ Established terms:
 - “Import / export”.
 - Import modes: “Create only”, “Update by UUID”, and “Clone with new UUIDs”.
 - Endpoint state: “Enabled” and “Disabled”.
+- Response body modes: “Static” and “Template”; template views: “Builder” and “JSON”.
+- Template method compatibility: “Renamed” warning and “Unknown method” error.
 
 Example messages:
 
@@ -443,7 +462,7 @@ Apply this pattern to curl, canonical requests, normalized requests, hashes, JSO
 - Copy buttons must state what is copied through visible text or an accessible label and provide success/failure feedback.
 - Do not apply UI ligatures to exact data; characters such as `!=` and `=>` must remain visually distinct.
 
-Syntax tokens are available for flags, URLs, headers, strings, and keys. A reusable syntax-highlighting/editor component is **undecided — pick on first use, then add here**.
+Syntax tokens are available for flags, URLs, headers, strings, and keys. The response-template editor adds catalog autocomplete to the existing code-input surface; it does not introduce a general syntax-highlighting editor. A reusable syntax-highlighting component remains **undecided — pick on first use, then add here**.
 
 ## 8. Accessibility baseline
 

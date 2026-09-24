@@ -2,6 +2,7 @@
 
 namespace App\Services\Config;
 
+use App\Services\Templates\ResponseTemplateEngine;
 use Illuminate\Support\Str;
 use JsonException;
 
@@ -12,6 +13,8 @@ final class ConfigValidator
 
     /** @var list<string> */
     private array $warnings = [];
+
+    public function __construct(private readonly ResponseTemplateEngine $templates) {}
 
     public function validate(string $json): ConfigValidationResult
     {
@@ -44,10 +47,8 @@ final class ConfigValidator
             $this->errors[] = '$.format must be exactly "mockdeck".';
         }
 
-        if (! is_int($data['format_version'] ?? null)) {
-            $this->errors[] = '$.format_version must be an integer.';
-        } elseif ($data['format_version'] !== 1) {
-            $this->errors[] = '$.format_version is not supported; this release accepts version 1.';
+        if (! in_array($data['format_version'] ?? null, [1, '1.0', '1.1'], true)) {
+            $this->errors[] = '$.format_version is not supported; this release accepts version 1, 1.0, or 1.1.';
         }
 
         if (! isset($data['endpoints']) || ! is_array($data['endpoints']) || ! array_is_list($data['endpoints'])) {
@@ -192,7 +193,9 @@ final class ConfigValidator
             return;
         }
 
-        $this->warnUnknown($response, ['uuid', 'status', 'headers', 'body', 'delay_ms', 'weight'], $path);
+        $this->warnUnknown($response, [
+            'uuid', 'status', 'headers', 'body', 'body_mode', 'template', 'editor_view', 'seed_mode', 'seed', 'locale', 'delay_ms', 'weight',
+        ], $path);
 
         $uuid = $response['uuid'] ?? null;
         if (! is_string($uuid) || ! Str::isUuid($uuid)) {
@@ -228,6 +231,50 @@ final class ConfigValidator
             $this->errors[] = "{$path}.body must be a string.";
         } elseif (strlen($body) > config('mock.portable_config.max_string_bytes', 1048576)) {
             $this->errors[] = "{$path}.body exceeds the configured string limit.";
+        }
+
+        $bodyMode = $response['body_mode'] ?? 'static';
+        if (! in_array($bodyMode, ['static', 'template'], true)) {
+            $this->errors[] = "{$path}.body_mode must be static or template.";
+        }
+
+        $template = $response['template'] ?? null;
+        if ($template !== null && ! is_string($template)) {
+            $this->errors[] = "{$path}.template must be null or a string.";
+        } elseif (is_string($template) && strlen($template) > config('mock.templates.max_template_bytes', 262144)) {
+            $this->errors[] = "{$path}.template exceeds the configured template limit.";
+        } elseif ($bodyMode === 'template') {
+            if (! is_string($template) || trim($template) === '') {
+                $this->errors[] = "{$path}.template is required when body_mode is template.";
+            } else {
+                $validation = $this->templates->validate($template, (string) ($response['locale'] ?? 'en'));
+                foreach ($validation->issues as $issue) {
+                    $message = "{$path}.template{$issue->path}: {$issue->message}";
+                    if ($issue->severity === 'error') {
+                        $this->errors[] = $message;
+                    } else {
+                        $this->warnings[] = $message;
+                    }
+                }
+            }
+        }
+
+        if (! in_array($response['editor_view'] ?? 'builder', ['builder', 'json'], true)) {
+            $this->errors[] = "{$path}.editor_view must be builder or json.";
+        }
+        if (! in_array($response['seed_mode'] ?? 'random', ['random', 'fixed', 'request'], true)) {
+            $this->errors[] = "{$path}.seed_mode must be random, fixed, or request.";
+        }
+        $seed = $response['seed'] ?? null;
+        if ($seed !== null && ! is_int($seed)) {
+            $this->errors[] = "{$path}.seed must be null or an integer.";
+        }
+        if (($response['seed_mode'] ?? 'random') === 'fixed' && ! is_int($seed)) {
+            $this->errors[] = "{$path}.seed is required when seed_mode is fixed.";
+        }
+        $locale = $response['locale'] ?? 'en';
+        if (! is_string($locale) || ! in_array($locale, config('mock.templates.locales', ['en']), true)) {
+            $this->errors[] = "{$path}.locale is not supported.";
         }
 
         $delay = $response['delay_ms'] ?? null;

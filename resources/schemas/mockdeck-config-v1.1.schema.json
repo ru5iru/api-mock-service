@@ -1,0 +1,76 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://mockdeck.dev/schemas/config-v1.1.json",
+    "title": "MockDeck portable configuration 1.1",
+    "type": "object",
+    "required": ["format", "format_version", "endpoints"],
+    "properties": {
+        "$schema": {"type": "string"},
+        "format": {"const": "mockdeck"},
+        "format_version": {"const": "1.1"},
+        "exported_at": {"type": "string", "format": "date-time"},
+        "generator": {"type": "object"},
+        "options": {"type": "object"},
+        "warnings": {"type": "array"},
+        "endpoints": {"type": "array", "items": {"$ref": "#/$defs/endpoint"}}
+    },
+    "$defs": {
+        "endpoint": {
+            "type": "object",
+            "required": ["uuid", "name", "enabled", "priority", "request", "responses"],
+            "properties": {
+                "uuid": {"type": "string", "format": "uuid"},
+                "name": {"type": ["string", "null"], "maxLength": 255},
+                "enabled": {"type": "boolean"},
+                "priority": {"type": "integer", "minimum": -1000, "maximum": 1000},
+                "requires_secret_replacement": {"type": "boolean"},
+                "request": {
+                    "type": "object",
+                    "required": ["curl", "signature_version", "matching"],
+                    "properties": {
+                        "curl": {"type": "string", "minLength": 1},
+                        "signature_version": {"type": "integer", "minimum": 1},
+                        "matching": {
+                            "type": "object",
+                            "required": ["exclude_cookies", "exclude_auth", "exclude_headers"],
+                            "properties": {
+                                "exclude_cookies": {"type": "boolean"},
+                                "exclude_auth": {"type": "boolean"},
+                                "exclude_headers": {"type": "boolean"}
+                            }
+                        }
+                    }
+                },
+                "responses": {"type": "array", "items": {"$ref": "#/$defs/response"}}
+            }
+        },
+        "response": {
+            "type": "object",
+            "required": ["uuid", "status", "headers", "body", "body_mode", "template", "editor_view", "seed_mode", "seed", "locale", "delay_ms", "weight"],
+            "properties": {
+                "uuid": {"type": "string", "format": "uuid"},
+                "status": {"type": "integer", "minimum": 100, "maximum": 599},
+                "headers": {"type": "object", "additionalProperties": {"type": ["string", "number", "boolean"]}},
+                "body": {"type": "string"},
+                "body_mode": {"enum": ["static", "template"]},
+                "template": {"type": ["string", "null"], "maxLength": 262144},
+                "editor_view": {"enum": ["builder", "json"]},
+                "seed_mode": {"enum": ["random", "fixed", "request"]},
+                "seed": {"type": ["integer", "null"]},
+                "locale": {"type": "string", "minLength": 2, "maxLength": 32},
+                "delay_ms": {"type": "integer", "minimum": 0},
+                "weight": {"type": "integer", "minimum": 1, "maximum": 1000000}
+            },
+            "allOf": [
+                {
+                    "if": {"properties": {"body_mode": {"const": "template"}}},
+                    "then": {"properties": {"template": {"type": "string", "minLength": 1}}}
+                },
+                {
+                    "if": {"properties": {"seed_mode": {"const": "fixed"}}},
+                    "then": {"properties": {"seed": {"type": "integer"}}}
+                }
+            ]
+        }
+    }
+}

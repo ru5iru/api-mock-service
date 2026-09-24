@@ -50,6 +50,77 @@ final class DashboardTest extends TestCase
         $this->assertDatabaseMissing('mock_responses', ['id' => $response->id]);
     }
 
+    public function test_response_manager_saves_valid_templates_and_blocks_errors(): void
+    {
+        $endpoint = MockEndpoint::factory()->create();
+
+        Livewire::test(ResponseManager::class, ['endpoint' => $endpoint])
+            ->call('setBodyMode', 'template')
+            ->set('editorView', 'json')
+            ->set('template', '{"id":"$number.int({\"min\":1,\"max\":9})"}')
+            ->set('seedMode', 'fixed')
+            ->set('seed', 17)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $response = $endpoint->responses()->sole();
+        self::assertSame('template', $response->body_mode);
+        self::assertSame('fixed', $response->seed_mode);
+        self::assertSame(17, $response->seed);
+
+        Livewire::test(ResponseManager::class, ['endpoint' => $endpoint])
+            ->call('setBodyMode', 'template')
+            ->set('template', '{"id":"$person.typo"}')
+            ->call('save')
+            ->assertHasErrors(['template']);
+    }
+
+    public function test_nonrepresentable_json_disables_builder_without_rewriting_template(): void
+    {
+        $endpoint = MockEndpoint::factory()->create();
+        $source = '{"choice":{"$pick":["a","b"]}}';
+
+        Livewire::test(ResponseManager::class, ['endpoint' => $endpoint])
+            ->call('setBodyMode', 'template')
+            ->set('template', $source)
+            ->assertSet('builderSupported', false)
+            ->call('setEditorView', 'builder')
+            ->assertSet('editorView', 'json')
+            ->assertSet('template', $source)
+            ->assertSee("This template uses features the builder can't show");
+    }
+
+    public function test_builder_rows_reorder_delete_and_load_catalog_argument_defaults(): void
+    {
+        $endpoint = MockEndpoint::factory()->create();
+        $component = Livewire::test(ResponseManager::class, ['endpoint' => $endpoint])
+            ->call('setBodyMode', 'template')
+            ->set('builderSchema.fields.0.key', 'first')
+            ->call('addSchemaRow', 'fields')
+            ->set('builderSchema.fields.1.key', 'second')
+            ->call('reorderSchemaRow', 'fields', 1, 0)
+            ->assertSet('builderSchema.fields.0.key', 'second')
+            ->call('setSchemaMethod', 'fields.0', 'number.int')
+            ->assertSet('builderSchema.fields.0.args_options.min', 0)
+            ->assertSet('builderSchema.fields.0.args_options.max', 9999)
+            ->call('removeSchemaRow', 'fields', 1);
+
+        self::assertCount(1, $component->get('builderSchema')['fields']);
+    }
+
+    public function test_template_quick_fixes_support_renamed_and_did_you_mean_issues(): void
+    {
+        $endpoint = MockEndpoint::factory()->create();
+
+        Livewire::test(ResponseManager::class, ['endpoint' => $endpoint])
+            ->call('setBodyMode', 'template')
+            ->set('editorView', 'json')
+            ->set('template', '{"legacy":"$internet.userName","typo":"$person.fristName"}')
+            ->call('applyTemplateSuggestion', 'internet.userName was renamed to internet.username.', '$internet.username')
+            ->call('applyTemplateSuggestion', 'Unknown Faker method: person.fristName. Did you mean person.firstName?', '$person.firstName')
+            ->assertSet('template', '{"legacy":"$internet.username","typo":"$person.firstName"}');
+    }
+
     public function test_endpoint_form_rejects_an_exact_duplicate_signature(): void
     {
         $normalized = "GET\n/duplicate\n\n";
