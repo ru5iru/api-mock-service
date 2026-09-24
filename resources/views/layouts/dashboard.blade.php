@@ -6,11 +6,13 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'MockDeck' }} · Exact-request API mocking</title>
     <meta name="description" content="Configure deterministic and weighted mock API responses from curl commands.">
-    <meta name="theme-color" content="#FAFAF8">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=Playfair+Display:wght@500;600&amp;family=Source+Sans+3:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="">
+    <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    <link rel="preload" href="{{ asset('fonts/jetbrains-mono/jetbrains-mono-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{{ asset('css/tokens.css') }}?v={{ filemtime(public_path('css/tokens.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
+    <script src="{{ asset('js/ui-preferences.js') }}?v={{ filemtime(public_path('js/ui-preferences.js')) }}" defer></script>
     @livewireStyles
 </head>
 @php
@@ -47,6 +49,7 @@
                    @if (request()->routeIs('dashboard.config.*')) aria-current="page" @endif>
                     Import / export
                 </a>
+                <x-theme-control name="theme-header" />
                 <details class="user-menu">
                     <summary aria-label="Open user menu">
                         <span class="user-avatar" aria-hidden="true">O</span>
@@ -54,6 +57,7 @@
                     </summary>
                     <div class="user-menu-panel">
                         <span class="user-menu-label">{{ config('mock.dashboard_auth.enabled') ? 'Authenticated session' : 'Local access mode' }}</span>
+                        <x-theme-control variant="group" name="theme-user" />
                         <a href="{{ route('dashboard.docs') }}" wire:navigate>Documentation</a>
                         @if (config('mock.dashboard_auth.enabled'))
                             <form method="POST" action="{{ route('dashboard.logout') }}">
@@ -84,6 +88,7 @@
                         Import / export
                     </a>
                     <a href="{{ route('dashboard.docs') }}" wire:navigate>Documentation</a>
+                    <x-theme-control variant="group" name="theme-mobile" />
                     @if (config('mock.dashboard_auth.enabled'))
                         <form method="POST" action="{{ route('dashboard.logout') }}" class="nav-form">
                             @csrf
@@ -119,7 +124,6 @@
     <dialog id="shortcut-dialog" class="shortcut-dialog" aria-labelledby="shortcut-title">
         <div class="dialog-heading">
             <div>
-                <span class="eyebrow">Keyboard</span>
                 <h2 id="shortcut-title">Shortcuts</h2>
             </div>
             <button class="icon-button" type="button" aria-label="Close shortcut help" data-close-shortcuts>×</button>
@@ -374,6 +378,11 @@
                     const label = count > 99 ? '99+' : String(count);
                     if (badge.textContent !== label) badge.textContent = label;
                     if (badge.hidden !== (count === 0)) badge.hidden = count === 0;
+                    if (count > 0) {
+                        badge.setAttribute('aria-label', `${count} unmatched requests since last visit`);
+                    } else {
+                        badge.removeAttribute('aria-label');
+                    }
                 });
             } catch (error) {
                 document.querySelectorAll('[data-unmatched-badge]').forEach((badge) => badge.hidden = true);
@@ -391,14 +400,50 @@
                     if (element.textContent.trim() !== utcLabel) element.textContent = utcLabel;
                 }
             });
+
         };
 
         const syncEndpointEditor = () => {
             document.querySelectorAll('[data-auto-grow]').forEach(resizeEditor);
-            if (window.localStorage.getItem('mockdeck:host-note-dismissed') === 'true') {
-                document.querySelector('[data-host-note]')?.remove();
+            document.querySelectorAll('details[data-disclosure]').forEach((details) => {
+                details.querySelector(':scope > summary')?.setAttribute('aria-expanded', String(details.open));
+            });
+            try {
+                if (window.localStorage.getItem('mockdeck:host-note-dismissed') === 'true') {
+                    document.querySelector('[data-host-note]')?.remove();
+                }
+            } catch (error) {
+                // The note remains visible when storage is unavailable.
             }
         };
+
+        const syncSectionNavigation = () => {
+            document.querySelectorAll('[data-section-nav]').forEach((navigation) => {
+                const links = [...navigation.querySelectorAll('[data-section-link]')];
+                let current = links[0] ?? null;
+
+                links.forEach((link) => {
+                    const id = link.getAttribute('href')?.replace(/^#/, '');
+                    const section = id ? document.getElementById(id) : null;
+                    if (section && !section.classList.contains('sticky-action-bar') && section.getBoundingClientRect().top <= 120) {
+                        current = link;
+                    }
+                });
+
+                links.forEach((link) => {
+                    if (link === current && link.getAttribute('aria-current') !== 'location') {
+                        link.setAttribute('aria-current', 'location');
+                    } else if (link !== current && link.hasAttribute('aria-current')) {
+                        link.removeAttribute('aria-current');
+                    }
+                });
+            });
+        };
+
+        document.addEventListener('toggle', (event) => {
+            if (!event.target.matches?.('details[data-disclosure]')) return;
+            event.target.querySelector(':scope > summary')?.setAttribute('aria-expanded', String(event.target.open));
+        }, true);
 
         let logSyncFrame = null;
         const scheduleLogSync = () => {
@@ -406,6 +451,7 @@
             logSyncFrame = window.requestAnimationFrame(() => {
                 syncLogPresentation();
                 syncEndpointEditor();
+                syncSectionNavigation();
             });
         };
         new MutationObserver(scheduleLogSync).observe(document.body, { childList: true, subtree: true });
@@ -414,6 +460,7 @@
             scheduleLogSync();
         });
         scheduleLogSync();
+        document.addEventListener('scroll', scheduleLogSync, { passive: true });
 
         const shortcutDialog = document.getElementById('shortcut-dialog');
         document.querySelector('[data-close-shortcuts]')?.addEventListener('click', () => shortcutDialog?.close());

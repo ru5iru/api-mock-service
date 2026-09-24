@@ -1,25 +1,44 @@
 <div
-    class="card log-card"
     @if (! $paused && $expandedKey === null) wire:poll.visible.5s @endif
     data-log-viewer
+    data-log-density="compact"
     data-unmatched-timestamps="{{ json_encode($unmatchedTimestamps) }}"
     aria-live="polite"
 >
-    <div class="log-statusbar">
-        <div class="live-state {{ ($paused || $expandedKey !== null) ? 'paused' : 'live' }}">
-            <i aria-hidden="true"></i>
-            <strong>{{ $paused ? 'Paused' : ($expandedKey !== null ? 'Detail open' : 'Live') }}</strong>
-            <span>Updated <time datetime="{{ $lastUpdatedAt }}" data-relative-time>just now</time></span>
-        </div>
-        <div class="log-live-actions">
-            <button class="button button-tertiary button-small" type="button" wire:click="togglePaused">
-                {{ $paused ? 'Resume refresh' : 'Pause refresh' }}
-            </button>
-            @unless ($full)
+    @unless ($full)
+        <div class="section-heading embedded-log-heading">
+            <div class="embedded-log-title">
+                <h2>Recent requests</h2>
+                <div class="live-state {{ ($paused || $expandedKey !== null) ? 'paused' : 'live' }}">
+                    <i aria-hidden="true"></i>
+                    <strong>{{ $paused ? 'Paused' : ($expandedKey !== null ? 'Detail open' : 'Live') }}</strong>
+                    <span>Updated <time datetime="{{ $lastUpdatedAt }}" data-relative-time>just now</time></span>
+                </div>
+            </div>
+            <div class="log-live-actions">
+                <button class="button button-tertiary button-small" type="button" wire:click="togglePaused">
+                    {{ $paused ? 'Resume refresh' : 'Pause refresh' }}
+                </button>
                 <a class="text-link" href="{{ route('dashboard.requests.index') }}" wire:navigate>View full request log →</a>
-            @endunless
+            </div>
         </div>
-    </div>
+    @endunless
+
+    <div class="card log-card">
+        @if ($full)
+            <div class="log-statusbar">
+                <div class="live-state {{ ($paused || $expandedKey !== null) ? 'paused' : 'live' }}">
+                    <i aria-hidden="true"></i>
+                    <strong>{{ $paused ? 'Paused' : ($expandedKey !== null ? 'Detail open' : 'Live') }}</strong>
+                    <span>Updated <time datetime="{{ $lastUpdatedAt }}" data-relative-time>just now</time></span>
+                </div>
+                <div class="log-live-actions">
+                    <button class="button button-tertiary button-small" type="button" wire:click="togglePaused">
+                        {{ $paused ? 'Resume refresh' : 'Pause refresh' }}
+                    </button>
+                </div>
+            </div>
+        @endif
 
     @if ($full)
         <div class="log-filter-panel" aria-label="Request log filters">
@@ -102,6 +121,10 @@
                     <button class="{{ $clock === 'local' ? 'active' : '' }}" type="button" wire:click="$set('clock', 'local')">Local</button>
                     <button class="{{ $clock === 'utc' ? 'active' : '' }}" type="button" wire:click="$set('clock', 'utc')">UTC</button>
                 </div>
+                <div class="density-toggle" role="group" aria-label="Request log row density">
+                    <button type="button" data-density-option="compact" aria-pressed="true">Compact</button>
+                    <button type="button" data-density-option="comfortable" aria-pressed="false">Comfortable</button>
+                </div>
                 @if ($search !== '' || $method !== '' || $match !== 'all' || $status !== 'all' || $endpoint !== 'all' || $timeRange !== '1h' || $unmatchedOnly)
                     <button class="text-button" type="button" wire:click="clearFilters">Clear filters</button>
                 @endif
@@ -181,7 +204,7 @@
                             @if ($event['_endpoint_exists'])
                                 <a class="table-link" href="{{ route('dashboard.endpoints.edit', $event['endpoint_id']) }}" wire:navigate x-on:click.stop>{{ $event['_endpoint_name'] }}</a>
                             @elseif (isset($event['endpoint_id']))
-                                <span class="muted">Deleted #{{ $event['endpoint_id'] }}</span>
+                                <span class="muted" title="This endpoint has been deleted.">#{{ $event['endpoint_id'] }} (deleted)</span>
                             @else
                                 <span class="muted">—</span>
                             @endif
@@ -202,7 +225,6 @@
                             <td colspan="6">
                                 <div class="log-detail-grid">
                                     <section>
-                                        <span class="eyebrow">Captured request</span>
                                         <h3>{{ $event['method'] ?? '—' }} {{ $event['_path'] }}</h3>
                                         <dl class="detail-list">
                                             <div><dt>Request ID</dt><dd><code>{{ $event['request_id'] ?? 'Unavailable' }}</code></dd></div>
@@ -218,7 +240,6 @@
                                     <section>
                                         @if (in_array($tier, ['none', 'fallback'], true))
                                             {{-- TODO: Add masked headers, body, computed hash, and candidate diffs when the log event contract exposes them. --}}
-                                            <span class="eyebrow">Why no exact match</span>
                                             <h3>{{ $tier === 'none' ? 'No endpoint accepted this signature' : 'A normalized fallback was used' }}</h3>
                                             <p>Method and path/query are compared below. Request headers, body, and the computed hash are not present in the current log event, so deeper field-level differences cannot be reconstructed.</p>
                                             @if ($event['_nearest'] !== [])
@@ -237,7 +258,6 @@
                                             @endif
                                             <a class="button button-primary button-small" href="{{ route('dashboard.endpoints.create', ['curl' => $event['_reconstructed_curl']]) }}" wire:navigate>Create mock from this request</a>
                                         @else
-                                            <span class="eyebrow">Exact match</span>
                                             <h3>{{ $event['_endpoint_name'] ?? 'Matched endpoint' }}</h3>
                                             <p>The stored hash matched this request. Open the endpoint to inspect its canonical signature and response pool.</p>
                                             <a class="button button-secondary button-small" href="{{ route('dashboard.endpoints.edit', $event['endpoint_id']) }}" wire:navigate>Open endpoint</a>
@@ -265,4 +285,5 @@
             </tbody>
         </table>
     </div>
+</div>
 </div>

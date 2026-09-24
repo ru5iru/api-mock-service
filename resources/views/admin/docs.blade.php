@@ -1,12 +1,9 @@
 <x-layouts.dashboard title="Documentation">
-    <header class="compact-page-header">
-        <div>
-            <span class="eyebrow">Reference</span>
-            <h1>MockDeck documentation</h1>
-            <p>Essential concepts and shortcuts for configuring exact-request mocks.</p>
-        </div>
-        <a class="button button-primary" href="{{ route('dashboard.endpoints.create') }}" wire:navigate>New endpoint</a>
-    </header>
+    <x-page-header title="Documentation" description="Essential concepts and shortcuts for exact-request mocks.">
+        <x-slot:actions>
+            <a class="button button-primary" href="{{ route('dashboard.endpoints.create') }}" wire:navigate>New endpoint</a>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="docs-grid">
         <section class="card docs-card">

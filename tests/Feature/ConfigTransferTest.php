@@ -33,7 +33,7 @@ final class ConfigTransferTest extends TestCase
     {
         $this->get('/dashboard/config')
             ->assertOk()
-            ->assertSee('Import &amp; export', false)
+            ->assertSee('Import / export')
             ->assertSee('Redact request secrets');
     }
 

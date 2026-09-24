@@ -6,13 +6,15 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Sign in · MockDeck</title>
     <meta name="description" content="Sign in to the MockDeck administration dashboard.">
-    <meta name="theme-color" content="#FAFAF8">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=Playfair+Display:wght@500;600&amp;family=Source+Sans+3:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="">
+    <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    <link rel="preload" href="{{ asset('fonts/jetbrains-mono/jetbrains-mono-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{{ asset('css/tokens.css') }}?v={{ filemtime(public_path('css/tokens.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
 </head>
 <body class="auth-page">
+    <div class="auth-theme-control"><x-theme-control name="theme-auth" /></div>
     <main class="auth-shell">
         <section class="card auth-card">
             <div class="auth-brand">
@@ -20,11 +22,7 @@
                 <div><strong>MockDeck</strong><small>Administration dashboard</small></div>
             </div>
 
-            <div class="auth-copy">
-                <span class="eyebrow">Protected access</span>
-                <h1>Sign in</h1>
-                <p>Use the dashboard credentials configured for this deployment.</p>
-            </div>
+            <x-page-header title="Sign in" description="Use the dashboard credentials configured for this deployment." />
 
             <form method="POST" action="{{ route('dashboard.login.store') }}">
                 @csrf

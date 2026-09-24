@@ -1,17 +1,7 @@
 <div>
-    <header class="compact-page-header">
-        <div>
-            <span class="eyebrow">Portable configuration</span>
-            <h1>Import &amp; export</h1>
-            <p>Move endpoint definitions and responses safely between MockDeck installations.</p>
-        </div>
-        <a class="button button-secondary" href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Back to endpoints</a>
-    </header>
-
     <div class="transfer-grid">
         <section class="card transfer-card" aria-labelledby="export-heading">
             <div class="card-heading tight">
-                <span class="section-number">01</span>
                 <div>
                     <h2 id="export-heading">Export configuration</h2>
                     <p>Download every endpoint or choose a portable subset.</p>
@@ -29,7 +19,7 @@
             <div class="selection-toolbar">
                 <strong>{{ count($selectedEndpointUuids) }} of {{ $endpointTotal }} selected</strong>
                 <span>
-                    <button class="text-button" type="button" wire:click="selectAll">Select shown</button>
+                    <button class="text-button" type="button" wire:click="selectAll">Select all</button>
                     <button class="text-button" type="button" wire:click="clearSelection" @disabled($selectedEndpointUuids === [])>Clear</button>
                 </span>
             </div>
@@ -60,17 +50,17 @@
             <label class="toggle-row transfer-toggle">
                 <span>
                     <strong>Redact request secrets</strong>
-                    <small>Replaces authentication, cookies, API-key headers, and sensitive query values. Redacted endpoints import disabled.</small>
+                    <small>Replaces authentication, cookies, API-key headers, and sensitive query values. Endpoints with replaced secrets are exported disabled and remain disabled after import.</small>
                 </span>
                 <input type="checkbox" wire:model.live="redactSecrets">
             </label>
 
             @if ($redactSecrets)
-                <button class="text-button" type="button" wire:click="$toggle('showRedactionPreview')">
-                    {{ $showRedactionPreview ? 'Hide' : 'Preview' }} redactions
+                <button class="text-button disclosure-button {{ $showRedactionPreview ? 'is-open' : '' }}" type="button" wire:click="$toggle('showRedactionPreview')" aria-expanded="{{ $showRedactionPreview ? 'true' : 'false' }}" aria-controls="redaction-preview">
+                    <span class="details-chevron" aria-hidden="true">›</span> Preview redactions
                 </button>
                 @if ($showRedactionPreview)
-                    <div class="redaction-preview" aria-live="polite">
+                    <div id="redaction-preview" class="redaction-preview" aria-live="polite">
                         <strong>Values replaced with <code>REDACTED</code></strong>
                         <ul>
                             <li>Authorization, cookies, API keys, and configured sensitive headers</li>
@@ -111,7 +101,6 @@
 
         <section class="card transfer-card" aria-labelledby="import-heading">
             <div class="card-heading tight">
-                <span class="section-number">02</span>
                 <div>
                     <h2 id="import-heading">Import configuration</h2>
                     <p>Validate the file and preview every change before writing.</p>
@@ -150,7 +139,7 @@
                                     <span class="safe-badge">Safe default</span>
                                     <small>Stops without writing when an endpoint UUID already exists.</small>
                                 @elseif ($importMode->value === 'upsert')
-                                    <span class="overwrite-badge">Overwrites matching endpoints &amp; responses</span>
+                                    <span class="overwrite-badge"><span aria-hidden="true">!</span> Overwrites matching endpoints &amp; responses</span>
                                     <small>Updates records that have the same portable UUID.</small>
                                 @else
                                     <small>Generates new UUIDs so imported records remain separate.</small>
@@ -180,17 +169,15 @@
     <section class="card import-preview preview-reserved" aria-labelledby="preview-heading" aria-live="polite">
         <div class="section-heading">
             <div>
-                <span class="eyebrow">Dry run</span>
-                <h2 id="preview-heading">Import preview</h2>
+                <h2 id="preview-heading">Preview</h2>
                 <p>No database changes are made until you confirm the import.</p>
             </div>
         </div>
 
         @if ($plan === [])
             <div class="preview-empty">
-                <span aria-hidden="true">◎</span>
-                <strong>Preview results will appear here</strong>
-                <p>Choose a valid JSON file and import mode, then select Preview import.</p>
+                <span aria-hidden="true">i</span>
+                <p><strong>No preview yet</strong> — choose a file and select Preview import.</p>
             </div>
         @else
             @php
@@ -275,7 +262,6 @@
         <section class="card import-success" aria-live="polite">
             <span class="success-mark" aria-hidden="true">✓</span>
             <div>
-                <span class="eyebrow">Completed</span>
                 <h2>Import applied atomically</h2>
                 <p>{{ $summary['endpoints_created'] }} endpoints created, {{ $summary['endpoints_updated'] }} updated, {{ $summary['responses_created'] }} responses created, and {{ $summary['responses_updated'] }} updated.</p>
                 @if ($importedEndpoints->isNotEmpty())

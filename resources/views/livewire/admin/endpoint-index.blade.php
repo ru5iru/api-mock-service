@@ -1,5 +1,14 @@
 <div>
+    @php
+        $pageIds = $endpoints->pluck('id')->map(static fn ($id) => (int) $id)->all();
+        $pageSelected = $pageIds !== [] && count(array_intersect($pageIds, $selected)) === count($pageIds);
+        $filtersActive = $search !== '' || $method !== '' || $state !== 'all';
+        $allEndpointCount = \App\Models\MockEndpoint::query()->count();
+    @endphp
     <div class="toolbar card" aria-label="Endpoint controls">
+        <label class="page-select-control" title="{{ $pageSelected ? 'Clear selection' : 'Select this page' }}">
+            <input type="checkbox" @checked($pageSelected) wire:click="{{ $pageSelected ? 'clearSelection' : 'selectPage' }}" aria-label="{{ $pageSelected ? 'Clear endpoint selection' : 'Select all endpoints on this page' }}">
+        </label>
         <label class="search-field">
             <span class="sr-only">Search endpoints</span>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -10,54 +19,50 @@
 
         <div class="toolbar-controls">
             <label class="select-field">
-                <span class="select-caption">Method</span>
-                <select wire:model.live="method">
-                    <option value="">All methods</option>
+                <select wire:model.live="method" aria-label="Filter by method">
+                    <option value="">Method: All</option>
                     @foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as $option)
                         <option value="{{ $option }}">{{ $option }}</option>
                     @endforeach
                 </select>
             </label>
             <label class="select-field">
-                <span class="select-caption">State</span>
-                <select wire:model.live="state">
-                    <option value="all">Any state</option>
+                <select wire:model.live="state" aria-label="Filter by state">
+                    <option value="all">State: Any</option>
                     <option value="enabled">Enabled</option>
                     <option value="disabled">Disabled</option>
                 </select>
             </label>
             <label class="select-field sort-field">
-                <span class="select-caption">Sort</span>
-                <select wire:model.live="sort">
-                    <option value="recent">Recently updated</option>
-                    <option value="name">Name</option>
-                    <option value="priority">Priority</option>
+                <select wire:model.live="sort" aria-label="Sort endpoints">
+                    <option value="recent">Sort: Recently updated</option>
+                    <option value="name">Sort: Name</option>
+                    <option value="priority">Sort: Priority</option>
                 </select>
             </label>
             @if ($search !== '' || $method !== '' || $state !== 'all' || $sort !== 'recent')
                 <button class="text-button filter-reset" type="button" wire:click="clearFilters">Clear filters</button>
             @endif
             <span class="result-count">
-                {{ $endpoints->total() === 0 ? '0 endpoints' : $endpoints->firstItem().'–'.$endpoints->lastItem().' of '.$endpoints->total().' endpoints' }}
+                @if ($filtersActive)
+                    {{ $endpoints->total() }} of {{ $allEndpointCount }} {{ Str::plural('endpoint', $allEndpointCount) }}
+                @else
+                    {{ $allEndpointCount }} {{ Str::plural('endpoint', $allEndpointCount) }}
+                @endif
             </span>
         </div>
     </div>
 
-    @if ($endpoints->isNotEmpty())
+    @if ($selected !== [])
         <div class="selection-bar card" aria-live="polite">
-            @if ($selected === [])
-                <button class="text-button" type="button" wire:click="selectPage">Select this page</button>
-                <span>Select endpoints to enable, disable, export, or delete them together.</span>
-            @else
-                <strong>{{ count($selected) }} selected</strong>
-                <div class="selection-actions">
-                    <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(true)">Enable</button>
-                    <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(false)">Disable</button>
-                    <button class="button button-secondary button-small" type="button" wire:click="bulkExport">Export</button>
-                    <button class="button button-danger button-small" type="button" wire:click="bulkDelete" wire:confirm="Delete {{ count($selected) }} selected endpoints and all of their configured responses? This cannot be undone.">Delete</button>
-                    <button class="text-button" type="button" wire:click="clearSelection">Clear selection</button>
-                </div>
-            @endif
+            <strong>{{ count($selected) }} selected</strong>
+            <div class="selection-actions">
+                <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(true)">Enable</button>
+                <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(false)">Disable</button>
+                <button class="button button-secondary button-small" type="button" wire:click="bulkExport">Export</button>
+                <button class="button button-danger button-small" type="button" wire:click="bulkDelete" wire:confirm="Delete {{ count($selected) }} selected endpoints and all of their configured responses? This cannot be undone.">Delete</button>
+                <button class="text-button" type="button" wire:click="clearSelection">Clear</button>
+            </div>
         </div>
     @endif
 
@@ -71,7 +76,11 @@
 
         <div wire:loading.remove wire:target="search,method,state,sort,clearFilters">
             @forelse ($endpoints as $endpoint)
-                @php($stats = $endpoint->requestStats())
+                @php
+                    $stats = $endpoint->requestStats();
+                    $derivedName = strtoupper($endpoint->method).' '.$endpoint->requestPath();
+                    $autoDerivedName = trim((string) $endpoint->name) === '' || trim((string) $endpoint->name) === $derivedName;
+                @endphp
                 <article
                     class="endpoint-card card row-link"
                     wire:key="endpoint-{{ $endpoint->id }}"
@@ -86,27 +95,33 @@
                     <div class="endpoint-main">
                         <span class="method-badge method-{{ strtolower($endpoint->method) }}">{{ $endpoint->method }}</span>
                         <div class="endpoint-copy">
-                            <h3>{{ $endpoint->displayName() }}</h3>
-                            <code class="request-target" title="{{ $endpoint->requestTarget() }}">{{ $endpoint->requestTarget() }}</code>
-                            <div class="request-facts" aria-label="Request composition">
-                                <span>{{ $stats['headers'] }} {{ Str::plural('header', $stats['headers']) }}</span>
-                                <span>Body {{ number_format($stats['body_bytes']) }} B</span>
-                                <details class="canonical-popover" data-stop-row-navigation>
-                                    <summary>Canonical request</summary>
-                                    <pre>{{ $endpoint->normalized_curl }}</pre>
-                                </details>
-                            </div>
-                            <div class="metadata-row">
-                                <span class="state-label {{ $endpoint->enabled ? 'enabled' : 'disabled' }}"><i></i>{{ $endpoint->enabled ? 'Enabled' : 'Disabled' }}</span>
-                                <span>{{ $endpoint->responses_count }} {{ Str::plural('response', $endpoint->responses_count) }}</span>
-                                @if ($endpoint->priority !== 0)
-                                    <span>Priority {{ $endpoint->priority }}</span>
-                                @endif
-                                <span>
-                                    Signature {{ $endpoint->signatureVariant() }}
-                                    <x-help-tip title="Signature version" label="V1 includes all headers; V2 ignores cookies; V3 ignores authentication; V4 ignores both; V5 ignores all headers." />
-                                </span>
-                                <span title="{{ $endpoint->updated_at->toDayDateTimeString() }}">Updated {{ $endpoint->updated_at->diffForHumans() }}</span>
+                            @if ($autoDerivedName)
+                                <code class="request-target endpoint-primary" title="{{ $endpoint->requestTarget() }}">{{ $endpoint->requestTarget() }}</code>
+                            @else
+                                <h3>{{ $endpoint->displayName() }}</h3>
+                                <code class="request-target" title="{{ $endpoint->requestTarget() }}">{{ $endpoint->requestTarget() }}</code>
+                            @endif
+                            <div class="endpoint-detail-line">
+                                <div class="request-facts" aria-label="Request composition">
+                                    <span>{{ $stats['headers'] }} {{ Str::plural('header', $stats['headers']) }}</span>
+                                    <span>Body {{ number_format($stats['body_bytes']) }} B</span>
+                                    <details class="canonical-popover" data-stop-row-navigation data-disclosure>
+                                        <summary aria-expanded="false" aria-controls="canonical-endpoint-{{ $endpoint->id }}"><span class="details-chevron" aria-hidden="true">›</span> Canonical request</summary>
+                                        <pre id="canonical-endpoint-{{ $endpoint->id }}">{{ $endpoint->normalized_curl }}</pre>
+                                    </details>
+                                </div>
+                                <div class="metadata-row">
+                                    <span class="state-label {{ $endpoint->enabled ? 'enabled' : 'disabled' }}"><i></i>{{ $endpoint->enabled ? 'Enabled' : 'Disabled' }}</span>
+                                    <span>{{ $endpoint->responses_count }} {{ Str::plural('response', $endpoint->responses_count) }}</span>
+                                    @if ($endpoint->priority !== 0)
+                                        <span>Priority {{ $endpoint->priority }}</span>
+                                    @endif
+                                    <span>
+                                        Signature {{ $endpoint->signatureVariant() }}
+                                        <x-help-tip title="Signature version" label="V1 includes all headers; V2 ignores cookies; V3 ignores authentication; V4 ignores both; V5 ignores all headers." />
+                                    </span>
+                                    <span title="{{ $endpoint->updated_at->toDayDateTimeString() }}">Updated {{ $endpoint->updated_at->diffForHumans() }}</span>
+                                </div>
                             </div>
                             @if ($endpoint->responses_count === 0)
                                 <div class="inline-warning">

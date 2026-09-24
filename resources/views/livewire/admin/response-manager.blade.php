@@ -33,10 +33,7 @@
 
     <form class="card response-form" wire:submit="save">
         <div class="form-title-row">
-            <div>
-                <span class="eyebrow">{{ $editingId ? 'Editing #'.$editingId : 'New response' }}</span>
-                <h3>{{ $editingId ? 'Update response' : 'Add to response pool' }}</h3>
-            </div>
+            <h3>{{ $editingId ? 'Edit response #'.$editingId : 'Add response' }}</h3>
             @if ($editingId)
                 <button class="text-button" type="button" wire:click="createNew">Cancel edit</button>
             @endif

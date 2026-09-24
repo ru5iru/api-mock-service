@@ -19,7 +19,7 @@ final class DashboardTest extends TestCase
     {
         $this->get('/dashboard')
             ->assertOk()
-            ->assertSee('Request endpoints')
+            ->assertSee('Endpoints')
             ->assertSee('New endpoint');
     }
 
@@ -211,13 +211,26 @@ final class DashboardTest extends TestCase
         self::assertSame(2, MockEndpoint::query()->where('enabled', true)->count());
     }
 
+    public function test_bulk_action_bar_only_appears_after_selection(): void
+    {
+        $endpoint = MockEndpoint::factory()->create();
+
+        Livewire::test(EndpointIndex::class)
+            ->assertDontSee('selection-bar', false)
+            ->set('selected', [$endpoint->id])
+            ->assertSee('selection-bar', false)
+            ->assertSee('1 selected');
+    }
+
     public function test_full_request_log_page_is_available(): void
     {
         $this->get('/dashboard/requests')
             ->assertOk()
             ->assertSee('Request log')
             ->assertSee('HTTP status')
-            ->assertSee('Group repeats');
+            ->assertSee('Group repeats')
+            ->assertSee('Compact')
+            ->assertSee('Comfortable');
     }
 
     public function test_endpoint_list_offers_a_mock_host_curl_copy_button(): void

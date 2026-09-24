@@ -1,0 +1,209 @@
+@font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url("/fonts/jetbrains-mono/jetbrains-mono-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+:root,
+[data-theme="light"] {
+    color-scheme: light;
+
+    /* Typography */
+    --font-ui: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --font-code: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-base: 13px;
+    --font-size-md: 14px;
+    --font-size-lg: 16px;
+    --font-size-xl: 20px;
+    --line-height-tight: 1.25;
+    --line-height-base: 1.5;
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* Spacing */
+    --space-0: 0;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+
+    /* Shape and elevation */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-pill: 999px;
+    --border-width: 1px;
+    --border-width-strong: 2px;
+    --shadow-sm: 0 1px 2px rgb(26 26 26 / 4%);
+    --shadow-md: 0 4px 14px rgb(26 26 26 / 7%);
+    --shadow-lg: 0 12px 32px rgb(26 26 26 / 9%);
+    --shadow-inset: inset 0 1px 8px rgb(0 0 0 / 18%);
+    --shadow-sticky: 0 -8px 24px rgb(26 26 26 / 6%);
+    --shadow-focus: 0 0 0 3px rgb(153 107 7 / 18%);
+    --shadow-selected: 0 0 0 2px rgb(153 107 7 / 10%);
+    --shadow-accent-pulse: 0 0 0 3px rgb(153 107 7 / 30%);
+    --motion-fast: 120ms ease-out;
+    --motion-base: 180ms ease-out;
+
+    /* Core surfaces */
+    --bg: #fafaf8;
+    --surface: #ffffff;
+    --surface-2: #f5f3f0;
+    --surface-raised: #fffdf8;
+    --surface-hover: #fffaf0;
+    --surface-translucent: rgb(250 250 248 / 96%);
+    --border: #e8e4df;
+    --border-strong: #8f877e;
+    --text: #1a1a1a;
+    --text-muted: #625f59;
+    --text-subtle: #716c64;
+    --placeholder: #625f59;
+    --overlay: rgb(26 26 26 / 48%);
+    --selection: #f1dfaa;
+    --disabled-bg: #ddd8cf;
+    --disabled-fg: #514c45;
+    --skeleton-highlight: #ffffff;
+    --theme-color: #fafaf8;
+
+    /* Brand and controls */
+    --accent: #996b07;
+    --accent-hover: #805a04;
+    --accent-subtle: #fbf3df;
+    --accent-border: #aa7e1d;
+    --accent-link: #805a04;
+    --on-accent: #ffffff;
+    --focus-ring: #7a5605;
+    --control-hover: #fffdf8;
+    --toggle-off: #746e65;
+    --toggle-thumb: #ffffff;
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23996b07' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+
+    /* Semantic feedback */
+    --success-bg: #e7f4ee;
+    --success-fg: #27634d;
+    --success-border: #65947f;
+    --warning-bg: #fff5dc;
+    --warning-fg: #6b4a00;
+    --warning-border: #a47d25;
+    --danger-bg: #fff0ed;
+    --danger-fg: #912f2f;
+    --danger-border: #b76d67;
+    --danger-fill: #982f2f;
+    --danger-fill-hover: #762222;
+    --on-danger: #ffffff;
+    --info-bg: #edf4fb;
+    --info-fg: #294f7d;
+    --info-border: #5f83aa;
+
+    /* Method and syntax palettes */
+    --method-get-bg: #f1f8fc;
+    --method-get-fg: #28536b;
+    --method-get-border: #6f8fa1;
+    --method-post-bg: #fff9e9;
+    --method-post-fg: #6e4a00;
+    --method-post-border: #9f7d28;
+    --method-put-bg: #f9f5fd;
+    --method-put-fg: #5d477d;
+    --method-put-border: #9681b0;
+    --code-bg: #22211e;
+    --code-surface: #292722;
+    --code-fg: #eee9df;
+    --code-muted: #c8c0b3;
+    --code-border: #5b554b;
+    --syntax-flag: #e8bb55;
+    --syntax-url: #83c7c2;
+    --syntax-header: #9db7e4;
+    --syntax-string: #bdd38d;
+    --syntax-key: #df9cb1;
+}
+
+[data-theme="dark"] {
+    color-scheme: dark;
+
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+    --shadow-inset: none;
+    --shadow-sticky: none;
+    --shadow-focus: 0 0 0 3px rgb(240 199 94 / 30%);
+    --shadow-selected: 0 0 0 2px rgb(209 162 58 / 24%);
+    --shadow-accent-pulse: 0 0 0 3px rgb(240 199 94 / 38%);
+
+    --bg: #14120f;
+    --surface: #1b1915;
+    --surface-2: #23201b;
+    --surface-raised: #29251f;
+    --surface-hover: #2b271f;
+    --surface-translucent: rgb(20 18 15 / 95%);
+    --border: #3d382f;
+    --border-strong: #7b7160;
+    --text: #ece7dc;
+    --text-muted: #aaa191;
+    --text-subtle: #b8ae9c;
+    --placeholder: #aaa191;
+    --overlay: rgb(0 0 0 / 70%);
+    --selection: #5b4318;
+    --disabled-bg: #35312b;
+    --disabled-fg: #bdb4a4;
+    --skeleton-highlight: #312d26;
+    --theme-color: #14120f;
+
+    --accent: #d1a23a;
+    --accent-hover: #e1b44f;
+    --accent-subtle: #352a14;
+    --accent-border: #b98d30;
+    --accent-link: #e1b44f;
+    --on-accent: #1a1408;
+    --focus-ring: #f0c75e;
+    --control-hover: #2b271f;
+    --toggle-off: #71695d;
+    --toggle-thumb: #f3eee4;
+    --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23d1a23a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+
+    --success-bg: #183328;
+    --success-fg: #86dbb2;
+    --success-border: #4f9a77;
+    --warning-bg: #382d16;
+    --warning-fg: #f2c96d;
+    --warning-border: #9a7834;
+    --danger-bg: #3a1d1c;
+    --danger-fg: #ffaaa5;
+    --danger-border: #a65a56;
+    --danger-fill: #d66560;
+    --danger-fill-hover: #e77a74;
+    --on-danger: #1a0d0c;
+    --info-bg: #182b3d;
+    --info-fg: #9bcaff;
+    --info-border: #527eaa;
+
+    --method-get-bg: #172d38;
+    --method-get-fg: #9bd9ee;
+    --method-get-border: #4c8498;
+    --method-post-bg: #382d16;
+    --method-post-fg: #f2c96d;
+    --method-post-border: #9a7834;
+    --method-put-bg: #2d2338;
+    --method-put-fg: #d6b9f4;
+    --method-put-border: #80649d;
+    --code-bg: #0f0e0c;
+    --code-surface: #171511;
+    --code-fg: #f2ede3;
+    --code-muted: #b8ae9c;
+    --code-border: #4a443a;
+    --syntax-flag: #f2c96d;
+    --syntax-url: #8edbd4;
+    --syntax-header: #acc9f3;
+    --syntax-string: #c7df9a;
+    --syntax-key: #f0abc0;
+}
