@@ -23,7 +23,7 @@ Light values are declared on `:root, [data-theme="light"]`. Dark values override
 
 | Token | Light | Dark |
 |---|---|---|
-| `--font-ui` | `"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace` | Same |
+| `--font-ui` | `-apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"` | Same |
 | `--font-code` | `"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace` | Same |
 | `--font-size-xs` | `11px` | Same |
 | `--font-size-sm` | `12px` | Same |
@@ -174,7 +174,7 @@ DELETE uses the danger family. HEAD and OPTIONS use neutral surface and text tok
 
 ## 2. Typography
 
-JetBrains Mono is the only shipped font. The variable WOFF2 supports weights 400 through 700 and is preloaded by dashboard, sign-in, and error layouts. Both `--font-ui` and `--font-code` use the same stack so a future family change remains token-controlled.
+The UI uses the native platform sans-serif stack through `--font-ui`. This keeps controls and prose aligned with the operating system and uses the platform emoji fonts as fallbacks. JetBrains Mono remains the shipped technical-data font through `--font-code`; its variable WOFF2 supports weights 400 through 700 and is preloaded by dashboard, sign-in, and error layouts.
 
 | Role | Size | Line height | Weight | Current selectors/examples |
 |---|---:|---:|---:|---|
@@ -291,7 +291,8 @@ Badges label concise state; they are not buttons and must not be used as section
 - Text inputs are at least 48px high. Textareas use 13px padding and may resize vertically.
 - `.field-help` and `.field-error` are 12px; errors use `--danger-fg` and weight 600.
 - `.search-field` is at least 40px high, has a 210px desktop minimum width, and applies focus to the wrapper via `:focus-within`.
-- `.select-field` stacks a non-wrapping `.select-caption` above the control with a 5px gap.
+- `.select-field` stacks a non-wrapping `.select-caption` above form controls when the caption adds necessary context.
+- Toolbar and request-log filters keep `.select-caption` in the accessibility tree but visually hide it; the selected option is the visible label. Do not add a second visual label row above compact filters.
 - Toolbar/log selects are at least 40px high, use the tokenized chevron, and include room for it with 39px right padding.
 - Disabled controls use disabled tokens, not opacity alone.
 
@@ -461,6 +462,7 @@ Apply this pattern to curl, canonical requests, normalized requests, hashes, JSO
 - Use `white-space: pre-wrap` when preserving line breaks matters and horizontal scrolling is not required.
 - Copy buttons must state what is copied through visible text or an accessible label and provide success/failure feedback.
 - Do not apply UI ligatures to exact data; characters such as `!=` and `=>` must remain visually distinct.
+- Constrain scrollable data surfaces to their card width. Use the shared thin scrollbar treatment on tables, endpoint lists, autocomplete lists, previews, popovers, and code editors; its track, thumb, hover, and radius use existing surface, border, accent, and radius tokens. Never allow a component to create page-level horizontal scrolling.
 
 Syntax tokens are available for flags, URLs, headers, strings, and keys. The response-template editor adds catalog autocomplete to the existing code-input surface; it does not introduce a general syntax-highlighting editor. A reusable syntax-highlighting component remains **undecided — pick on first use, then add here**.
 

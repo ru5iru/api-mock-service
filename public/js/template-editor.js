@@ -111,7 +111,7 @@
                 label.textContent = item.id;
                 sample.textContent = typeof item.sample === 'string' ? item.sample : JSON.stringify(item.sample);
                 button.append(label, sample);
-                button.addEventListener('mousedown', function (event) {
+                button.addEventListener('pointerdown', function (event) {
                     event.preventDefault();
                     insertMethod(editor, item, fragment);
                     closeAutocomplete(root);
@@ -171,7 +171,7 @@
                 var selected = popover.querySelector('[aria-selected="true"]');
                 if (selected) {
                     event.preventDefault();
-                    selected.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                    selected.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
                 }
             } else if (event.key === 'Escape') {
                 event.preventDefault();

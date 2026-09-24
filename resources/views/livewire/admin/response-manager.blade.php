@@ -204,7 +204,7 @@
                         aria-controls="template-method-suggestions"
                         aria-describedby="template-editor-help @error('template') response-template-error @enderror"
                     ></textarea>
-                    <div id="template-method-suggestions" class="template-autocomplete" data-template-autocomplete role="listbox" aria-label="Faker method suggestions" hidden></div>
+                    <div id="template-method-suggestions" class="template-autocomplete" data-template-autocomplete role="listbox" aria-label="Faker method suggestions" wire:ignore hidden></div>
                     <span id="template-editor-help" class="field-help">Type $ or {{ '{{' }} to insert a supported Faker method.</span>
                     @error('template') <p id="response-template-error" class="field-error">{{ $message }}</p> @enderror
                 </div>

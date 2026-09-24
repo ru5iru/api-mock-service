@@ -14,8 +14,9 @@ test('JSON template autocomplete is catalog-backed and keyboard operable', () =>
     assert.match(source, /event\.key === 'Enter' \|\| event\.key === 'Tab'/);
     assert.match(source, /event\.key === 'Escape'/);
     assert.match(source, /positionPopover\(editor, popover\)/);
+    assert.match(source, /addEventListener\('pointerdown'/);
     assert.match(view, /wire:model\.live\.debounce\.400ms="template"/);
-    assert.match(view, /data-template-autocomplete role="listbox"/);
+    assert.match(view, /data-template-autocomplete role="listbox"[^>]*wire:ignore/);
 });
 
 test('builder exposes grouped methods, argument fields, pointer and keyboard reordering', () => {
