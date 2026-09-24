@@ -4,7 +4,6 @@ use App\Services\Config\ConfigExporter;
 use App\Services\Config\ConfigImporter;
 use App\Services\Config\ImportMode;
 use Illuminate\Support\Facades\Artisan;
-use InvalidArgumentException;
 use Symfony\Component\Console\Command\Command;
 
 Artisan::command('mock:about', function (): void {
@@ -19,7 +18,7 @@ Artisan::command(
                 $this->option('endpoint') ?: null,
                 ! $this->option('include-sensitive'),
             )->toJson();
-        } catch (InvalidArgumentException $exception) {
+        } catch (\InvalidArgumentException $exception) {
             $this->error($exception->getMessage());
 
             return Command::FAILURE;
@@ -95,7 +94,7 @@ Artisan::command(
                 $plan->digest,
                 (bool) $this->option('acknowledge-warnings'),
             );
-        } catch (InvalidArgumentException $exception) {
+        } catch (\InvalidArgumentException $exception) {
             $this->error($exception->getMessage());
 
             return Command::FAILURE;
