@@ -41,7 +41,7 @@ lint:
 	docker compose run --rm $(TEST_ENV) app vendor/bin/pint --test
 
 format:
-	docker compose run --rm $(TEST_ENV) app vendor/bin/pint
+	docker compose run --rm --no-deps -v "$(CURDIR):/var/www/html" -v /var/www/html/vendor --entrypoint vendor/bin/pint app
 
 composer-validate:
 	docker compose run --rm $(TEST_ENV) app composer validate --strict

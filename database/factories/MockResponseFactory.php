@@ -18,6 +18,12 @@ final class MockResponseFactory extends Factory
             'status_code' => 200,
             'headers' => ['Content-Type' => 'application/json'],
             'body' => json_encode(['ok' => true]),
+            'body_mode' => 'static',
+            'template' => null,
+            'editor_view' => 'builder',
+            'seed_mode' => 'random',
+            'seed' => null,
+            'locale' => 'en',
             'delay_ms' => 0,
             'weight' => 1,
         ];

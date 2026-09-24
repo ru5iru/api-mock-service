@@ -35,6 +35,9 @@ final class UiShellTest extends TestCase
             ->assertSee('Documentation')
             ->assertSee('Signature version')
             ->assertSee('Match type')
+            ->assertSee('Response templating')
+            ->assertSee('$repeat')
+            ->assertSee('Import and export')
             ->assertSee('New endpoint');
     }
 

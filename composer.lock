@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f28fc4a6438814261d6556b17ce2af8d",
+    "content-hash": "75013f1a24065d96ec119cf5bde0c66c",
     "packages": [
         {
             "name": "brick/math",
@@ -6017,9 +6017,7 @@
                 }
             ],
             "time": "2026-04-26T05:33:54+00:00"
-        }
-    ],
-    "packages-dev": [
+        },
         {
             "name": "fakerphp/faker",
             "version": "v1.24.1",
@@ -6082,7 +6080,9 @@
                 "source": "https://github.com/FakerPHP/Faker/tree/v1.24.1"
             },
             "time": "2024-11-21T13:46:39+00:00"
-        },
+        }
+    ],
+    "packages-dev": [
         {
             "name": "filp/whoops",
             "version": "2.18.4",

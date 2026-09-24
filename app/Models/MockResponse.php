@@ -19,6 +19,12 @@ final class MockResponse extends Model
         'status_code',
         'headers',
         'body',
+        'body_mode',
+        'template',
+        'editor_view',
+        'seed_mode',
+        'seed',
+        'locale',
         'delay_ms',
         'weight',
     ];
@@ -43,6 +49,7 @@ final class MockResponse extends Model
             'status_code' => 'integer',
             'delay_ms' => 'integer',
             'weight' => 'integer',
+            'seed' => 'integer',
         ];
     }
 

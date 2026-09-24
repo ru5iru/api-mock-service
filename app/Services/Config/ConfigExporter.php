@@ -69,9 +69,9 @@ final readonly class ConfigExporter
         })->all();
 
         $data = [
-            '$schema' => 'https://mockdeck.dev/schemas/config-v1.json',
+            '$schema' => 'https://mockdeck.dev/schemas/config-v1.1.json',
             'format' => 'mockdeck',
-            'format_version' => 1,
+            'format_version' => '1.1',
             'exported_at' => now()->utc()->format('Y-m-d\TH:i:s\Z'),
             'generator' => [
                 'name' => 'MockDeck',
@@ -107,6 +107,12 @@ final readonly class ConfigExporter
                     'status' => $response->status_code,
                     'headers' => (object) $headers,
                     'body' => (string) ($response->body ?? ''),
+                    'body_mode' => (string) ($response->body_mode ?? 'static'),
+                    'template' => $response->template,
+                    'editor_view' => (string) ($response->editor_view ?? 'builder'),
+                    'seed_mode' => (string) ($response->seed_mode ?? 'random'),
+                    'seed' => $response->seed,
+                    'locale' => (string) ($response->locale ?? 'en'),
                     'delay_ms' => $response->delay_ms,
                     'weight' => $response->weight,
                 ];

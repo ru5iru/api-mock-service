@@ -11,6 +11,7 @@ use App\Services\Curl\ParsedCurl;
 use App\Services\Matching\EndpointMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -87,6 +88,88 @@ CURL;
             ->assertJsonPath('error', 'No mock configured for this request')
             ->assertJsonPath('method', 'GET')
             ->assertJsonPath('url', rtrim((string) config('app.url'), '/').'/not-configured?x=1');
+    }
+
+    public function test_templated_response_preserves_http_behavior_and_logs_render_metrics(): void
+    {
+        $endpoint = $this->storeEndpoint("curl 'https://api.example.test/templated'", true);
+        $endpoint->responses()->create([
+            'status_code' => 201,
+            'headers' => ['X-Template' => 'yes'],
+            'body' => 'static fallback',
+            'body_mode' => 'template',
+            'template' => <<<'JSON'
+{
+  "username": "$internet.userName",
+  "knownIps": ["$internet.ip", "$internet.ipv6"],
+  "profile": {
+    "firstName": "$name.firstName",
+    "lastName": "$name.lastName",
+    "staticData": [100, 200, 300]
+  }
+}
+JSON,
+            'editor_view' => 'json',
+            'seed_mode' => 'fixed',
+            'seed' => 55,
+            'locale' => 'en',
+            'delay_ms' => 1,
+            'weight' => 1,
+        ]);
+
+        Log::shouldReceive('channel')->with('mock_requests')->once()->andReturnSelf();
+        Log::shouldReceive('log')->once()->withArgs(function (string $level, string $message, array $context): bool {
+            return $level === 'info'
+                && $message === 'mock_request'
+                && $context['templated'] === true
+                && is_float($context['render_ms'])
+                && $context['delay_ms'] === 1
+                && ! array_key_exists('body', $context);
+        });
+
+        $response = $this->get('/templated');
+        $response->assertCreated()
+            ->assertHeader('X-Template', 'yes')
+            ->assertHeader('Content-Type', 'application/json')
+            ->assertJsonStructure([
+                'username',
+                'knownIps' => [0, 1],
+                'profile' => ['firstName', 'lastName', 'staticData'],
+            ])
+            ->assertJsonPath('profile.staticData', [100, 200, 300]);
+        self::assertIsString($response->json('knownIps.0'));
+        self::assertIsString($response->json('knownIps.1'));
+    }
+
+    public function test_invalid_saved_template_returns_the_structured_500_path(): void
+    {
+        $endpoint = $this->storeEndpoint("curl 'https://api.example.test/broken-template'", true);
+        $endpoint->responses()->create([
+            'body_mode' => 'template',
+            'template' => '{"value":"$person.typo"}',
+            'editor_view' => 'json',
+            'seed_mode' => 'random',
+            'locale' => 'en',
+        ]);
+
+        $this->get('/broken-template')
+            ->assertStatus(500)
+            ->assertHeader('X-MockDeck-Template-Error', '1')
+            ->assertJsonPath('error', 'template_render_failed')
+            ->assertJsonStructure(['error', 'path', 'token', 'message']);
+    }
+
+    public function test_static_response_tokens_are_returned_exactly_as_stored(): void
+    {
+        $endpoint = $this->storeEndpoint("curl 'https://api.example.test/static-tokens'", true);
+        $body = '{"price":"$5.00","token":"$person.firstName","mustache":"{{person.lastName}}"}';
+        $endpoint->responses()->create([
+            'headers' => ['Content-Type' => 'application/json'],
+            'body' => $body,
+            'body_mode' => 'static',
+        ]);
+
+        $this->get('/static-tokens')->assertOk()->assertContent($body);
     }
 
     public function test_upstream_origin_is_not_required_for_header_inclusive_matching(): void

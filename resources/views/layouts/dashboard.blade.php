@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}?v={{ filemtime(public_path('css/tokens.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
     <script src="{{ asset('js/ui-preferences.js') }}?v={{ filemtime(public_path('js/ui-preferences.js')) }}" defer></script>
+    <script src="{{ asset('js/template-editor.js') }}?v={{ filemtime(public_path('js/template-editor.js')) }}" defer data-navigate-once></script>
     @livewireStyles
 </head>
 @php

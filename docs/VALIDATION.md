@@ -102,7 +102,7 @@ Open `http://localhost:18473/dashboard`. Verify:
 Import/export smoke check:
 
 1. Export one endpoint with secret redaction enabled.
-2. Confirm the JSON has `format: "mockdeck"`, `format_version: 1`, and no numeric database IDs or derived hashes.
+2. Confirm the JSON has `format: "mockdeck"`, a supported `format_version` (`1`, `"1.0"`, or `"1.1"`), and no numeric database IDs or derived hashes.
 3. If the source curl contained auth, cookies, an API-key header, or a configured sensitive query key, confirm the value is absent and the endpoint is disabled with `requires_secret_replacement: true`.
 4. Preview the file in `clone` mode; confirm no rows are written before **Apply import**.
 5. Review and acknowledge warnings, apply, and confirm endpoint/response counts.

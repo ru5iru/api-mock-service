@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\ConfigTransferController;
 use App\Http\Controllers\Admin\EndpointController;
 use App\Http\Controllers\Admin\ResponseController;
+use App\Http\Controllers\Api\FakerCatalogController;
+use App\Http\Controllers\Api\ResponseTemplateController;
 use App\Http\Controllers\Auth\DashboardSessionController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,4 +37,16 @@ Route::prefix('dashboard')
         Route::get('/endpoints/{endpoint}/edit', [EndpointController::class, 'edit'])->name('endpoints.edit');
         Route::delete('/endpoints/{endpoint}', [EndpointController::class, 'destroy'])->name('endpoints.destroy');
         Route::delete('/responses/{response}', [ResponseController::class, 'destroy'])->name('responses.destroy');
+    });
+
+Route::prefix('api')
+    ->middleware('dashboard.access')
+    ->group(function (): void {
+        Route::get('/faker-catalog', FakerCatalogController::class)->name('api.faker-catalog');
+        Route::post('/response-templates/validate', [ResponseTemplateController::class, 'validateTemplate'])
+            ->middleware('throttle:60,1')
+            ->name('api.response-templates.validate');
+        Route::post('/response-templates/preview', [ResponseTemplateController::class, 'preview'])
+            ->middleware('throttle:60,1')
+            ->name('api.response-templates.preview');
     });

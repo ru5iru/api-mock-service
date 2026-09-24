@@ -58,17 +58,20 @@ MockDeck never exports dashboard credentials, environment variables, database se
 
 ## Document contract
 
-The checked-in contract is `resources/schemas/mockdeck-config-v1.schema.json`. A document contains:
+The current checked-in contract is `resources/schemas/mockdeck-config-v1.1.schema.json`; the original `resources/schemas/mockdeck-config-v1.schema.json` remains available for version 1 documents. A current document contains:
 
-- `format: "mockdeck"` and `format_version: 1`;
+- `format: "mockdeck"` and `format_version: "1.1"`;
 - export metadata and whether secrets were redacted;
 - stable endpoint and response UUIDs;
 - raw curl, source signature version, and matching exclusions;
-- response status, headers, body, delay, and weight.
+- response status, headers, body, delay, and weight;
+- additive template fields: `body_mode`, `template`, `editor_view`, `seed_mode`, `seed`, and `locale`.
 
 Endpoint and response arrays are sorted by UUID. Response header keys are sorted case-insensitively. JSON uses four-space indentation, unescaped Unicode/slashes, and a final newline. Timestamps are metadata; repeated exports at the same fixed time are byte-identical.
 
 Imported `normalized_curl`, `curl_hash`, and numeric IDs are unknown fields and are ignored with warnings. Every request is parsed and hashed again by the running application's canonicalization code. Unknown object properties warn; unsupported format versions and invalid required values fail.
+
+Version 1 and 1.0 imports remain supported. Missing template fields default to a static body. Template text is exported exactly as stored and is not redacted.
 
 ## Limits
 

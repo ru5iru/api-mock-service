@@ -31,8 +31,19 @@ return [
     'log_tail_lines' => (int) env('MOCK_LOG_TAIL_LINES', 100),
     'log_tail_max_bytes' => (int) env('MOCK_LOG_TAIL_MAX_BYTES', 524288),
 
+    'templates' => [
+        'max_template_bytes' => (int) env('MOCK_TEMPLATE_MAX_BYTES', 262144),
+        'max_depth' => (int) env('MOCK_TEMPLATE_MAX_DEPTH', 12),
+        'max_nodes' => (int) env('MOCK_TEMPLATE_MAX_NODES', 10000),
+        'max_rendered_nodes' => (int) env('MOCK_TEMPLATE_MAX_RENDERED_NODES', 100000),
+        'max_repeat' => (int) env('MOCK_TEMPLATE_MAX_REPEAT', 1000),
+        'max_args_bytes' => (int) env('MOCK_TEMPLATE_MAX_ARGS_BYTES', 4096),
+        'max_output_bytes' => (int) env('MOCK_TEMPLATE_MAX_OUTPUT_BYTES', 1048576),
+        'locales' => ['en', 'en_US', 'en_GB', 'fr_FR', 'de_DE', 'es_ES', 'it_IT', 'ja_JP'],
+    ],
+
     'portable_config' => [
-        'generator_version' => '1.1.0',
+        'generator_version' => '1.2.0',
         'max_bytes' => (int) env('MOCK_CONFIG_MAX_BYTES', 2097152),
         'max_endpoints' => (int) env('MOCK_CONFIG_MAX_ENDPOINTS', 500),
         'max_responses' => (int) env('MOCK_CONFIG_MAX_RESPONSES', 5000),

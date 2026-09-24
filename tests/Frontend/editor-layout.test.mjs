@@ -18,6 +18,7 @@ test('sticky action bar exposes one mutually exclusive status message', () => {
     assert.equal((editor.match(/id="endpoint-action-status"/g) ?? []).length, 1);
     assert.doesNotMatch(editor, /class="save-reason"/);
     assert.match(editor, /\$statusMessage = \$saveBlockReason/);
+    assert.match(css, /\.sticky-action-bar \.button span \{ color: inherit; font-size: inherit; \}/);
 });
 
 test('section tabs support neutral, attention, and valid states', () => {
