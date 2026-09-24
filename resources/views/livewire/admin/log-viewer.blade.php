@@ -53,7 +53,7 @@
             <div class="log-filters">
                 <label class="select-field">
                     <span class="select-caption">Method</span>
-                    <select wire:model.live="method">
+                    <select wire:model.live="method" aria-label="Filter by method">
                         <option value="">All methods</option>
                         @foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as $option)
                             <option value="{{ $option }}">{{ $option }}</option>
@@ -62,7 +62,7 @@
                 </label>
                 <label class="select-field">
                     <span class="select-caption">Match</span>
-                    <select wire:model.live="match">
+                    <select wire:model.live="match" aria-label="Filter by match type">
                         <option value="all">All match types</option>
                         <option value="hash">Exact hash</option>
                         <option value="fallback">Fallback</option>
@@ -71,7 +71,11 @@
                 </label>
                 <label class="select-field endpoint-filter">
                     <span class="select-caption">Endpoint</span>
-                    <select wire:model.live="endpoint">
+                    <select
+                        wire:model.live="endpoint"
+                        aria-label="Filter by endpoint"
+                        title="{{ $endpoint === 'all' ? 'All endpoints' : ($filterEndpoints->firstWhere('id', (int) $endpoint)?->displayName() ?? 'Selected endpoint') }}"
+                    >
                         <option value="all">All endpoints</option>
                         @foreach ($filterEndpoints as $filterEndpoint)
                             <option value="{{ $filterEndpoint->id }}">{{ $filterEndpoint->displayName() }}</option>
@@ -79,8 +83,8 @@
                     </select>
                 </label>
                 <label class="select-field">
-                    <span class="select-caption">HTTP status</span>
-                    <select wire:model.live="status">
+                    <span class="select-caption">Status</span>
+                    <select wire:model.live="status" aria-label="Filter by HTTP status">
                         <option value="all">All statuses</option>
                         <option value="2xx">2xx</option>
                         <option value="3xx">3xx</option>
@@ -89,8 +93,8 @@
                     </select>
                 </label>
                 <label class="select-field">
-                    <span class="select-caption">Time range</span>
-                    <select wire:model.live="timeRange">
+                    <span class="select-caption">Range</span>
+                    <select wire:model.live="timeRange" aria-label="Filter by time range">
                         <option value="15m">Last 15 minutes</option>
                         <option value="1h">Last hour</option>
                         <option value="24h">Last 24 hours</option>
@@ -99,7 +103,7 @@
                 </label>
                 <label class="select-field select-field-compact">
                     <span class="select-caption">Show</span>
-                    <select wire:model.live="limit">
+                    <select wire:model.live="limit" aria-label="Number of request log rows">
                         <option value="10">10</option>
                         <option value="25">25</option>
                         <option value="50">50</option>
@@ -204,7 +208,7 @@
                             @if ($event['_endpoint_exists'])
                                 <a class="table-link" href="{{ route('dashboard.endpoints.edit', $event['endpoint_id']) }}" wire:navigate x-on:click.stop>{{ $event['_endpoint_name'] }}</a>
                             @elseif (isset($event['endpoint_id']))
-                                <span class="muted" title="This endpoint has been deleted.">#{{ $event['endpoint_id'] }} (deleted)</span>
+                                <span class="deleted-endpoint" title="This endpoint has been deleted.">#{{ $event['endpoint_id'] }} (deleted)</span>
                             @else
                                 <span class="muted">—</span>
                             @endif

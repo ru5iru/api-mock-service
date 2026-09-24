@@ -132,7 +132,7 @@
                     <legend id="import-mode-legend">Import mode</legend>
                     @foreach ($modes as $importMode)
                         <label class="radio-option">
-                            <input type="radio" name="import-mode" value="{{ $importMode->value }}" wire:model.live="mode">
+                            <input type="radio" name="import-mode" value="{{ $importMode->value }}" @checked($mode === $importMode->value) wire:model.live="mode">
                             <span>
                                 <strong>{{ $importMode->label() }}</strong>
                                 @if ($importMode->value === 'create-only')

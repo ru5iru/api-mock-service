@@ -8,6 +8,7 @@ const preferencesSource = readFileSync('public/js/ui-preferences.js', 'utf8');
 
 function themeEnvironment({ stored = null, prefersDark = false, storageUnavailable = false } = {}) {
     const storedValues = new Map(stored ? [['mockdeck-theme', stored]] : []);
+    const documentListeners = new Map();
     const media = {
         matches: prefersDark,
         listener: null,
@@ -37,7 +38,11 @@ function themeEnvironment({ stored = null, prefersDark = false, storageUnavailab
         documentElement: root,
         querySelector(selector) { return selector === 'meta[name="theme-color"]' ? meta : null; },
         querySelectorAll() { return []; },
-        addEventListener() {},
+        addEventListener(event, listener) {
+            const listeners = documentListeners.get(event) ?? [];
+            listeners.push(listener);
+            documentListeners.set(event, listeners);
+        },
     };
     const window = {
         localStorage: storage,
@@ -50,11 +55,20 @@ function themeEnvironment({ stored = null, prefersDark = false, storageUnavailab
         document,
         CustomEvent: class CustomEvent {},
         getComputedStyle() { return { getPropertyValue() { return '#14120f'; } }; },
+        MutationObserver: class MutationObserver { observe() {} },
     };
 
     vm.runInNewContext(themeSource, context);
 
-    return { media, root, storedValues, window };
+    return {
+        media,
+        root,
+        storedValues,
+        window,
+        dispatchDocumentEvent(event) {
+            for (const listener of documentListeners.get(event) ?? []) listener({});
+        },
+    };
 }
 
 test('theme resolves persisted Light and Dark choices', () => {
@@ -85,6 +99,22 @@ test('explicit theme choices persist and System clears the override', () => {
     assert.equal(environment.storedValues.get('mockdeck-theme'), 'dark');
     environment.window.MockDeckTheme.setMode('system');
     assert.equal(environment.storedValues.has('mockdeck-theme'), false);
+});
+
+test('Dark persists across every Livewire dashboard route and reload', () => {
+    const environment = themeEnvironment();
+    environment.window.MockDeckTheme.setMode('dark');
+
+    for (const route of ['/dashboard', '/dashboard/requests', '/dashboard/endpoints/create', '/dashboard/config', '/dashboard']) {
+        delete environment.root.dataset.theme;
+        delete environment.root.dataset.themeMode;
+        environment.dispatchDocumentEvent('livewire:navigated');
+        assert.equal(environment.root.dataset.theme, 'dark', `Dark remains applied after navigating to ${route}`);
+        assert.equal(environment.root.dataset.themeMode, 'dark');
+    }
+
+    assert.equal(environment.storedValues.get('mockdeck-theme'), 'dark');
+    assert.equal(themeEnvironment({ stored: 'dark', prefersDark: false }).root.dataset.theme, 'dark');
 });
 
 test('theme resolver is loaded before styles on every standalone shell', () => {

@@ -1,20 +1,30 @@
 <form wire:submit="save" class="endpoint-editor" data-unsaved-form>
     @php
         $requestReady = (bool) $preview && ! $duplicate && ! $isExample;
+        $matchingReady = (bool) $preview;
         $responseReady = $endpointId && \App\Models\MockEndpoint::query()->find($endpointId)?->responses()->exists();
         $saveBlockReason = ! $preview
             ? 'Paste a valid curl command to continue.'
             : ($duplicate
                 ? 'Resolve the duplicate signature before saving.'
                 : ($isExample ? 'Replace the example curl before saving.' : ''));
+        $requestState = $requestReady ? 'valid' : (($submitAttempted || in_array('request', $touchedSections, true)) ? 'attention' : 'neutral');
+        $matchingState = $matchingReady ? 'valid' : (($submitAttempted || in_array('matching', $touchedSections, true)) ? 'attention' : 'neutral');
+        $responseState = $responseReady ? 'valid' : (($submitAttempted || in_array('response', $touchedSections, true)) ? 'attention' : 'neutral');
+        $stateSymbol = static fn (string $state): string => $state === 'valid' ? '✓' : ($state === 'attention' ? '!' : '');
+        $statusMessage = $saveBlockReason !== ''
+            ? $saveBlockReason
+            : (! $responseReady
+                ? 'Next: add a response so this endpoint can answer requests.'
+                : 'Editing '.$derivedName.' · Ctrl/⌘ + Enter saves.');
     @endphp
 
     <nav class="flow-nav" aria-label="Endpoint sections" data-section-nav>
         <ol>
-            <li><a href="#request-definition" data-section-link><span>Request</span><i class="section-status {{ $requestReady ? 'valid' : 'attention' }}" aria-label="{{ $requestReady ? 'Request is valid' : 'Request needs attention' }}">{{ $requestReady ? '✓' : '!' }}</i></a></li>
-            <li><a href="#matching-policy" data-section-link><span>Matching</span><i class="section-status {{ $preview ? 'valid' : 'attention' }}" aria-label="{{ $preview ? 'Matching policy is ready' : 'Matching policy needs a parsed request' }}">{{ $preview ? '✓' : '!' }}</i></a></li>
+            <li><a href="#request-definition" data-section-link wire:click="touchSection('request')"><span>Request</span><i class="section-status {{ $requestState }}" aria-label="{{ $requestState === 'valid' ? 'Request is valid' : ($requestState === 'attention' ? 'Request needs attention' : 'Request not yet reviewed') }}">{{ $stateSymbol($requestState) }}</i></a></li>
+            <li><a href="#matching-policy" data-section-link wire:click="touchSection('matching')"><span>Matching</span><i class="section-status {{ $matchingState }}" aria-label="{{ $matchingState === 'valid' ? 'Matching policy is ready' : ($matchingState === 'attention' ? 'Matching policy needs attention' : 'Matching policy not yet reviewed') }}">{{ $stateSymbol($matchingState) }}</i></a></li>
             <li>
-                <a href="{{ $endpointId ? '#responses' : '#save-actions' }}" data-section-link><span>Response</span><i class="section-status {{ $responseReady ? 'valid' : 'attention' }}" aria-label="{{ $responseReady ? 'A response is configured' : 'A response is needed' }}">{{ $responseReady ? '✓' : '!' }}</i></a>
+                <a href="{{ $endpointId ? '#responses' : '#save-actions' }}" data-section-link wire:click="touchSection('response')"><span>Response</span><i class="section-status {{ $responseState }}" aria-label="{{ $responseState === 'valid' ? 'A response is configured' : ($responseState === 'attention' ? 'A response is needed' : 'Response not yet reviewed') }}">{{ $stateSymbol($responseState) }}</i></a>
             </li>
         </ol>
     </nav>
@@ -281,20 +291,13 @@
         </aside>
     </div>
 
-    <div id="save-actions" class="sticky-action-bar">
+    <div id="save-actions" class="sticky-action-bar" data-sticky-action-bar>
         <div>
-            @if (! $endpointId)
-                <p class="action-note">Next: add a response so this endpoint can answer requests.</p>
-            @else
-                <p class="action-note">Editing {{ $derivedName }} · Ctrl/⌘ + Enter saves.</p>
-            @endif
+            <p id="endpoint-action-status" class="action-note">{{ $statusMessage }}</p>
         </div>
         <div>
-            @if ($saveBlockReason !== '')
-                <span id="endpoint-save-reason" class="save-reason">{{ $saveBlockReason }}</span>
-            @endif
             <a class="button button-secondary" href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Cancel</a>
-            <button class="button button-primary" type="submit" wire:loading.attr="disabled" wire:target="save" @disabled(! $requestReady) @if ($saveBlockReason !== '') aria-describedby="endpoint-save-reason" title="{{ $saveBlockReason }}" @endif>
+            <button class="button button-primary" type="submit" wire:loading.attr="disabled" wire:target="save" @disabled(! $requestReady) @if ($saveBlockReason !== '') aria-describedby="endpoint-action-status" title="{{ $saveBlockReason }}" @endif>
                 <span wire:loading.remove wire:target="save">{{ $endpointId ? 'Save changes' : 'Create endpoint' }}</span>
                 <span wire:loading wire:target="save">Saving…</span>
             </button>

@@ -36,6 +36,11 @@ CURL;
 
     public bool $excludeHeaders = false;
 
+    /** @var list<string> */
+    public array $touchedSections = [];
+
+    public bool $submitAttempted = false;
+
     public function mount(?MockEndpoint $endpoint = null): void
     {
         if ($endpoint === null) {
@@ -59,26 +64,54 @@ CURL;
 
     public function updatedExcludeHeaders(bool $value): void
     {
+        $this->touchSection('matching');
+
         if ($value) {
             $this->excludeCookies = true;
             $this->excludeAuth = true;
         }
     }
 
+    public function updatedExcludeCookies(): void
+    {
+        $this->touchSection('matching');
+    }
+
+    public function updatedExcludeAuth(): void
+    {
+        $this->touchSection('matching');
+    }
+
+    public function updatedRawCurl(): void
+    {
+        $this->touchSection('request');
+    }
+
+    public function touchSection(string $section): void
+    {
+        if (in_array($section, ['request', 'matching', 'response'], true)
+            && ! in_array($section, $this->touchedSections, true)) {
+            $this->touchedSections[] = $section;
+        }
+    }
+
     public function loadExample(): void
     {
+        $this->touchSection('request');
         $this->rawCurl = self::EXAMPLE_CURL;
         $this->resetValidation('rawCurl');
     }
 
     public function clearCurl(): void
     {
+        $this->touchSection('request');
         $this->rawCurl = '';
         $this->resetValidation('rawCurl');
     }
 
     public function maskSecrets(): void
     {
+        $this->touchSection('request');
         $sensitiveHeaders = implode('|', array_map(
             static fn (string $name): string => preg_quote($name, '/'),
             config('mock.portable_config.sensitive_headers', []),
@@ -103,6 +136,8 @@ CURL;
 
     public function save(CurlParser $parser, CurlHasher $hasher): mixed
     {
+        $this->submitAttempted = true;
+
         $this->validate([
             'name' => ['nullable', 'string', 'max:255'],
             'enabled' => ['boolean'],

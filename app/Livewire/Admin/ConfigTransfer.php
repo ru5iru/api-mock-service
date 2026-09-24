@@ -19,6 +19,8 @@ final class ConfigTransfer extends Component
 {
     use WithFileUploads;
 
+    private const DEFAULT_IMPORT_MODE = 'create-only';
+
     /** @var list<string> */
     public array $selectedEndpointUuids = [];
 
@@ -32,7 +34,7 @@ final class ConfigTransfer extends Component
 
     public ?TemporaryUploadedFile $configFile = null;
 
-    public string $mode = 'create-only';
+    public string $mode = self::DEFAULT_IMPORT_MODE;
 
     public bool $replaceResponses = false;
 

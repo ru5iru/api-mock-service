@@ -8,7 +8,7 @@
     <meta name="description" content="Configure deterministic and weighted mock API responses from curl commands.">
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="">
-    <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}" data-navigate-once></script>
     <link rel="preload" href="{{ asset('fonts/jetbrains-mono/jetbrains-mono-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}?v={{ filemtime(public_path('css/tokens.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
@@ -57,7 +57,6 @@
                     </summary>
                     <div class="user-menu-panel">
                         <span class="user-menu-label">{{ config('mock.dashboard_auth.enabled') ? 'Authenticated session' : 'Local access mode' }}</span>
-                        <x-theme-control variant="group" name="theme-user" />
                         <a href="{{ route('dashboard.docs') }}" wire:navigate>Documentation</a>
                         @if (config('mock.dashboard_auth.enabled'))
                             <form method="POST" action="{{ route('dashboard.logout') }}">
@@ -88,7 +87,7 @@
                         Import / export
                     </a>
                     <a href="{{ route('dashboard.docs') }}" wire:navigate>Documentation</a>
-                    <x-theme-control variant="group" name="theme-mobile" />
+                    <x-theme-control name="theme-mobile" />
                     @if (config('mock.dashboard_auth.enabled'))
                         <form method="POST" action="{{ route('dashboard.logout') }}" class="nav-form">
                             @csrf
@@ -417,6 +416,39 @@
             }
         };
 
+        let observedStickyActionBar = null;
+        let stickyActionResizeObserver = null;
+        const syncStickyActionBar = () => {
+            const page = document.querySelector('.page-shell');
+            const bar = document.querySelector('[data-sticky-action-bar]');
+            if (!page) return;
+
+            if (!bar) {
+                stickyActionResizeObserver?.disconnect();
+                stickyActionResizeObserver = null;
+                observedStickyActionBar = null;
+                page.classList.remove('has-sticky-action-bar');
+                page.style.removeProperty('--sticky-action-bar-height');
+                return;
+            }
+
+            const applyHeight = () => {
+                const height = Math.ceil(bar.getBoundingClientRect().height);
+                if (height > 0) {
+                    page.classList.add('has-sticky-action-bar');
+                    page.style.setProperty('--sticky-action-bar-height', `${height}px`);
+                }
+            };
+
+            applyHeight();
+            if (observedStickyActionBar !== bar && 'ResizeObserver' in window) {
+                stickyActionResizeObserver?.disconnect();
+                stickyActionResizeObserver = new ResizeObserver(applyHeight);
+                stickyActionResizeObserver.observe(bar);
+                observedStickyActionBar = bar;
+            }
+        };
+
         const syncSectionNavigation = () => {
             document.querySelectorAll('[data-section-nav]').forEach((navigation) => {
                 const links = [...navigation.querySelectorAll('[data-section-link]')];
@@ -451,6 +483,7 @@
             logSyncFrame = window.requestAnimationFrame(() => {
                 syncLogPresentation();
                 syncEndpointEditor();
+                syncStickyActionBar();
                 syncSectionNavigation();
             });
         };

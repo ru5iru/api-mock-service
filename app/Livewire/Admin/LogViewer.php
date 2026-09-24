@@ -41,6 +41,7 @@ final class LogViewer extends Component
     public int $limit = 25;
 
     #[Url(except: true)]
+    // Keep repeat grouping enabled by default in both the dashboard widget and full log.
     public bool $groupRepeats = true;
 
     public bool $paused = false;

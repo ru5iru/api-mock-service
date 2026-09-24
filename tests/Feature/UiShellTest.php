@@ -23,6 +23,9 @@ final class UiShellTest extends TestCase
 
         $html = $response->getContent();
         self::assertLessThan(strpos($html, 'css/tokens.css'), strpos($html, 'js/theme.js'));
+        self::assertStringContainsString('data-navigate-once', $html);
+        self::assertStringContainsString('role="menuitemradio"', $html);
+        self::assertStringNotContainsString('theme-radio-group', $html);
     }
 
     public function test_documentation_page_explains_core_terms_and_shortcuts(): void

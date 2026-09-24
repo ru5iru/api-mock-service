@@ -37,6 +37,17 @@ final class ConfigTransferTest extends TestCase
             ->assertSee('Redact request secrets');
     }
 
+    public function test_create_only_is_the_selected_safe_default(): void
+    {
+        $component = Livewire::test(ConfigTransfer::class)
+            ->assertSet('mode', ImportMode::CreateOnly->value)
+            ->assertSee('Create only')
+            ->assertSee('Safe default');
+
+        self::assertSame(1, substr_count($component->html(), ' checked'));
+        self::assertStringContainsString('value="create-only" checked', $component->html());
+    }
+
     public function test_transfer_ui_uses_derived_endpoint_names_and_search(): void
     {
         MockEndpoint::factory()->create([

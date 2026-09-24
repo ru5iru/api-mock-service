@@ -93,6 +93,26 @@ final class DashboardTest extends TestCase
         self::assertSame(0, MockEndpoint::query()->count());
     }
 
+    public function test_endpoint_editor_sections_start_neutral_and_only_warn_after_interaction(): void
+    {
+        Livewire::test(EndpointForm::class)
+            ->assertSeeHtml('section-status neutral')
+            ->assertDontSeeHtml('section-status attention')
+            ->assertSee('Paste a valid curl command to continue.')
+            ->assertDontSee('Next: add a response so this endpoint can answer requests.')
+            ->set('rawCurl', 'not a curl command')
+            ->assertSeeHtml('section-status attention');
+    }
+
+    public function test_endpoint_editor_shows_only_the_next_response_message_after_parsing(): void
+    {
+        Livewire::test(EndpointForm::class)
+            ->set('rawCurl', "curl 'https://api.example.test/v1/items'")
+            ->assertSee('Next: add a response so this endpoint can answer requests.')
+            ->assertDontSee('Paste a valid curl command to continue.')
+            ->assertSeeHtml('section-status valid');
+    }
+
     public function test_ignoring_all_headers_visibly_includes_cookie_and_auth_exclusions(): void
     {
         Livewire::test(EndpointForm::class)
@@ -164,6 +184,15 @@ final class DashboardTest extends TestCase
             ->assertSet('unmatchedOnly', false);
     }
 
+    public function test_group_repeats_defaults_on_in_both_log_views(): void
+    {
+        Livewire::test(LogViewer::class, ['full' => false])
+            ->assertSet('groupRepeats', true);
+
+        Livewire::test(LogViewer::class, ['full' => true])
+            ->assertSet('groupRepeats', true);
+    }
+
     public function test_endpoint_without_name_uses_method_and_path_and_warns_when_no_response_exists(): void
     {
         $endpoint = MockEndpoint::factory()->create([
@@ -176,6 +205,7 @@ final class DashboardTest extends TestCase
 
         Livewire::test(EndpointIndex::class)
             ->assertSee('POST /v1/orders')
+            ->assertSeeHtml('endpoint-primary-line')
             ->assertSee('1 header')
             ->assertSee('No responses – requests will fail');
     }

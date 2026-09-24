@@ -19,25 +19,28 @@
 
         <div class="toolbar-controls">
             <label class="select-field">
+                <span class="select-caption">Method</span>
                 <select wire:model.live="method" aria-label="Filter by method">
-                    <option value="">Method: All</option>
+                    <option value="">All methods</option>
                     @foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as $option)
                         <option value="{{ $option }}">{{ $option }}</option>
                     @endforeach
                 </select>
             </label>
             <label class="select-field">
+                <span class="select-caption">State</span>
                 <select wire:model.live="state" aria-label="Filter by state">
-                    <option value="all">State: Any</option>
+                    <option value="all">Any state</option>
                     <option value="enabled">Enabled</option>
                     <option value="disabled">Disabled</option>
                 </select>
             </label>
             <label class="select-field sort-field">
+                <span class="select-caption">Sort</span>
                 <select wire:model.live="sort" aria-label="Sort endpoints">
-                    <option value="recent">Sort: Recently updated</option>
-                    <option value="name">Sort: Name</option>
-                    <option value="priority">Sort: Priority</option>
+                    <option value="recent">Recently updated</option>
+                    <option value="name">Name</option>
+                    <option value="priority">Priority</option>
                 </select>
             </label>
             @if ($search !== '' || $method !== '' || $state !== 'all' || $sort !== 'recent')
@@ -93,13 +96,18 @@
                     </label>
 
                     <div class="endpoint-main">
-                        <span class="method-badge method-{{ strtolower($endpoint->method) }}">{{ $endpoint->method }}</span>
                         <div class="endpoint-copy">
                             @if ($autoDerivedName)
-                                <code class="request-target endpoint-primary" title="{{ $endpoint->requestTarget() }}">{{ $endpoint->requestTarget() }}</code>
+                                <div class="endpoint-primary-line">
+                                    <span class="method-badge method-{{ strtolower($endpoint->method) }}">{{ $endpoint->method }}</span>
+                                    <code class="request-target endpoint-primary" title="{{ $endpoint->requestTarget() }}">{{ $endpoint->requestTarget() }}</code>
+                                </div>
                             @else
                                 <h3>{{ $endpoint->displayName() }}</h3>
-                                <code class="request-target" title="{{ $endpoint->requestTarget() }}">{{ $endpoint->requestTarget() }}</code>
+                                <div class="endpoint-request-line">
+                                    <span class="method-badge method-{{ strtolower($endpoint->method) }}">{{ $endpoint->method }}</span>
+                                    <code class="request-target" title="{{ $endpoint->requestTarget() }}">{{ $endpoint->requestTarget() }}</code>
+                                </div>
                             @endif
                             <div class="endpoint-detail-line">
                                 <div class="request-facts" aria-label="Request composition">
