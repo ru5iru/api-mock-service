@@ -10,6 +10,7 @@
             <h2 id="docs-contents">Contents</h2>
             <ol class="docs-toc">
                 <li><a href="#getting-started">Create an endpoint</a></li>
+                <li><a href="#endpoint-registry">Manage endpoints</a></li>
                 <li><a href="#request-matching">Request matching</a></li>
                 <li><a href="#response-pools">Response pools</a></li>
                 <li><a href="#response-templating">Response templating</a></li>
@@ -20,6 +21,8 @@
                 <li><a href="#template-errors">Validation and errors</a></li>
                 <li><a href="#config-transfer">Import and export</a></li>
                 <li><a href="#request-log">Request log</a></li>
+                <li><a href="#preferences-accessibility">Theme and accessibility</a></li>
+                <li><a href="#serving-errors">Serving behavior</a></li>
                 <li><a href="#shortcuts">Keyboard shortcuts</a></li>
             </ol>
         </nav>
@@ -35,6 +38,18 @@
             </ol>
             <h3>Endpoint state and priority</h3>
             <p>Disabled endpoints never participate in matching. When multiple enabled endpoints could match, the highest priority wins. If priorities are equal, the more specific signature wins.</p>
+        </section>
+
+        <section id="endpoint-registry" class="card docs-card docs-wide">
+            <h2>Manage endpoints</h2>
+            <p>Search endpoint name, method, path, or raw cURL. Filter by method and enabled state, then sort by recent update, name, or priority.</p>
+            <ul>
+                <li>Select a row to edit its request and response pool.</li>
+                <li>Use the row menu to enable/disable, duplicate, copy the mock-host cURL, or delete.</li>
+                <li>Duplicated endpoints start disabled so they cannot immediately compete with the source signature.</li>
+                <li>Select individual rows or the current page for bulk enable, disable, export, or delete.</li>
+                <li>Disabled endpoints retain their configuration but never participate in matching.</li>
+            </ul>
         </section>
 
         <section id="request-matching" class="card docs-card">
@@ -65,6 +80,7 @@
         <section id="response-templating" class="card docs-card docs-wide">
             <h2>Response templating</h2>
             <p>Choose <strong>Body → Template</strong> to generate response JSON with Faker data. Templating is opt-in per response; existing static responses are unchanged. Preview and live serving use the same server-side parser and renderer.</p>
+            <p>The backend maps supported Faker.js-shaped method names to FakerPHP 1.24. No Faker runtime or template evaluator is shipped to the browser. Successful templates default to <code>application/json</code> when the response does not define Content-Type.</p>
             <h3>Workflow</h3>
             <ol>
                 <li>Choose <strong>Builder</strong> for a simple schema or <strong>JSON</strong> for the complete language.</li>
@@ -145,6 +161,8 @@
                 @endverbatim
             </div>
             <p>Inside <code>$repeat</code>, use <code>$index</code> for a typed zero-based number or <code>@verbatim{{$index}}@endverbatim</code> inside text. A repeat cannot exceed 1,000 items.</p>
+            <h3>Default limits</h3>
+            <p>Templates are limited to 256 KiB, depth 12, 10,000 parsed nodes, 100,000 rendered nodes, 1,000 items per repeat, 4 KiB of arguments, and 1 MiB of rendered output. Operators can tighten these limits with the <code>MOCK_TEMPLATE_*</code> environment variables.</p>
         </section>
 
         <section id="builder-view" class="card docs-card">
@@ -217,8 +235,32 @@
             <ul>
                 <li>Templated entries include render time but not the rendered body.</li>
                 <li>Create an endpoint directly from an unmatched request's reconstructed cURL.</li>
-                <li>Density and clock preferences persist only in the current browser.</li>
+                <li>Filter by method, match, status, endpoint, time range, row limit, or unmatched-only.</li>
+                <li>Group consecutive repeats and choose local/UTC clock plus Compact/Comfortable density.</li>
+                <li>Density persists in the current browser; the Local/UTC clock choice applies to the current log view.</li>
             </ul>
+        </section>
+
+        <section id="preferences-accessibility" class="card docs-card">
+            <h2>Theme and accessibility</h2>
+            <ul>
+                <li>Choose System, Light, or Dark from the header. Explicit choices persist in this browser; System follows live operating-system changes.</li>
+                <li>The in-app brand icon follows the effective dashboard theme. The browser favicon follows the browser/system colour preference.</li>
+                <li>All primary actions, menus, disclosures, template suggestions, dialogs, and row controls are keyboard accessible.</li>
+                <li>Focus indicators, semantic status colours, reduced-motion behavior, and light/dark contrast are provided by the shared design system.</li>
+            </ul>
+        </section>
+
+        <section id="serving-errors" class="card docs-card docs-wide">
+            <h2>Serving behavior</h2>
+            <p><strong>Copy mock cURL</strong> replaces the upstream origin with the configured MockDeck <code>APP_URL</code>. Scheme, host, and port do not affect matching; the method, normalized path/query, selected headers, and body do.</p>
+            <dl class="definition-list">
+                <div><dt>Configured response</dt><dd>Returns its selected status, headers, body, and bounded delay with an <code>X-Request-ID</code>.</dd></div>
+                <div><dt>400</dt><dd>The incoming request could not be normalized safely.</dd></div>
+                <div><dt>404</dt><dd>No enabled endpoint matched.</dd></div>
+                <div><dt>500</dt><dd>The endpoint has no response, a saved template failed, or an unexpected server error occurred.</dd></div>
+            </dl>
+            <p>A valid caller-provided <code>X-Request-ID</code> is retained; otherwise MockDeck generates a UUID. Logging failures are isolated and cannot replace a configured mock response.</p>
         </section>
 
         <section id="shortcuts" class="card docs-card">

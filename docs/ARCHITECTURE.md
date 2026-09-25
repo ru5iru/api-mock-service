@@ -97,6 +97,22 @@ To add round-robin selection:
 
 A rule-based selector that depends on incoming query/header values would require widening the interface to accept an immutable invocation context. Do that at the interface boundary rather than reading the global request inside a selector.
 
+## Response template pipeline
+
+Response templating is additive and opt-in through `mock_responses.body_mode`. Static bodies bypass the template services completely, including static text containing `$` or `{{`.
+
+`Services/Templates` owns one server-side pipeline used by validation, preview, Builder projection, and live invocation:
+
+1. `TemplateCompiler` parses JSON, validates directives/methods/arguments/limits, resolves legacy aliases as warnings, and produces a `CompiledTemplate` without evaluating code.
+2. `FakerMethodCatalog` exposes a fixed mapped catalog backed by `fakerphp/faker`. Catalog metadata drives both the API and UI; browser code does not maintain a second method list.
+3. `TemplateSchemaConverter` converts only the lossless Builder subset to/from JSON. Nonrepresentable JSON disables Builder and remains unchanged.
+4. `TemplateRenderer` recursively renders the compiled tree, resets the locale provider seed for fixed/request modes, normalizes non-JSON-compatible values, and enforces rendered-node/output limits.
+5. `ResponseTemplateEngine` is the shared facade used by the protected validate/preview endpoints and `MockInvocationController`.
+
+Method lookup rejects prototype-shaped names and methods outside the fixed catalog. Blocked helpers cannot accept callbacks or perform unbounded work. Do not add `eval`, `new Function`, VM execution, arbitrary class/method reflection, or a browser Faker dependency.
+
+Successful template invocation preserves selected status, headers, and delay and adds `application/json` only when Content-Type is absent. Runtime render errors become safe JSON 500 responses with `X-MockDeck-Template-Error: 1`; logs contain issue metadata and render time, never the rendered body.
+
 ## Request logging
 
 `MockRequestLogger` targets only the `mock_requests` channel. `FlatJsonFormatter` merges scalar context into a single JSON object and emits one newline. File and stdout handlers share the formatter.
@@ -120,7 +136,7 @@ The dashboard can display raw curl, canonical text, request bodies, and headers.
 Only two domain tables exist:
 
 - `mock_endpoints` stores an immutable portable UUID, the original curl, one canonical representation, one digest, signature version, enabled state, priority, and exclusion flags;
-- `mock_responses` stores an immutable portable UUID, status, header JSON, body, delay, and weight.
+- `mock_responses` stores an immutable portable UUID, status, header JSON, static body, delay, weight, and additive template mode/text/editor/seed/locale fields.
 
 Request logs never enter PostgreSQL. Deleting an endpoint cascades to its responses.
 
@@ -132,6 +148,7 @@ Request logs never enter PostgreSQL. Deleting an endpoint cascades to its respon
 | No endpoint | JSON `404` with method and received mock URL |
 | Endpoint has no response | JSON `500` naming the endpoint ID |
 | Endpoint and response found | Configured status, headers, exact body, and bounded delay |
+| Template render fails | JSON `500` with safe path/token details and `X-MockDeck-Template-Error: 1` |
 | Internal exception | Structured error-class log event, then normal Laravel exception handling |
 
 These diagnostics are intentional API behavior and should be preserved in client-facing changes.

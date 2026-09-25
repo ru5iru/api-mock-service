@@ -1,6 +1,6 @@
 # Native configuration import and export
 
-MockDeck's native JSON format moves endpoint definitions and their responses between installations without coupling files to database IDs or trusted hashes. The current media type is `application/vnd.mockdeck.config+json`; the current format version is `1`.
+MockDeck's native JSON format moves endpoint definitions and their responses between installations without coupling files to database IDs or trusted hashes. The current media type is `application/vnd.mockdeck.config+json`; the current format version is `1.1`, with version `1` and `1.0` imports retained for backward compatibility.
 
 ## Safe dashboard workflow
 
