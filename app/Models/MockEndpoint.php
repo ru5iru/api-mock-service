@@ -5,6 +5,8 @@ namespace App\Models;
 use Database\Factories\MockEndpointFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use LogicException;
@@ -16,6 +18,7 @@ final class MockEndpoint extends Model
 
     protected $fillable = [
         'uuid',
+        'collection_id',
         'name',
         'enabled',
         'priority',
@@ -58,6 +61,32 @@ final class MockEndpoint extends Model
     public function responses(): HasMany
     {
         return $this->hasMany(MockResponse::class)->orderBy('id');
+    }
+
+    /** @return BelongsTo<Collection, $this> */
+    public function collection(): BelongsTo
+    {
+        return $this->belongsTo(Collection::class);
+    }
+
+    /** @return BelongsToMany<Tag, $this> */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'endpoint_tags', 'endpoint_id', 'tag_id')->orderBy('name');
+    }
+
+    /** @return BelongsToMany<Environment, $this> */
+    public function environmentOverrides(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Environment::class,
+            'endpoint_environment_overrides',
+            'endpoint_id',
+            'environment_id',
+        )
+            ->withPivot('enabled')
+            ->withTimestamps()
+            ->orderBy('name');
     }
 
     public function displayName(): string

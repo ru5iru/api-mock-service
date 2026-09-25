@@ -2,8 +2,11 @@
 
 namespace App\Services\Config;
 
+use App\Models\Collection as EndpointCollection;
+use App\Models\Environment;
 use App\Models\MockEndpoint;
 use App\Models\MockResponse;
+use App\Models\Tag;
 use App\Services\Curl\CurlParser;
 use Illuminate\Database\Eloquent\Collection;
 use InvalidArgumentException;
@@ -16,11 +19,26 @@ final readonly class ConfigExporter
     ) {}
 
     /** @param list<string>|null $endpointUuids */
-    public function export(?array $endpointUuids = null, bool $redactSecrets = true): ConfigDocument
-    {
+    public function export(
+        ?array $endpointUuids = null,
+        bool $redactSecrets = true,
+        ?int $collectionId = null,
+        ?int $environmentId = null,
+    ): ConfigDocument {
+        if ($collectionId !== null && $environmentId !== null) {
+            throw new InvalidArgumentException('Choose either a collection scope or an environment scope, not both.');
+        }
+
         $endpoints = MockEndpoint::query()
-            ->with('responses')
+            ->with(['responses', 'collection', 'tags', 'environmentOverrides'])
             ->when($endpointUuids !== null, fn ($query) => $query->whereIn('uuid', $endpointUuids))
+            ->when($collectionId !== null, fn ($query) => $query->where('collection_id', $collectionId))
+            ->when($environmentId !== null, fn ($query) => $query->where(function ($query) use ($environmentId): void {
+                $query->whereDoesntHave('environmentOverrides', fn ($override) => $override->whereKey($environmentId))
+                    ->orWhereHas('environmentOverrides', fn ($override) => $override
+                        ->whereKey($environmentId)
+                        ->where('endpoint_environment_overrides.enabled', true));
+            }))
             ->orderBy('uuid')
             ->get();
 
@@ -54,6 +72,11 @@ final readonly class ConfigExporter
                 'name' => $endpoint->name,
                 'enabled' => $requiresSecretReplacement ? false : $endpoint->enabled,
                 'priority' => $endpoint->priority,
+                'collection' => $endpoint->collection?->name,
+                'tags' => $endpoint->tags->pluck('name')->values()->all(),
+                'environment_overrides' => (object) $endpoint->environmentOverrides
+                    ->mapWithKeys(static fn ($environment): array => [$environment->name => (bool) $environment->pivot->enabled])
+                    ->all(),
                 'requires_secret_replacement' => $requiresSecretReplacement,
                 'request' => [
                     'curl' => $curl,
@@ -69,18 +92,35 @@ final readonly class ConfigExporter
         })->all();
 
         $data = [
-            '$schema' => 'https://mockdeck.dev/schemas/config-v1.1.json',
+            '$schema' => 'https://mockdeck.dev/schemas/config-v1.2.json',
             'format' => 'mockdeck',
-            'format_version' => '1.1',
+            'format_version' => '1.2',
             'exported_at' => now()->utc()->format('Y-m-d\TH:i:s\Z'),
             'generator' => [
                 'name' => 'MockDeck',
-                'version' => config('mock.portable_config.generator_version', '1.1.0'),
+                'version' => config('mock.portable_config.generator_version', '1.2.0'),
             ],
             'options' => [
                 'secrets_redacted' => $redactSecrets,
+                'environment_secrets_redacted' => true,
+                'scope' => $collectionId !== null
+                    ? ['type' => 'collection', 'id' => $collectionId]
+                    : ($environmentId !== null ? ['type' => 'environment', 'id' => $environmentId] : ['type' => 'all']),
             ],
             'warnings' => $warnings,
+            'collections' => EndpointCollection::query()->orderBy('name')->get(['name', 'description'])->toArray(),
+            'tags' => Tag::query()->orderBy('name')->pluck('name')->all(),
+            'environments' => Environment::query()->with('variables')->orderByDesc('is_default')->orderBy('name')->get()
+                ->map(static fn (Environment $environment): array => [
+                    'name' => $environment->name,
+                    'is_default' => $environment->is_default,
+                    'variables' => $environment->variables->map(static fn ($variable): array => [
+                        'key' => $variable->key,
+                        'value' => $variable->is_secret ? null : $variable->value,
+                        'is_secret' => $variable->is_secret,
+                        'redacted' => $variable->is_secret,
+                    ])->values()->all(),
+                ])->values()->all(),
             'endpoints' => $documentEndpoints,
         ];
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\IncomingRequestFactory;
+use App\Services\Environments\EnvironmentContext;
 use App\Services\Logging\MockRequestLogger;
 use App\Services\Matching\EndpointMatch;
 use App\Services\Matching\EndpointMatcher;
@@ -29,6 +30,7 @@ final class MockInvocationController extends Controller
         private readonly MockRequestLogger $logger,
         private readonly CurlHasher $hasher,
         private readonly ResponseTemplateEngine $templates,
+        private readonly EnvironmentContext $environments,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -205,6 +207,8 @@ final class MockInvocationController extends Controller
             'status_code' => $statusCode,
             'delay_ms' => $delayMs,
             'duration_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+            'environment' => $this->environments->active()->name,
+            'environment_id' => $this->environments->active()->id,
         ];
 
         if ($error !== null) {

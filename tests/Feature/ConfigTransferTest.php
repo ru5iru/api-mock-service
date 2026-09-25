@@ -184,7 +184,7 @@ final class ConfigTransferTest extends TestCase
 
         $json = app(ConfigExporter::class)->export(redactSecrets: false)->toJson();
         $document = json_decode($json, true, 64, JSON_THROW_ON_ERROR);
-        self::assertSame('1.1', $document['format_version']);
+        self::assertSame('1.2', $document['format_version']);
         self::assertSame('{"username":"$internet.userName"}', $document['endpoints'][0]['responses'][0]['template']);
         $endpoint->delete();
 

@@ -149,6 +149,7 @@
                     <th scope="col">Request</th>
                     <th scope="col">Match <x-help-tip title="Match types" label="Hash is an exact signature match. Fallback is a normalized recovery match. None means no endpoint matched." /></th>
                     <th scope="col">Endpoint</th>
+                    <th scope="col">Environment</th>
                     <th scope="col">Status</th>
                     <th scope="col" class="numeric">Duration</th>
                 </tr>
@@ -166,7 +167,7 @@
                         $expanded = $expandedKey === $event['_key'];
                     @endphp
                     @if ($dayKey !== $previousDay)
-                        <tr class="day-separator"><th colspan="6" scope="rowgroup">{{ $dayLabel }}</th></tr>
+                        <tr class="day-separator"><th colspan="7" scope="rowgroup">{{ $dayLabel }}</th></tr>
                         @php
                             $previousDay = $dayKey;
                         @endphp
@@ -213,6 +214,7 @@
                                 <span class="muted">—</span>
                             @endif
                         </td>
+                        <td><span class="tag-chip">{{ $event['environment'] ?? '—' }}</span></td>
                         <td>
                             <span class="status-result {{ $event['_mocked_server_response'] ? 'mocked' : 'status-result-'.intdiv((int) ($event['status_code'] ?? 0), 100).'xx' }}">
                                 <span aria-hidden="true">{{ $event['_mocked_server_response'] ? '●' : ((int) ($event['status_code'] ?? 0) >= 400 ? '!' : '✓') }}</span>
@@ -226,7 +228,7 @@
                     </tr>
                     @if ($expanded)
                         <tr class="log-detail-row" wire:key="detail-{{ $event['_key'] }}">
-                            <td colspan="6">
+                            <td colspan="7">
                                 <div class="log-detail-grid">
                                     <section>
                                         <h3>{{ $event['method'] ?? '—' }} {{ $event['_path'] }}</h3>
@@ -235,6 +237,7 @@
                                             <div><dt>Host</dt><dd>{{ $event['_host'] ?: 'Unavailable' }}</dd></div>
                                             <div><dt>Signature version</dt><dd>{{ $event['matched_variant'] ?? 'No match' }}</dd></div>
                                             <div><dt>Response</dt><dd>{{ isset($event['response_id']) ? '#'.$event['response_id'] : 'None selected' }}</dd></div>
+                                            <div><dt>Environment</dt><dd>{{ $event['environment'] ?? '—' }}</dd></div>
                                             <div><dt>Delay</dt><dd>{{ $event['delay_ms'] ?? 0 }} ms</dd></div>
                                             @if (($event['_repeat_count'] ?? 1) > 1)
                                                 <div><dt>Grouped</dt><dd>{{ $event['_repeat_count'] }} consecutive identical requests</dd></div>
@@ -273,7 +276,7 @@
                     @endif
                 @empty
                     <tr>
-                        <td colspan="6" class="empty-table">
+                        <td colspan="7" class="empty-table">
                             @if ($hasAnyEvents)
                                 <strong>No requests match the current filters.</strong>
                                 <span>Clear the filters to return to all available events.</span>

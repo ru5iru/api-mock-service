@@ -109,7 +109,32 @@ Each endpoint row supports:
 
 Select one page or individual rows to expose bulk actions for **Enable**, **Disable**, **Export**, and **Delete**. Bulk delete requires confirmation. Pagination and selection are independent; verify the selection count before a destructive action.
 
-## 6. Configure response pools
+### Collections and tags
+
+Collections provide one optional folder-like grouping per endpoint. Tags are case-insensitive and many-to-many. Use the Collection dropdown and tag chips in the endpoint toolbar to filter the registry. Endpoint rows show the assigned collection and tags.
+
+Select endpoint rows to expose **Move to collection** and **Add tags** in the bulk action bar. Deleting a collection does not delete its endpoints; their collection becomes empty. Tags can be reused across any collection.
+
+## 6. Environments and variables
+
+The active environment is global to the MockDeck server. The migration creates **Development** as the default and active environment, preserving existing endpoint behavior.
+
+1. Open the header environment switcher.
+2. Select an environment to make it active immediately.
+3. Open **Manage environments** to create, rename, duplicate, or delete environments.
+4. Add variables with a key, value, and optional Secret state.
+
+Secret values are encrypted at rest through Laravel's encrypted cast, displayed as `••••••••`, and never returned in plaintext by GET or duplicate API responses. Leave a masked secret value blank while editing to retain it. Duplicating an environment creates independent variable records, including independent encrypted secret copies.
+
+The server keeps exactly one default environment. Deleting the active or default environment requires selecting a different replacement first.
+
+### Endpoint availability
+
+The endpoint editor lists every environment. Each row can inherit the endpoint state, permit matching, or disable matching in that environment. Inheritance stores no override. An endpoint is eligible only when its own Enabled switch is on and the active environment has no override or an enabled override. Environment selection never changes signature generation or ranking.
+
+Every new request-log event records the active environment. Entries created before this feature show `—`.
+
+## 7. Configure response pools
 
 An endpoint can have one or more responses. Each response has:
 
@@ -129,7 +154,7 @@ Static text is returned exactly as stored. `$`, `{{`, and JSON-looking content h
 
 Template mode parses JSON and renders it for every request. Successful templated responses default to `Content-Type: application/json` when that header is not configured. Preview and live serving share the same compiler and renderer.
 
-## 7. Build a response template
+## 8. Build a response template
 
 Choose **Body → Template**. Set:
 
@@ -162,7 +187,7 @@ Type `$` in a token or `{{` inside a string to open catalog suggestions. Use Up/
 
 The browser receives only catalog metadata. Parsing, validation, Faker calls, and rendering stay on the server.
 
-## 8. Template language reference
+## 9. Template language reference
 
 ### Typed calls
 
@@ -257,7 +282,7 @@ Default limits:
 
 Tune them with the `MOCK_TEMPLATE_*` variables in `.env.example`.
 
-## 9. Seeds, locales, and regeneration
+## 10. Seeds, locales, and regeneration
 
 - **Random** does not explicitly seed the provider. Regenerate can produce different values.
 - **Fixed** resets the provider to the configured integer at the start of every render.
@@ -266,7 +291,7 @@ Tune them with the `MOCK_TEMPLATE_*` variables in `.env.example`.
 
 The selected locale is applied to both preview and live serving. Seed settings are stored per response and are included in export/import.
 
-## 10. Template validation and runtime failures
+## 11. Template validation and runtime failures
 
 | Code | Meaning |
 |---|---|
@@ -291,7 +316,7 @@ A runtime failure returns HTTP 500:
 
 The response also contains `X-MockDeck-Template-Error: 1`. Logs record the error metadata, `templated`, and render time, but never the full rendered body.
 
-## 11. Invoke a mock
+## 12. Invoke a mock
 
 Select **Copy mock curl** from an endpoint row. MockDeck replaces the source origin with `APP_URL` and preserves method, path, query, meaningful headers, and body.
 
@@ -306,7 +331,7 @@ Every returned response includes `X-Request-ID`. A caller-provided ID matching t
 
 Serving preserves the selected response status, headers, and delay. No enabled match returns diagnostic JSON 404. A matched endpoint without responses returns diagnostic JSON 500. Request-normalization failures return diagnostic JSON 400.
 
-## 12. Inspect the request log
+## 13. Inspect the request log
 
 Open **Request log**. Search by path, endpoint, or request ID, and filter by method, match, status family, endpoint, time range, and row limit. **Unmatched only** narrows to requests with match `none`; **Group repeats** collapses consecutive identical events.
 
@@ -314,17 +339,19 @@ Choose local or UTC timestamps and Compact or Comfortable density. Density is st
 
 Logs are flat JSON written to stdout and/or daily files. They are not stored in PostgreSQL. File reading is bounded across current and rotated logs, and malformed/partial lines are skipped.
 
-## 13. Export and import configuration
+## 14. Export and import configuration
 
 Open **Import / export**.
 
 ### Export
 
-1. Search/select endpoints or select all.
+1. Choose all endpoints, one collection, or one environment, then search/select endpoints or select all in that scope.
 2. Keep **Redact request secrets** enabled for normal sharing.
 3. Export the selected set.
 
-Redaction removes configured authentication/cookie/API-key headers and sensitive query values. An affected endpoint exports disabled with `requires_secret_replacement: true`. Template text is exported exactly as stored and is not redacted.
+Redaction removes configured authentication/cookie/API-key headers and sensitive query values. An affected endpoint exports disabled with `requires_secret_replacement: true`. Template text is exported exactly as stored and is not redacted. Environment secrets are always exported with a null value, even when request-secret redaction is disabled.
+
+Environment-scoped export includes endpoints that inherit their state and endpoints with an enabled override; it excludes explicit disabled overrides.
 
 ### Import
 
@@ -334,7 +361,7 @@ Redaction removes configured authentication/cookie/API-key headers and sensitive
 4. Review validation errors, exact-signature conflicts, overlap warnings, UUID actions, and redaction warnings.
 5. Acknowledge warnings and apply. Apply rechecks the digest/conflicts under locks and writes atomically.
 
-Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Version 1/1.0 files remain supported; missing template fields become static responses. Current exports use format `1.1`.
+Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Version 1/1.0/1.1 files remain supported; missing template and organization fields use backward-compatible defaults. Current exports use format `1.2`.
 
 CLI equivalents:
 
@@ -348,19 +375,28 @@ php artisan mockdeck:import mockdeck.json --mode=upsert --acknowledge-warnings
 
 See [CONFIG_IMPORT_EXPORT.md](CONFIG_IMPORT_EXPORT.md) for the complete document and conflict contract.
 
-## 14. Protected template endpoints
+## 15. Protected APIs
 
-The dashboard uses these authenticated endpoints:
+### Protected template endpoints
+
+The dashboard uses the following protected template endpoints and organization APIs:
 
 | Method and path | Purpose |
 |---|---|
 | `GET /api/faker-catalog` | Mapped catalog, return types, samples, aliases, and argument hints; supports ETag. |
 | `POST /api/response-templates/validate` | Parse/validate template and return structured issues. |
 | `POST /api/response-templates/preview` | Render output and return bytes, render time, and issues. |
+| `GET/POST/PATCH/DELETE /api/collections` | Manage endpoint collections. |
+| `GET/POST/PATCH/DELETE /api/tags` | Manage case-insensitive endpoint tags. |
+| `GET/POST/PATCH/DELETE /api/environments` | Manage environments; secret values are masked. |
+| `POST /api/environments/{id}/duplicate` | Create an independent environment and variable copy. |
+| `GET/POST/PATCH/DELETE /api/environments/{id}/variables` | Manage write-only secret and public variables. |
+| `GET/PUT /api/active-environment` | Read or switch the global active environment. |
+| `PATCH /api/endpoints/{id}/organization` | Update collection, tags, and environment overrides. |
 
 They require dashboard access and are intended for the built-in editor, not as unauthenticated public APIs.
 
-## 15. Operations and validation
+## 16. Operations and validation
 
 ```bash
 make up                 # build, start, and wait for services
@@ -378,7 +414,7 @@ Git must retain the `.gitignore` placeholders under `storage/framework/cache/dat
 
 See [VALIDATION.md](VALIDATION.md) for complete automated and manual release checks.
 
-## 16. Current limitations
+## 17. Current limitations
 
 - Matching uses five fixed header policies; arbitrary per-field query/header/body predicates are not implemented.
 - Upstream origin is intentionally excluded from signatures.

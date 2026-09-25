@@ -11,6 +11,7 @@
             <ol class="docs-toc">
                 <li><a href="#getting-started">Create an endpoint</a></li>
                 <li><a href="#endpoint-registry">Manage endpoints</a></li>
+                <li><a href="#environments">Collections, tags, and environments</a></li>
                 <li><a href="#request-matching">Request matching</a></li>
                 <li><a href="#response-pools">Response pools</a></li>
                 <li><a href="#response-templating">Response templating</a></li>
@@ -62,6 +63,19 @@
                 <div><dt>Fallback</dt><dd>A normalized stored signature matched after the hash did not. Inspect the request log for drift.</dd></div>
                 <div><dt>None</dt><dd>No enabled endpoint matched the request.</dd></div>
             </dl>
+        </section>
+
+        <section id="environments" class="card docs-card docs-wide">
+            <h2>Collections, tags, and environments</h2>
+            <p>Collections and tags organize endpoints without changing request signatures. Filter by collection or tag chips, show assignments on endpoint rows, and use the bulk bar to move or tag selected endpoints. Deleting a collection leaves its endpoints in place.</p>
+            <h3>Active environment</h3>
+            <ol>
+                <li>Choose the global active environment from the header switcher.</li>
+                <li>Open <strong>Manage environments</strong> to create, rename, duplicate, delete, or choose the default.</li>
+                <li>Add variables. Secret values are write-only after saving and always masked or redacted.</li>
+                <li>Use the endpoint editor's Environment availability table for explicit overrides. Inherit stores no override.</li>
+            </ol>
+            <p>An endpoint matches only when it is enabled and the active environment has no override or an enabled override. This eligibility check does not change request hashes or precedence. New request-log entries show the active environment.</p>
         </section>
 
         <section id="response-pools" class="card docs-card">
@@ -216,9 +230,10 @@
             <h2>Import and export</h2>
             <h3>Export</h3>
             <ol>
-                <li>Search and select endpoints, or export all.</li>
+                <li>Choose all endpoints, one collection, or one environment, then search/select endpoints or export the complete scope.</li>
+                <li>An environment scope includes inherited endpoints and enabled overrides; an explicit disabled override excludes an endpoint.</li>
                 <li>Keep secret redaction enabled unless original credentials are required. Redacted endpoints export disabled.</li>
-                <li>Store unredacted exports securely. Templates are included exactly as configured and are not redacted.</li>
+                <li>Environment secrets are always redacted, even in an otherwise unredacted export. Templates remain exact.</li>
             </ol>
             <h3>Import</h3>
             <ol>

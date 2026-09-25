@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Middleware\DashboardAccess;
+use App\Services\Environments\EnvironmentContext;
 use App\Services\Response\ResponseSelectorInterface;
 use App\Services\Response\WeightedRandomSelector;
 use App\Services\Templates\FakerMethodCatalog;
@@ -15,6 +16,7 @@ final class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(ResponseSelectorInterface::class, WeightedRandomSelector::class);
         $this->app->singleton(FakerMethodCatalog::class);
+        $this->app->singleton(EnvironmentContext::class);
     }
 
     public function boot(): void

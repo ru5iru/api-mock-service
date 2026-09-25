@@ -282,6 +282,8 @@ Use a switch for immediate binary state. Use a checkbox where the value is submi
 | `.safe-badge/.overwrite-badge` | 2px/6px padding, 11px/700 | Compact safe/warning qualifier. |
 | `.nav-badge` | 21px high, pill radius | Non-zero unmatched-request count only. |
 | `.repeat-badge` | min 28px wide, pill radius | Repeated log-event count. |
+| `.tag-chip` | 24px minimum height, pill radius, neutral tokens; selected uses warning tokens | Endpoint tags, tag filters, and compact default-environment labels. Selectable chips contain a real checkbox and expose focus. |
+| `.collection-chip` | 24px minimum height, 5px radius, info tokens | An endpoint's collection. Do not use it for interactive filtering. |
 
 Badges label concise state; they are not buttons and must not be used as section headings.
 
@@ -378,6 +380,12 @@ Use skeletons only where the final row shape is predictable. Use a spinner or te
 Blade component: `resources/views/components/theme-control.blade.php`. It renders one 38px icon button and a 150px-minimum menu with three 36px-minimum radio options. The selected option has a filled dot and is the only menu item in the tab order when the menu opens.
 
 Use exactly one visible theme control in each navigation context. Do not add page-local theme state or a second selector inside another menu.
+
+### Environment switcher
+
+Livewire component: `app/Livewire/Admin/EnvironmentSwitcher.php`; view: `resources/views/livewire/admin/environment-switcher.blade.php`. The trigger is a 40px bordered control composed from the existing select/menu surface, with a green state dot and the active environment name. Its raised panel reuses the user-menu border, radius, shadow, 40px option rows, and native `details` disclosure. Options use the established menu keyboard contract: Arrow Up/Down, Home/End, and Escape with focus returned to the trigger. One click opens it and one click activates an environment.
+
+Environment state is server-side and global. `EnvironmentContext` is the only source of truth; do not mirror it in browser storage. Livewire navigation re-renders from that state, so the active label must never reset or briefly show a different environment. Use this switcher only for the runtime environment, and link management rather than putting create/delete actions in its compact menu.
 
 ## 5. Theme system
 

@@ -106,7 +106,7 @@ Open `http://localhost:18473/dashboard`. Verify:
 Import/export smoke check:
 
 1. Export one endpoint with secret redaction enabled.
-2. Confirm the JSON has `format: "mockdeck"`, a supported `format_version` (`1`, `"1.0"`, or `"1.1"`), and no numeric database IDs or derived hashes.
+2. Confirm the JSON has `format: "mockdeck"`, a supported `format_version` (`1`, `"1.0"`, `"1.1"`, or `"1.2"`), and no numeric database IDs or derived hashes.
 3. If the source curl contained auth, cookies, an API-key header, or a configured sensitive query key, confirm the value is absent and the endpoint is disabled with `requires_secret_replacement: true`.
 4. Preview the file in `clone` mode; confirm no rows are written before **Apply import**.
 5. Review and acknowledge warnings, apply, and confirm endpoint/response counts.
@@ -171,11 +171,13 @@ After updating an existing deployment:
 docker compose exec app php artisan migrate:status
 ```
 
-Confirm both migrations are marked as run:
+Confirm the relevant migrations are marked as run:
 
 - `2026_09_16_000003_rebuild_origin_independent_signatures`
 - `2026_09_18_000003_add_runtime_controls_to_mock_endpoints_table`
 - `2026_09_19_000001_add_portable_uuids`
+- `2026_09_24_000001_add_templating_to_mock_responses_table`
+- `2026_09_25_000001_add_collections_tags_and_environments`
 
 Existing endpoints should report signature version `2` after migration.
 
@@ -190,6 +192,15 @@ Manual conflict scenario:
 An exact duplicate signature should be rejected by the endpoint form before saving.
 Repeat that check with a different scheme/host but the same path; it must also be rejected as a duplicate.
 
+### Collections, tags, and environments
+
+1. Confirm migration creates exactly one default `Development` environment and existing endpoints still match without override rows.
+2. Switch between Development and Staging and verify an explicit disabled override affects only Staging.
+3. Create a secret variable through the API, then verify GET, duplicate, and export responses never contain its plaintext value.
+4. Delete a collection and verify its endpoints remain with `collection_id = null`.
+5. Duplicate an environment, edit the copy, and verify the source variables are unchanged.
+6. Export one environment and verify inherited/enabled endpoints are present, explicit disabled overrides are absent, and secret values are null.
+
 ## Test coverage map
 
 | Area | Representative coverage |
@@ -198,6 +209,7 @@ Repeat that check with a different scheme/host but the same path; it must also b
 | Canonicalization | origin independence, query ordering, transport headers, JSON sorting, invalid JSON, URL safety |
 | Signature variants | V1 through V5 and selected policy |
 | Matching | hash, fallback, specificity, priority, disabled endpoints, empty response handling |
+| Organization | collection deletion safety, case-insensitive tags, active-environment matching, override inheritance, environment duplication, write-only secrets, scoped export |
 | Dashboard | CRUD, cross-origin duplicate prevention, copy-curl generation, filters, state toggling, authentication/logout |
 | Portable config | UUIDs, deterministic/redacted export, validation, preview token/digest, exact/overlap conflicts, atomic create/upsert, HTTP and CLI flows |
 | Responses | create, update, delete, weighted selection |
@@ -209,13 +221,3 @@ Repeat that check with a different scheme/host but the same path; it must also b
 `.github/workflows/ci.yml` repeats Composer validation, Pint, and the full PHPUnit suite on pushes and pull requests. A local `make validate` should pass before every push.
 
 The tracked `.gitignore` placeholders under `storage/framework/cache/data`, `storage/framework/sessions`, `storage/framework/views`, and `storage/logs` are required. Git does not retain empty directories; removing these files makes a clean Composer install fail during Laravel `package:discover` with `Please provide a valid cache path.`
-
-## Environment note for this delivery
-
-The delivery workspace used to prepare this ZIP did not provide PHP, Composer, Docker, or Podman. The following non-runtime checks were executed there:
-
-- `git diff --check`
-- POSIX shell syntax validation of `docker/entrypoint.sh`
-- repository and archive integrity checks
-
-Run `make validate` in a Docker-capable environment to execute the PHP formatter and test suite before deployment.

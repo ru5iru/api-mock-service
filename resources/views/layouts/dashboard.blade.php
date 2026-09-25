@@ -51,6 +51,7 @@
                    @if (request()->routeIs('dashboard.config.*')) aria-current="page" @endif>
                     Import / export
                 </a>
+                <livewire:admin.environment-switcher />
                 <x-theme-control name="theme-header" />
                 <details class="user-menu">
                     <summary aria-label="Open user menu">
@@ -60,6 +61,7 @@
                     <div class="user-menu-panel">
                         <span class="user-menu-label">{{ config('mock.dashboard_auth.enabled') ? 'Authenticated session' : 'Local access mode' }}</span>
                         <a href="{{ route('dashboard.docs') }}" wire:navigate>Documentation</a>
+                        <a href="{{ route('dashboard.environments.index') }}" wire:navigate>Environments</a>
                         @if (config('mock.dashboard_auth.enabled'))
                             <form method="POST" action="{{ route('dashboard.logout') }}">
                                 @csrf
@@ -89,6 +91,8 @@
                         Import / export
                     </a>
                     <a href="{{ route('dashboard.docs') }}" wire:navigate>Documentation</a>
+                    <a href="{{ route('dashboard.environments.index') }}" wire:navigate>Environments</a>
+                    <livewire:admin.environment-switcher />
                     <x-theme-control name="theme-mobile" />
                     @if (config('mock.dashboard_auth.enabled'))
                         <form method="POST" action="{{ route('dashboard.logout') }}" class="nav-form">
@@ -501,6 +505,43 @@
         document.querySelector('[data-close-shortcuts]')?.addEventListener('click', () => shortcutDialog?.close());
         document.addEventListener('keydown', (event) => {
             const target = event.target;
+            const environmentTrigger = target.closest?.('[data-environment-menu] > summary');
+            if (environmentTrigger && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+                event.preventDefault();
+                const menu = environmentTrigger.closest('[data-environment-menu]');
+                menu.open = true;
+                const options = [...menu.querySelectorAll('[data-environment-option]')];
+                (event.key === 'ArrowUp' ? options.at(-1) : options[0])?.focus();
+                return;
+            }
+            if (environmentTrigger && event.key === 'Escape') {
+                environmentTrigger.closest('[data-environment-menu]').open = false;
+                return;
+            }
+
+            const environmentOption = target.closest?.('[data-environment-option]');
+            if (environmentOption) {
+                const menu = environmentOption.closest('[data-environment-menu]');
+                const options = [...menu.querySelectorAll('[data-environment-option]')];
+                const current = options.indexOf(environmentOption);
+                let next = current;
+                if (event.key === 'ArrowDown') next = (current + 1) % options.length;
+                if (event.key === 'ArrowUp') next = (current - 1 + options.length) % options.length;
+                if (event.key === 'Home') next = 0;
+                if (event.key === 'End') next = options.length - 1;
+                if (next !== current) {
+                    event.preventDefault();
+                    options[next]?.focus();
+                    return;
+                }
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    menu.open = false;
+                    menu.querySelector(':scope > summary')?.focus();
+                    return;
+                }
+            }
+
             const isEditing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target?.isContentEditable;
             if (isEditing || event.ctrlKey || event.metaKey || event.altKey) return;
 

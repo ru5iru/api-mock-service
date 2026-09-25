@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Collection;
+use App\Models\Environment;
 use App\Models\MockEndpoint;
 use App\Services\Config\ConfigExporter;
 use App\Services\Config\ConfigImporter;
@@ -31,6 +33,12 @@ final class ConfigTransfer extends Component
     public bool $showRedactionPreview = false;
 
     public bool $confirmSensitiveExport = false;
+
+    public string $exportScope = 'all';
+
+    public string $exportCollectionId = '';
+
+    public string $exportEnvironmentId = '';
 
     public ?TemporaryUploadedFile $configFile = null;
 
@@ -62,6 +70,21 @@ final class ConfigTransfer extends Component
     public function updatedMode(): void
     {
         $this->clearPreview();
+    }
+
+    public function updatedExportScope(): void
+    {
+        $this->clearSelection();
+    }
+
+    public function updatedExportCollectionId(): void
+    {
+        $this->clearSelection();
+    }
+
+    public function updatedExportEnvironmentId(): void
+    {
+        $this->clearSelection();
     }
 
     public function updatedReplaceResponses(): void
@@ -205,6 +228,8 @@ final class ConfigTransfer extends Component
             'endpointTotal' => MockEndpoint::query()->count(),
             'importedEndpoints' => MockEndpoint::query()->whereIn('uuid', $this->importedEndpointUuids)->get(),
             'modes' => ImportMode::cases(),
+            'collections' => Collection::query()->withCount('endpoints')->orderBy('name')->get(),
+            'environments' => Environment::query()->orderByDesc('is_default')->orderBy('name')->get(),
         ]);
     }
 
@@ -213,6 +238,17 @@ final class ConfigTransfer extends Component
     {
         $this->resetErrorBag('selectedEndpointUuids');
 
+        if ($this->exportScope === 'collection' && $this->exportCollectionId === '') {
+            $this->addError('export', 'Choose a collection before exporting this scope.');
+
+            return null;
+        }
+        if ($this->exportScope === 'environment' && $this->exportEnvironmentId === '') {
+            $this->addError('export', 'Choose an environment before exporting this scope.');
+
+            return null;
+        }
+
         if (! $this->redactSecrets && ! $this->confirmSensitiveExport) {
             $this->addError('redactSecrets', 'Confirm that the unredacted export may contain credentials.');
 
@@ -220,7 +256,15 @@ final class ConfigTransfer extends Component
         }
 
         try {
-            $json = $exporter->export($endpointUuids, $this->redactSecrets)->toJson();
+            $collectionId = $this->exportScope === 'collection' && $this->exportCollectionId !== '' ? (int) $this->exportCollectionId : null;
+            $environmentId = $this->exportScope === 'environment' && $this->exportEnvironmentId !== '' ? (int) $this->exportEnvironmentId : null;
+            if ($collectionId !== null) {
+                Collection::query()->findOrFail($collectionId);
+            }
+            if ($environmentId !== null) {
+                Environment::query()->findOrFail($environmentId);
+            }
+            $json = $exporter->export($endpointUuids, $this->redactSecrets, $collectionId, $environmentId)->toJson();
         } catch (InvalidArgumentException $exception) {
             $this->addError('export', $exception->getMessage());
 
@@ -252,6 +296,16 @@ final class ConfigTransfer extends Component
 
         return MockEndpoint::query()
             ->withCount('responses')
+            ->when($this->exportScope === 'collection' && $this->exportCollectionId !== '', fn (Builder $query) => $query->where('collection_id', (int) $this->exportCollectionId))
+            ->when($this->exportScope === 'environment' && $this->exportEnvironmentId !== '', function (Builder $query): void {
+                $environmentId = (int) $this->exportEnvironmentId;
+                $query->where(function (Builder $query) use ($environmentId): void {
+                    $query->whereDoesntHave('environmentOverrides', fn ($override) => $override->whereKey($environmentId))
+                        ->orWhereHas('environmentOverrides', fn ($override) => $override
+                            ->whereKey($environmentId)
+                            ->where('endpoint_environment_overrides.enabled', true));
+                });
+            })
             ->when($term !== '', function (Builder $query) use ($term): void {
                 $needle = '%'.strtolower($term).'%';
                 $query->where(function (Builder $query) use ($needle): void {

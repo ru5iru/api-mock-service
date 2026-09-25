@@ -11,6 +11,7 @@ The stack is Laravel 13, Livewire 4, PostgreSQL 16, PHP-FPM, nginx, and Docker C
 - Five endpoint-local cookie/auth/header signature policies
 - Deterministic conflict resolution by priority, specificity, then endpoint ID
 - Endpoint enable/disable controls and duplicate-signature prevention
+- Collections, case-insensitive tags, and global runtime environments with write-only secret variables
 - Multiple responses with weighted random selection and bounded delay
 - Opt-in JSON response templates with a schema builder, FakerPHP-backed Faker.js method mapping, validation, preview, and deterministic seeds
 - Password-protected dashboard with rate-limited login
@@ -27,6 +28,8 @@ The stack is Laravel 13, Livewire 4, PostgreSQL 16, PHP-FPM, nginx, and Docker C
 |---|---|---|
 | cURL endpoint creation | Safe parsing, canonical preview, matching policy, duplicate detection | **Endpoints → New endpoint** |
 | Endpoint registry | Search/filter/sort, enable/disable, duplicate, copy mock cURL, row and bulk actions | **Endpoints** |
+| Collections and tags | Organize, filter, bulk-move, and bulk-tag endpoints without changing signatures | **Endpoints** and endpoint editor |
+| Environments | Global active environment, per-endpoint availability overrides, variables, duplication, and scoped export | Header switcher and **Environments** |
 | Exact request matching | Origin-independent V1–V5 signatures with deterministic priority/specificity resolution | Endpoint editor and runtime |
 | Response pools | Multiple status/header/body/delay responses selected by relative weight | Endpoint response editor |
 | Response templating | Builder and JSON views, mapped Faker catalog, autocomplete, validation, preview, seeds, locales | Response **Body → Template** |
@@ -80,7 +83,7 @@ For a deliberately unauthenticated local-only dashboard, set `MOCK_DASHBOARD_AUT
 
 1. Sign in and choose **New endpoint**.
 2. Paste the real request as curl.
-3. Choose enabled state and priority.
+3. Choose enabled state, priority, collection, tags, and optional environment overrides.
 4. Choose whether cookies, authentication, or all headers should be ignored.
 5. Review the parsed request, canonical string, signature variant, and SHA-256 digest.
 6. Save it and configure one or more responses.
@@ -102,9 +105,24 @@ Every response includes `X-Request-ID`. A valid caller-provided ID is retained; 
 
 ## Manage endpoints and responses
 
-The endpoint registry searches name, method, path, and raw cURL; filters by method/state; and sorts by recent update, name, or priority. Each row can be opened, enabled/disabled, duplicated, exported, deleted, or copied as a MockDeck-host cURL. Selecting rows exposes bulk enable, disable, export, and delete actions.
+The endpoint registry searches name, method, path, and raw cURL; filters by method/state; and sorts by recent update, name, or priority. Each row can be opened, enabled/disabled, duplicated, exported, deleted, or copied as a MockDeck-host cURL. Selecting rows exposes bulk enable, disable, move-to-collection, add-tags, export, and delete actions.
+
+Collections and tags organize the registry without affecting request signatures. Filter by collection or multiple tag chips, show tags on endpoint rows, and use the bulk bar to move endpoints or attach tags. Deleting a collection keeps every endpoint and clears only its collection assignment.
 
 Each endpoint has a response pool. A response stores status, header JSON, bounded delay, positive weight, and either an exact static body or a JSON template. Selection probability is proportional to response weight.
+
+## Use environments
+
+MockDeck creates **Development** as the default active environment during migration. Existing endpoints have no overrides, so their matching behavior remains unchanged. Use the header environment switcher to change the global runtime environment, or open **Environments** to:
+
+- create, rename, duplicate, delete, and choose the default environment;
+- add public or secret key/value variables;
+- keep secrets write-only after creation; and
+- edit a duplicate independently of its source.
+
+An endpoint matches only when its normal endpoint state is enabled and its active-environment override is either absent or enabled. In the endpoint editor, **Inherit endpoint state** creates no override. Request-log entries record the active environment; older entries show an em dash.
+
+Environment-scoped exports include endpoints with no override for that environment and endpoints with an enabled override. An explicit disabled override excludes the endpoint. Environment secrets are always redacted, including when request-secret redaction is disabled.
 
 ## Use response templates
 
@@ -294,7 +312,7 @@ app/
   Services/Logging/                non-fatal writer and bounded rotated-log reader
   Services/Templates/              template compiler, mapped Faker catalog, schema projection, and renderer
 database/migrations/               endpoint and response schema
-docs/                              architecture, validation, and feature roadmap
+docs/                              UI, operator, architecture, transfer, and validation guides
 routes/web.php                     authenticated dashboard routes
 routes/mock.php                    root and catch-all invocation routes
 tests/                             unit and feature regression coverage

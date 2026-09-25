@@ -3,8 +3,14 @@
 use App\Http\Controllers\Admin\ConfigTransferController;
 use App\Http\Controllers\Admin\EndpointController;
 use App\Http\Controllers\Admin\ResponseController;
+use App\Http\Controllers\Api\ActiveEnvironmentController;
+use App\Http\Controllers\Api\CollectionController;
+use App\Http\Controllers\Api\EndpointOrganizationController;
+use App\Http\Controllers\Api\EnvironmentController;
+use App\Http\Controllers\Api\EnvironmentVariableController;
 use App\Http\Controllers\Api\FakerCatalogController;
 use App\Http\Controllers\Api\ResponseTemplateController;
+use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Auth\DashboardSessionController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +30,7 @@ Route::prefix('dashboard')
         Route::view('/requests', 'admin.requests')->name('requests.index');
         Route::view('/docs', 'admin.docs')->name('docs');
         Route::view('/config', 'admin.config')->name('config.index');
+        Route::view('/environments', 'admin.environments')->name('environments.index');
         Route::post('/config/exports', [ConfigTransferController::class, 'export'])
             ->middleware('throttle:20,1')
             ->name('config.exports.store');
@@ -49,4 +56,16 @@ Route::prefix('api')
         Route::post('/response-templates/preview', [ResponseTemplateController::class, 'preview'])
             ->middleware('throttle:60,1')
             ->name('api.response-templates.preview');
+        Route::apiResource('collections', CollectionController::class);
+        Route::apiResource('tags', TagController::class);
+        Route::apiResource('environments', EnvironmentController::class);
+        Route::post('/environments/{environment}/duplicate', [EnvironmentController::class, 'duplicate']);
+        Route::get('/environments/{environment}/variables', [EnvironmentVariableController::class, 'index']);
+        Route::post('/environments/{environment}/variables', [EnvironmentVariableController::class, 'store']);
+        Route::get('/environments/{environment}/variables/{variable}', [EnvironmentVariableController::class, 'show']);
+        Route::patch('/environments/{environment}/variables/{variable}', [EnvironmentVariableController::class, 'update']);
+        Route::delete('/environments/{environment}/variables/{variable}', [EnvironmentVariableController::class, 'destroy']);
+        Route::get('/active-environment', [ActiveEnvironmentController::class, 'show']);
+        Route::put('/active-environment', [ActiveEnvironmentController::class, 'update']);
+        Route::patch('/endpoints/{endpoint}/organization', [EndpointOrganizationController::class, 'update']);
     });

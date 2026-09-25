@@ -124,6 +124,7 @@ JSON,
                 && $context['templated'] === true
                 && is_float($context['render_ms'])
                 && $context['delay_ms'] === 1
+                && $context['environment'] === 'Development'
                 && ! array_key_exists('body', $context);
         });
 

@@ -21,6 +21,8 @@ final class ConfigTransferController extends Controller
             'endpoint_uuids.*' => ['required', 'uuid', 'distinct', 'exists:mock_endpoints,uuid'],
             'redact_secrets' => ['nullable', 'boolean'],
             'confirm_sensitive_export' => ['nullable', 'boolean'],
+            'collection_id' => ['nullable', 'integer', 'exists:collections,id', 'prohibits:environment_id'],
+            'environment_id' => ['nullable', 'integer', 'exists:environments,id', 'prohibits:collection_id'],
         ]);
 
         $redactSecrets = $request->boolean('redact_secrets', true);
@@ -31,7 +33,12 @@ final class ConfigTransferController extends Controller
         }
 
         try {
-            $json = $exporter->export($validated['endpoint_uuids'] ?? null, $redactSecrets)->toJson();
+            $json = $exporter->export(
+                $validated['endpoint_uuids'] ?? null,
+                $redactSecrets,
+                $validated['collection_id'] ?? null,
+                $validated['environment_id'] ?? null,
+            )->toJson();
         } catch (InvalidArgumentException $exception) {
             throw ValidationException::withMessages(['export' => $exception->getMessage()]);
         }

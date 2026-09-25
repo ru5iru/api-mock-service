@@ -75,7 +75,7 @@ Origin independence means two curls with the same method, path/query, meaningful
 
 `EndpointMatcher` performs:
 
-1. an enabled-only `curl_hash IN (...)` candidate query;
+1. an enabled-only `curl_hash IN (...)` candidate query restricted to endpoints whose active-environment override is absent or enabled;
 2. verification that each stored endpoint matches the candidate for its own selected variant;
 3. ranking by priority descending, signature specificity descending, then endpoint ID ascending;
 4. if no hash candidate survives, the same process over `method = ? AND normalized_curl IN (...)`.
@@ -83,6 +83,18 @@ Origin independence means two curls with the same method, path/query, meaningful
 Only the winning endpoint's responses are loaded. The fallback result carries tier `fallback`; `MockRequestLogger` raises that event to warning level. No additional warning line is written, preserving the one-event-per-request contract.
 
 The dashboard prevents exact duplicate signatures. Overlapping broad and narrow signatures are valid; priority and specificity make their ordering explicit. Digest collisions are cryptographically improbable, but stored values are still verified with constant-time comparison.
+
+The environment condition is eligibility only. `EnvironmentContext` resolves the global active environment from `app_settings`; it does not add environment data to canonical text, hashes, or precedence.
+
+## Organization and environments
+
+- `collections` owns optional `mock_endpoints.collection_id`; deletion uses `SET NULL`.
+- `tags.normalized_name` provides case-insensitive uniqueness and `endpoint_tags` provides the many-to-many relation.
+- `environments` contains one application-managed default. `app_settings.active_environment_id` stores the global active environment.
+- `environment_variables.value` uses Laravel's encrypted cast and is hidden from model serialization.
+- `endpoint_environment_overrides` stores only explicit booleans; a missing row means inheritance.
+
+`EnvironmentContext` owns active/default transitions so the header, matcher, protected API, export pipeline, and request log resolve the same server-side state.
 
 ## Response strategy
 
@@ -117,7 +129,7 @@ Successful template invocation preserves selected status, headers, and delay and
 
 `MockRequestLogger` targets only the `mock_requests` channel. `FlatJsonFormatter` merges scalar context into a single JSON object and emits one newline. File and stdout handlers share the formatter.
 
-The controller logs after delay and response construction so `duration_ms` includes artificial delay. Expected outcomes use info level. Fallback uses warning. An exception is logged with its class and rethrown to Laravel's exception handler. Each event includes the received mock URL and a validated caller-supplied or generated request ID; the ID is also returned as `X-Request-ID` and excluded from matching.
+The controller logs after delay and response construction so `duration_ms` includes artificial delay. Expected outcomes use info level. Fallback uses warning. An exception is logged with its class and rethrown to Laravel's exception handler. Each event includes the active environment, received mock URL, and a validated caller-supplied or generated request ID; the ID is also returned as `X-Request-ID` and excluded from matching. Older flat-file events without an environment render as `—`.
 
 Logging is non-fatal: stack exceptions are ignored and `MockRequestLogger` catches a channel failure so a log destination cannot change the mock response path.
 

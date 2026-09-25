@@ -1,6 +1,6 @@
 # Native configuration import and export
 
-MockDeck's native JSON format moves endpoint definitions and their responses between installations without coupling files to database IDs or trusted hashes. The current media type is `application/vnd.mockdeck.config+json`; the current format version is `1.1`, with version `1` and `1.0` imports retained for backward compatibility.
+MockDeck's native JSON format moves endpoint definitions, responses, collections, tags, and environments between installations without coupling files to database IDs or trusted hashes. The current media type is `application/vnd.mockdeck.config+json`; the current format version is `1.2`, with version `1`, `1.0`, and `1.1` imports retained for backward compatibility.
 
 ## Safe dashboard workflow
 
@@ -54,13 +54,16 @@ MOCK_EXPORT_SENSITIVE_QUERY_KEYS=access_token,api_key,apikey,auth_token,key,toke
 
 When redaction removes a value, the export sets `enabled: false` and `requires_secret_replacement: true`. Import enforces the disabled state. Replace the missing value in the endpoint editor with an environment-appropriate credential, review the signature policy, and enable the endpoint deliberately.
 
-MockDeck never exports dashboard credentials, environment variables, database settings, request logs, numeric database IDs, canonical strings, or stored hashes.
+MockDeck never exports dashboard credentials, secret environment-variable values, database settings, request logs, numeric database IDs, canonical strings, or stored hashes. Non-secret environment variables are portable configuration and are included.
 
 ## Document contract
 
-The current checked-in contract is `resources/schemas/mockdeck-config-v1.1.schema.json`; the original `resources/schemas/mockdeck-config-v1.schema.json` remains available for version 1 documents. A current document contains:
+The current checked-in contract is `resources/schemas/mockdeck-config-v1.2.schema.json`; earlier schemas remain available for older documents. A current document contains:
 
-- `format: "mockdeck"` and `format_version: "1.1"`;
+- `format: "mockdeck"` and `format_version: "1.2"`;
+- collection definitions, case-insensitive tag names, and environment definitions;
+- non-secret environment variable values plus redacted secret placeholders;
+- endpoint collection, tags, and named environment overrides;
 - export metadata and whether secrets were redacted;
 - stable endpoint and response UUIDs;
 - raw curl, source signature version, and matching exclusions;
@@ -71,7 +74,11 @@ Endpoint and response arrays are sorted by UUID. Response header keys are sorted
 
 Imported `normalized_curl`, `curl_hash`, and numeric IDs are unknown fields and are ignored with warnings. Every request is parsed and hashed again by the running application's canonicalization code. Unknown object properties warn; unsupported format versions and invalid required values fail.
 
-Version 1 and 1.0 imports remain supported. Missing template fields default to a static body. Template text is exported exactly as stored and is not redacted.
+Version 1, 1.0, and 1.1 imports remain supported. Missing organization fields produce no collection, tags, or overrides; missing template fields default to a static body. Template text is exported exactly as stored and is not redacted.
+
+Environment secret values are never exported, even when request-secret redaction is disabled. Their entries use `value: null`, `is_secret: true`, and `redacted: true`. Import preserves an existing local secret when the incoming redacted value is null.
+
+The dashboard can scope export to one collection or one environment. Environment scope includes endpoints with no override and endpoints with an enabled override; it excludes endpoints explicitly disabled in that environment.
 
 ## Limits
 
@@ -116,11 +123,11 @@ All routes use dashboard session access, CSRF protection, and request throttling
 
 | Method and path | Purpose |
 |---|---|
-| `POST /dashboard/config/exports` | Download all or selected endpoint UUIDs |
+| `POST /dashboard/config/exports` | Download all, selected, collection-scoped, or environment-scoped endpoints |
 | `POST /dashboard/config/imports/preview` | Upload `config`, choose `mode`, return a plan/token |
 | `POST /dashboard/config/imports/apply` | Submit preview `token`, `digest`, and warning acknowledgement |
 
-Export accepts `endpoint_uuids[]`, `redact_secrets`, and `confirm_sensitive_export`. Preview accepts multipart `config`, `mode`, and `replace_responses`. Apply accepts `token`, `digest`, and `acknowledge_warnings`.
+Export accepts `endpoint_uuids[]`, `redact_secrets`, `confirm_sensitive_export`, and either `collection_id` or `environment_id`. Preview accepts multipart `config`, `mode`, and `replace_responses`. Apply accepts `token`, `digest`, and `acknowledge_warnings`.
 
 ## Recovery and validation
 

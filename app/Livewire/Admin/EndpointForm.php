@@ -2,11 +2,15 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Collection;
+use App\Models\Environment;
 use App\Models\MockEndpoint;
+use App\Models\Tag;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\ParsedCurl;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Livewire\Component;
@@ -36,6 +40,18 @@ CURL;
 
     public bool $excludeHeaders = false;
 
+    public string $collectionId = '';
+
+    public string $newCollectionName = '';
+
+    /** @var list<int> */
+    public array $tagIds = [];
+
+    public string $newTagName = '';
+
+    /** @var array<int, string> */
+    public array $environmentOverrides = [];
+
     /** @var list<string> */
     public array $touchedSections = [];
 
@@ -60,6 +76,12 @@ CURL;
         $this->excludeCookies = $endpoint->exclude_cookies;
         $this->excludeAuth = $endpoint->exclude_auth;
         $this->excludeHeaders = $endpoint->exclude_headers;
+        $this->collectionId = $endpoint->collection_id === null ? '' : (string) $endpoint->collection_id;
+        $this->tagIds = $endpoint->tags()->pluck('tags.id')->map(static fn ($id): int => (int) $id)->all();
+        $this->environmentOverrides = $endpoint->environmentOverrides()
+            ->get()
+            ->mapWithKeys(static fn ($environment): array => [$environment->id => $environment->pivot->enabled ? '1' : '0'])
+            ->all();
     }
 
     public function updatedExcludeHeaders(bool $value): void
@@ -109,6 +131,26 @@ CURL;
         $this->resetValidation('rawCurl');
     }
 
+    public function createCollectionInline(): void
+    {
+        $this->validateOnly('newCollectionName', ['newCollectionName' => ['required', 'string', 'max:255']]);
+        $collection = Collection::query()->create(['name' => trim($this->newCollectionName)]);
+        $this->collectionId = (string) $collection->id;
+        $this->newCollectionName = '';
+        $this->dispatch('toast', message: 'Collection created and selected.');
+    }
+
+    public function createTagInline(): void
+    {
+        $this->validateOnly('newTagName', ['newTagName' => ['required', 'string', 'max:80']]);
+        $normalized = Str::lower(trim($this->newTagName));
+        $tag = Tag::query()->where('normalized_name', $normalized)->first();
+        $tag ??= Tag::query()->create(['name' => trim($this->newTagName)]);
+        $this->tagIds = array_values(array_unique([...$this->tagIds, $tag->id]));
+        $this->newTagName = '';
+        $this->dispatch('toast', message: 'Tag selected.');
+    }
+
     public function maskSecrets(): void
     {
         $this->touchSection('request');
@@ -146,7 +188,19 @@ CURL;
             'excludeCookies' => ['boolean'],
             'excludeAuth' => ['boolean'],
             'excludeHeaders' => ['boolean'],
+            'collectionId' => ['nullable', 'integer', 'exists:collections,id'],
+            'tagIds' => ['array'],
+            'tagIds.*' => ['integer', 'distinct', 'exists:tags,id'],
+            'environmentOverrides' => ['array'],
+            'environmentOverrides.*' => ['nullable', 'in:,0,1'],
         ]);
+
+        $overrideIds = array_values(array_unique(array_map('intval', array_keys($this->environmentOverrides))));
+        if (Environment::query()->whereKey($overrideIds)->count() !== count($overrideIds)) {
+            $this->addError('environmentOverrides', 'Every override must reference an existing environment.');
+
+            return null;
+        }
 
         if (trim($this->rawCurl) === trim(self::EXAMPLE_CURL)) {
             $this->addError('rawCurl', 'This is the sample curl. Replace its URL and values with the request you want to mock.');
@@ -186,19 +240,29 @@ CURL;
         $created = $this->endpointId === null;
         $displayName = trim($this->name) ?: $this->deriveName($parsed);
 
-        $endpoint->fill([
-            'name' => $displayName,
-            'enabled' => $this->enabled,
-            'priority' => $this->priority,
-            'method' => $parsed->method,
-            'raw_curl' => $this->rawCurl,
-            'normalized_curl' => $variant->normalized,
-            'curl_hash' => $variant->hash,
-            'signature_version' => 2,
-            'exclude_cookies' => $this->excludeHeaders ? false : $this->excludeCookies,
-            'exclude_auth' => $this->excludeHeaders ? false : $this->excludeAuth,
-            'exclude_headers' => $this->excludeHeaders,
-        ])->save();
+        DB::transaction(function () use ($endpoint, $displayName, $parsed, $variant): void {
+            $endpoint->fill([
+                'collection_id' => $this->collectionId === '' ? null : (int) $this->collectionId,
+                'name' => $displayName,
+                'enabled' => $this->enabled,
+                'priority' => $this->priority,
+                'method' => $parsed->method,
+                'raw_curl' => $this->rawCurl,
+                'normalized_curl' => $variant->normalized,
+                'curl_hash' => $variant->hash,
+                'signature_version' => 2,
+                'exclude_cookies' => $this->excludeHeaders ? false : $this->excludeCookies,
+                'exclude_auth' => $this->excludeHeaders ? false : $this->excludeAuth,
+                'exclude_headers' => $this->excludeHeaders,
+            ])->save();
+            $endpoint->tags()->sync(array_map('intval', $this->tagIds));
+            $overrides = collect($this->environmentOverrides)
+                ->filter(static fn (string $enabled): bool => $enabled !== '')
+                ->mapWithKeys(static fn (string $enabled, int|string $environmentId): array => [
+                    (int) $environmentId => ['enabled' => $enabled === '1'],
+                ])->all();
+            $endpoint->environmentOverrides()->sync($overrides);
+        }, 3);
 
         session()->flash(
             'status',
@@ -259,6 +323,9 @@ CURL;
             'curlWarnings' => $this->curlWarnings(),
             'containsSecrets' => collect($headerAnalysis)->contains('sensitive', true) || $this->containsSensitiveQuery(),
             'isExample' => trim($this->rawCurl) === trim(self::EXAMPLE_CURL),
+            'collections' => Collection::query()->orderBy('name')->get(),
+            'availableTags' => Tag::query()->orderBy('name')->get(),
+            'environments' => Environment::query()->orderByDesc('is_default')->orderBy('name')->get(),
         ]);
     }
 

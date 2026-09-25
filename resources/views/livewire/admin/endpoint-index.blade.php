@@ -2,7 +2,7 @@
     @php
         $pageIds = $endpoints->pluck('id')->map(static fn ($id) => (int) $id)->all();
         $pageSelected = $pageIds !== [] && count(array_intersect($pageIds, $selected)) === count($pageIds);
-        $filtersActive = $search !== '' || $method !== '' || $state !== 'all';
+        $filtersActive = $search !== '' || $method !== '' || $state !== 'all' || $collection !== 'all' || $tags !== [];
         $allEndpointCount = \App\Models\MockEndpoint::query()->count();
     @endphp
     <div class="toolbar card" aria-label="Endpoint controls">
@@ -43,7 +43,17 @@
                     <option value="priority">Priority</option>
                 </select>
             </label>
-            @if ($search !== '' || $method !== '' || $state !== 'all' || $sort !== 'recent')
+            <label class="select-field">
+                <span class="select-caption">Collection</span>
+                <select wire:model.live="collection" aria-label="Filter by collection">
+                    <option value="all">All collections</option>
+                    <option value="none">No collection</option>
+                    @foreach ($collections as $endpointCollection)
+                        <option value="{{ $endpointCollection->id }}">{{ $endpointCollection->name }} ({{ $endpointCollection->endpoints_count }})</option>
+                    @endforeach
+                </select>
+            </label>
+            @if ($search !== '' || $method !== '' || $state !== 'all' || $sort !== 'recent' || $collection !== 'all' || $tags !== [])
                 <button class="text-button filter-reset" type="button" wire:click="clearFilters">Clear filters</button>
             @endif
             <span class="result-count">
@@ -54,12 +64,41 @@
                 @endif
             </span>
         </div>
+        @if ($availableTags->isNotEmpty())
+            <div class="tag-filter-row" aria-label="Filter endpoints by tag">
+                @foreach ($availableTags as $tag)
+                    <label class="tag-chip selectable {{ in_array($tag->id, $tags, true) ? 'selected' : '' }}">
+                        <input type="checkbox" value="{{ $tag->id }}" wire:model.live="tags">
+                        <span>{{ $tag->name }}</span><small>{{ $tag->endpoints_count }}</small>
+                    </label>
+                @endforeach
+            </div>
+        @endif
     </div>
 
     @if ($selected !== [])
         <div class="selection-bar card" aria-live="polite">
             <strong>{{ count($selected) }} selected</strong>
             <div class="selection-actions">
+                <label class="select-field bulk-select">
+                    <span class="sr-only">Move selected endpoints to collection</span>
+                    <select wire:model="bulkCollection" aria-label="Collection for selected endpoints">
+                        <option value="">No collection</option>
+                        @foreach ($collections as $endpointCollection)<option value="{{ $endpointCollection->id }}">{{ $endpointCollection->name }}</option>@endforeach
+                    </select>
+                </label>
+                <button class="button button-tertiary button-small" type="button" wire:click="bulkMoveToCollection">Move to collection</button>
+                @if ($availableTags->isNotEmpty())
+                    <details class="bulk-tag-picker">
+                        <summary class="button button-tertiary button-small">Add tags</summary>
+                        <div>
+                            @foreach ($availableTags as $tag)
+                                <label><input type="checkbox" value="{{ $tag->id }}" wire:model="bulkTags"> {{ $tag->name }}</label>
+                            @endforeach
+                            <button class="button button-primary button-small" type="button" wire:click="bulkAddTags" @disabled($bulkTags === [])>Apply tags</button>
+                        </div>
+                    </details>
+                @endif
                 <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(true)">Enable</button>
                 <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(false)">Disable</button>
                 <button class="button button-secondary button-small" type="button" wire:click="bulkExport">Export</button>
@@ -130,6 +169,12 @@
                                     </span>
                                     <span title="{{ $endpoint->updated_at->toDayDateTimeString() }}">Updated {{ $endpoint->updated_at->diffForHumans() }}</span>
                                 </div>
+                                @if ($endpoint->collection || $endpoint->tags->isNotEmpty())
+                                    <div class="endpoint-taxonomy">
+                                        @if ($endpoint->collection)<span class="collection-chip">{{ $endpoint->collection->name }}</span>@endif
+                                        @foreach ($endpoint->tags as $tag)<span class="tag-chip">{{ $tag->name }}</span>@endforeach
+                                    </div>
+                                @endif
                             </div>
                             @if ($endpoint->responses_count === 0)
                                 <div class="inline-warning">
@@ -178,7 +223,7 @@
             @empty
                 <div class="empty-state card">
                     <div class="empty-illustration" aria-hidden="true"><span>{ }</span></div>
-                    @php($filtered = $search !== '' || $method !== '' || $state !== 'all')
+                    @php($filtered = $search !== '' || $method !== '' || $state !== 'all' || $collection !== 'all' || $tags !== [])
                     <h3>{{ $filtered ? 'No endpoints match these filters' : 'Your mock registry is empty' }}</h3>
                     <p>{{ $filtered ? 'Try a different search, method, or state.' : 'Create an endpoint from a curl command or import an existing MockDeck configuration.' }}</p>
                     <div class="empty-actions">

@@ -6,6 +6,8 @@ use App\Models\MockEndpoint;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\HashVariant;
 use App\Services\Curl\ParsedCurl;
+use App\Services\Environments\EnvironmentContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -14,7 +16,10 @@ use Illuminate\Support\Collection;
  */
 final readonly class EndpointMatcher
 {
-    public function __construct(private CurlHasher $hasher) {}
+    public function __construct(
+        private CurlHasher $hasher,
+        private EnvironmentContext $environments,
+    ) {}
 
     public function match(ParsedCurl $request): ?EndpointMatch
     {
@@ -24,7 +29,7 @@ final readonly class EndpointMatcher
             $variants,
         )));
 
-        $candidates = MockEndpoint::query()
+        $candidates = $this->eligibleQuery()
             ->where('enabled', true)
             ->whereIn('curl_hash', $hashes)
             ->get();
@@ -39,7 +44,7 @@ final readonly class EndpointMatcher
             $variants,
         )));
 
-        $candidates = MockEndpoint::query()
+        $candidates = $this->eligibleQuery()
             ->where('enabled', true)
             ->where('method', strtoupper($request->method))
             ->whereIn('normalized_curl', $normalizedCandidates)
@@ -50,6 +55,20 @@ final readonly class EndpointMatcher
         return $ranked === null
             ? null
             : new EndpointMatch($ranked['endpoint']->load('responses'), 'fallback', $ranked['variant']);
+    }
+
+    private function eligibleQuery(): Builder
+    {
+        $environmentId = $this->environments->active()->id;
+
+        return MockEndpoint::query()
+            ->where('enabled', true)
+            ->where(function ($query) use ($environmentId): void {
+                $query->whereDoesntHave('environmentOverrides', fn ($override) => $override->whereKey($environmentId))
+                    ->orWhereHas('environmentOverrides', fn ($override) => $override
+                        ->whereKey($environmentId)
+                        ->where('endpoint_environment_overrides.enabled', true));
+            });
     }
 
     /**

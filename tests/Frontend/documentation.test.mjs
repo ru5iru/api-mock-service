@@ -25,6 +25,7 @@ test('user guide covers every implemented operator feature', () => {
         'Create an endpoint from cURL',
         'Understand request matching',
         'Manage the endpoint registry',
+        'Environments and variables',
         'Configure response pools',
         'Build a response template',
         'Template language reference',
@@ -44,6 +45,7 @@ test('in-app documentation exposes the complete workflow sections', () => {
     for (const id of [
         'getting-started',
         'endpoint-registry',
+        'environments',
         'request-matching',
         'response-pools',
         'response-templating',

@@ -2,12 +2,16 @@
 
 namespace App\Services\Config;
 
+use App\Models\Collection as EndpointCollection;
+use App\Models\Environment;
 use App\Models\MockEndpoint;
 use App\Models\MockResponse;
+use App\Models\Tag;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\HashVariant;
 use App\Services\Curl\ParsedCurl;
+use App\Services\Environments\EnvironmentContext;
 use App\Services\Matching\MatchPrecedence;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +25,7 @@ final readonly class ConfigImporter
         private ConfigValidator $validator,
         private CurlParser $parser,
         private CurlHasher $hasher,
+        private EnvironmentContext $environments,
     ) {}
 
     public function preview(string $json, ImportMode $mode, bool $replaceResponses = false): ImportPlan
@@ -364,6 +369,7 @@ final readonly class ConfigImporter
         $responseUpdates = 0;
         $responseDeletes = 0;
         $disabled = 0;
+        $organization = $this->persistOrganization($document);
 
         foreach ($document->endpoints() as $source) {
             $matching = $source['request']['matching'];
@@ -393,6 +399,7 @@ final readonly class ConfigImporter
             }
 
             $endpoint->fill([
+                'collection_id' => isset($source['collection']) ? ($organization['collections'][Str::lower($source['collection'])] ?? null) : null,
                 'name' => $source['name'],
                 'enabled' => $enabled,
                 'priority' => $source['priority'],
@@ -405,6 +412,15 @@ final readonly class ConfigImporter
                 'exclude_auth' => $matching['exclude_auth'],
                 'exclude_headers' => $matching['exclude_headers'],
             ])->save();
+
+            $endpoint->tags()->sync(collect($source['tags'] ?? [])->map(
+                static fn (string $name): ?int => $organization['tags'][Str::lower($name)] ?? null,
+            )->filter()->values()->all());
+            $endpoint->environmentOverrides()->sync(collect($source['environment_overrides'] ?? [])->mapWithKeys(
+                static fn (bool $enabled, string $name): array => isset($organization['environments'][Str::lower($name)])
+                    ? [$organization['environments'][Str::lower($name)] => ['enabled' => $enabled]]
+                    : [],
+            )->all());
 
             $importedResponseUuids = [];
             foreach ($source['responses'] as $responseSource) {
@@ -454,6 +470,55 @@ final readonly class ConfigImporter
             $disabled,
             $warningCount,
         );
+    }
+
+    /**
+     * @return array{collections: array<string, int>, tags: array<string, int>, environments: array<string, int>}
+     */
+    private function persistOrganization(ConfigDocument $document): array
+    {
+        $collections = [];
+        foreach ($document->collections() as $source) {
+            $collection = EndpointCollection::query()->firstOrCreate(
+                ['name' => trim((string) $source['name'])],
+                ['description' => $source['description'] ?? null],
+            );
+            $collections[Str::lower($collection->name)] = $collection->id;
+        }
+
+        $tags = [];
+        foreach ($document->tags() as $name) {
+            $normalized = Str::lower(trim($name));
+            $tag = Tag::query()->where('normalized_name', $normalized)->first()
+                ?? Tag::query()->create(['name' => trim($name)]);
+            $tags[$normalized] = $tag->id;
+        }
+
+        $environments = Environment::query()->get()->mapWithKeys(
+            static fn (Environment $environment): array => [Str::lower($environment->name) => $environment->id],
+        )->all();
+        $default = null;
+        foreach ($document->environments() as $source) {
+            $name = trim((string) $source['name']);
+            $environment = Environment::query()->firstOrCreate(['name' => $name], ['is_default' => false]);
+            foreach ($source['variables'] as $variableSource) {
+                $variable = $environment->variables()->firstOrNew(['key' => $variableSource['key']]);
+                $variable->is_secret = (bool) $variableSource['is_secret'];
+                if ($variableSource['value'] !== null) {
+                    $variable->value = $variableSource['value'];
+                }
+                $variable->save();
+            }
+            if (($source['is_default'] ?? false) === true) {
+                $default = $environment;
+            }
+            $environments[Str::lower($name)] = $environment->id;
+        }
+        if ($default !== null) {
+            $this->environments->makeDefault($default);
+        }
+
+        return compact('collections', 'tags', 'environments');
     }
 
     /** @return array<string, int> */
