@@ -21,6 +21,23 @@ The stack is Laravel 13, Livewire 4, PostgreSQL 16, PHP-FPM, nginx, and Docker C
 - Production startup guards for placeholder secrets
 - PHPUnit regression suite, Pint checks, Compose validation, and CI workflow
 
+## Feature guide
+
+| Feature | What it provides | Where to use it |
+|---|---|---|
+| cURL endpoint creation | Safe parsing, canonical preview, matching policy, duplicate detection | **Endpoints → New endpoint** |
+| Endpoint registry | Search/filter/sort, enable/disable, duplicate, copy mock cURL, row and bulk actions | **Endpoints** |
+| Exact request matching | Origin-independent V1–V5 signatures with deterministic priority/specificity resolution | Endpoint editor and runtime |
+| Response pools | Multiple status/header/body/delay responses selected by relative weight | Endpoint response editor |
+| Response templating | Builder and JSON views, mapped Faker catalog, autocomplete, validation, preview, seeds, locales | Response **Body → Template** |
+| Request observability | Structured request IDs/logs, filters, repeat grouping, unmatched diagnostics, row details | **Request log** |
+| Configuration transfer | Redacted deterministic export, preview-first create/upsert/clone import, CLI commands | **Import / export** |
+| Dashboard security | Rate-limited login, persistent Livewire access middleware, safe production defaults | `/dashboard/login` and `.env` |
+| UI preferences | System/Light/Dark theme, compact/comfortable log density, keyboard shortcuts | Header controls and Request log |
+| Validation and CI | Compose validation, design-token checks, frontend tests, Pint, PHPUnit | `make validate` and GitHub Actions |
+
+The complete operator reference is [docs/USER_GUIDE.md](docs/USER_GUIDE.md). The same core workflows are available from **Documentation** in the dashboard.
+
 ## Secure first start
 
 Requirements: Docker Engine, Docker Compose v2, `make`, and `openssl`.
@@ -82,6 +99,39 @@ curl 'http://localhost:18473/v1/items?limit=10' \
 No original-URL header is required. Signatures deliberately ignore scheme, host, and port, so an endpoint configured for `https://api.example.test/v1/items` can be invoked through `http://localhost:18473/v1/items`. Absolute HTTP/HTTPS input is still required when configuring an endpoint, and URL-embedded credentials remain rejected.
 
 Every response includes `X-Request-ID`. A valid caller-provided ID is retained; otherwise MockDeck generates a UUID.
+
+## Manage endpoints and responses
+
+The endpoint registry searches name, method, path, and raw cURL; filters by method/state; and sorts by recent update, name, or priority. Each row can be opened, enabled/disabled, duplicated, exported, deleted, or copied as a MockDeck-host cURL. Selecting rows exposes bulk enable, disable, export, and delete actions.
+
+Each endpoint has a response pool. A response stores status, header JSON, bounded delay, positive weight, and either an exact static body or a JSON template. Selection probability is proportional to response weight.
+
+## Use response templates
+
+Choose **Body → Template** in a response editor:
+
+1. Use **Builder** for representable object/list schemas or **JSON** for the complete language.
+2. Choose Random, Fixed, or Request signature seed mode and a supported locale.
+3. Insert mapped Faker.js-shaped methods such as `$person.fullName`, `$internet.ip`, or `$number.int({"min":1,"max":10})`.
+4. Preview output and resolve validation errors. Warnings, including renamed legacy aliases, remain saveable.
+5. Save and call the mock. Live serving uses the same compiler/renderer as preview.
+
+Useful template forms:
+
+```json
+{
+  "id": "$string.uuid",
+  "message": "Hello {{person.firstName}}",
+  "items": {
+    "$repeat": 3,
+    "$item": {"position": "$index", "price": "$commerce.price"}
+  }
+}
+```
+
+Templates are parsed without evaluation. Reserved prototype names and unsafe/unbounded helpers are blocked; size, depth, node, repeat, argument, and output limits are configurable. Static response bodies remain untouched even when they contain `$` or `{{`.
+
+See [docs/USER_GUIDE.md#7-build-a-response-template](docs/USER_GUIDE.md#7-build-a-response-template) for Builder/JSON usage and [the language reference](docs/USER_GUIDE.md#8-template-language-reference) for directives, escapes, aliases, limits, seeds, and runtime errors.
 
 ## Import and export configuration
 
@@ -214,6 +264,8 @@ make format
 
 The test workflow uses an ephemeral app container with in-memory SQLite and dashboard authentication disabled only for the test environment.
 
+Run `make format` before committing formatter changes. The format target bind-mounts the repository so Pint writes to the host working tree. Required storage-directory placeholders are tracked so a clean GitHub Actions checkout can complete Composer `package:discover`.
+
 See [docs/VALIDATION.md](docs/VALIDATION.md) for environment setup, smoke tests, manual conflict checks, and the coverage map.
 
 ## Operations
@@ -248,15 +300,23 @@ routes/mock.php                    root and catch-all invocation routes
 tests/                             unit and feature regression coverage
 ```
 
-Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before changing canonicalization or matching. Read [docs/NEXT_FEATURE_IMPLEMENTATION_PLAN.md](docs/NEXT_FEATURE_IMPLEMENTATION_PLAN.md) for the researched roadmap; native configuration import/export is the mandatory first feature.
+Documentation map:
 
-Read [docs/UI_GUIDE.md](docs/UI_GUIDE.md) before creating or changing dashboard UI. It records the current design tokens, typography, layout primitives, component states, theme behavior, copy conventions, code-surface rules, and accessibility baseline.
+- [User guide](docs/USER_GUIDE.md) — every implemented feature and operator workflow
+- [Configuration import/export](docs/CONFIG_IMPORT_EXPORT.md) — format, conflict, security, HTTP, and CLI contract
+- [Validation guide](docs/VALIDATION.md) — automated checks and manual smoke scenarios
+- [Architecture guide](docs/ARCHITECTURE.md) — matching, templates, persistence, and extension boundaries
+- [UI guide](docs/UI_GUIDE.md) — tokens, components, themes, copy, code surfaces, and accessibility
+
+Read the architecture guide before changing canonicalization, matching, response rendering, or portable configuration.
 
 ## Current limitations
 
 - Matching is exact within one of five fixed header policies; selective query/header/body predicates are not yet available.
 - Upstream origin is intentionally not a discriminator; two otherwise identical requests on different upstream hosts share a signature.
 - Responses are weighted, not rule-selected or scenario-state driven.
+- Response templates currently produce JSON; request-context tokens and non-JSON interpolation are not implemented.
+- Builder is a lossless subset of the JSON template language and disables itself for unsupported structures.
 - OpenAPI generation, recording/proxying, and verification assertions are planned, not implemented.
 - Native JSON import/export is implemented; third-party OpenAPI, Postman, WireMock, Mockoon, and Hoverfly adapters remain planned.
 
