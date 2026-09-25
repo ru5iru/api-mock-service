@@ -259,6 +259,15 @@
                 </div>
             </section>
 
+            @if ($endpointId)
+                <section id="history" class="card form-card editor-section history-section">
+                    <details class="history-disclosure">
+                        <summary><span class="details-chevron" aria-hidden="true">›</span><span><strong>History</strong><small>Compare or restore saved endpoint versions.</small></span></summary>
+                        <livewire:admin.revision-history entity-type="endpoint" :entity-id="$endpointId" :key="'endpoint-history-'.$endpointId" />
+                    </details>
+                </section>
+            @endif
+
         </div>
 
         <aside class="preview-column">

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Environment;
 use App\Models\MockEndpoint;
+use App\Services\Revisions\RevisionManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 final class EndpointOrganizationController extends Controller
 {
-    public function update(Request $request, MockEndpoint $endpoint): JsonResponse
+    public function update(Request $request, MockEndpoint $endpoint, RevisionManager $revisions): JsonResponse
     {
         $data = $request->validate([
             'collection_id' => ['sometimes', 'nullable', 'integer', 'exists:collections,id'],
@@ -33,7 +34,8 @@ final class EndpointOrganizationController extends Controller
             }
         }
 
-        DB::transaction(function () use ($data, $endpoint): void {
+        DB::transaction(function () use ($data, $endpoint, $revisions): void {
+            $before = $revisions->snapshot($endpoint);
             if (array_key_exists('collection_id', $data)) {
                 $endpoint->update(['collection_id' => $data['collection_id']]);
             }
@@ -47,6 +49,7 @@ final class EndpointOrganizationController extends Controller
                     ->all();
                 $endpoint->environmentOverrides()->sync($sync);
             }
+            $revisions->recordIfChanged($endpoint, $before);
         }, 3);
 
         return response()->json($endpoint->refresh()->load(['collection', 'tags', 'environmentOverrides']));

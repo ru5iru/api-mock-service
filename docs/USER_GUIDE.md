@@ -361,6 +361,8 @@ Environment-scoped export includes endpoints that inherit their state and endpoi
 4. Review validation errors, exact-signature conflicts, overlap warnings, UUID actions, and redaction warnings.
 5. Acknowledge warnings and apply. Apply rechecks the digest/conflicts under locks and writes atomically.
 
+For **Update by UUID**, preview also reports how many endpoint/response pre-states will receive a revision. Every changed existing entity is snapshotted under one import batch before its imported values replace the live values. The success panel keeps **Undo this import** available; one confirmation lists the affected entities and restores all recorded pre-states atomically. The undo itself appends rollback revisions, so it does not erase evidence of the import.
+
 Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Version 1/1.0/1.1 files remain supported; missing template and organization fields use backward-compatible defaults. Current exports use format `1.2`.
 
 CLI equivalents:
@@ -375,7 +377,20 @@ php artisan mockdeck:import mockdeck.json --mode=upsert --acknowledge-warnings
 
 See [CONFIG_IMPORT_EXPORT.md](CONFIG_IMPORT_EXPORT.md) for the complete document and conflict contract.
 
-## 15. Protected APIs
+## 15. Version history, diff, and restore
+
+Every endpoint and response edit that changes persisted fields stores the complete pre-save state. No-op saves do not create noise. Endpoint snapshots include collection, tag IDs, and per-environment overrides; response snapshots include body/template and selection behavior.
+
+Open **History** in the endpoint editor or on a response row:
+
+1. Select two stored versions to open a structural before/after diff.
+2. Choose **Compare with current** on any revision to compare it with the live entity using the same viewer and response shape.
+3. Review canonical-request changes in the canonical code surface, response body/template changes in JSON code surfaces, and organization changes as added/removed values.
+4. Choose **Restore**, review the confirmation naming the version, and confirm. MockDeck applies that snapshot and appends a new revision with source `rollback`; it never mutates or deletes earlier history.
+
+Revision summaries are intentionally short (for example, `renamed`, `priority 0→5`, or `response body changed`). The detailed viewer remains authoritative.
+
+## 16. Protected APIs
 
 ### Protected template endpoints
 
@@ -393,10 +408,16 @@ The dashboard uses the following protected template endpoints and organization A
 | `GET/POST/PATCH/DELETE /api/environments/{id}/variables` | Manage write-only secret and public variables. |
 | `GET/PUT /api/active-environment` | Read or switch the global active environment. |
 | `PATCH /api/endpoints/{id}/organization` | Update collection, tags, and environment overrides. |
+| `GET /api/{endpoints|responses}/{id}/revisions` | List immutable revisions newest first with summaries. |
+| `GET /api/{endpoints|responses}/{id}/revisions/{a}/diff/{b}` | Structurally diff two stored versions. |
+| `GET /api/{endpoints|responses}/{id}/revisions/{revision}/diff/current` | Diff one version against live state. |
+| `POST /api/{endpoints|responses}/{id}/revisions/{revision}/restore` | Restore as a new rollback revision. |
+| `GET /api/imports/{batch_id}` | Preview the entities in a reversible import batch. |
+| `POST /api/imports/{batch_id}/undo` | Restore every recorded pre-import state atomically. |
 
 They require dashboard access and are intended for the built-in editor, not as unauthenticated public APIs.
 
-## 16. Operations and validation
+## 17. Operations and validation
 
 ```bash
 make up                 # build, start, and wait for services
@@ -414,7 +435,7 @@ Git must retain the `.gitignore` placeholders under `storage/framework/cache/dat
 
 See [VALIDATION.md](VALIDATION.md) for complete automated and manual release checks.
 
-## 17. Current limitations
+## 18. Current limitations
 
 - Matching uses five fixed header policies; arbitrary per-field query/header/body predicates are not implemented.
 - Upstream origin is intentionally excluded from signatures.

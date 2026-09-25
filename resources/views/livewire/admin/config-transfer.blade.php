@@ -211,6 +211,13 @@
                 <div><dt>Invalid</dt><dd>{{ count($plan['errors'] ?? []) }}</dd></div>
             </dl>
 
+            @if (($plan['counts']['revision_snapshots'] ?? 0) > 0)
+                <div class="info-note revision-preview-note">
+                    <strong>{{ $plan['counts']['revision_snapshots'] }} endpoints/responses will get a version snapshot before this update.</strong>
+                    <p>These snapshots share one import batch, so every recorded update can be undone together.</p>
+                </div>
+            @endif
+
             @if ($plan['errors'] !== [])
                 <div class="validation-panel error-panel" role="alert">
                     <strong>Resolve these errors before importing</strong>
@@ -283,6 +290,21 @@
             <div>
                 <h2>Import applied atomically</h2>
                 <p>{{ $summary['endpoints_created'] }} endpoints created, {{ $summary['endpoints_updated'] }} updated, {{ $summary['responses_created'] }} responses created, and {{ $summary['responses_updated'] }} updated.</p>
+                @if (($summary['revision_snapshots'] ?? 0) > 0)
+                    <p class="import-undo-line">
+                        <strong>{{ $summary['revision_snapshots'] }} {{ Str::plural('change', $summary['revision_snapshots']) }} made</strong>
+                        @if ($importUndone)
+                            <span class="state-chip enabled">Import undone</span>
+                        @else
+                            <button
+                                class="text-button"
+                                type="button"
+                                wire:click="undoImport"
+                                wire:confirm="Undo this import and restore: {{ $undoItems->implode(', ') }}? A new rollback revision will be kept for every restored item."
+                            >Undo this import</button>
+                        @endif
+                    </p>
+                @endif
                 @if ($importedEndpoints->isNotEmpty())
                     <div class="imported-links">
                         @foreach ($importedEndpoints as $importedEndpoint)

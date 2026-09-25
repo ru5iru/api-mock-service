@@ -96,6 +96,16 @@ The environment condition is eligibility only. `EnvironmentContext` resolves the
 
 `EnvironmentContext` owns active/default transitions so the header, matcher, protected API, export pipeline, and request log resolve the same server-side state.
 
+## Version history boundary
+
+`Services/Revisions/RevisionManager` is the only snapshot/restore boundary for endpoints and responses. Snapshots omit mutable timestamps, normalize map/list ordering, and include endpoint collection/tag/environment-override state. Callers capture the pre-state, persist their change, then call `recordIfChanged`; equal normalized snapshots create no revision.
+
+`StructuralJsonDiffer` emits one transport shape for stored-version and compare-with-current operations: path, change type, before/after value, and renderer hint. The shared UI interprets canonical request, JSON body/template, and organization hints without implementing a second diff algorithm.
+
+Restoring applies the selected snapshot inside a transaction and appends a `rollback` revision whose snapshot equals the restored state. It never updates or deletes an existing revision. Missing collections/tags/environments are ignored safely during an old endpoint restore rather than recreating deleted organization data.
+
+Update-by-UUID import captures changed endpoint/response pre-states under one UUID batch. Omitted responses removed by authoritative response-pool replacement are snapshotted before deletion and can be recreated with their original ID/UUID. Batch undo applies every stored pre-state atomically and appends rollback revisions.
+
 ## Response strategy
 
 `ResponseSelectorInterface` accepts the endpoint response collection and returns one response. `WeightedRandomSelector` treats every weight as at least one defensively, although dashboard validation and the schema default keep valid records positive.
@@ -145,10 +155,11 @@ The dashboard can display raw curl, canonical text, request bodies, and headers.
 
 ## Database
 
-Only two domain tables exist:
+Primary domain and history tables are:
 
 - `mock_endpoints` stores an immutable portable UUID, the original curl, one canonical representation, one digest, signature version, enabled state, priority, and exclusion flags;
 - `mock_responses` stores an immutable portable UUID, status, header JSON, static body, delay, weight, and additive template mode/text/editor/seed/locale fields.
+- `revisions` stores immutable endpoint/response JSON snapshots, per-entity version numbers, source, optional import batch, note, and creation time. It intentionally has no cascading foreign key so history survives response-pool replacement long enough for batch undo.
 
 Request logs never enter PostgreSQL. Deleting an endpoint cascades to its responses.
 

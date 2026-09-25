@@ -21,6 +21,8 @@ For import:
 4. Resolve errors. Explicitly acknowledge warnings when present.
 5. Select **Apply import**. The service revalidates and rechecks conflicts in one transaction before committing.
 
+For Update by UUID, preview shows how many existing endpoints/responses will receive a pre-state revision. A successful update exposes **Undo this import** permanently for that batch. The confirmation lists every recorded entity; undo restores them together and appends rollback revisions rather than rewriting history.
+
 Preview tokens expire after 15 minutes by default and are bound to the SHA-256 digest of the uploaded bytes. A changed or expired plan must be previewed again.
 
 ## Import modes
@@ -32,6 +34,8 @@ Preview tokens expire after 15 minutes by default and are bound to the SHA-256 d
 | `clone` | Generate a new UUID | Error | Create with new endpoint/response UUIDs |
 
 Upsert merges responses by UUID. Enable **Delete local responses omitted from updated endpoints** only when the imported response list should be authoritative. The default preserves unmentioned local responses.
+
+An upsert uses one `import_batch_id` for every changed existing endpoint/response. No-op writes create no revisions. Responses removed by authoritative replacement are snapshotted before deletion so batch undo can recreate them. Create-only and clone imports do not have pre-existing entity states and therefore do not expose a history-based undo batch.
 
 Exact origin-independent signatures are errors because they would be ambiguous. Broad/narrow signatures that can match the same live request are warnings. The preview shows the predicted winner using runtime priority, signature specificity, and stable ID ordering; importing requires acknowledgement.
 
@@ -126,6 +130,8 @@ All routes use dashboard session access, CSRF protection, and request throttling
 | `POST /dashboard/config/exports` | Download all, selected, collection-scoped, or environment-scoped endpoints |
 | `POST /dashboard/config/imports/preview` | Upload `config`, choose `mode`, return a plan/token |
 | `POST /dashboard/config/imports/apply` | Submit preview `token`, `digest`, and warning acknowledgement |
+| `GET /api/imports/{batch_id}` | List the endpoint/response pre-states in one import batch |
+| `POST /api/imports/{batch_id}/undo` | Restore every recorded pre-state and append rollback revisions |
 
 Export accepts `endpoint_uuids[]`, `redact_secrets`, `confirm_sensitive_export`, and either `collection_id` or `environment_id`. Preview accepts multipart `config`, `mode`, and `replace_responses`. Apply accepts `token`, `digest`, and `acknowledge_warnings`.
 

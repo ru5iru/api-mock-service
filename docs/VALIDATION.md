@@ -178,6 +178,7 @@ Confirm the relevant migrations are marked as run:
 - `2026_09_19_000001_add_portable_uuids`
 - `2026_09_24_000001_add_templating_to_mock_responses_table`
 - `2026_09_25_000001_add_collections_tags_and_environments`
+- `2026_09_25_000002_create_revisions_table`
 
 Existing endpoints should report signature version `2` after migration.
 
@@ -201,6 +202,14 @@ Repeat that check with a different scheme/host but the same path; it must also b
 5. Duplicate an environment, edit the copy, and verify the source variables are unchanged.
 6. Export one environment and verify inherited/enabled endpoints are present, explicit disabled overrides are absent, and secret values are null.
 
+### Version history and import undo
+
+1. Edit one endpoint three times and confirm three newest-first history rows with accurate summaries.
+2. Save without changing a persisted value and confirm no revision is added.
+3. Select two versions, then compare one with current; confirm both paths use the same structural diff viewer.
+4. Restore the oldest version and confirm live values change while a new `rollback` revision is appended.
+5. Preview and apply an Update-by-UUID import that changes an endpoint and response. Confirm both pre-states share one batch ID, then use **Undo this import** and verify both return to their pre-import values.
+
 ## Test coverage map
 
 | Area | Representative coverage |
@@ -210,6 +219,7 @@ Repeat that check with a different scheme/host but the same path; it must also b
 | Signature variants | V1 through V5 and selected policy |
 | Matching | hash, fallback, specificity, priority, disabled endpoints, empty response handling |
 | Organization | collection deletion safety, case-insensitive tags, active-environment matching, override inheritance, environment duplication, write-only secrets, scoped export |
+| Version history | three-edit sequencing, no-op suppression, structural/current diff parity, append-only restore, grouped import snapshots and atomic undo |
 | Dashboard | CRUD, cross-origin duplicate prevention, copy-curl generation, filters, state toggling, authentication/logout |
 | Portable config | UUIDs, deterministic/redacted export, validation, preview token/digest, exact/overlap conflicts, atomic create/upsert, HTTP and CLI flows |
 | Responses | create, update, delete, weighted selection |

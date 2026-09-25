@@ -5,11 +5,14 @@ namespace App\Livewire\Admin;
 use App\Models\Collection;
 use App\Models\Environment;
 use App\Models\MockEndpoint;
+use App\Models\Revision;
 use App\Services\Config\ConfigExporter;
 use App\Services\Config\ConfigImporter;
 use App\Services\Config\ImportMode;
+use App\Services\Revisions\RevisionManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection as SupportCollection;
 use InvalidArgumentException;
 use JsonException;
 use Livewire\Component;
@@ -51,8 +54,10 @@ final class ConfigTransfer extends Component
     /** @var array<string, mixed> */
     public array $plan = [];
 
-    /** @var array<string, int> */
+    /** @var array<string, int|string|null> */
     public array $summary = [];
+
+    public bool $importUndone = false;
 
     /** @var list<string> */
     public array $importedEndpointUuids = [];
@@ -174,6 +179,7 @@ final class ConfigTransfer extends Component
             ->preview($json, ImportMode::from($this->mode), $this->replaceResponses)
             ->toArray();
         $this->summary = [];
+        $this->importUndone = false;
         $this->acknowledgeWarnings = false;
     }
 
@@ -221,6 +227,28 @@ final class ConfigTransfer extends Component
         $this->dispatch('toast', message: 'Configuration imported successfully.');
     }
 
+    public function undoImport(RevisionManager $revisions): void
+    {
+        $batchId = $this->summary['import_batch_id'] ?? null;
+        if (! is_string($batchId) || $batchId === '') {
+            $this->addError('import', 'This import has no version snapshots to restore.');
+
+            return;
+        }
+
+        try {
+            $revisions->undoImport($batchId);
+        } catch (InvalidArgumentException $exception) {
+            $this->addError('import', $exception->getMessage());
+
+            return;
+        }
+
+        $this->importUndone = true;
+        session()->flash('status', 'Import changes restored from version history.');
+        $this->dispatch('toast', message: 'Import changes restored.');
+    }
+
     public function render(): View
     {
         return view('livewire.admin.config-transfer', [
@@ -230,6 +258,7 @@ final class ConfigTransfer extends Component
             'modes' => ImportMode::cases(),
             'collections' => Collection::query()->withCount('endpoints')->orderBy('name')->get(),
             'environments' => Environment::query()->orderByDesc('is_default')->orderBy('name')->get(),
+            'undoItems' => $this->undoItems(),
         ]);
     }
 
@@ -285,6 +314,7 @@ final class ConfigTransfer extends Component
     {
         $this->plan = [];
         $this->summary = [];
+        $this->importUndone = false;
         $this->importedEndpointUuids = [];
         $this->acknowledgeWarnings = false;
     }
@@ -317,5 +347,26 @@ final class ConfigTransfer extends Component
             })
             ->orderBy('name')
             ->orderBy('uuid');
+    }
+
+    /** @return SupportCollection<int, string> */
+    private function undoItems(): SupportCollection
+    {
+        $batchId = $this->summary['import_batch_id'] ?? null;
+        if (! is_string($batchId) || $batchId === '') {
+            return collect();
+        }
+
+        return Revision::query()
+            ->where('import_batch_id', $batchId)
+            ->where('source', 'import')
+            ->orderBy('entity_type')
+            ->orderBy('entity_id')
+            ->get()
+            ->map(static function (Revision $revision): string {
+                return $revision->entity_type === 'endpoint'
+                    ? (string) ($revision->snapshot['name'] ?: 'Endpoint '.$revision->entity_id)
+                    : 'Response '.($revision->snapshot['status_code'] ?? $revision->entity_id);
+            });
     }
 }

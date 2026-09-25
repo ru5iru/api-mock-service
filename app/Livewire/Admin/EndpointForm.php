@@ -9,10 +9,12 @@ use App\Models\Tag;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\ParsedCurl;
+use App\Services\Revisions\RevisionManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 final class EndpointForm extends Component
@@ -131,6 +133,16 @@ CURL;
         $this->resetValidation('rawCurl');
     }
 
+    #[On('revision-restored')]
+    public function revisionRestored(string $entityType, int $entityId): mixed
+    {
+        if ($entityType !== 'endpoint' || $entityId !== $this->endpointId) {
+            return null;
+        }
+
+        return $this->redirect(route('dashboard.endpoints.edit', ['endpoint' => $entityId]), navigate: true);
+    }
+
     public function createCollectionInline(): void
     {
         $this->validateOnly('newCollectionName', ['newCollectionName' => ['required', 'string', 'max:255']]);
@@ -239,8 +251,10 @@ CURL;
             : MockEndpoint::query()->findOrFail($this->endpointId);
         $created = $this->endpointId === null;
         $displayName = trim($this->name) ?: $this->deriveName($parsed);
+        $revisions = app(RevisionManager::class);
+        $before = $created ? null : $revisions->snapshot($endpoint);
 
-        DB::transaction(function () use ($endpoint, $displayName, $parsed, $variant): void {
+        DB::transaction(function () use ($endpoint, $displayName, $parsed, $variant, $revisions, $before): void {
             $endpoint->fill([
                 'collection_id' => $this->collectionId === '' ? null : (int) $this->collectionId,
                 'name' => $displayName,
@@ -262,6 +276,9 @@ CURL;
                     (int) $environmentId => ['enabled' => $enabled === '1'],
                 ])->all();
             $endpoint->environmentOverrides()->sync($overrides);
+            if ($before !== null) {
+                $revisions->recordIfChanged($endpoint, $before);
+            }
         }, 3);
 
         session()->flash(

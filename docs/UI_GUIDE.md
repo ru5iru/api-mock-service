@@ -474,6 +474,17 @@ Apply this pattern to curl, canonical requests, normalized requests, hashes, JSO
 - Do not apply UI ligatures to exact data; characters such as `!=` and `=>` must remain visually distinct.
 - Constrain scrollable data surfaces to their card width. Use the shared thin scrollbar treatment on tables, endpoint lists, autocomplete lists, previews, popovers, and code editors; its track, thumb, hover, and radius use existing surface, border, accent, and radius tokens. Never allow a component to create page-level horizontal scrolling.
 
+### Revision timeline and structural diff viewer
+
+The endpoint and response **History** disclosures reuse the native disclosure, request-log time treatment, action chips, text buttons, confirmation behavior, and code surfaces. This is one shared component; response history must not invent a smaller variant.
+
+- `.revision-timeline` is newest-first. A day separator appears when the calendar day changes, and each revision exposes its relative time plus an exact timestamp in `title`.
+- `.revision-row` has a single accent marker and source chip. Selecting two rows opens the shared diff viewer; **Compare with current** opens that same viewer against live state.
+- `.revision-diff-viewer` renders structural paths and added/removed/changed chips. Canonical cURL fields reuse the canonical-request code treatment, body/template fields reuse JSON code surfaces, and collection/tag/environment changes remain plain values.
+- Before/after values use two equal columns at desktop widths and one stacked column below 720px. Long content scrolls inside the code surface and never expands the page.
+- **Restore** always uses the existing confirm mechanism, names the version, states that live values change, and states that a new rollback revision is appended. History is never rewritten.
+- Import completion reuses the inline-result pattern for `N changes made · Undo this import`; its one confirmation names every affected endpoint/response.
+
 Syntax tokens are available for flags, URLs, headers, strings, and keys. The response-template editor adds catalog autocomplete to the existing code-input surface; it does not introduce a general syntax-highlighting editor. A reusable syntax-highlighting component remains **undecided — pick on first use, then add here**.
 
 ## 8. Accessibility baseline

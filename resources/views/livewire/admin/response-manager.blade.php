@@ -25,6 +25,10 @@
                     <button class="icon-button" type="button" wire:click="edit({{ $response->id }})">Edit</button>
                     <button class="icon-button danger" type="button" wire:click="delete({{ $response->id }})" wire:confirm="Delete response #{{ $response->id }} (HTTP {{ $response->status_code }}) from this endpoint? It will no longer be available for matching requests.">Delete</button>
                 </div>
+                <details class="history-disclosure response-history">
+                    <summary><span class="details-chevron" aria-hidden="true">›</span><span><strong>History</strong><small>Compare or restore response versions.</small></span></summary>
+                    <livewire:admin.revision-history entity-type="response" :entity-id="$response->id" :key="'response-history-'.$response->id" />
+                </details>
             </article>
         @empty
             <div class="empty-state small card">

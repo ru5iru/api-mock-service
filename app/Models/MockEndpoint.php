@@ -89,6 +89,13 @@ final class MockEndpoint extends Model
             ->orderBy('name');
     }
 
+    /** @return HasMany<Revision, $this> */
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(Revision::class, 'entity_id')
+            ->where('entity_type', 'endpoint');
+    }
+
     public function displayName(): string
     {
         $name = trim((string) $this->name);

@@ -3,12 +3,15 @@
 namespace App\Livewire\Admin;
 
 use App\Models\MockEndpoint;
+use App\Services\Revisions\RevisionManager;
 use App\Services\Templates\FakerMethodCatalog;
 use App\Services\Templates\ResponseTemplateEngine;
 use App\Services\Templates\TemplateRenderException;
 use App\Services\Templates\TemplateSchemaConverter;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\DB;
 use JsonException;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 final class ResponseManager extends Component
@@ -94,6 +97,18 @@ final class ResponseManager extends Component
         $this->resetForm();
     }
 
+    #[On('revision-restored')]
+    public function revisionRestored(string $entityType, int $entityId): void
+    {
+        if ($entityType !== 'response') {
+            return;
+        }
+
+        if ($this->editingId === $entityId) {
+            $this->edit($entityId);
+        }
+    }
+
     public function save(): void
     {
         $templates = app(ResponseTemplateEngine::class);
@@ -169,11 +184,19 @@ final class ResponseManager extends Component
             'weight' => $validated['weight'],
         ];
 
-        if ($this->editingId === null) {
-            $this->endpoint()->responses()->create($attributes);
-        } else {
-            $this->endpoint()->responses()->findOrFail($this->editingId)->update($attributes);
-        }
+        DB::transaction(function () use ($attributes): void {
+            if ($this->editingId === null) {
+                $this->endpoint()->responses()->create($attributes);
+
+                return;
+            }
+
+            $response = $this->endpoint()->responses()->findOrFail($this->editingId);
+            $revisions = app(RevisionManager::class);
+            $before = $revisions->snapshot($response);
+            $response->update($attributes);
+            $revisions->recordIfChanged($response, $before);
+        }, 3);
 
         session()->flash('response-status', $this->editingId === null ? 'Response added.' : 'Response updated.');
         $this->dispatch('toast', message: $this->editingId === null ? 'Response added.' : 'Response updated.');

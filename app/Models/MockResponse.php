@@ -6,6 +6,7 @@ use Database\Factories\MockResponseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use LogicException;
 
@@ -57,5 +58,12 @@ final class MockResponse extends Model
     public function endpoint(): BelongsTo
     {
         return $this->belongsTo(MockEndpoint::class, 'mock_endpoint_id');
+    }
+
+    /** @return HasMany<Revision, $this> */
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(Revision::class, 'entity_id')
+            ->where('entity_type', 'response');
     }
 }

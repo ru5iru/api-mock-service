@@ -18,6 +18,7 @@ The stack is Laravel 13, Livewire 4, PostgreSQL 16, PHP-FPM, nginx, and Docker C
 - Responsive endpoint and request-log filtering
 - One-click mock-host curl generation with clipboard fallback
 - Versioned JSON import/export with default secret redaction and atomic preview/apply
+- Immutable endpoint/response history with structural diffs, compare-to-current, restore, and whole-import undo
 - Flat JSON request logs, request IDs, rotation, and bounded cross-file tailing
 - Production startup guards for placeholder secrets
 - PHPUnit regression suite, Pint checks, Compose validation, and CI workflow
@@ -35,6 +36,7 @@ The stack is Laravel 13, Livewire 4, PostgreSQL 16, PHP-FPM, nginx, and Docker C
 | Response templating | Builder and JSON views, mapped Faker catalog, autocomplete, validation, preview, seeds, locales | Response **Body → Template** |
 | Request observability | Structured request IDs/logs, filters, repeat grouping, unmatched diagnostics, row details | **Request log** |
 | Configuration transfer | Redacted deterministic export, preview-first create/upsert/clone import, CLI commands | **Import / export** |
+| Version history | Per-save snapshots, structural before/after diff, non-destructive restore, grouped import undo | Endpoint and response **History** panels |
 | Dashboard security | Rate-limited login, persistent Livewire access middleware, safe production defaults | `/dashboard/login` and `.env` |
 | UI preferences | System/Light/Dark theme, compact/comfortable log density, keyboard shortcuts | Header controls and Request log |
 | Validation and CI | Compose validation, design-token checks, frontend tests, Pint, PHPUnit | `make validate` and GitHub Actions |
@@ -111,6 +113,8 @@ Collections and tags organize the registry without affecting request signatures.
 
 Each endpoint has a response pool. A response stores status, header JSON, bounded delay, positive weight, and either an exact static body or a JSON template. Selection probability is proportional to response weight.
 
+Saved edits are versioned without changing runtime matching. Open **History** on an endpoint or response to compare any two stored versions, compare one version with the current live entity, or restore an older state. Restore always appends a new rollback revision; existing history remains immutable.
+
 ## Use environments
 
 MockDeck creates **Development** as the default active environment during migration. Existing endpoints have no overrides, so their matching behavior remains unchanged. Use the header environment switcher to change the global runtime environment, or open **Environments** to:
@@ -157,7 +161,7 @@ Open **Import / export** in the dashboard to download all endpoints or a selecte
 
 Secret redaction is enabled by default. It removes configured authentication, cookie, API-key headers, and sensitive query values. Any affected endpoint is exported disabled with `requires_secret_replacement: true`; after import, review its curl and add deployment-appropriate credentials before enabling it.
 
-Imports are preview-first. Choose `create-only`, `upsert`, or `clone`, upload the JSON file, review errors and overlap warnings, then explicitly apply it. The apply step verifies the preview digest, repeats conflict checks under database locks, and commits all endpoint/response writes in one transaction.
+Imports are preview-first. Choose `create-only`, `upsert`, or `clone`, upload the JSON file, review errors and overlap warnings, then explicitly apply it. The apply step verifies the preview digest, repeats conflict checks under database locks, and commits all endpoint/response writes in one transaction. Update-by-UUID preview reports how many endpoint/response pre-states will be snapshotted. After apply, **Undo this import** restores every entity recorded under that import batch and appends rollback revisions.
 
 Equivalent commands are available for repeatable workflows:
 
@@ -308,10 +312,11 @@ app/
   Services/Curl/                   parser, canonicalizer, signature variants, and mock-curl builder
   Services/Config/                 native document export, validation, preview, and atomic import
   Services/Matching/               deterministic endpoint resolution
+  Services/Revisions/              normalized snapshots, structural diffs, restore, and batch undo
   Services/Response/               weighted selection strategy
   Services/Logging/                non-fatal writer and bounded rotated-log reader
   Services/Templates/              template compiler, mapped Faker catalog, schema projection, and renderer
-database/migrations/               endpoint and response schema
+database/migrations/               endpoint, response, organization, environment, and revision schema
 docs/                              UI, operator, architecture, transfer, and validation guides
 routes/web.php                     authenticated dashboard routes
 routes/mock.php                    root and catch-all invocation routes

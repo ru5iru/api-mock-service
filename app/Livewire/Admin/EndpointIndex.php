@@ -8,6 +8,7 @@ use App\Models\Tag;
 use App\Services\Config\ConfigExporter;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\MockCurlBuilder;
+use App\Services\Revisions\RevisionManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -93,7 +94,10 @@ final class EndpointIndex extends Component
     public function toggleEnabled(int $endpointId): void
     {
         $endpoint = MockEndpoint::query()->findOrFail($endpointId);
-        $endpoint->update(['enabled' => ! $endpoint->enabled]);
+        $this->reviseEndpoints([$endpoint->id], static function (MockEndpoint $item): void {
+            $item->update(['enabled' => ! $item->enabled]);
+        });
+        $endpoint->refresh();
         $this->dispatch('toast', message: $endpoint->displayName().' '.($endpoint->enabled ? 'enabled.' : 'disabled.'));
     }
 
@@ -135,7 +139,9 @@ final class EndpointIndex extends Component
             Collection::query()->findOrFail($collectionId);
         }
         $ids = $this->selectedIds();
-        MockEndpoint::query()->whereKey($ids)->update(['collection_id' => $collectionId]);
+        $this->reviseEndpoints($ids, static function (MockEndpoint $endpoint) use ($collectionId): void {
+            $endpoint->update(['collection_id' => $collectionId]);
+        });
         $this->selected = [];
         $this->bulkCollection = '';
         $this->dispatch('toast', message: count($ids).' '.str('endpoint')->plural(count($ids)).' moved.');
@@ -145,9 +151,9 @@ final class EndpointIndex extends Component
     {
         $tagIds = Tag::query()->whereKey(array_map('intval', $this->bulkTags))->pluck('id')->all();
         $ids = $this->selectedIds();
-        foreach (MockEndpoint::query()->whereKey($ids)->get() as $endpoint) {
+        $this->reviseEndpoints($ids, static function (MockEndpoint $endpoint) use ($tagIds): void {
             $endpoint->tags()->syncWithoutDetaching($tagIds);
-        }
+        });
         $this->selected = [];
         $this->bulkTags = [];
         $this->dispatch('toast', message: count($tagIds).' '.str('tag')->plural(count($tagIds)).' added.');
@@ -156,7 +162,9 @@ final class EndpointIndex extends Component
     public function bulkSetEnabled(bool $enabled): void
     {
         $ids = $this->selectedIds();
-        MockEndpoint::query()->whereKey($ids)->update(['enabled' => $enabled]);
+        $this->reviseEndpoints($ids, static function (MockEndpoint $endpoint) use ($enabled): void {
+            $endpoint->update(['enabled' => $enabled]);
+        });
         $this->selected = [];
         $this->dispatch('toast', message: count($ids).' '.str('endpoint')->plural(count($ids)).' '.($enabled ? 'enabled.' : 'disabled.'));
     }
@@ -247,5 +255,21 @@ final class EndpointIndex extends Component
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->all();
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @param  callable(MockEndpoint): void  $change
+     */
+    private function reviseEndpoints(array $ids, callable $change): void
+    {
+        DB::transaction(function () use ($ids, $change): void {
+            $revisions = app(RevisionManager::class);
+            foreach (MockEndpoint::query()->whereKey($ids)->lockForUpdate()->get() as $endpoint) {
+                $before = $revisions->snapshot($endpoint);
+                $change($endpoint);
+                $revisions->recordIfChanged($endpoint, $before);
+            }
+        }, 3);
     }
 }

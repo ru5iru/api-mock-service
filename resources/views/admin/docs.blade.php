@@ -21,6 +21,7 @@
                 <li><a href="#template-seeding">Seeds and locales</a></li>
                 <li><a href="#template-errors">Validation and errors</a></li>
                 <li><a href="#config-transfer">Import and export</a></li>
+                <li><a href="#version-history">Version history and restore</a></li>
                 <li><a href="#request-log">Request log</a></li>
                 <li><a href="#preferences-accessibility">Theme and accessibility</a></li>
                 <li><a href="#serving-errors">Serving behavior</a></li>
@@ -241,7 +242,20 @@
                 <li>Preview the complete plan; preview never writes to the database.</li>
                 <li>Resolve errors and review warnings. Upsert replaces response pools only when explicitly enabled.</li>
                 <li>Confirm to apply atomically. Version 1 files remain supported and missing template fields become static responses.</li>
+                <li>Update-by-UUID preview shows how many endpoint/response pre-states will be versioned. After apply, Undo this import restores the complete recorded batch.</li>
             </ol>
+        </section>
+
+        <section id="version-history" class="card docs-card docs-wide">
+            <h2>Version history, compare, and restore</h2>
+            <p>Every changed endpoint/response save records its complete pre-state; no-op saves do not add revisions. Endpoint history includes collection, tags, and environment overrides.</p>
+            <ol>
+                <li>Open <strong>History</strong> in the endpoint editor or on a response row.</li>
+                <li>Select two versions for a structural diff, or choose <strong>Compare with current</strong> to compare one saved version with live values.</li>
+                <li>Review canonical request, JSON body/template, and organization changes in the shared before/after viewer.</li>
+                <li>Choose <strong>Restore</strong> and confirm the named version. Restore changes live values and appends a new rollback revision; it never rewrites existing history.</li>
+            </ol>
+            <p>An Update-by-UUID import groups all changed entity pre-states under one batch. Its success panel keeps <strong>Undo this import</strong> available and lists every affected endpoint/response before restoring them atomically.</p>
         </section>
 
         <section id="request-log" class="card docs-card">
