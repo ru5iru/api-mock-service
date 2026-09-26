@@ -237,6 +237,9 @@
                                             <div><dt>Host</dt><dd>{{ $event['_host'] ?: 'Unavailable' }}</dd></div>
                                             <div><dt>Signature version</dt><dd>{{ $event['matched_variant'] ?? 'No match' }}</dd></div>
                                             <div><dt>Response</dt><dd>{{ isset($event['response_id']) ? '#'.$event['response_id'] : 'None selected' }}</dd></div>
+                                            @if (isset($event['response_id']) && isset($event['request_id']))
+                                                <div><dt>Callbacks</dt><dd><a class="table-link" href="{{ route('dashboard.callbacks.index') }}?request_log_id={{ urlencode($event['request_id']) }}" wire:navigate x-on:click.stop>View callback attempts</a></dd></div>
+                                            @endif
                                             <div><dt>Environment</dt><dd>{{ $event['environment'] ?? '—' }}</dd></div>
                                             <div><dt>Delay</dt><dd>{{ $event['delay_ms'] ?? 0 }} ms</dd></div>
                                             @if (($event['_repeat_count'] ?? 1) > 1)

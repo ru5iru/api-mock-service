@@ -99,7 +99,27 @@
                 "seed": {"type": ["integer", "null"]},
                 "locale": {"type": "string", "minLength": 2, "maxLength": 32},
                 "delay_ms": {"type": "integer", "minimum": 0},
-                "weight": {"type": "integer", "minimum": 1, "maximum": 1000000}
+                "weight": {"type": "integer", "minimum": 1, "maximum": 1000000},
+                "callback": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "requires_secret_replacement": {"type": "boolean"},
+                        "url": {"type": ["string", "null"], "maxLength": 2048},
+                        "method": {"enum": ["POST", "PUT", "PATCH", "DELETE"]},
+                        "headers": {"type": "object", "additionalProperties": {"type": "string"}},
+                        "body": {"type": ["string", "null"], "maxLength": 262144},
+                        "delay_ms": {"type": "integer", "minimum": 0, "maximum": 30000},
+                        "delay_max_ms": {"type": ["integer", "null"], "minimum": 0, "maximum": 30000},
+                        "retry": {"type": "integer", "minimum": 1, "maximum": 5},
+                        "backoff_ms": {"type": "integer", "minimum": 0, "maximum": 30000},
+                        "timeout_ms": {"type": "integer", "minimum": 100, "maximum": 10000},
+                        "signing_enabled": {"type": "boolean"},
+                        "signing_secret": {"type": "null"},
+                        "signing_secret_redacted": {"type": "boolean"},
+                        "signature_header": {"type": "string"}
+                    }
+                }
             }
         }
     }

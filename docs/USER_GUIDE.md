@@ -390,7 +390,27 @@ Open **History** in the endpoint editor or on a response row:
 
 Revision summaries are intentionally short (for example, `renamed`, `priority 0→5`, or `response body changed`). The detailed viewer remains authoritative.
 
-## 16. Protected APIs
+## 16. Asynchronous callbacks
+
+Each saved response can send an independent HTTP request after its normal mock response has already been sent. Open the response editor's collapsed **Callback** section, enable it, enter an absolute HTTP(S) URL and select POST, PUT, PATCH, or DELETE. Add a JSON object of request headers and a JSON response template for the callback body. The main response's status, body, and latency do not depend on callback delivery.
+
+The callback runs in a dedicated background worker (`docker compose ps callback-worker`); stopped workers leave new jobs queued. Choose a fixed minimum delay, or set a larger maximum for a random range (up to 30 seconds). **Max attempts** includes the first delivery (1–5 total); non-2xx HTTP responses and network errors retry until the first success or this limit, waiting the configured backoff between attempts. Each attempt has a hard 100–10,000 ms timeout. Redirects do not count as success and are not followed automatically.
+
+URL, headers, and JSON body support `{{env.KEY}}` values from the *active environment at invocation time* plus `$request.method`, `$request.url`, `$request.body`, `$request.id`, `$request.json.field`, and `{{$request.method}}` interpolation. The JSON body also supports the same `$module.method`, `$repeat`, `$pick`, and other directives as response templating. Choose **Builder** for representable field-based JSON or **JSON** for context tokens and advanced directives; switching to JSON does not erase the body, and Builder is disabled when the body cannot be represented faithfully. The editor's JSON autocomplete and **Preview callback body** use the same shared Faker compiler/renderer. Request tokens apply only to callbacks, not ordinary response bodies. The preview uses synthetic request data, and a missing environment variable fails the callback attempt without changing the primary reply.
+
+For example, set URL to `https://{{env.WEBHOOK_HOST}}/events`, header `X-Request: {{$request.method}}`, and body:
+
+```json
+{"requestId":"$request.id","method":"$request.method","name":"$person.firstName"}
+```
+
+To sign requests, enable **Sign requests**, set a secret (write-only after saving), and choose the header name (default `X-MockDeck-Signature`). MockDeck calculates a lowercase hexadecimal **HMAC-SHA256 of the exact raw resolved body bytes**, with your signing secret as the HMAC key, and sends the digest as that header's value. A receiver can verify with PHP `hash_equals(hash_hmac('sha256', $rawBody, $secret), $header)`. Do not re-encode parsed JSON before checking the signature. Disabling signing removes the signature header entirely, including a similarly named user-configured header; it does not send an empty signature.
+
+Save the response before selecting **Send test callback**. This uses a synthetic request even when no matching request has ever been received. The inline result updates from Queued/Pending to status, HTTP code, and duration. Open **Callback log** to filter attempts by method, status, time, request ID, or target. A callback log row links to its triggering request; the request detail links back to callback attempts. **Resend** creates a new attempt using the original resolved target, headers, and body, signing them anew using the current secret. It never mutates the original row or replays the primary response.
+
+Attempt payloads, URLs, and job context may contain environment secrets: MockDeck encrypts stored resolved fields, omits them from callback-log API reads and portable exports, and protects callback endpoints with dashboard access. Keep `APP_KEY` private. The callback target is intentionally allowed to reach any well-formed HTTP(S) URL, including local network targets: MockDeck is a localhost-oriented test tool, **not** an SSRF-hardened publicly exposed proxy.
+
+## 17. Protected APIs
 
 ### Protected template endpoints
 
@@ -414,10 +434,14 @@ The dashboard uses the following protected template endpoints and organization A
 | `POST /api/{endpoints|responses}/{id}/revisions/{revision}/restore` | Restore as a new rollback revision. |
 | `GET /api/imports/{batch_id}` | Preview the entities in a reversible import batch. |
 | `POST /api/imports/{batch_id}/undo` | Restore every recorded pre-import state atomically. |
+| `GET/PATCH /api/responses/{id}/callback` | Read masked callback config or save changes as a new response revision. |
+| `POST /api/responses/{id}/callback/test` | Queue a synthetic test delivery. |
+| `GET /api/callback-attempts` | Filter recent attempt metadata; resolved payloads stay private. |
+| `POST /api/callback-attempts/{id}/resend` | Queue a new attempt using that attempt's resolved request. |
 
 They require dashboard access and are intended for the built-in editor, not as unauthenticated public APIs.
 
-## 17. Operations and validation
+## 18. Operations and validation
 
 ```bash
 make up                 # build, start, and wait for services
@@ -435,12 +459,12 @@ Git must retain the `.gitignore` placeholders under `storage/framework/cache/dat
 
 See [VALIDATION.md](VALIDATION.md) for complete automated and manual release checks.
 
-## 18. Current limitations
+## 19. Current limitations
 
 - Matching uses five fixed header policies; arbitrary per-field query/header/body predicates are not implemented.
 - Upstream origin is intentionally excluded from signatures.
 - Response selection is weighted random, not stateful scenarios or request-rule selection.
-- Templates currently serve JSON only. Request-context tokens and non-JSON interpolation were not shipped.
+- Response templates serve JSON only; request-context interpolation is callback-only.
 - Builder is intentionally a lossless subset of the JSON template language.
 - OpenAPI generation/import, recording/proxying, verification assertions, and third-party format adapters remain planned.
 

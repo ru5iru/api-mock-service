@@ -46,6 +46,11 @@
                    @if (request()->routeIs('dashboard.requests.*')) aria-current="page" @endif>
                     Request log <span class="nav-badge" data-unmatched-badge hidden>0</span>
                 </a>
+                <a href="{{ route('dashboard.callbacks.index') }}" wire:navigate
+                   class="{{ request()->routeIs('dashboard.callbacks.*') ? 'active' : '' }}"
+                   @if (request()->routeIs('dashboard.callbacks.*')) aria-current="page" @endif>
+                    Callback log
+                </a>
                 <a href="{{ route('dashboard.config.index') }}" wire:navigate
                    class="{{ request()->routeIs('dashboard.config.*') ? 'active' : '' }}"
                    @if (request()->routeIs('dashboard.config.*')) aria-current="page" @endif>
@@ -85,6 +90,9 @@
                        @if (request()->routeIs('dashboard.requests.*')) aria-current="page" @endif>
                         Request log <span class="nav-badge" data-unmatched-badge hidden>0</span>
                     </a>
+                    <a href="{{ route('dashboard.callbacks.index') }}" wire:navigate
+                       class="{{ request()->routeIs('dashboard.callbacks.*') ? 'active' : '' }}"
+                       @if (request()->routeIs('dashboard.callbacks.*')) aria-current="page" @endif>Callback log</a>
                     <a href="{{ route('dashboard.config.index') }}" wire:navigate
                        class="{{ request()->routeIs('dashboard.config.*') ? 'active' : '' }}"
                        @if (request()->routeIs('dashboard.config.*')) aria-current="page" @endif>

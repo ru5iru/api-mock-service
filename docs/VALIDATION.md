@@ -129,6 +129,17 @@ Response-template smoke check:
 7. Save a valid template, invoke the copied mock cURL, and confirm configured status/headers/delay plus JSON output and `X-Request-ID`.
 8. Confirm the request-log row is marked templated and includes render time without the rendered body.
 
+Callback smoke check (use a local disposable receiver):
+
+1. Confirm `docker compose ps callback-worker` shows a running worker and `make health` remains healthy.
+2. Configure a response callback with a JSON body, `{{env.KEY}}` and `$request.method`, a 2-second delay, two attempts, and a short timeout. Save the response.
+3. Invoke the mock and verify its primary response returns before the callback delay expires; verify the callback appears later in **Callback log**.
+4. Enable signing and enter a new secret. Independently compute lowercase hex HMAC-SHA256 over the exact callback body bytes; verify the configured signature header matches. Turn signing off and confirm the header is absent.
+5. Choose **Send test callback** without prior traffic, then inspect the status and duration. Choose **Resend** and confirm a new attempt row links back to the original; the original is unchanged.
+6. Verify a non-2xx response is retried only up to Max attempts, a stalled receiver times out, and neither affects the mock response or subsequent requests.
+7. Export even with `--include-sensitive`; check that the signing secret, secret environment values, resolved callback payloads, and attempts are absent. Import a signed callback and confirm signing remains disabled until a new secret is entered.
+8. Check the editor and callback log at 1440px, 1024px, and 390px in both themes; run axe on each view and resolve any accessibility findings before release.
+
 ## Runtime smoke test
 
 Create an enabled endpoint using this request and configure a `200` response body of `{"ok":true}`:

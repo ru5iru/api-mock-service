@@ -20,7 +20,7 @@ validation-image:
 	docker compose build app
 
 logs:
-	docker compose logs -f nginx app
+	docker compose logs -f nginx app callback-worker
 
 test:
 	docker compose run --rm $(TEST_ENV) app php artisan test

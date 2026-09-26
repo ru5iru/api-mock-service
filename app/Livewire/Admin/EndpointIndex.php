@@ -231,6 +231,7 @@ final class EndpointIndex extends Component
         return MockEndpoint::query()
             ->with(['collection', 'tags'])
             ->withCount('responses')
+            ->withExists(['responses as has_callback' => fn ($query) => $query->where('callback_enabled', true)])
             ->when($term !== '', fn ($query) => $query->where(function ($query) use ($term): void {
                 $needle = '%'.strtolower($term).'%';
                 $query->whereRaw('LOWER(name) LIKE ?', [$needle])

@@ -459,12 +459,42 @@ final readonly class ConfigImporter
             'locale' => $source['locale'] ?? 'en',
             'delay_ms' => (int) $source['delay_ms'],
             'weight' => (int) $source['weight'],
+            ...$this->callbackAttributes($source),
         ];
         $current = collect($this->revisions->snapshot($response))->only(array_keys($expected))->all();
         ksort($current);
         ksort($expected);
 
         return $current !== $expected;
+    }
+
+    /** @param array<string, mixed> $source
+     * @return array<string, mixed>
+     */
+    private function callbackAttributes(array $source): array
+    {
+        if (! isset($source['callback'])) {
+            // Older portable documents must not silently erase local callback settings.
+            return [];
+        }
+
+        $callback = $source['callback'];
+
+        return [
+            'callback_enabled' => $callback['enabled'] && ! ($callback['requires_secret_replacement'] ?? false),
+            'callback_url' => $callback['url'],
+            'callback_method' => $callback['method'],
+            'callback_headers' => $callback['headers'] ?: null,
+            'callback_body' => $callback['body'],
+            'callback_delay_ms' => $callback['delay_ms'],
+            'callback_delay_max_ms' => $callback['delay_max_ms'],
+            'callback_retry' => $callback['retry'],
+            'callback_backoff_ms' => $callback['backoff_ms'],
+            'callback_timeout_ms' => $callback['timeout_ms'],
+            // A portable document never carries the signing key, even in unredacted mode.
+            'callback_signing_enabled' => false,
+            'callback_signature_header' => $callback['signature_header'],
+        ];
     }
 
     private function persist(
@@ -562,6 +592,7 @@ final readonly class ConfigImporter
                     'locale' => $responseSource['locale'] ?? 'en',
                     'delay_ms' => $responseSource['delay_ms'],
                     'weight' => $responseSource['weight'],
+                    ...$this->callbackAttributes($responseSource),
                 ])->save();
                 if ($responseBefore !== null && $this->revisions->recordIfChanged(
                     $response,

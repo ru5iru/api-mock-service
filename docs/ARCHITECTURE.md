@@ -145,6 +145,14 @@ Logging is non-fatal: stack exceptions are ignored and `MockRequestLogger` catch
 
 `LogTailer` spends one global `MOCK_LOG_TAIL_MAX_BYTES` budget across newest rotated files, parses valid JSON lines, ignores partial/malformed lines, and returns newest first. This bound is important; do not replace it with `file()` on a production log.
 
+## Asynchronous callback boundary
+
+`MockInvocationController` registers a terminating callback only for selected responses with callbacks enabled. Laravel invokes it after sending the primary response; it enqueues an encrypted `DeliverCallback` job on the database-backed `callbacks` queue. The dedicated Compose `callback-worker` service executes delays, resolves the invocation's active environment by ID, renders the same Faker JSON engine with callback-only environment/request context, sends bounded HTTP requests, and records one encrypted `CallbackAttempt` per attempt. Network calls and backoff never run inside the PHP-FPM request. A failed enqueue is isolated from the already-built response.
+
+`callback_attempts.request_log_id` stores the string `X-Request-ID`, because request logs are rotating JSON files and do not have database primary keys. This is a soft correlation, not an FK: callbacks still retain their request ID if the log file rotates away. The API deliberately excludes resolved URLs, headers, and bodies (which may embed secret environment values); all three are encrypted at rest for resend. Signing secrets use an encrypted model cast and never leave via callback GET or portable export. Response revisions store only encrypted ciphertext; diff output redacts signing-secret changes. Restores copy ciphertext without encrypting it twice.
+
+The worker allows up to five attempts, a 30-second initial delay, up to 30 seconds between attempts, and up to 10 seconds per HTTP request. Its timeout is 240 seconds and the queue visibility timeout 300 seconds. Non-2xx results fail, 3xx redirects are not followed, and network failures are retried. Resend reads the originally resolved request and signs with the current secret, adding new attempt rows. Signing is HMAC-SHA256 of the raw resolved UTF-8 body bytes in lowercase hex; disabled signing removes that header. The URL guard checks only valid absolute HTTP(S) syntax: deliberately no SSRF restrictions, suitable for trusted local test endpoints, not for exposure to untrusted network users.
+
 ## Dashboard access
 
 `DashboardAccess` uses a session authentication flag when `MOCK_DASHBOARD_AUTH_ENABLED=true`. Login validates configured credentials with constant-time comparison, is rate-limited, regenerates the session ID, and redirects to the intended dashboard URL. Logout invalidates the session and CSRF token.
@@ -158,7 +166,8 @@ The dashboard can display raw curl, canonical text, request bodies, and headers.
 Primary domain and history tables are:
 
 - `mock_endpoints` stores an immutable portable UUID, the original curl, one canonical representation, one digest, signature version, enabled state, priority, and exclusion flags;
-- `mock_responses` stores an immutable portable UUID, status, header JSON, static body, delay, weight, and additive template mode/text/editor/seed/locale fields.
+- `mock_responses` stores an immutable portable UUID, status, header JSON, static body, delay, weight, template fields, and optional callback configuration with an encrypted signing secret.
+- `callback_attempts` stores encrypted resolved requests, retry/result metadata, and string request-log correlation. `jobs` and `failed_jobs` back the isolated callback worker.
 - `revisions` stores immutable endpoint/response JSON snapshots, per-entity version numbers, source, optional import batch, note, and creation time. It intentionally has no cascading foreign key so history survives response-pool replacement long enough for batch undo.
 
 Request logs never enter PostgreSQL. Deleting an endpoint cascades to its responses.

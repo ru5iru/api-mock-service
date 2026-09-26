@@ -14,13 +14,16 @@ final class TemplateCompiler
 
     private string $source = '';
 
+    private bool $allowContext = false;
+
     public function __construct(private readonly FakerMethodCatalog $catalog) {}
 
-    public function compile(string $source, string $locale = 'en'): TemplateValidationResult
+    public function compile(string $source, string $locale = 'en', bool $allowContext = false): TemplateValidationResult
     {
         $this->issues = [];
         $this->nodes = 0;
         $this->source = $source;
+        $this->allowContext = $allowContext;
 
         if (strlen($source) > (int) config('mock.templates.max_template_bytes', 262144)) {
             $this->issue('error', 'LIMIT_EXCEEDED', '/', 'The template exceeds the configured 256 KB limit.');
@@ -268,6 +271,10 @@ final class TemplateCompiler
             return;
         }
 
+        if ($this->allowContext && preg_match('/^\$request\.[A-Za-z_][A-Za-z0-9_.-]*$/D', $value) === 1) {
+            return;
+        }
+
         if (preg_match('/^\$([A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*)(?:\((.*)\))?$/s', $value, $match) === 1) {
             $args = $this->parseInlineArguments($match[2] ?? '', $path, $value);
             if ($args !== null) {
@@ -286,6 +293,10 @@ final class TemplateCompiler
                         $this->issue('error', 'UNKNOWN_METHOD', $path, '{{$index}} is only available inside $repeat.', '{{$index}}');
                     }
 
+                    continue;
+                }
+
+                if ($this->allowContext && preg_match('/^(?:env|\$?request)\.[A-Za-z_][A-Za-z0-9_.-]*$/D', $expression) === 1) {
                     continue;
                 }
 

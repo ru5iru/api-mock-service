@@ -62,6 +62,19 @@ final readonly class RevisionManager
                 'locale' => $entity->locale,
                 'delay_ms' => (int) $entity->delay_ms,
                 'weight' => (int) $entity->weight,
+                'callback_enabled' => (bool) $entity->callback_enabled,
+                'callback_url' => $entity->callback_url,
+                'callback_method' => $entity->callback_method ?? 'POST',
+                'callback_headers' => $entity->callback_headers,
+                'callback_body' => $entity->callback_body,
+                'callback_delay_ms' => (int) $entity->callback_delay_ms,
+                'callback_delay_max_ms' => $entity->callback_delay_max_ms,
+                'callback_retry' => max(1, (int) ($entity->callback_retry ?: 1)),
+                'callback_backoff_ms' => (int) ($entity->callback_backoff_ms ?? 1000),
+                'callback_timeout_ms' => max(1, (int) ($entity->callback_timeout_ms ?: 5000)),
+                'callback_signing_enabled' => (bool) $entity->callback_signing_enabled,
+                'callback_signing_secret' => $entity->getRawOriginal('callback_signing_secret'),
+                'callback_signature_header' => $entity->callback_signature_header ?? 'X-MockDeck-Signature',
             ]);
         }
 
@@ -268,6 +281,35 @@ final readonly class RevisionManager
         }
 
         if ($type === 'response') {
+            // Revisions created before callback support have no callback keys.
+            // Restoring one returns callback settings to their original defaults.
+            $defaults = [
+                'callback_enabled' => false,
+                'callback_url' => null,
+                'callback_method' => 'POST',
+                'callback_headers' => null,
+                'callback_body' => null,
+                'callback_delay_ms' => 0,
+                'callback_delay_max_ms' => null,
+                'callback_retry' => 1,
+                'callback_backoff_ms' => 1000,
+                'callback_timeout_ms' => 5000,
+                'callback_signing_enabled' => false,
+                'callback_signing_secret' => null,
+                'callback_signature_header' => 'X-MockDeck-Signature',
+            ];
+            $snapshot = array_replace($defaults, $snapshot);
+            foreach ($defaults as $key => $default) {
+                if ($default !== null && $snapshot[$key] === null) {
+                    $snapshot[$key] = $default;
+                }
+            }
+            if ((int) $snapshot['callback_retry'] < 1) {
+                $snapshot['callback_retry'] = $defaults['callback_retry'];
+            }
+            if ((int) $snapshot['callback_timeout_ms'] < 1) {
+                $snapshot['callback_timeout_ms'] = $defaults['callback_timeout_ms'];
+            }
             $response = MockResponse::query()->find((int) $snapshot['id']);
             if ($response === null) {
                 $response = new MockResponse;
@@ -275,7 +317,13 @@ final readonly class RevisionManager
                 $response->uuid = $snapshot['uuid'];
                 $response->mock_endpoint_id = (int) $snapshot['mock_endpoint_id'];
             }
-            $response->fill(collect($snapshot)->except(['id', 'uuid', 'mock_endpoint_id'])->all())->save();
+            $response->fill(collect($snapshot)->except(['id', 'uuid', 'mock_endpoint_id', 'callback_signing_secret'])->all())->save();
+            if (array_key_exists('callback_signing_secret', $snapshot)) {
+                // Snapshots contain ciphertext; avoid encrypting it a second time.
+                DB::table('mock_responses')->where('id', $response->id)->update([
+                    'callback_signing_secret' => $snapshot['callback_signing_secret'],
+                ]);
+            }
 
             return $response->refresh();
         }

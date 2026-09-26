@@ -60,6 +60,8 @@ When redaction removes a value, the export sets `enabled: false` and `requires_s
 
 MockDeck never exports dashboard credentials, secret environment-variable values, database settings, request logs, numeric database IDs, canonical strings, or stored hashes. Non-secret environment variables are portable configuration and are included.
 
+Callback URL, method, headers, JSON body, timing, and signature-header name are exported inside each response's optional `callback` object. With normal redaction, configured sensitive callback headers and query keys are replaced. The callback signing secret is **never** exported, even with `--include-sensitive`: `signing_secret` is null and `signing_secret_redacted` marks an existing secret. Any callback requiring a redacted signing secret or request credential is exported disabled with `requires_secret_replacement: true`. Import disables signing until you provide a new secret; review the callback and enable it deliberately. Callback attempt logs and resolved payloads are never exported.
+
 ## Document contract
 
 The current checked-in contract is `resources/schemas/mockdeck-config-v1.2.schema.json`; earlier schemas remain available for older documents. A current document contains:
@@ -73,6 +75,7 @@ The current checked-in contract is `resources/schemas/mockdeck-config-v1.2.schem
 - raw curl, source signature version, and matching exclusions;
 - response status, headers, body, delay, and weight;
 - additive template fields: `body_mode`, `template`, `editor_view`, `seed_mode`, `seed`, and `locale`.
+- optional response `callback` configuration; signing secrets are always excluded.
 
 Endpoint and response arrays are sorted by UUID. Response header keys are sorted case-insensitively. JSON uses four-space indentation, unescaped Unicode/slashes, and a final newline. Timestamps are metadata; repeated exports at the same fixed time are byte-identical.
 

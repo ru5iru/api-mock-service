@@ -160,6 +160,9 @@
                                 <div class="metadata-row">
                                     <span class="state-label {{ $endpoint->enabled ? 'enabled' : 'disabled' }}"><i></i>{{ $endpoint->enabled ? 'Enabled' : 'Disabled' }}</span>
                                     <span>{{ $endpoint->responses_count }} {{ Str::plural('response', $endpoint->responses_count) }}</span>
+                                    @if ($endpoint->has_callback)
+                                        <span class="state-chip enabled" title="Contains a response with an asynchronous callback">↗ Callback</span>
+                                    @endif
                                     @if ($endpoint->priority !== 0)
                                         <span>Priority {{ $endpoint->priority }}</span>
                                     @endif

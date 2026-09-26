@@ -87,7 +87,7 @@ final readonly class ConfigExporter
                         'exclude_headers' => $endpoint->exclude_headers,
                     ],
                 ],
-                'responses' => $this->responses($endpoint->responses),
+                'responses' => $this->responses($endpoint->responses, $redactSecrets),
             ];
         })->all();
 
@@ -133,14 +133,41 @@ final readonly class ConfigExporter
      * @param  Collection<int, MockResponse>  $responses
      * @return list<array<string, mixed>>
      */
-    private function responses(Collection $responses): array
+    private function responses(Collection $responses, bool $redactSecrets): array
     {
         return $responses
             ->sortBy('uuid', SORT_STRING)
             ->values()
-            ->map(function (MockResponse $response): array {
+            ->map(function (MockResponse $response) use ($redactSecrets): array {
                 $headers = array_map(static fn (mixed $value): string => (string) $value, $response->headers ?? []);
                 uksort($headers, static fn (string $left, string $right): int => strcasecmp($left, $right));
+                $callbackHeaders = $response->callback_headers ?? [];
+                $callbackUrl = $response->callback_url;
+                $callbackRedacted = false;
+                if ($redactSecrets) {
+                    $sensitiveHeaders = array_map('strtolower', config('mock.portable_config.sensitive_headers', []));
+                    foreach ($callbackHeaders as $name => &$value) {
+                        if (in_array(strtolower($name), $sensitiveHeaders, true)) {
+                            $value = '[redacted]';
+                            $callbackRedacted = true;
+                        }
+                    }
+                    unset($value);
+                    $sensitiveKeys = array_map('strtolower', config('mock.portable_config.sensitive_query_keys', []));
+                    if ($callbackUrl !== null) {
+                        $callbackUrl = preg_replace_callback('/([?&])([^=&#]+)=([^&#]*)/', static function (array $match) use ($sensitiveKeys, &$callbackRedacted): string {
+                            if (in_array(strtolower(rawurldecode($match[2])), $sensitiveKeys, true)) {
+                                $callbackRedacted = true;
+
+                                return $match[1].$match[2].'=[redacted]';
+                            }
+
+                            return $match[0];
+                        }, $callbackUrl);
+                    }
+                }
+                $callbackRedacted = $callbackRedacted
+                    || ($response->callback_signing_enabled && $response->callback_signing_secret !== null);
 
                 return [
                     'uuid' => $response->uuid,
@@ -155,6 +182,23 @@ final readonly class ConfigExporter
                     'locale' => (string) ($response->locale ?? 'en'),
                     'delay_ms' => $response->delay_ms,
                     'weight' => $response->weight,
+                    'callback' => [
+                        'enabled' => (bool) $response->callback_enabled && ! $callbackRedacted,
+                        'requires_secret_replacement' => $callbackRedacted,
+                        'url' => $callbackUrl,
+                        'method' => $response->callback_method,
+                        'headers' => (object) $callbackHeaders,
+                        'body' => $response->callback_body,
+                        'delay_ms' => $response->callback_delay_ms,
+                        'delay_max_ms' => $response->callback_delay_max_ms,
+                        'retry' => $response->callback_retry,
+                        'backoff_ms' => $response->callback_backoff_ms,
+                        'timeout_ms' => $response->callback_timeout_ms,
+                        'signing_enabled' => (bool) $response->callback_signing_enabled,
+                        'signing_secret' => null,
+                        'signing_secret_redacted' => $response->callback_signing_secret !== null,
+                        'signature_header' => $response->callback_signature_header,
+                    ],
                 ];
             })
             ->all();

@@ -23,6 +23,7 @@
                 <li><a href="#config-transfer">Import and export</a></li>
                 <li><a href="#version-history">Version history and restore</a></li>
                 <li><a href="#request-log">Request log</a></li>
+                <li><a href="#async-callbacks">Asynchronous callbacks</a></li>
                 <li><a href="#preferences-accessibility">Theme and accessibility</a></li>
                 <li><a href="#serving-errors">Serving behavior</a></li>
                 <li><a href="#shortcuts">Keyboard shortcuts</a></li>
@@ -90,6 +91,16 @@
                 <li><strong>Static:</strong> returned exactly as stored; dollar signs and braces remain literal.</li>
                 <li><strong>Template:</strong> parsed and rendered for every matching request.</li>
             </ul>
+        </section>
+
+        <section id="async-callbacks" class="card docs-card docs-wide">
+            <h2>Asynchronous callbacks</h2>
+            <p>Open a response's <strong>Callback</strong> disclosure, enable it, and enter an HTTP(S) URL, method, header JSON, and a JSON body template. Save the response. The separate callback worker runs after the mock response is sent, so network failures and configured delay never hold up the caller.</p>
+            <p>Use <code>@verbatim{{env.KEY}}@endverbatim</code> for values from the active environment and <code>$request.method</code>, <code>$request.id</code>, <code>$request.body</code>, or <code>$request.json.field</code> for the triggering request. The callback body reuses the response Faker template renderer. Choose Builder for field-based JSON or JSON for context tokens and advanced directives; switching views does not discard the body. Maximum delay is 30 seconds; Max attempts includes the first try (1–5), non-2xx responses retry after the configured backoff, and each attempt has a bounded timeout.</p>
+            <h3>Signature verification</h3>
+            <p>When <strong>Sign requests</strong> is enabled, MockDeck computes lowercase hex HMAC-SHA256 over the <strong>exact raw resolved body bytes</strong> using the write-only signing secret, then places the digest in the configured header (default <code>X-MockDeck-Signature</code>). Verify it against raw bytes before parsing or re-encoding JSON. With signing disabled, the signature header is omitted entirely.</p>
+            <p>Choose <strong>Send test callback</strong> even without a previous request. The inline result shows status, HTTP code, and duration. Open <a href="{{ route('dashboard.callbacks.index') }}" wire:navigate>Callback log</a> to filter attempts and select <strong>Resend</strong>, which creates a fresh attempt with the original resolved URL, headers, and body and the current signing secret. The original attempt and primary response stay unchanged.</p>
+            <p>Resolved fields may contain secret environment values, so callback API reads and exports do not reveal them. Callback targets are only checked for well-formed HTTP(S) URLs; localhost/internal targets are intentionally allowed for testing. Do not expose this capability to untrusted users.</p>
         </section>
 
         <section id="response-templating" class="card docs-card docs-wide">

@@ -60,6 +60,7 @@ final class StructuralJsonDiffer
             'normalized_curl',
             'body',
             'template',
+            'callback_body',
         ], true) || (is_array($before) && array_is_list($before)) || (is_array($after) && array_is_list($after));
     }
 
@@ -67,9 +68,13 @@ final class StructuralJsonDiffer
     private function change(string $path, string $type, mixed $before, mixed $after): array
     {
         $root = explode('.', $path, 2)[0];
+        if ($root === 'callback_signing_secret') {
+            $before = $before === null ? null : '[redacted]';
+            $after = $after === null ? null : '[redacted]';
+        }
         $renderer = match ($root) {
             'raw_curl', 'normalized_curl' => 'canonical-request',
-            'body', 'template' => 'json-code',
+            'body', 'template', 'callback_body' => 'json-code',
             'collection_id', 'tags', 'environment_overrides' => 'organization',
             default => 'plain',
         };

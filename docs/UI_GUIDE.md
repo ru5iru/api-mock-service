@@ -485,6 +485,13 @@ The endpoint and response **History** disclosures reuse the native disclosure, r
 - **Restore** always uses the existing confirm mechanism, names the version, states that live values change, and states that a new rollback revision is appended. History is never rewritten.
 - Import completion reuses the inline-result pattern for `N changes made · Undo this import`; its one confirmation names every affected endpoint/response.
 
+### Callback editor and callback log
+
+- The response editor's **Callback** is a native disclosure (`.history-disclosure`) closed by default. It reuses labelled `.field` inputs, `.field-row` grids, `.code-input`, autocomplete, `.toggle-inline`, `.field-help`, and `.info-note`; no separate heading or extra visual hierarchy is added to its action row. A new `.callback-fields` grid uses spacing tokens only. Its body uses the response editor's existing `.segmented-control` Builder/JSON switch and `.schema-builder`/`.schema-row` partial; rows carry a schema target so drag and drop never changes the main response. JSON-only context tokens make Builder unavailable without rewriting the template.
+- Signature help is inline beneath the masked secret input and header name; never reflect a stored secret into an input or a status message. The callback's preview uses `.code-block` colors from existing code-surface tokens.
+- The **Callback log** uses `.log-filter-panel`, `.select-field` with visually hidden captions, `.table-scroll`, `.log-table`, `.day-separator`, method badges, state chips, the request-log relative time, and labelled `.icon-button` for Resend. `.callback-filters` adapts to one column on mobile; the table scrolls inside its card instead of expanding the page.
+- **Resend** reuses a named action with an accessible label and an inline status. Pending, success, failure, timeout, and empty states use existing semantic tokens and feedback patterns. Links between request and callback logs use `.table-link`.
+
 Syntax tokens are available for flags, URLs, headers, strings, and keys. The response-template editor adds catalog autocomplete to the existing code-input surface; it does not introduce a general syntax-highlighting editor. A reusable syntax-highlighting component remains **undecided — pick on first use, then add here**.
 
 ## 8. Accessibility baseline

@@ -19,6 +19,7 @@ The stack is Laravel 13, Livewire 4, PostgreSQL 16, PHP-FPM, nginx, and Docker C
 - One-click mock-host curl generation with clipboard fallback
 - Versioned JSON import/export with default secret redaction and atomic preview/apply
 - Immutable endpoint/response history with structural diffs, compare-to-current, restore, and whole-import undo
+- Asynchronous callbacks with bounded delays/retries/timeouts, optional HMAC signing, test delivery, and resend history
 - Flat JSON request logs, request IDs, rotation, and bounded cross-file tailing
 - Production startup guards for placeholder secrets
 - PHPUnit regression suite, Pint checks, Compose validation, and CI workflow
@@ -37,6 +38,7 @@ The stack is Laravel 13, Livewire 4, PostgreSQL 16, PHP-FPM, nginx, and Docker C
 | Request observability | Structured request IDs/logs, filters, repeat grouping, unmatched diagnostics, row details | **Request log** |
 | Configuration transfer | Redacted deterministic export, preview-first create/upsert/clone import, CLI commands | **Import / export** |
 | Version history | Per-save snapshots, structural before/after diff, non-destructive restore, grouped import undo | Endpoint and response **History** panels |
+| Async callbacks | Deliver templated JSON to a test URL after the mock reply; sign, inspect, and resend attempts | Response **Callback** section and **Callback log** |
 | Dashboard security | Rate-limited login, persistent Livewire access middleware, safe production defaults | `/dashboard/login` and `.env` |
 | UI preferences | System/Light/Dark theme, compact/comfortable log density, keyboard shortcuts | Header controls and Request log |
 | Validation and CI | Compose validation, design-token checks, frontend tests, Pint, PHPUnit | `make validate` and GitHub Actions |
@@ -105,6 +107,8 @@ No original-URL header is required. Signatures deliberately ignore scheme, host,
 
 Every response includes `X-Request-ID`. A valid caller-provided ID is retained; otherwise MockDeck generates a UUID.
 
+Callbacks run only when a selected response has callbacks enabled. The separate `callback-worker` service processes them after the primary reply; verify it is running with `docker compose ps callback-worker`. If it is stopped, deliveries remain queued until it resumes. See [docs/USER_GUIDE.md](docs/USER_GUIDE.md) for the complete callback workflow and signing example.
+
 ## Manage endpoints and responses
 
 The endpoint registry searches name, method, path, and raw cURL; filters by method/state; and sorts by recent update, name, or priority. Each row can be opened, enabled/disabled, duplicated, exported, deleted, or copied as a MockDeck-host cURL. Selecting rows exposes bulk enable, disable, move-to-collection, add-tags, export, and delete actions.
@@ -152,6 +156,8 @@ Useful template forms:
 ```
 
 Templates are parsed without evaluation. Reserved prototype names and unsafe/unbounded helpers are blocked; size, depth, node, repeat, argument, and output limits are configurable. Static response bodies remain untouched even when they contain `$` or `{{`.
+
+Callback JSON bodies reuse this renderer and additionally accept `{{env.KEY}}` and `$request.*` tokens. The response body itself does not gain request-context interpolation.
 
 See [docs/USER_GUIDE.md#7-build-a-response-template](docs/USER_GUIDE.md#7-build-a-response-template) for Builder/JSON usage and [the language reference](docs/USER_GUIDE.md#8-template-language-reference) for directives, escapes, aliases, limits, seeds, and runtime errors.
 

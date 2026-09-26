@@ -18,13 +18,17 @@ final class TemplateRenderer
 
     private string $locale = 'en';
 
+    /** @var array<string, mixed>|null */
+    private ?array $context = null;
+
     public function __construct(private readonly FakerMethodCatalog $catalog) {}
 
-    public function render(CompiledTemplate $template, string $locale, string $seedMode, ?int $seed, ?string $requestHash = null): TemplateRenderResult
+    public function render(CompiledTemplate $template, string $locale, string $seedMode, ?int $seed, ?string $requestHash = null, ?array $context = null): TemplateRenderResult
     {
         $startedAt = hrtime(true);
         $this->renderedNodes = 0;
         $this->locale = $locale;
+        $this->context = $context;
         $this->faker = $this->catalog->faker($locale);
 
         if ($seedMode === 'fixed') {
@@ -175,6 +179,10 @@ final class TemplateRenderer
             return $index;
         }
 
+        if ($this->context !== null && preg_match('/^\$request\.[A-Za-z_][A-Za-z0-9_.-]*$/D', $value) === 1) {
+            return $this->contextValue(substr($value, 1), $path);
+        }
+
         if (preg_match('/^\$([A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*)(?:\((.*)\))?$/s', $value, $match) === 1) {
             $args = $this->inlineArguments($match[2] ?? '', $path, $value);
 
@@ -191,6 +199,14 @@ final class TemplateRenderer
                 }
 
                 return (string) $index;
+            }
+
+            if ($this->context !== null && preg_match('/^(?:env|\$?request)\.[A-Za-z_][A-Za-z0-9_.-]*$/D', $expression) === 1) {
+                $resolved = $this->contextValue(ltrim($expression, '$'), $path);
+
+                return is_scalar($resolved) || $resolved === null
+                    ? (string) $resolved
+                    : json_encode($resolved, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
             }
 
             if (preg_match('/^([A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*)(?:\((.*)\))?$/s', $expression, $methodMatch) !== 1) {
@@ -212,7 +228,47 @@ final class TemplateRenderer
             return (string) $value;
         }, $protected);
 
-        return str_replace($sentinel, '{{', $rendered ?? $protected);
+        $rendered ??= $protected;
+        if ($this->context !== null) {
+            $rendered = preg_replace_callback('/(?<![\$A-Za-z0-9_])\$request\.[A-Za-z_][A-Za-z0-9_.-]*/', function (array $match) use ($path): string {
+                $resolved = $this->contextValue(substr($match[0], 1), $path);
+
+                return is_scalar($resolved) || $resolved === null
+                    ? (string) $resolved
+                    : json_encode($resolved, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+            }, $rendered);
+        }
+
+        return str_replace($sentinel, '{{', $rendered);
+    }
+
+    private function contextValue(string $expression, string $path): mixed
+    {
+        [$namespace, $key] = explode('.', $expression, 2);
+        $values = $this->context[$namespace] ?? [];
+
+        if ($namespace === 'env') {
+            if (! array_key_exists($key, $values)) {
+                throw new TemplateRenderException("Unknown environment variable: {$key}.", $path, '{{'.$expression.'}}');
+            }
+
+            return $values[$key];
+        }
+
+        foreach (explode('.', $key) as $part) {
+            if ($namespace === 'request' && str_starts_with($key, 'headers.') && is_array($values)) {
+                $matching = array_filter(array_keys($values), static fn (string $header): bool => strcasecmp($header, $part) === 0);
+                if ($matching !== []) {
+                    $part = (string) reset($matching);
+                }
+            }
+            if (! is_array($values) || ! array_key_exists($part, $values)) {
+                throw new TemplateRenderException("Unknown request field: {$key}.", $path, '$'.$expression);
+            }
+            $values = $values[$part];
+        }
+
+        return $values;
     }
 
     /** @return list<mixed> */
