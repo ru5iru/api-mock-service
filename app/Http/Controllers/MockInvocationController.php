@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Callbacks\CallbackDispatcher;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\IncomingRequestFactory;
+use App\Services\Environments\EnvironmentContext;
 use App\Services\Logging\MockRequestLogger;
 use App\Services\Matching\EndpointMatch;
 use App\Services\Matching\EndpointMatcher;
@@ -29,6 +31,8 @@ final class MockInvocationController extends Controller
         private readonly MockRequestLogger $logger,
         private readonly CurlHasher $hasher,
         private readonly ResponseTemplateEngine $templates,
+        private readonly EnvironmentContext $environments,
+        private readonly CallbackDispatcher $callbacks,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -108,6 +112,13 @@ final class MockInvocationController extends Controller
 
             $response->headers->set('X-Request-ID', $requestId);
             $this->writeLog($request, $effectiveUrl, $requestId, $startedAt, $match, $selected->id, $statusCode, $delayMs, null, $templated, $renderMs);
+
+            try {
+                $this->callbacks->afterResponse($selected, $request, $requestId, $this->environments->active()->id);
+            } catch (Throwable $exception) {
+                // Callback scheduling must not alter the already-built primary response.
+                error_log('MockDeck callback scheduling failed: '.$exception::class);
+            }
 
             return $response;
         } catch (TemplateRenderException $exception) {
@@ -205,6 +216,8 @@ final class MockInvocationController extends Controller
             'status_code' => $statusCode,
             'delay_ms' => $delayMs,
             'duration_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+            'environment' => $this->environments->active()->name,
+            'environment_id' => $this->environments->active()->id,
         ];
 
         if ($error !== null) {

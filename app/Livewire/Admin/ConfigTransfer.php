@@ -2,12 +2,17 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Collection;
+use App\Models\Environment;
 use App\Models\MockEndpoint;
+use App\Models\Revision;
 use App\Services\Config\ConfigExporter;
 use App\Services\Config\ConfigImporter;
 use App\Services\Config\ImportMode;
+use App\Services\Revisions\RevisionManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection as SupportCollection;
 use InvalidArgumentException;
 use JsonException;
 use Livewire\Component;
@@ -32,6 +37,12 @@ final class ConfigTransfer extends Component
 
     public bool $confirmSensitiveExport = false;
 
+    public string $exportScope = 'all';
+
+    public string $exportCollectionId = '';
+
+    public string $exportEnvironmentId = '';
+
     public ?TemporaryUploadedFile $configFile = null;
 
     public string $mode = self::DEFAULT_IMPORT_MODE;
@@ -43,8 +54,10 @@ final class ConfigTransfer extends Component
     /** @var array<string, mixed> */
     public array $plan = [];
 
-    /** @var array<string, int> */
+    /** @var array<string, int|string|null> */
     public array $summary = [];
+
+    public bool $importUndone = false;
 
     /** @var list<string> */
     public array $importedEndpointUuids = [];
@@ -62,6 +75,21 @@ final class ConfigTransfer extends Component
     public function updatedMode(): void
     {
         $this->clearPreview();
+    }
+
+    public function updatedExportScope(): void
+    {
+        $this->clearSelection();
+    }
+
+    public function updatedExportCollectionId(): void
+    {
+        $this->clearSelection();
+    }
+
+    public function updatedExportEnvironmentId(): void
+    {
+        $this->clearSelection();
     }
 
     public function updatedReplaceResponses(): void
@@ -151,6 +179,7 @@ final class ConfigTransfer extends Component
             ->preview($json, ImportMode::from($this->mode), $this->replaceResponses)
             ->toArray();
         $this->summary = [];
+        $this->importUndone = false;
         $this->acknowledgeWarnings = false;
     }
 
@@ -198,6 +227,28 @@ final class ConfigTransfer extends Component
         $this->dispatch('toast', message: 'Configuration imported successfully.');
     }
 
+    public function undoImport(RevisionManager $revisions): void
+    {
+        $batchId = $this->summary['import_batch_id'] ?? null;
+        if (! is_string($batchId) || $batchId === '') {
+            $this->addError('import', 'This import has no version snapshots to restore.');
+
+            return;
+        }
+
+        try {
+            $revisions->undoImport($batchId);
+        } catch (InvalidArgumentException $exception) {
+            $this->addError('import', $exception->getMessage());
+
+            return;
+        }
+
+        $this->importUndone = true;
+        session()->flash('status', 'Import changes restored from version history.');
+        $this->dispatch('toast', message: 'Import changes restored.');
+    }
+
     public function render(): View
     {
         return view('livewire.admin.config-transfer', [
@@ -205,6 +256,9 @@ final class ConfigTransfer extends Component
             'endpointTotal' => MockEndpoint::query()->count(),
             'importedEndpoints' => MockEndpoint::query()->whereIn('uuid', $this->importedEndpointUuids)->get(),
             'modes' => ImportMode::cases(),
+            'collections' => Collection::query()->withCount('endpoints')->orderBy('name')->get(),
+            'environments' => Environment::query()->orderByDesc('is_default')->orderBy('name')->get(),
+            'undoItems' => $this->undoItems(),
         ]);
     }
 
@@ -213,6 +267,17 @@ final class ConfigTransfer extends Component
     {
         $this->resetErrorBag('selectedEndpointUuids');
 
+        if ($this->exportScope === 'collection' && $this->exportCollectionId === '') {
+            $this->addError('export', 'Choose a collection before exporting this scope.');
+
+            return null;
+        }
+        if ($this->exportScope === 'environment' && $this->exportEnvironmentId === '') {
+            $this->addError('export', 'Choose an environment before exporting this scope.');
+
+            return null;
+        }
+
         if (! $this->redactSecrets && ! $this->confirmSensitiveExport) {
             $this->addError('redactSecrets', 'Confirm that the unredacted export may contain credentials.');
 
@@ -220,7 +285,15 @@ final class ConfigTransfer extends Component
         }
 
         try {
-            $json = $exporter->export($endpointUuids, $this->redactSecrets)->toJson();
+            $collectionId = $this->exportScope === 'collection' && $this->exportCollectionId !== '' ? (int) $this->exportCollectionId : null;
+            $environmentId = $this->exportScope === 'environment' && $this->exportEnvironmentId !== '' ? (int) $this->exportEnvironmentId : null;
+            if ($collectionId !== null) {
+                Collection::query()->findOrFail($collectionId);
+            }
+            if ($environmentId !== null) {
+                Environment::query()->findOrFail($environmentId);
+            }
+            $json = $exporter->export($endpointUuids, $this->redactSecrets, $collectionId, $environmentId)->toJson();
         } catch (InvalidArgumentException $exception) {
             $this->addError('export', $exception->getMessage());
 
@@ -241,6 +314,7 @@ final class ConfigTransfer extends Component
     {
         $this->plan = [];
         $this->summary = [];
+        $this->importUndone = false;
         $this->importedEndpointUuids = [];
         $this->acknowledgeWarnings = false;
     }
@@ -252,6 +326,16 @@ final class ConfigTransfer extends Component
 
         return MockEndpoint::query()
             ->withCount('responses')
+            ->when($this->exportScope === 'collection' && $this->exportCollectionId !== '', fn (Builder $query) => $query->where('collection_id', (int) $this->exportCollectionId))
+            ->when($this->exportScope === 'environment' && $this->exportEnvironmentId !== '', function (Builder $query): void {
+                $environmentId = (int) $this->exportEnvironmentId;
+                $query->where(function (Builder $query) use ($environmentId): void {
+                    $query->whereDoesntHave('environmentOverrides', fn ($override) => $override->whereKey($environmentId))
+                        ->orWhereHas('environmentOverrides', fn ($override) => $override
+                            ->whereKey($environmentId)
+                            ->where('endpoint_environment_overrides.enabled', true));
+                });
+            })
             ->when($term !== '', function (Builder $query) use ($term): void {
                 $needle = '%'.strtolower($term).'%';
                 $query->where(function (Builder $query) use ($needle): void {
@@ -263,5 +347,26 @@ final class ConfigTransfer extends Component
             })
             ->orderBy('name')
             ->orderBy('uuid');
+    }
+
+    /** @return SupportCollection<int, string> */
+    private function undoItems(): SupportCollection
+    {
+        $batchId = $this->summary['import_batch_id'] ?? null;
+        if (! is_string($batchId) || $batchId === '') {
+            return collect();
+        }
+
+        return Revision::query()
+            ->where('import_batch_id', $batchId)
+            ->where('source', 'import')
+            ->orderBy('entity_type')
+            ->orderBy('entity_id')
+            ->get()
+            ->map(static function (Revision $revision): string {
+                return $revision->entity_type === 'endpoint'
+                    ? (string) ($revision->snapshot['name'] ?: 'Endpoint '.$revision->entity_id)
+                    : 'Response '.($revision->snapshot['status_code'] ?? $revision->entity_id);
+            });
     }
 }

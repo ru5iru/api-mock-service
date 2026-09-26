@@ -215,6 +215,7 @@
         if (!row) return;
         draggedSchemaRow = {
             parent: row.dataset.schemaParent,
+            target: row.dataset.schemaTarget,
             index: Number(row.dataset.schemaIndex),
             element: row,
         };
@@ -225,7 +226,7 @@
 
     document.addEventListener('dragover', function (event) {
         var row = event.target.closest?.('[data-schema-row]');
-        if (draggedSchemaRow && row?.dataset.schemaParent === draggedSchemaRow.parent) {
+        if (draggedSchemaRow && row?.dataset.schemaParent === draggedSchemaRow.parent && row?.dataset.schemaTarget === draggedSchemaRow.target) {
             event.preventDefault();
             event.dataTransfer.dropEffect = 'move';
         }
@@ -233,7 +234,7 @@
 
     document.addEventListener('drop', function (event) {
         var target = event.target.closest?.('[data-schema-row]');
-        if (!draggedSchemaRow || !target || target.dataset.schemaParent !== draggedSchemaRow.parent) return;
+        if (!draggedSchemaRow || !target || target.dataset.schemaParent !== draggedSchemaRow.parent || target.dataset.schemaTarget !== draggedSchemaRow.target) return;
         event.preventDefault();
         var component = target.closest('[wire\\:id]');
         var destination = Number(target.dataset.schemaIndex);
@@ -243,6 +244,7 @@
                 draggedSchemaRow.parent,
                 draggedSchemaRow.index,
                 destination,
+                draggedSchemaRow.target,
             );
         }
     });

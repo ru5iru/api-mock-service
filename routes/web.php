@@ -3,8 +3,18 @@
 use App\Http\Controllers\Admin\ConfigTransferController;
 use App\Http\Controllers\Admin\EndpointController;
 use App\Http\Controllers\Admin\ResponseController;
+use App\Http\Controllers\Api\ActiveEnvironmentController;
+use App\Http\Controllers\Api\CallbackAttemptController;
+use App\Http\Controllers\Api\CollectionController;
+use App\Http\Controllers\Api\EndpointOrganizationController;
+use App\Http\Controllers\Api\EnvironmentController;
+use App\Http\Controllers\Api\EnvironmentVariableController;
 use App\Http\Controllers\Api\FakerCatalogController;
+use App\Http\Controllers\Api\ImportRevisionController;
+use App\Http\Controllers\Api\ResponseCallbackController;
 use App\Http\Controllers\Api\ResponseTemplateController;
+use App\Http\Controllers\Api\RevisionController;
+use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Auth\DashboardSessionController;
 use Illuminate\Support\Facades\Route;
 
@@ -22,8 +32,10 @@ Route::prefix('dashboard')
         Route::post('/logout', [DashboardSessionController::class, 'destroy'])->name('logout');
         Route::get('/', [EndpointController::class, 'index'])->name('endpoints.index');
         Route::view('/requests', 'admin.requests')->name('requests.index');
+        Route::view('/callbacks', 'admin.callbacks')->name('callbacks.index');
         Route::view('/docs', 'admin.docs')->name('docs');
         Route::view('/config', 'admin.config')->name('config.index');
+        Route::view('/environments', 'admin.environments')->name('environments.index');
         Route::post('/config/exports', [ConfigTransferController::class, 'export'])
             ->middleware('throttle:20,1')
             ->name('config.exports.store');
@@ -49,4 +61,31 @@ Route::prefix('api')
         Route::post('/response-templates/preview', [ResponseTemplateController::class, 'preview'])
             ->middleware('throttle:60,1')
             ->name('api.response-templates.preview');
+        Route::apiResource('collections', CollectionController::class);
+        Route::apiResource('tags', TagController::class);
+        Route::apiResource('environments', EnvironmentController::class);
+        Route::post('/environments/{environment}/duplicate', [EnvironmentController::class, 'duplicate']);
+        Route::get('/environments/{environment}/variables', [EnvironmentVariableController::class, 'index']);
+        Route::post('/environments/{environment}/variables', [EnvironmentVariableController::class, 'store']);
+        Route::get('/environments/{environment}/variables/{variable}', [EnvironmentVariableController::class, 'show']);
+        Route::patch('/environments/{environment}/variables/{variable}', [EnvironmentVariableController::class, 'update']);
+        Route::delete('/environments/{environment}/variables/{variable}', [EnvironmentVariableController::class, 'destroy']);
+        Route::get('/active-environment', [ActiveEnvironmentController::class, 'show']);
+        Route::get('/responses/{response}/callback', [ResponseCallbackController::class, 'show']);
+        Route::patch('/responses/{response}/callback', [ResponseCallbackController::class, 'update']);
+        Route::post('/responses/{response}/callback/test', [ResponseCallbackController::class, 'test'])->middleware('throttle:20,1');
+        Route::get('/callback-attempts', [CallbackAttemptController::class, 'index']);
+        Route::post('/callback-attempts/{attempt}/resend', [CallbackAttemptController::class, 'resend'])->middleware('throttle:20,1');
+        Route::put('/active-environment', [ActiveEnvironmentController::class, 'update']);
+        Route::patch('/endpoints/{endpoint}/organization', [EndpointOrganizationController::class, 'update']);
+        Route::get('/endpoints/{endpoint}/revisions', [RevisionController::class, 'endpointIndex']);
+        Route::get('/endpoints/{endpoint}/revisions/{revision}/diff/current', [RevisionController::class, 'endpointDiffCurrent']);
+        Route::get('/endpoints/{endpoint}/revisions/{a}/diff/{b}', [RevisionController::class, 'endpointDiff']);
+        Route::post('/endpoints/{endpoint}/revisions/{revision}/restore', [RevisionController::class, 'endpointRestore']);
+        Route::get('/responses/{response}/revisions', [RevisionController::class, 'responseIndex']);
+        Route::get('/responses/{response}/revisions/{revision}/diff/current', [RevisionController::class, 'responseDiffCurrent']);
+        Route::get('/responses/{response}/revisions/{a}/diff/{b}', [RevisionController::class, 'responseDiff']);
+        Route::post('/responses/{response}/revisions/{revision}/restore', [RevisionController::class, 'responseRestore']);
+        Route::get('/imports/{batchId}', [ImportRevisionController::class, 'show']);
+        Route::post('/imports/{batchId}/undo', [ImportRevisionController::class, 'undo']);
     });

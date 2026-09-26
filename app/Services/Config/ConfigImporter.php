@@ -2,13 +2,18 @@
 
 namespace App\Services\Config;
 
+use App\Models\Collection as EndpointCollection;
+use App\Models\Environment;
 use App\Models\MockEndpoint;
 use App\Models\MockResponse;
+use App\Models\Tag;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\HashVariant;
 use App\Services\Curl\ParsedCurl;
+use App\Services\Environments\EnvironmentContext;
 use App\Services\Matching\MatchPrecedence;
+use App\Services\Revisions\RevisionManager;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -21,6 +26,8 @@ final readonly class ConfigImporter
         private ConfigValidator $validator,
         private CurlParser $parser,
         private CurlHasher $hasher,
+        private EnvironmentContext $environments,
+        private RevisionManager $revisions,
     ) {}
 
     public function preview(string $json, ImportMode $mode, bool $replaceResponses = false): ImportPlan
@@ -78,8 +85,9 @@ final readonly class ConfigImporter
 
         $mode = ImportMode::from((string) $cached['mode']);
         $replaceResponses = (bool) ($cached['replace_responses'] ?? false);
+        $importBatchId = $mode === ImportMode::Upsert ? (string) Str::uuid() : null;
 
-        $summary = DB::transaction(function () use ($validation, $mode, $replaceResponses, $acknowledgeWarnings, $token): ImportSummary {
+        $summary = DB::transaction(function () use ($validation, $mode, $replaceResponses, $acknowledgeWarnings, $token, $importBatchId): ImportSummary {
             $plan = $this->analyze(
                 $validation->document,
                 $mode,
@@ -97,7 +105,7 @@ final readonly class ConfigImporter
                 throw new InvalidArgumentException('Acknowledge the import warnings before applying this configuration.');
             }
 
-            return $this->persist($validation->document, $mode, $replaceResponses, count($plan->warnings));
+            return $this->persist($validation->document, $mode, $replaceResponses, count($plan->warnings), $importBatchId);
         }, 3);
 
         Cache::forget($this->cacheKey($token));
@@ -221,6 +229,13 @@ final readonly class ConfigImporter
                 $counts['creates']++;
             } elseif ($action === 'update') {
                 $counts['updates']++;
+                $counts['revision_snapshots'] += $this->importRevisionCount(
+                    $byUuid,
+                    $source,
+                    $parsed,
+                    $variant,
+                    $replaceResponses,
+                );
             } else {
                 $counts['conflicts']++;
             }
@@ -352,11 +367,142 @@ final readonly class ConfigImporter
         return $localName.' (existing endpoint wins the ID tie-break)';
     }
 
+    /** @param array<string, mixed> $source */
+    private function importRevisionCount(
+        MockEndpoint $endpoint,
+        array $source,
+        ParsedCurl $parsed,
+        HashVariant $variant,
+        bool $replaceResponses,
+    ): int {
+        $count = $this->endpointImportWouldChange($endpoint, $source, $parsed, $variant) ? 1 : 0;
+        $importedUuids = collect($source['responses'])->pluck('uuid')->all();
+
+        foreach ($source['responses'] as $responseSource) {
+            $response = $endpoint->responses()->where('uuid', $responseSource['uuid'])->first();
+            if ($response !== null && $this->responseImportWouldChange($response, $responseSource)) {
+                $count++;
+            }
+        }
+
+        if ($replaceResponses) {
+            $count += $endpoint->responses()->whereNotIn('uuid', $importedUuids)->count();
+        }
+
+        return $count;
+    }
+
+    /** @param array<string, mixed> $source */
+    private function endpointImportWouldChange(
+        MockEndpoint $endpoint,
+        array $source,
+        ParsedCurl $parsed,
+        HashVariant $variant,
+    ): bool {
+        $matching = $source['request']['matching'];
+        $enabled = (bool) $source['enabled'] && ! (bool) ($source['requires_secret_replacement'] ?? false);
+        $expected = [
+            'name' => $source['name'],
+            'enabled' => $enabled,
+            'priority' => (int) $source['priority'],
+            'method' => $parsed->method,
+            'raw_curl' => $source['request']['curl'],
+            'normalized_curl' => $variant->normalized,
+            'curl_hash' => $variant->hash,
+            'signature_version' => 2,
+            'exclude_cookies' => (bool) $matching['exclude_cookies'],
+            'exclude_auth' => (bool) $matching['exclude_auth'],
+            'exclude_headers' => (bool) $matching['exclude_headers'],
+        ];
+        $current = collect($this->revisions->snapshot($endpoint))->only(array_keys($expected))->all();
+        ksort($current);
+        ksort($expected);
+        if ($current !== $expected) {
+            return true;
+        }
+
+        $currentCollection = $endpoint->collection?->name;
+        if (Str::lower((string) $currentCollection) !== Str::lower((string) ($source['collection'] ?? null))) {
+            return true;
+        }
+
+        $currentTags = $endpoint->tags->pluck('normalized_name')->sort()->values()->all();
+        $expectedTags = collect($source['tags'] ?? [])->map(static fn (string $name): string => Str::lower(trim($name)))->sort()->values()->all();
+        if ($currentTags !== $expectedTags) {
+            return true;
+        }
+
+        $currentOverrides = $endpoint->environmentOverrides->mapWithKeys(static fn ($environment): array => [
+            Str::lower($environment->name) => (bool) $environment->pivot->enabled,
+        ])->sortKeys()->all();
+        $expectedOverrides = collect($source['environment_overrides'] ?? [])->mapWithKeys(static fn (bool $value, string $name): array => [
+            Str::lower($name) => $value,
+        ])->sortKeys()->all();
+
+        return $currentOverrides !== $expectedOverrides;
+    }
+
+    /** @param array<string, mixed> $source */
+    private function responseImportWouldChange(MockResponse $response, array $source): bool
+    {
+        $headers = array_map(static fn (mixed $value): string => (string) $value, $source['headers']);
+        ksort($headers);
+        $expected = [
+            'status_code' => (int) $source['status'],
+            'headers' => $headers,
+            'body' => $source['body'],
+            'body_mode' => $source['body_mode'] ?? 'static',
+            'template' => $source['template'] ?? null,
+            'editor_view' => $source['editor_view'] ?? 'builder',
+            'seed_mode' => $source['seed_mode'] ?? 'random',
+            'seed' => $source['seed'] ?? null,
+            'locale' => $source['locale'] ?? 'en',
+            'delay_ms' => (int) $source['delay_ms'],
+            'weight' => (int) $source['weight'],
+            ...$this->callbackAttributes($source),
+        ];
+        $current = collect($this->revisions->snapshot($response))->only(array_keys($expected))->all();
+        ksort($current);
+        ksort($expected);
+
+        return $current !== $expected;
+    }
+
+    /** @param array<string, mixed> $source
+     * @return array<string, mixed>
+     */
+    private function callbackAttributes(array $source): array
+    {
+        if (! isset($source['callback'])) {
+            // Older portable documents must not silently erase local callback settings.
+            return [];
+        }
+
+        $callback = $source['callback'];
+
+        return [
+            'callback_enabled' => $callback['enabled'] && ! ($callback['requires_secret_replacement'] ?? false),
+            'callback_url' => $callback['url'],
+            'callback_method' => $callback['method'],
+            'callback_headers' => $callback['headers'] ?: null,
+            'callback_body' => $callback['body'],
+            'callback_delay_ms' => $callback['delay_ms'],
+            'callback_delay_max_ms' => $callback['delay_max_ms'],
+            'callback_retry' => $callback['retry'],
+            'callback_backoff_ms' => $callback['backoff_ms'],
+            'callback_timeout_ms' => $callback['timeout_ms'],
+            // A portable document never carries the signing key, even in unredacted mode.
+            'callback_signing_enabled' => false,
+            'callback_signature_header' => $callback['signature_header'],
+        ];
+    }
+
     private function persist(
         ConfigDocument $document,
         ImportMode $mode,
         bool $replaceResponses,
         int $warningCount,
+        ?string $importBatchId,
     ): ImportSummary {
         $endpointCreates = 0;
         $endpointUpdates = 0;
@@ -364,6 +510,8 @@ final readonly class ConfigImporter
         $responseUpdates = 0;
         $responseDeletes = 0;
         $disabled = 0;
+        $revisionSnapshots = 0;
+        $organization = $this->persistOrganization($document);
 
         foreach ($document->endpoints() as $source) {
             $matching = $source['request']['matching'];
@@ -378,6 +526,7 @@ final readonly class ConfigImporter
             $endpoint = $mode === ImportMode::Upsert
                 ? MockEndpoint::query()->where('uuid', $source['uuid'])->first()
                 : null;
+            $endpointBefore = $endpoint === null ? null : $this->revisions->snapshot($endpoint);
 
             if ($endpoint === null) {
                 $endpoint = new MockEndpoint;
@@ -393,6 +542,7 @@ final readonly class ConfigImporter
             }
 
             $endpoint->fill([
+                'collection_id' => isset($source['collection']) ? ($organization['collections'][Str::lower($source['collection'])] ?? null) : null,
                 'name' => $source['name'],
                 'enabled' => $enabled,
                 'priority' => $source['priority'],
@@ -406,11 +556,21 @@ final readonly class ConfigImporter
                 'exclude_headers' => $matching['exclude_headers'],
             ])->save();
 
+            $endpoint->tags()->sync(collect($source['tags'] ?? [])->map(
+                static fn (string $name): ?int => $organization['tags'][Str::lower($name)] ?? null,
+            )->filter()->values()->all());
+            $endpoint->environmentOverrides()->sync(collect($source['environment_overrides'] ?? [])->mapWithKeys(
+                static fn (bool $enabled, string $name): array => isset($organization['environments'][Str::lower($name)])
+                    ? [$organization['environments'][Str::lower($name)] => ['enabled' => $enabled]]
+                    : [],
+            )->all());
+
             $importedResponseUuids = [];
             foreach ($source['responses'] as $responseSource) {
                 $response = $mode === ImportMode::Upsert
                     ? $endpoint->responses()->where('uuid', $responseSource['uuid'])->first()
                     : null;
+                $responseBefore = $response === null ? null : $this->revisions->snapshot($response);
 
                 if ($response === null) {
                     $response = $endpoint->responses()->make();
@@ -432,7 +592,16 @@ final readonly class ConfigImporter
                     'locale' => $responseSource['locale'] ?? 'en',
                     'delay_ms' => $responseSource['delay_ms'],
                     'weight' => $responseSource['weight'],
+                    ...$this->callbackAttributes($responseSource),
                 ])->save();
+                if ($responseBefore !== null && $this->revisions->recordIfChanged(
+                    $response,
+                    $responseBefore,
+                    'import',
+                    $importBatchId,
+                ) !== null) {
+                    $revisionSnapshots++;
+                }
                 $importedResponseUuids[] = $response->uuid;
             }
 
@@ -441,7 +610,28 @@ final readonly class ConfigImporter
                 if ($importedResponseUuids !== []) {
                     $deleteQuery->whereNotIn('uuid', $importedResponseUuids);
                 }
-                $responseDeletes += $deleteQuery->delete();
+                $responsesToDelete = $deleteQuery->get();
+                foreach ($responsesToDelete as $responseToDelete) {
+                    $this->revisions->record(
+                        $responseToDelete,
+                        $this->revisions->snapshot($responseToDelete),
+                        'import',
+                        $importBatchId,
+                        'Removed by import response-pool replacement',
+                    );
+                    $responseToDelete->delete();
+                    $responseDeletes++;
+                    $revisionSnapshots++;
+                }
+            }
+
+            if ($endpointBefore !== null && $this->revisions->recordIfChanged(
+                $endpoint,
+                $endpointBefore,
+                'import',
+                $importBatchId,
+            ) !== null) {
+                $revisionSnapshots++;
             }
         }
 
@@ -453,7 +643,58 @@ final readonly class ConfigImporter
             $responseDeletes,
             $disabled,
             $warningCount,
+            $revisionSnapshots,
+            $revisionSnapshots > 0 ? $importBatchId : null,
         );
+    }
+
+    /**
+     * @return array{collections: array<string, int>, tags: array<string, int>, environments: array<string, int>}
+     */
+    private function persistOrganization(ConfigDocument $document): array
+    {
+        $collections = [];
+        foreach ($document->collections() as $source) {
+            $collection = EndpointCollection::query()->firstOrCreate(
+                ['name' => trim((string) $source['name'])],
+                ['description' => $source['description'] ?? null],
+            );
+            $collections[Str::lower($collection->name)] = $collection->id;
+        }
+
+        $tags = [];
+        foreach ($document->tags() as $name) {
+            $normalized = Str::lower(trim($name));
+            $tag = Tag::query()->where('normalized_name', $normalized)->first()
+                ?? Tag::query()->create(['name' => trim($name)]);
+            $tags[$normalized] = $tag->id;
+        }
+
+        $environments = Environment::query()->get()->mapWithKeys(
+            static fn (Environment $environment): array => [Str::lower($environment->name) => $environment->id],
+        )->all();
+        $default = null;
+        foreach ($document->environments() as $source) {
+            $name = trim((string) $source['name']);
+            $environment = Environment::query()->firstOrCreate(['name' => $name], ['is_default' => false]);
+            foreach ($source['variables'] as $variableSource) {
+                $variable = $environment->variables()->firstOrNew(['key' => $variableSource['key']]);
+                $variable->is_secret = (bool) $variableSource['is_secret'];
+                if ($variableSource['value'] !== null) {
+                    $variable->value = $variableSource['value'];
+                }
+                $variable->save();
+            }
+            if (($source['is_default'] ?? false) === true) {
+                $default = $environment;
+            }
+            $environments[Str::lower($name)] = $environment->id;
+        }
+        if ($default !== null) {
+            $this->environments->makeDefault($default);
+        }
+
+        return compact('collections', 'tags', 'environments');
     }
 
     /** @return array<string, int> */
@@ -466,6 +707,7 @@ final readonly class ConfigImporter
             'updates' => 0,
             'conflicts' => 0,
             'warnings' => 0,
+            'revision_snapshots' => 0,
         ];
     }
 

@@ -68,6 +68,65 @@
                     </div>
                 </div>
 
+                <div class="organization-grid">
+                    <div class="field">
+                        <label for="endpoint-collection">Collection</label>
+                        <select id="endpoint-collection" wire:model="collectionId">
+                            <option value="">No collection</option>
+                            @foreach ($collections as $endpointCollection)<option value="{{ $endpointCollection->id }}">{{ $endpointCollection->name }}</option>@endforeach
+                        </select>
+                        <div class="inline-create-control">
+                            <input type="text" wire:model="newCollectionName" placeholder="New collection name" aria-label="New collection name">
+                            <button class="button button-secondary button-small" type="button" wire:click="createCollectionInline">Create</button>
+                        </div>
+                        @error('collectionId') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('newCollectionName') <p class="field-error">{{ $message }}</p> @enderror
+                    </div>
+
+                    <fieldset class="field tag-input">
+                        <legend>Tags</legend>
+                        <div class="tag-choice-list">
+                            @forelse ($availableTags as $tag)
+                                <label class="tag-chip selectable {{ in_array($tag->id, $tagIds, true) ? 'selected' : '' }}">
+                                    <input type="checkbox" wire:model="tagIds" value="{{ $tag->id }}"><span>{{ $tag->name }}</span>
+                                </label>
+                            @empty
+                                <span class="field-help">No tags yet.</span>
+                            @endforelse
+                        </div>
+                        <div class="inline-create-control">
+                            <input type="text" wire:model="newTagName" placeholder="New tag" aria-label="New tag name">
+                            <button class="button button-secondary button-small" type="button" wire:click="createTagInline">Add tag</button>
+                        </div>
+                        @error('tagIds.*') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('newTagName') <p class="field-error">{{ $message }}</p> @enderror
+                    </fieldset>
+                </div>
+
+                <details class="normalized-details environment-overrides">
+                    <summary><span class="details-chevron" aria-hidden="true">›</span> Environment availability</summary>
+                    <div class="table-scroll">
+                        <table class="header-table">
+                            <thead><tr><th scope="col">Environment</th><th scope="col">Behavior</th></tr></thead>
+                            <tbody>
+                                <tr><th scope="row">All other environments</th><td>Inherits endpoint state ({{ $enabled ? 'enabled' : 'disabled' }})</td></tr>
+                                @foreach ($environments as $environment)
+                                    <tr>
+                                        <th scope="row">{{ $environment->name }} @if($environment->is_default)<span class="tag-chip">Default</span>@endif</th>
+                                        <td>
+                                            <select wire:model="environmentOverrides.{{ $environment->id }}" aria-label="{{ $environment->name }} override">
+                                                <option value="">Inherit endpoint state</option>
+                                                <option value="1">Allow when endpoint is enabled</option>
+                                                <option value="0">Force disabled</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
                 <div class="field curl-field">
                     <div class="label-row curl-label-row">
                         <label for="raw-curl">Curl command</label>
@@ -199,6 +258,15 @@
                     <p>The current signature model supports the three header policies above. Query parameters and individual headers are shown for review but cannot be excluded separately.</p>
                 </div>
             </section>
+
+            @if ($endpointId)
+                <section id="history" class="card form-card editor-section history-section">
+                    <details class="history-disclosure">
+                        <summary><span class="details-chevron" aria-hidden="true">›</span><span><strong>History</strong><small>Compare or restore saved endpoint versions.</small></span></summary>
+                        <livewire:admin.revision-history entity-type="endpoint" :entity-id="$endpointId" :key="'endpoint-history-'.$endpointId" />
+                    </details>
+                </section>
+            @endif
 
         </div>
 

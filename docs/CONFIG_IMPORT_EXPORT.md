@@ -1,6 +1,6 @@
 # Native configuration import and export
 
-MockDeck's native JSON format moves endpoint definitions and their responses between installations without coupling files to database IDs or trusted hashes. The current media type is `application/vnd.mockdeck.config+json`; the current format version is `1.1`, with version `1` and `1.0` imports retained for backward compatibility.
+MockDeck's native JSON format moves endpoint definitions, responses, collections, tags, and environments between installations without coupling files to database IDs or trusted hashes. The current media type is `application/vnd.mockdeck.config+json`; the current format version is `1.2`, with version `1`, `1.0`, and `1.1` imports retained for backward compatibility.
 
 ## Safe dashboard workflow
 
@@ -21,6 +21,8 @@ For import:
 4. Resolve errors. Explicitly acknowledge warnings when present.
 5. Select **Apply import**. The service revalidates and rechecks conflicts in one transaction before committing.
 
+For Update by UUID, preview shows how many existing endpoints/responses will receive a pre-state revision. A successful update exposes **Undo this import** permanently for that batch. The confirmation lists every recorded entity; undo restores them together and appends rollback revisions rather than rewriting history.
+
 Preview tokens expire after 15 minutes by default and are bound to the SHA-256 digest of the uploaded bytes. A changed or expired plan must be previewed again.
 
 ## Import modes
@@ -32,6 +34,8 @@ Preview tokens expire after 15 minutes by default and are bound to the SHA-256 d
 | `clone` | Generate a new UUID | Error | Create with new endpoint/response UUIDs |
 
 Upsert merges responses by UUID. Enable **Delete local responses omitted from updated endpoints** only when the imported response list should be authoritative. The default preserves unmentioned local responses.
+
+An upsert uses one `import_batch_id` for every changed existing endpoint/response. No-op writes create no revisions. Responses removed by authoritative replacement are snapshotted before deletion so batch undo can recreate them. Create-only and clone imports do not have pre-existing entity states and therefore do not expose a history-based undo batch.
 
 Exact origin-independent signatures are errors because they would be ambiguous. Broad/narrow signatures that can match the same live request are warnings. The preview shows the predicted winner using runtime priority, signature specificity, and stable ID ordering; importing requires acknowledgement.
 
@@ -54,24 +58,34 @@ MOCK_EXPORT_SENSITIVE_QUERY_KEYS=access_token,api_key,apikey,auth_token,key,toke
 
 When redaction removes a value, the export sets `enabled: false` and `requires_secret_replacement: true`. Import enforces the disabled state. Replace the missing value in the endpoint editor with an environment-appropriate credential, review the signature policy, and enable the endpoint deliberately.
 
-MockDeck never exports dashboard credentials, environment variables, database settings, request logs, numeric database IDs, canonical strings, or stored hashes.
+MockDeck never exports dashboard credentials, secret environment-variable values, database settings, request logs, numeric database IDs, canonical strings, or stored hashes. Non-secret environment variables are portable configuration and are included.
+
+Callback URL, method, headers, JSON body, timing, and signature-header name are exported inside each response's optional `callback` object. With normal redaction, configured sensitive callback headers and query keys are replaced. The callback signing secret is **never** exported, even with `--include-sensitive`: `signing_secret` is null and `signing_secret_redacted` marks an existing secret. Any callback requiring a redacted signing secret or request credential is exported disabled with `requires_secret_replacement: true`. Import disables signing until you provide a new secret; review the callback and enable it deliberately. Callback attempt logs and resolved payloads are never exported.
 
 ## Document contract
 
-The current checked-in contract is `resources/schemas/mockdeck-config-v1.1.schema.json`; the original `resources/schemas/mockdeck-config-v1.schema.json` remains available for version 1 documents. A current document contains:
+The current checked-in contract is `resources/schemas/mockdeck-config-v1.2.schema.json`; earlier schemas remain available for older documents. A current document contains:
 
-- `format: "mockdeck"` and `format_version: "1.1"`;
+- `format: "mockdeck"` and `format_version: "1.2"`;
+- collection definitions, case-insensitive tag names, and environment definitions;
+- non-secret environment variable values plus redacted secret placeholders;
+- endpoint collection, tags, and named environment overrides;
 - export metadata and whether secrets were redacted;
 - stable endpoint and response UUIDs;
 - raw curl, source signature version, and matching exclusions;
 - response status, headers, body, delay, and weight;
 - additive template fields: `body_mode`, `template`, `editor_view`, `seed_mode`, `seed`, and `locale`.
+- optional response `callback` configuration; signing secrets are always excluded.
 
 Endpoint and response arrays are sorted by UUID. Response header keys are sorted case-insensitively. JSON uses four-space indentation, unescaped Unicode/slashes, and a final newline. Timestamps are metadata; repeated exports at the same fixed time are byte-identical.
 
 Imported `normalized_curl`, `curl_hash`, and numeric IDs are unknown fields and are ignored with warnings. Every request is parsed and hashed again by the running application's canonicalization code. Unknown object properties warn; unsupported format versions and invalid required values fail.
 
-Version 1 and 1.0 imports remain supported. Missing template fields default to a static body. Template text is exported exactly as stored and is not redacted.
+Version 1, 1.0, and 1.1 imports remain supported. Missing organization fields produce no collection, tags, or overrides; missing template fields default to a static body. Template text is exported exactly as stored and is not redacted.
+
+Environment secret values are never exported, even when request-secret redaction is disabled. Their entries use `value: null`, `is_secret: true`, and `redacted: true`. Import preserves an existing local secret when the incoming redacted value is null.
+
+The dashboard can scope export to one collection or one environment. Environment scope includes endpoints with no override and endpoints with an enabled override; it excludes endpoints explicitly disabled in that environment.
 
 ## Limits
 
@@ -116,11 +130,13 @@ All routes use dashboard session access, CSRF protection, and request throttling
 
 | Method and path | Purpose |
 |---|---|
-| `POST /dashboard/config/exports` | Download all or selected endpoint UUIDs |
+| `POST /dashboard/config/exports` | Download all, selected, collection-scoped, or environment-scoped endpoints |
 | `POST /dashboard/config/imports/preview` | Upload `config`, choose `mode`, return a plan/token |
 | `POST /dashboard/config/imports/apply` | Submit preview `token`, `digest`, and warning acknowledgement |
+| `GET /api/imports/{batch_id}` | List the endpoint/response pre-states in one import batch |
+| `POST /api/imports/{batch_id}/undo` | Restore every recorded pre-state and append rollback revisions |
 
-Export accepts `endpoint_uuids[]`, `redact_secrets`, and `confirm_sensitive_export`. Preview accepts multipart `config`, `mode`, and `replace_responses`. Apply accepts `token`, `digest`, and `acknowledge_warnings`.
+Export accepts `endpoint_uuids[]`, `redact_secrets`, `confirm_sensitive_export`, and either `collection_id` or `environment_id`. Preview accepts multipart `config`, `mode`, and `replace_responses`. Apply accepts `token`, `digest`, and `acknowledge_warnings`.
 
 ## Recovery and validation
 

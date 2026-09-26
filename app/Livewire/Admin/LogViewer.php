@@ -231,6 +231,7 @@ final class LogViewer extends Component
                 (string) ($event['match_tier'] ?? ''),
                 (string) ($event['endpoint_id'] ?? ''),
                 (string) ($event['status_code'] ?? ''),
+                (string) ($event['environment_id'] ?? $event['environment'] ?? ''),
             ]);
             $lastIndex = count($grouped) - 1;
 

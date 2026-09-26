@@ -8,6 +8,25 @@
                 </div>
             </div>
 
+            <div class="export-scope-grid">
+                <label class="field">
+                    <span>Export scope</span>
+                    <select wire:model.live="exportScope">
+                        <option value="all">All endpoints</option>
+                        <option value="collection">One collection</option>
+                        <option value="environment">One environment</option>
+                    </select>
+                </label>
+                @if ($exportScope === 'collection')
+                    <label class="field"><span>Collection</span><select wire:model="exportCollectionId"><option value="">Choose collection</option>@foreach($collections as $collection)<option value="{{ $collection->id }}">{{ $collection->name }} ({{ $collection->endpoints_count }})</option>@endforeach</select></label>
+                @elseif ($exportScope === 'environment')
+                    <label class="field"><span>Environment</span><select wire:model="exportEnvironmentId"><option value="">Choose environment</option>@foreach($environments as $environment)<option value="{{ $environment->id }}">{{ $environment->name }}</option>@endforeach</select></label>
+                @endif
+            </div>
+            @if ($exportScope === 'environment')
+                <div class="info-note"><strong>Inherited endpoints are included</strong><p>An endpoint with no override for the selected environment is included. Only an explicit disabled override excludes it.</p></div>
+            @endif
+
             <label class="search-field transfer-search">
                 <span class="sr-only">Search endpoints to export</span>
                 <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -82,7 +101,7 @@
             @error('export') <p class="field-error">{{ $message }}</p> @enderror
 
             <div class="export-facts">
-                <div><strong>Included</strong><span>Endpoints and configured responses</span></div>
+                <div><strong>Included</strong><span>Endpoints, responses, collections, tags, environments, and non-secret variables</span></div>
                 <div><strong>Not included</strong><span>Request logs and application credentials</span></div>
                 <div><strong>Filename</strong><code>mockdeck-export-{{ now()->utc()->format('Ymd') }}.json</code></div>
             </div>
@@ -93,7 +112,7 @@
                         Export {{ count($selectedEndpointUuids) }} selected
                     </button>
                 </span>
-                <button class="button button-primary" type="button" wire:click="exportAll" wire:loading.attr="disabled" @disabled($endpointTotal === 0) title="{{ $endpointTotal === 0 ? 'Create an endpoint before exporting.' : '' }}">
+                <button class="button button-primary" type="button" wire:click="exportAll" wire:loading.attr="disabled" @disabled($endpointTotal === 0 || ($exportScope === 'collection' && $exportCollectionId === '') || ($exportScope === 'environment' && $exportEnvironmentId === '')) title="{{ $endpointTotal === 0 ? 'Create an endpoint before exporting.' : '' }}">
                     Export all
                 </button>
             </div>
@@ -192,6 +211,13 @@
                 <div><dt>Invalid</dt><dd>{{ count($plan['errors'] ?? []) }}</dd></div>
             </dl>
 
+            @if (($plan['counts']['revision_snapshots'] ?? 0) > 0)
+                <div class="info-note revision-preview-note">
+                    <strong>{{ $plan['counts']['revision_snapshots'] }} endpoints/responses will get a version snapshot before this update.</strong>
+                    <p>These snapshots share one import batch, so every recorded update can be undone together.</p>
+                </div>
+            @endif
+
             @if ($plan['errors'] !== [])
                 <div class="validation-panel error-panel" role="alert">
                     <strong>Resolve these errors before importing</strong>
@@ -264,6 +290,21 @@
             <div>
                 <h2>Import applied atomically</h2>
                 <p>{{ $summary['endpoints_created'] }} endpoints created, {{ $summary['endpoints_updated'] }} updated, {{ $summary['responses_created'] }} responses created, and {{ $summary['responses_updated'] }} updated.</p>
+                @if (($summary['revision_snapshots'] ?? 0) > 0)
+                    <p class="import-undo-line">
+                        <strong>{{ $summary['revision_snapshots'] }} {{ Str::plural('change', $summary['revision_snapshots']) }} made</strong>
+                        @if ($importUndone)
+                            <span class="state-chip enabled">Import undone</span>
+                        @else
+                            <button
+                                class="text-button"
+                                type="button"
+                                wire:click="undoImport"
+                                wire:confirm="Undo this import and restore: {{ $undoItems->implode(', ') }}? A new rollback revision will be kept for every restored item."
+                            >Undo this import</button>
+                        @endif
+                    </p>
+                @endif
                 @if ($importedEndpoints->isNotEmpty())
                     <div class="imported-links">
                         @foreach ($importedEndpoints as $importedEndpoint)

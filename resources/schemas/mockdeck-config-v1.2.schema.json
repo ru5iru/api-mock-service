@@ -1,0 +1,126 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://mockdeck.dev/schemas/config-v1.2.json",
+    "title": "MockDeck portable configuration 1.2",
+    "type": "object",
+    "required": ["format", "format_version", "collections", "tags", "environments", "endpoints"],
+    "properties": {
+        "$schema": {"type": "string"},
+        "format": {"const": "mockdeck"},
+        "format_version": {"const": "1.2"},
+        "exported_at": {"type": "string", "format": "date-time"},
+        "generator": {"type": "object"},
+        "options": {"type": "object"},
+        "warnings": {"type": "array"},
+        "collections": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                    "name": {"type": "string", "minLength": 1, "maxLength": 255},
+                    "description": {"type": ["string", "null"]}
+                }
+            }
+        },
+        "tags": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 80}},
+        "environments": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/environment"}
+        },
+        "endpoints": {"type": "array", "items": {"$ref": "#/$defs/endpoint"}}
+    },
+    "$defs": {
+        "environment": {
+            "type": "object",
+            "required": ["name", "is_default", "variables"],
+            "properties": {
+                "name": {"type": "string", "minLength": 1, "maxLength": 120},
+                "is_default": {"type": "boolean"},
+                "variables": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["key", "value", "is_secret"],
+                        "properties": {
+                            "key": {"type": "string", "minLength": 1, "maxLength": 120},
+                            "value": {"type": ["string", "null"]},
+                            "is_secret": {"type": "boolean"},
+                            "redacted": {"type": "boolean"}
+                        }
+                    }
+                }
+            }
+        },
+        "endpoint": {
+            "type": "object",
+            "required": ["uuid", "name", "enabled", "priority", "collection", "tags", "environment_overrides", "request", "responses"],
+            "properties": {
+                "uuid": {"type": "string", "format": "uuid"},
+                "name": {"type": ["string", "null"], "maxLength": 255},
+                "enabled": {"type": "boolean"},
+                "priority": {"type": "integer", "minimum": -1000, "maximum": 1000},
+                "collection": {"type": ["string", "null"]},
+                "tags": {"type": "array", "items": {"type": "string"}},
+                "environment_overrides": {"type": "object", "additionalProperties": {"type": "boolean"}},
+                "requires_secret_replacement": {"type": "boolean"},
+                "request": {
+                    "type": "object",
+                    "required": ["curl", "signature_version", "matching"],
+                    "properties": {
+                        "curl": {"type": "string", "minLength": 1},
+                        "signature_version": {"type": "integer", "minimum": 1},
+                        "matching": {
+                            "type": "object",
+                            "required": ["exclude_cookies", "exclude_auth", "exclude_headers"],
+                            "properties": {
+                                "exclude_cookies": {"type": "boolean"},
+                                "exclude_auth": {"type": "boolean"},
+                                "exclude_headers": {"type": "boolean"}
+                            }
+                        }
+                    }
+                },
+                "responses": {"type": "array", "items": {"$ref": "#/$defs/response"}}
+            }
+        },
+        "response": {
+            "type": "object",
+            "required": ["uuid", "status", "headers", "body", "body_mode", "template", "editor_view", "seed_mode", "seed", "locale", "delay_ms", "weight"],
+            "properties": {
+                "uuid": {"type": "string", "format": "uuid"},
+                "status": {"type": "integer", "minimum": 100, "maximum": 599},
+                "headers": {"type": "object", "additionalProperties": {"type": ["string", "number", "boolean"]}},
+                "body": {"type": "string"},
+                "body_mode": {"enum": ["static", "template"]},
+                "template": {"type": ["string", "null"], "maxLength": 262144},
+                "editor_view": {"enum": ["builder", "json"]},
+                "seed_mode": {"enum": ["random", "fixed", "request"]},
+                "seed": {"type": ["integer", "null"]},
+                "locale": {"type": "string", "minLength": 2, "maxLength": 32},
+                "delay_ms": {"type": "integer", "minimum": 0},
+                "weight": {"type": "integer", "minimum": 1, "maximum": 1000000},
+                "callback": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "requires_secret_replacement": {"type": "boolean"},
+                        "url": {"type": ["string", "null"], "maxLength": 2048},
+                        "method": {"enum": ["POST", "PUT", "PATCH", "DELETE"]},
+                        "headers": {"type": "object", "additionalProperties": {"type": "string"}},
+                        "body": {"type": ["string", "null"], "maxLength": 262144},
+                        "delay_ms": {"type": "integer", "minimum": 0, "maximum": 30000},
+                        "delay_max_ms": {"type": ["integer", "null"], "minimum": 0, "maximum": 30000},
+                        "retry": {"type": "integer", "minimum": 1, "maximum": 5},
+                        "backoff_ms": {"type": "integer", "minimum": 0, "maximum": 30000},
+                        "timeout_ms": {"type": "integer", "minimum": 100, "maximum": 10000},
+                        "signing_enabled": {"type": "boolean"},
+                        "signing_secret": {"type": "null"},
+                        "signing_secret_redacted": {"type": "boolean"},
+                        "signature_header": {"type": "string"}
+                    }
+                }
+            }
+        }
+    }
+}

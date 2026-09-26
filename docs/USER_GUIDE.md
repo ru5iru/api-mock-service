@@ -109,7 +109,32 @@ Each endpoint row supports:
 
 Select one page or individual rows to expose bulk actions for **Enable**, **Disable**, **Export**, and **Delete**. Bulk delete requires confirmation. Pagination and selection are independent; verify the selection count before a destructive action.
 
-## 6. Configure response pools
+### Collections and tags
+
+Collections provide one optional folder-like grouping per endpoint. Tags are case-insensitive and many-to-many. Use the Collection dropdown and tag chips in the endpoint toolbar to filter the registry. Endpoint rows show the assigned collection and tags.
+
+Select endpoint rows to expose **Move to collection** and **Add tags** in the bulk action bar. Deleting a collection does not delete its endpoints; their collection becomes empty. Tags can be reused across any collection.
+
+## 6. Environments and variables
+
+The active environment is global to the MockDeck server. The migration creates **Development** as the default and active environment, preserving existing endpoint behavior.
+
+1. Open the header environment switcher.
+2. Select an environment to make it active immediately.
+3. Open **Manage environments** to create, rename, duplicate, or delete environments.
+4. Add variables with a key, value, and optional Secret state.
+
+Secret values are encrypted at rest through Laravel's encrypted cast, displayed as `••••••••`, and never returned in plaintext by GET or duplicate API responses. Leave a masked secret value blank while editing to retain it. Duplicating an environment creates independent variable records, including independent encrypted secret copies.
+
+The server keeps exactly one default environment. Deleting the active or default environment requires selecting a different replacement first.
+
+### Endpoint availability
+
+The endpoint editor lists every environment. Each row can inherit the endpoint state, permit matching, or disable matching in that environment. Inheritance stores no override. An endpoint is eligible only when its own Enabled switch is on and the active environment has no override or an enabled override. Environment selection never changes signature generation or ranking.
+
+Every new request-log event records the active environment. Entries created before this feature show `—`.
+
+## 7. Configure response pools
 
 An endpoint can have one or more responses. Each response has:
 
@@ -129,7 +154,7 @@ Static text is returned exactly as stored. `$`, `{{`, and JSON-looking content h
 
 Template mode parses JSON and renders it for every request. Successful templated responses default to `Content-Type: application/json` when that header is not configured. Preview and live serving share the same compiler and renderer.
 
-## 7. Build a response template
+## 8. Build a response template
 
 Choose **Body → Template**. Set:
 
@@ -162,7 +187,7 @@ Type `$` in a token or `{{` inside a string to open catalog suggestions. Use Up/
 
 The browser receives only catalog metadata. Parsing, validation, Faker calls, and rendering stay on the server.
 
-## 8. Template language reference
+## 9. Template language reference
 
 ### Typed calls
 
@@ -257,7 +282,7 @@ Default limits:
 
 Tune them with the `MOCK_TEMPLATE_*` variables in `.env.example`.
 
-## 9. Seeds, locales, and regeneration
+## 10. Seeds, locales, and regeneration
 
 - **Random** does not explicitly seed the provider. Regenerate can produce different values.
 - **Fixed** resets the provider to the configured integer at the start of every render.
@@ -266,7 +291,7 @@ Tune them with the `MOCK_TEMPLATE_*` variables in `.env.example`.
 
 The selected locale is applied to both preview and live serving. Seed settings are stored per response and are included in export/import.
 
-## 10. Template validation and runtime failures
+## 11. Template validation and runtime failures
 
 | Code | Meaning |
 |---|---|
@@ -291,7 +316,7 @@ A runtime failure returns HTTP 500:
 
 The response also contains `X-MockDeck-Template-Error: 1`. Logs record the error metadata, `templated`, and render time, but never the full rendered body.
 
-## 11. Invoke a mock
+## 12. Invoke a mock
 
 Select **Copy mock curl** from an endpoint row. MockDeck replaces the source origin with `APP_URL` and preserves method, path, query, meaningful headers, and body.
 
@@ -306,7 +331,7 @@ Every returned response includes `X-Request-ID`. A caller-provided ID matching t
 
 Serving preserves the selected response status, headers, and delay. No enabled match returns diagnostic JSON 404. A matched endpoint without responses returns diagnostic JSON 500. Request-normalization failures return diagnostic JSON 400.
 
-## 12. Inspect the request log
+## 13. Inspect the request log
 
 Open **Request log**. Search by path, endpoint, or request ID, and filter by method, match, status family, endpoint, time range, and row limit. **Unmatched only** narrows to requests with match `none`; **Group repeats** collapses consecutive identical events.
 
@@ -314,17 +339,19 @@ Choose local or UTC timestamps and Compact or Comfortable density. Density is st
 
 Logs are flat JSON written to stdout and/or daily files. They are not stored in PostgreSQL. File reading is bounded across current and rotated logs, and malformed/partial lines are skipped.
 
-## 13. Export and import configuration
+## 14. Export and import configuration
 
 Open **Import / export**.
 
 ### Export
 
-1. Search/select endpoints or select all.
+1. Choose all endpoints, one collection, or one environment, then search/select endpoints or select all in that scope.
 2. Keep **Redact request secrets** enabled for normal sharing.
 3. Export the selected set.
 
-Redaction removes configured authentication/cookie/API-key headers and sensitive query values. An affected endpoint exports disabled with `requires_secret_replacement: true`. Template text is exported exactly as stored and is not redacted.
+Redaction removes configured authentication/cookie/API-key headers and sensitive query values. An affected endpoint exports disabled with `requires_secret_replacement: true`. Template text is exported exactly as stored and is not redacted. Environment secrets are always exported with a null value, even when request-secret redaction is disabled.
+
+Environment-scoped export includes endpoints that inherit their state and endpoints with an enabled override; it excludes explicit disabled overrides.
 
 ### Import
 
@@ -334,7 +361,9 @@ Redaction removes configured authentication/cookie/API-key headers and sensitive
 4. Review validation errors, exact-signature conflicts, overlap warnings, UUID actions, and redaction warnings.
 5. Acknowledge warnings and apply. Apply rechecks the digest/conflicts under locks and writes atomically.
 
-Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Version 1/1.0 files remain supported; missing template fields become static responses. Current exports use format `1.1`.
+For **Update by UUID**, preview also reports how many endpoint/response pre-states will receive a revision. Every changed existing entity is snapshotted under one import batch before its imported values replace the live values. The success panel keeps **Undo this import** available; one confirmation lists the affected entities and restores all recorded pre-states atomically. The undo itself appends rollback revisions, so it does not erase evidence of the import.
+
+Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Version 1/1.0/1.1 files remain supported; missing template and organization fields use backward-compatible defaults. Current exports use format `1.2`.
 
 CLI equivalents:
 
@@ -348,19 +377,71 @@ php artisan mockdeck:import mockdeck.json --mode=upsert --acknowledge-warnings
 
 See [CONFIG_IMPORT_EXPORT.md](CONFIG_IMPORT_EXPORT.md) for the complete document and conflict contract.
 
-## 14. Protected template endpoints
+## 15. Version history, diff, and restore
 
-The dashboard uses these authenticated endpoints:
+Every endpoint and response edit that changes persisted fields stores the complete pre-save state. No-op saves do not create noise. Endpoint snapshots include collection, tag IDs, and per-environment overrides; response snapshots include body/template and selection behavior.
+
+Open **History** in the endpoint editor or on a response row:
+
+1. Select two stored versions to open a structural before/after diff.
+2. Choose **Compare with current** on any revision to compare it with the live entity using the same viewer and response shape.
+3. Review canonical-request changes in the canonical code surface, response body/template changes in JSON code surfaces, and organization changes as added/removed values.
+4. Choose **Restore**, review the confirmation naming the version, and confirm. MockDeck applies that snapshot and appends a new revision with source `rollback`; it never mutates or deletes earlier history.
+
+Revision summaries are intentionally short (for example, `renamed`, `priority 0→5`, or `response body changed`). The detailed viewer remains authoritative.
+
+## 16. Asynchronous callbacks
+
+Each saved response can send an independent HTTP request after its normal mock response has already been sent. Open the response editor's collapsed **Callback** section, enable it, enter an absolute HTTP(S) URL and select POST, PUT, PATCH, or DELETE. Add a JSON object of request headers and a JSON response template for the callback body. The main response's status, body, and latency do not depend on callback delivery.
+
+The callback runs in a dedicated background worker (`docker compose ps callback-worker`); stopped workers leave new jobs queued. Choose a fixed minimum delay, or set a larger maximum for a random range (up to 30 seconds). **Max attempts** includes the first delivery (1–5 total); non-2xx HTTP responses and network errors retry until the first success or this limit, waiting the configured backoff between attempts. Each attempt has a hard 100–10,000 ms timeout. Redirects do not count as success and are not followed automatically.
+
+URL, headers, and JSON body support `{{env.KEY}}` values from the *active environment at invocation time* plus `$request.method`, `$request.url`, `$request.body`, `$request.id`, `$request.json.field`, and `{{$request.method}}` interpolation. The JSON body also supports the same `$module.method`, `$repeat`, `$pick`, and other directives as response templating. Choose **Builder** for representable field-based JSON or **JSON** for context tokens and advanced directives; switching to JSON does not erase the body, and Builder is disabled when the body cannot be represented faithfully. The editor's JSON autocomplete and **Preview callback body** use the same shared Faker compiler/renderer. Request tokens apply only to callbacks, not ordinary response bodies. The preview uses synthetic request data, and a missing environment variable fails the callback attempt without changing the primary reply.
+
+For example, set URL to `https://{{env.WEBHOOK_HOST}}/events`, header `X-Request: {{$request.method}}`, and body:
+
+```json
+{"requestId":"$request.id","method":"$request.method","name":"$person.firstName"}
+```
+
+To sign requests, enable **Sign requests**, set a secret (write-only after saving), and choose the header name (default `X-MockDeck-Signature`). MockDeck calculates a lowercase hexadecimal **HMAC-SHA256 of the exact raw resolved body bytes**, with your signing secret as the HMAC key, and sends the digest as that header's value. A receiver can verify with PHP `hash_equals(hash_hmac('sha256', $rawBody, $secret), $header)`. Do not re-encode parsed JSON before checking the signature. Disabling signing removes the signature header entirely, including a similarly named user-configured header; it does not send an empty signature.
+
+Save the response before selecting **Send test callback**. This uses a synthetic request even when no matching request has ever been received. The inline result updates from Queued/Pending to status, HTTP code, and duration. Open **Callback log** to filter attempts by method, status, time, request ID, or target. A callback log row links to its triggering request; the request detail links back to callback attempts. **Resend** creates a new attempt using the original resolved target, headers, and body, signing them anew using the current secret. It never mutates the original row or replays the primary response.
+
+Attempt payloads, URLs, and job context may contain environment secrets: MockDeck encrypts stored resolved fields, omits them from callback-log API reads and portable exports, and protects callback endpoints with dashboard access. Keep `APP_KEY` private. The callback target is intentionally allowed to reach any well-formed HTTP(S) URL, including local network targets: MockDeck is a localhost-oriented test tool, **not** an SSRF-hardened publicly exposed proxy.
+
+## 17. Protected APIs
+
+### Protected template endpoints
+
+The dashboard uses the following protected template endpoints and organization APIs:
 
 | Method and path | Purpose |
 |---|---|
 | `GET /api/faker-catalog` | Mapped catalog, return types, samples, aliases, and argument hints; supports ETag. |
 | `POST /api/response-templates/validate` | Parse/validate template and return structured issues. |
 | `POST /api/response-templates/preview` | Render output and return bytes, render time, and issues. |
+| `GET/POST/PATCH/DELETE /api/collections` | Manage endpoint collections. |
+| `GET/POST/PATCH/DELETE /api/tags` | Manage case-insensitive endpoint tags. |
+| `GET/POST/PATCH/DELETE /api/environments` | Manage environments; secret values are masked. |
+| `POST /api/environments/{id}/duplicate` | Create an independent environment and variable copy. |
+| `GET/POST/PATCH/DELETE /api/environments/{id}/variables` | Manage write-only secret and public variables. |
+| `GET/PUT /api/active-environment` | Read or switch the global active environment. |
+| `PATCH /api/endpoints/{id}/organization` | Update collection, tags, and environment overrides. |
+| `GET /api/{endpoints|responses}/{id}/revisions` | List immutable revisions newest first with summaries. |
+| `GET /api/{endpoints|responses}/{id}/revisions/{a}/diff/{b}` | Structurally diff two stored versions. |
+| `GET /api/{endpoints|responses}/{id}/revisions/{revision}/diff/current` | Diff one version against live state. |
+| `POST /api/{endpoints|responses}/{id}/revisions/{revision}/restore` | Restore as a new rollback revision. |
+| `GET /api/imports/{batch_id}` | Preview the entities in a reversible import batch. |
+| `POST /api/imports/{batch_id}/undo` | Restore every recorded pre-import state atomically. |
+| `GET/PATCH /api/responses/{id}/callback` | Read masked callback config or save changes as a new response revision. |
+| `POST /api/responses/{id}/callback/test` | Queue a synthetic test delivery. |
+| `GET /api/callback-attempts` | Filter recent attempt metadata; resolved payloads stay private. |
+| `POST /api/callback-attempts/{id}/resend` | Queue a new attempt using that attempt's resolved request. |
 
 They require dashboard access and are intended for the built-in editor, not as unauthenticated public APIs.
 
-## 15. Operations and validation
+## 18. Operations and validation
 
 ```bash
 make up                 # build, start, and wait for services
@@ -378,12 +459,12 @@ Git must retain the `.gitignore` placeholders under `storage/framework/cache/dat
 
 See [VALIDATION.md](VALIDATION.md) for complete automated and manual release checks.
 
-## 16. Current limitations
+## 19. Current limitations
 
 - Matching uses five fixed header policies; arbitrary per-field query/header/body predicates are not implemented.
 - Upstream origin is intentionally excluded from signatures.
 - Response selection is weighted random, not stateful scenarios or request-rule selection.
-- Templates currently serve JSON only. Request-context tokens and non-JSON interpolation were not shipped.
+- Response templates serve JSON only; request-context interpolation is callback-only.
 - Builder is intentionally a lossless subset of the JSON template language.
 - OpenAPI generation/import, recording/proxying, verification assertions, and third-party format adapters remain planned.
 

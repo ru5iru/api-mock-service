@@ -282,6 +282,8 @@ Use a switch for immediate binary state. Use a checkbox where the value is submi
 | `.safe-badge/.overwrite-badge` | 2px/6px padding, 11px/700 | Compact safe/warning qualifier. |
 | `.nav-badge` | 21px high, pill radius | Non-zero unmatched-request count only. |
 | `.repeat-badge` | min 28px wide, pill radius | Repeated log-event count. |
+| `.tag-chip` | 24px minimum height, pill radius, neutral tokens; selected uses warning tokens | Endpoint tags, tag filters, and compact default-environment labels. Selectable chips contain a real checkbox and expose focus. |
+| `.collection-chip` | 24px minimum height, 5px radius, info tokens | An endpoint's collection. Do not use it for interactive filtering. |
 
 Badges label concise state; they are not buttons and must not be used as section headings.
 
@@ -379,6 +381,12 @@ Blade component: `resources/views/components/theme-control.blade.php`. It render
 
 Use exactly one visible theme control in each navigation context. Do not add page-local theme state or a second selector inside another menu.
 
+### Environment switcher
+
+Livewire component: `app/Livewire/Admin/EnvironmentSwitcher.php`; view: `resources/views/livewire/admin/environment-switcher.blade.php`. The trigger is a 40px bordered control composed from the existing select/menu surface, with a green state dot and the active environment name. Its raised panel reuses the user-menu border, radius, shadow, 40px option rows, and native `details` disclosure. Options use the established menu keyboard contract: Arrow Up/Down, Home/End, and Escape with focus returned to the trigger. One click opens it and one click activates an environment.
+
+Environment state is server-side and global. `EnvironmentContext` is the only source of truth; do not mirror it in browser storage. Livewire navigation re-renders from that state, so the active label must never reset or briefly show a different environment. Use this switcher only for the runtime environment, and link management rather than putting create/delete actions in its compact menu.
+
 ## 5. Theme system
 
 `public/js/theme.js` owns theme state for the document. It is a closure-level singleton, initialized once before CSS in every standalone layout.
@@ -465,6 +473,24 @@ Apply this pattern to curl, canonical requests, normalized requests, hashes, JSO
 - Copy buttons must state what is copied through visible text or an accessible label and provide success/failure feedback.
 - Do not apply UI ligatures to exact data; characters such as `!=` and `=>` must remain visually distinct.
 - Constrain scrollable data surfaces to their card width. Use the shared thin scrollbar treatment on tables, endpoint lists, autocomplete lists, previews, popovers, and code editors; its track, thumb, hover, and radius use existing surface, border, accent, and radius tokens. Never allow a component to create page-level horizontal scrolling.
+
+### Revision timeline and structural diff viewer
+
+The endpoint and response **History** disclosures reuse the native disclosure, request-log time treatment, action chips, text buttons, confirmation behavior, and code surfaces. This is one shared component; response history must not invent a smaller variant.
+
+- `.revision-timeline` is newest-first. A day separator appears when the calendar day changes, and each revision exposes its relative time plus an exact timestamp in `title`.
+- `.revision-row` has a single accent marker and source chip. Selecting two rows opens the shared diff viewer; **Compare with current** opens that same viewer against live state.
+- `.revision-diff-viewer` renders structural paths and added/removed/changed chips. Canonical cURL fields reuse the canonical-request code treatment, body/template fields reuse JSON code surfaces, and collection/tag/environment changes remain plain values.
+- Before/after values use two equal columns at desktop widths and one stacked column below 720px. Long content scrolls inside the code surface and never expands the page.
+- **Restore** always uses the existing confirm mechanism, names the version, states that live values change, and states that a new rollback revision is appended. History is never rewritten.
+- Import completion reuses the inline-result pattern for `N changes made · Undo this import`; its one confirmation names every affected endpoint/response.
+
+### Callback editor and callback log
+
+- The response editor's **Callback** is a native disclosure (`.history-disclosure`) closed by default. It reuses labelled `.field` inputs, `.field-row` grids, `.code-input`, autocomplete, `.toggle-inline`, `.field-help`, and `.info-note`; no separate heading or extra visual hierarchy is added to its action row. A new `.callback-fields` grid uses spacing tokens only. Its body uses the response editor's existing `.segmented-control` Builder/JSON switch and `.schema-builder`/`.schema-row` partial; rows carry a schema target so drag and drop never changes the main response. JSON-only context tokens make Builder unavailable without rewriting the template.
+- Signature help is inline beneath the masked secret input and header name; never reflect a stored secret into an input or a status message. The callback's preview uses `.code-block` colors from existing code-surface tokens.
+- The **Callback log** uses `.log-filter-panel`, `.select-field` with visually hidden captions, `.table-scroll`, `.log-table`, `.day-separator`, method badges, state chips, the request-log relative time, and labelled `.icon-button` for Resend. `.callback-filters` adapts to one column on mobile; the table scrolls inside its card instead of expanding the page.
+- **Resend** reuses a named action with an accessible label and an inline status. Pending, success, failure, timeout, and empty states use existing semantic tokens and feedback patterns. Links between request and callback logs use `.table-link`.
 
 Syntax tokens are available for flags, URLs, headers, strings, and keys. The response-template editor adds catalog autocomplete to the existing code-input surface; it does not introduce a general syntax-highlighting editor. A reusable syntax-highlighting component remains **undecided — pick on first use, then add here**.
 

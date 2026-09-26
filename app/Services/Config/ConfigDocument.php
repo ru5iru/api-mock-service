@@ -29,4 +29,22 @@ final readonly class ConfigDocument
 
         return $endpoints;
     }
+
+    /** @return list<array<string, mixed>> */
+    public function collections(): array
+    {
+        return is_array($this->data['collections'] ?? null) ? $this->data['collections'] : [];
+    }
+
+    /** @return list<string> */
+    public function tags(): array
+    {
+        return is_array($this->data['tags'] ?? null) ? $this->data['tags'] : [];
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function environments(): array
+    {
+        return is_array($this->data['environments'] ?? null) ? $this->data['environments'] : [];
+    }
 }

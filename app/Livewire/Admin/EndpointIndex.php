@@ -2,10 +2,13 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Collection;
 use App\Models\MockEndpoint;
+use App\Models\Tag;
 use App\Services\Config\ConfigExporter;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\MockCurlBuilder;
+use App\Services\Revisions\RevisionManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +28,16 @@ final class EndpointIndex extends Component
     public string $state = 'all';
 
     public string $sort = 'recent';
+
+    public string $collection = 'all';
+
+    /** @var list<int> */
+    public array $tags = [];
+
+    public string $bulkCollection = '';
+
+    /** @var list<int> */
+    public array $bulkTags = [];
 
     /** @var list<int> */
     public array $selected = [];
@@ -49,9 +62,19 @@ final class EndpointIndex extends Component
         $this->resetPage();
     }
 
+    public function updatedCollection(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedTags(): void
+    {
+        $this->resetPage();
+    }
+
     public function clearFilters(): void
     {
-        $this->reset(['search', 'method', 'state', 'sort']);
+        $this->reset(['search', 'method', 'state', 'sort', 'collection', 'tags']);
         $this->state = 'all';
         $this->sort = 'recent';
         $this->resetPage();
@@ -71,7 +94,10 @@ final class EndpointIndex extends Component
     public function toggleEnabled(int $endpointId): void
     {
         $endpoint = MockEndpoint::query()->findOrFail($endpointId);
-        $endpoint->update(['enabled' => ! $endpoint->enabled]);
+        $this->reviseEndpoints([$endpoint->id], static function (MockEndpoint $item): void {
+            $item->update(['enabled' => ! $item->enabled]);
+        });
+        $endpoint->refresh();
         $this->dispatch('toast', message: $endpoint->displayName().' '.($endpoint->enabled ? 'enabled.' : 'disabled.'));
     }
 
@@ -86,7 +112,7 @@ final class EndpointIndex extends Component
 
     public function duplicate(int $endpointId): void
     {
-        $source = MockEndpoint::query()->with('responses')->findOrFail($endpointId);
+        $source = MockEndpoint::query()->with(['responses', 'tags', 'environmentOverrides'])->findOrFail($endpointId);
 
         DB::transaction(function () use ($source): void {
             $copy = $source->replicate(['uuid']);
@@ -97,15 +123,48 @@ final class EndpointIndex extends Component
             foreach ($source->responses as $response) {
                 $copy->responses()->save($response->replicate(['uuid']));
             }
+            $copy->tags()->sync($source->tags->modelKeys());
+            $copy->environmentOverrides()->sync($source->environmentOverrides->mapWithKeys(
+                static fn ($environment): array => [$environment->id => ['enabled' => (bool) $environment->pivot->enabled]],
+            )->all());
         });
 
         $this->dispatch('toast', message: 'A disabled copy was created. Edit its request before enabling it.');
     }
 
+    public function bulkMoveToCollection(): void
+    {
+        $collectionId = $this->bulkCollection === '' ? null : (int) $this->bulkCollection;
+        if ($collectionId !== null) {
+            Collection::query()->findOrFail($collectionId);
+        }
+        $ids = $this->selectedIds();
+        $this->reviseEndpoints($ids, static function (MockEndpoint $endpoint) use ($collectionId): void {
+            $endpoint->update(['collection_id' => $collectionId]);
+        });
+        $this->selected = [];
+        $this->bulkCollection = '';
+        $this->dispatch('toast', message: count($ids).' '.str('endpoint')->plural(count($ids)).' moved.');
+    }
+
+    public function bulkAddTags(): void
+    {
+        $tagIds = Tag::query()->whereKey(array_map('intval', $this->bulkTags))->pluck('id')->all();
+        $ids = $this->selectedIds();
+        $this->reviseEndpoints($ids, static function (MockEndpoint $endpoint) use ($tagIds): void {
+            $endpoint->tags()->syncWithoutDetaching($tagIds);
+        });
+        $this->selected = [];
+        $this->bulkTags = [];
+        $this->dispatch('toast', message: count($tagIds).' '.str('tag')->plural(count($tagIds)).' added.');
+    }
+
     public function bulkSetEnabled(bool $enabled): void
     {
         $ids = $this->selectedIds();
-        MockEndpoint::query()->whereKey($ids)->update(['enabled' => $enabled]);
+        $this->reviseEndpoints($ids, static function (MockEndpoint $endpoint) use ($enabled): void {
+            $endpoint->update(['enabled' => $enabled]);
+        });
         $this->selected = [];
         $this->dispatch('toast', message: count($ids).' '.str('endpoint')->plural(count($ids)).' '.($enabled ? 'enabled.' : 'disabled.'));
     }
@@ -151,7 +210,12 @@ final class EndpointIndex extends Component
             }
         });
 
-        return view('livewire.admin.endpoint-index', compact('endpoints', 'mockCurls'));
+        return view('livewire.admin.endpoint-index', [
+            'endpoints' => $endpoints,
+            'mockCurls' => $mockCurls,
+            'collections' => Collection::query()->withCount('endpoints')->orderBy('name')->get(),
+            'availableTags' => Tag::query()->withCount('endpoints')->orderBy('name')->get(),
+        ]);
     }
 
     /** @return Builder<MockEndpoint> */
@@ -165,7 +229,9 @@ final class EndpointIndex extends Component
         $sort = in_array($this->sort, ['recent', 'name', 'priority'], true) ? $this->sort : 'recent';
 
         return MockEndpoint::query()
+            ->with(['collection', 'tags'])
             ->withCount('responses')
+            ->withExists(['responses as has_callback' => fn ($query) => $query->where('callback_enabled', true)])
             ->when($term !== '', fn ($query) => $query->where(function ($query) use ($term): void {
                 $needle = '%'.strtolower($term).'%';
                 $query->whereRaw('LOWER(name) LIKE ?', [$needle])
@@ -174,6 +240,9 @@ final class EndpointIndex extends Component
             }))
             ->when($method !== '', fn ($query) => $query->where('method', $method))
             ->when($state !== 'all', fn ($query) => $query->where('enabled', $state === 'enabled'))
+            ->when($this->collection === 'none', fn ($query) => $query->whereNull('collection_id'))
+            ->when(ctype_digit($this->collection), fn ($query) => $query->where('collection_id', (int) $this->collection))
+            ->when($this->tags !== [], fn ($query) => $query->whereHas('tags', fn ($tags) => $tags->whereKey(array_map('intval', $this->tags))))
             ->when($sort === 'recent', fn ($query) => $query->latest('updated_at'))
             ->when($sort === 'name', fn ($query) => $query->orderByRaw("COALESCE(NULLIF(name, ''), method) ASC")->orderBy('id'))
             ->when($sort === 'priority', fn ($query) => $query->orderByDesc('priority')->latest('updated_at'));
@@ -187,5 +256,21 @@ final class EndpointIndex extends Component
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->all();
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @param  callable(MockEndpoint): void  $change
+     */
+    private function reviseEndpoints(array $ids, callable $change): void
+    {
+        DB::transaction(function () use ($ids, $change): void {
+            $revisions = app(RevisionManager::class);
+            foreach (MockEndpoint::query()->whereKey($ids)->lockForUpdate()->get() as $endpoint) {
+                $before = $revisions->snapshot($endpoint);
+                $change($endpoint);
+                $revisions->recordIfChanged($endpoint, $before);
+            }
+        }, 3);
     }
 }

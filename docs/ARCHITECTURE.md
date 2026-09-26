@@ -75,7 +75,7 @@ Origin independence means two curls with the same method, path/query, meaningful
 
 `EndpointMatcher` performs:
 
-1. an enabled-only `curl_hash IN (...)` candidate query;
+1. an enabled-only `curl_hash IN (...)` candidate query restricted to endpoints whose active-environment override is absent or enabled;
 2. verification that each stored endpoint matches the candidate for its own selected variant;
 3. ranking by priority descending, signature specificity descending, then endpoint ID ascending;
 4. if no hash candidate survives, the same process over `method = ? AND normalized_curl IN (...)`.
@@ -83,6 +83,28 @@ Origin independence means two curls with the same method, path/query, meaningful
 Only the winning endpoint's responses are loaded. The fallback result carries tier `fallback`; `MockRequestLogger` raises that event to warning level. No additional warning line is written, preserving the one-event-per-request contract.
 
 The dashboard prevents exact duplicate signatures. Overlapping broad and narrow signatures are valid; priority and specificity make their ordering explicit. Digest collisions are cryptographically improbable, but stored values are still verified with constant-time comparison.
+
+The environment condition is eligibility only. `EnvironmentContext` resolves the global active environment from `app_settings`; it does not add environment data to canonical text, hashes, or precedence.
+
+## Organization and environments
+
+- `collections` owns optional `mock_endpoints.collection_id`; deletion uses `SET NULL`.
+- `tags.normalized_name` provides case-insensitive uniqueness and `endpoint_tags` provides the many-to-many relation.
+- `environments` contains one application-managed default. `app_settings.active_environment_id` stores the global active environment.
+- `environment_variables.value` uses Laravel's encrypted cast and is hidden from model serialization.
+- `endpoint_environment_overrides` stores only explicit booleans; a missing row means inheritance.
+
+`EnvironmentContext` owns active/default transitions so the header, matcher, protected API, export pipeline, and request log resolve the same server-side state.
+
+## Version history boundary
+
+`Services/Revisions/RevisionManager` is the only snapshot/restore boundary for endpoints and responses. Snapshots omit mutable timestamps, normalize map/list ordering, and include endpoint collection/tag/environment-override state. Callers capture the pre-state, persist their change, then call `recordIfChanged`; equal normalized snapshots create no revision.
+
+`StructuralJsonDiffer` emits one transport shape for stored-version and compare-with-current operations: path, change type, before/after value, and renderer hint. The shared UI interprets canonical request, JSON body/template, and organization hints without implementing a second diff algorithm.
+
+Restoring applies the selected snapshot inside a transaction and appends a `rollback` revision whose snapshot equals the restored state. It never updates or deletes an existing revision. Missing collections/tags/environments are ignored safely during an old endpoint restore rather than recreating deleted organization data.
+
+Update-by-UUID import captures changed endpoint/response pre-states under one UUID batch. Omitted responses removed by authoritative response-pool replacement are snapshotted before deletion and can be recreated with their original ID/UUID. Batch undo applies every stored pre-state atomically and appends rollback revisions.
 
 ## Response strategy
 
@@ -117,11 +139,19 @@ Successful template invocation preserves selected status, headers, and delay and
 
 `MockRequestLogger` targets only the `mock_requests` channel. `FlatJsonFormatter` merges scalar context into a single JSON object and emits one newline. File and stdout handlers share the formatter.
 
-The controller logs after delay and response construction so `duration_ms` includes artificial delay. Expected outcomes use info level. Fallback uses warning. An exception is logged with its class and rethrown to Laravel's exception handler. Each event includes the received mock URL and a validated caller-supplied or generated request ID; the ID is also returned as `X-Request-ID` and excluded from matching.
+The controller logs after delay and response construction so `duration_ms` includes artificial delay. Expected outcomes use info level. Fallback uses warning. An exception is logged with its class and rethrown to Laravel's exception handler. Each event includes the active environment, received mock URL, and a validated caller-supplied or generated request ID; the ID is also returned as `X-Request-ID` and excluded from matching. Older flat-file events without an environment render as `—`.
 
 Logging is non-fatal: stack exceptions are ignored and `MockRequestLogger` catches a channel failure so a log destination cannot change the mock response path.
 
 `LogTailer` spends one global `MOCK_LOG_TAIL_MAX_BYTES` budget across newest rotated files, parses valid JSON lines, ignores partial/malformed lines, and returns newest first. This bound is important; do not replace it with `file()` on a production log.
+
+## Asynchronous callback boundary
+
+`MockInvocationController` registers a terminating callback only for selected responses with callbacks enabled. Laravel invokes it after sending the primary response; it enqueues an encrypted `DeliverCallback` job on the database-backed `callbacks` queue. The dedicated Compose `callback-worker` service executes delays, resolves the invocation's active environment by ID, renders the same Faker JSON engine with callback-only environment/request context, sends bounded HTTP requests, and records one encrypted `CallbackAttempt` per attempt. Network calls and backoff never run inside the PHP-FPM request. A failed enqueue is isolated from the already-built response.
+
+`callback_attempts.request_log_id` stores the string `X-Request-ID`, because request logs are rotating JSON files and do not have database primary keys. This is a soft correlation, not an FK: callbacks still retain their request ID if the log file rotates away. The API deliberately excludes resolved URLs, headers, and bodies (which may embed secret environment values); all three are encrypted at rest for resend. Signing secrets use an encrypted model cast and never leave via callback GET or portable export. Response revisions store only encrypted ciphertext; diff output redacts signing-secret changes. Restores copy ciphertext without encrypting it twice.
+
+The worker allows up to five attempts, a 30-second initial delay, up to 30 seconds between attempts, and up to 10 seconds per HTTP request. Its timeout is 240 seconds and the queue visibility timeout 300 seconds. Non-2xx results fail, 3xx redirects are not followed, and network failures are retried. Resend reads the originally resolved request and signs with the current secret, adding new attempt rows. Signing is HMAC-SHA256 of the raw resolved UTF-8 body bytes in lowercase hex; disabled signing removes that header. The URL guard checks only valid absolute HTTP(S) syntax: deliberately no SSRF restrictions, suitable for trusted local test endpoints, not for exposure to untrusted network users.
 
 ## Dashboard access
 
@@ -133,10 +163,12 @@ The dashboard can display raw curl, canonical text, request bodies, and headers.
 
 ## Database
 
-Only two domain tables exist:
+Primary domain and history tables are:
 
 - `mock_endpoints` stores an immutable portable UUID, the original curl, one canonical representation, one digest, signature version, enabled state, priority, and exclusion flags;
-- `mock_responses` stores an immutable portable UUID, status, header JSON, static body, delay, weight, and additive template mode/text/editor/seed/locale fields.
+- `mock_responses` stores an immutable portable UUID, status, header JSON, static body, delay, weight, template fields, and optional callback configuration with an encrypted signing secret.
+- `callback_attempts` stores encrypted resolved requests, retry/result metadata, and string request-log correlation. `jobs` and `failed_jobs` back the isolated callback worker.
+- `revisions` stores immutable endpoint/response JSON snapshots, per-entity version numbers, source, optional import batch, note, and creation time. It intentionally has no cascading foreign key so history survives response-pool replacement long enough for batch undo.
 
 Request logs never enter PostgreSQL. Deleting an endpoint cascades to its responses.
 

@@ -11,6 +11,7 @@
             <ol class="docs-toc">
                 <li><a href="#getting-started">Create an endpoint</a></li>
                 <li><a href="#endpoint-registry">Manage endpoints</a></li>
+                <li><a href="#environments">Collections, tags, and environments</a></li>
                 <li><a href="#request-matching">Request matching</a></li>
                 <li><a href="#response-pools">Response pools</a></li>
                 <li><a href="#response-templating">Response templating</a></li>
@@ -20,7 +21,9 @@
                 <li><a href="#template-seeding">Seeds and locales</a></li>
                 <li><a href="#template-errors">Validation and errors</a></li>
                 <li><a href="#config-transfer">Import and export</a></li>
+                <li><a href="#version-history">Version history and restore</a></li>
                 <li><a href="#request-log">Request log</a></li>
+                <li><a href="#async-callbacks">Asynchronous callbacks</a></li>
                 <li><a href="#preferences-accessibility">Theme and accessibility</a></li>
                 <li><a href="#serving-errors">Serving behavior</a></li>
                 <li><a href="#shortcuts">Keyboard shortcuts</a></li>
@@ -64,6 +67,19 @@
             </dl>
         </section>
 
+        <section id="environments" class="card docs-card docs-wide">
+            <h2>Collections, tags, and environments</h2>
+            <p>Collections and tags organize endpoints without changing request signatures. Filter by collection or tag chips, show assignments on endpoint rows, and use the bulk bar to move or tag selected endpoints. Deleting a collection leaves its endpoints in place.</p>
+            <h3>Active environment</h3>
+            <ol>
+                <li>Choose the global active environment from the header switcher.</li>
+                <li>Open <strong>Manage environments</strong> to create, rename, duplicate, delete, or choose the default.</li>
+                <li>Add variables. Secret values are write-only after saving and always masked or redacted.</li>
+                <li>Use the endpoint editor's Environment availability table for explicit overrides. Inherit stores no override.</li>
+            </ol>
+            <p>An endpoint matches only when it is enabled and the active environment has no override or an enabled override. This eligibility check does not change request hashes or precedence. New request-log entries show the active environment.</p>
+        </section>
+
         <section id="response-pools" class="card docs-card">
             <h2>Response pools</h2>
             <p>An endpoint can contain multiple responses. Each response keeps its own status, headers, delay, weight, body mode, and body.</p>
@@ -75,6 +91,16 @@
                 <li><strong>Static:</strong> returned exactly as stored; dollar signs and braces remain literal.</li>
                 <li><strong>Template:</strong> parsed and rendered for every matching request.</li>
             </ul>
+        </section>
+
+        <section id="async-callbacks" class="card docs-card docs-wide">
+            <h2>Asynchronous callbacks</h2>
+            <p>Open a response's <strong>Callback</strong> disclosure, enable it, and enter an HTTP(S) URL, method, header JSON, and a JSON body template. Save the response. The separate callback worker runs after the mock response is sent, so network failures and configured delay never hold up the caller.</p>
+            <p>Use <code>@verbatim{{env.KEY}}@endverbatim</code> for values from the active environment and <code>$request.method</code>, <code>$request.id</code>, <code>$request.body</code>, or <code>$request.json.field</code> for the triggering request. The callback body reuses the response Faker template renderer. Choose Builder for field-based JSON or JSON for context tokens and advanced directives; switching views does not discard the body. Maximum delay is 30 seconds; Max attempts includes the first try (1–5), non-2xx responses retry after the configured backoff, and each attempt has a bounded timeout.</p>
+            <h3>Signature verification</h3>
+            <p>When <strong>Sign requests</strong> is enabled, MockDeck computes lowercase hex HMAC-SHA256 over the <strong>exact raw resolved body bytes</strong> using the write-only signing secret, then places the digest in the configured header (default <code>X-MockDeck-Signature</code>). Verify it against raw bytes before parsing or re-encoding JSON. With signing disabled, the signature header is omitted entirely.</p>
+            <p>Choose <strong>Send test callback</strong> even without a previous request. The inline result shows status, HTTP code, and duration. Open <a href="{{ route('dashboard.callbacks.index') }}" wire:navigate>Callback log</a> to filter attempts and select <strong>Resend</strong>, which creates a fresh attempt with the original resolved URL, headers, and body and the current signing secret. The original attempt and primary response stay unchanged.</p>
+            <p>Resolved fields may contain secret environment values, so callback API reads and exports do not reveal them. Callback targets are only checked for well-formed HTTP(S) URLs; localhost/internal targets are intentionally allowed for testing. Do not expose this capability to untrusted users.</p>
         </section>
 
         <section id="response-templating" class="card docs-card docs-wide">
@@ -216,9 +242,10 @@
             <h2>Import and export</h2>
             <h3>Export</h3>
             <ol>
-                <li>Search and select endpoints, or export all.</li>
+                <li>Choose all endpoints, one collection, or one environment, then search/select endpoints or export the complete scope.</li>
+                <li>An environment scope includes inherited endpoints and enabled overrides; an explicit disabled override excludes an endpoint.</li>
                 <li>Keep secret redaction enabled unless original credentials are required. Redacted endpoints export disabled.</li>
-                <li>Store unredacted exports securely. Templates are included exactly as configured and are not redacted.</li>
+                <li>Environment secrets are always redacted, even in an otherwise unredacted export. Templates remain exact.</li>
             </ol>
             <h3>Import</h3>
             <ol>
@@ -226,7 +253,20 @@
                 <li>Preview the complete plan; preview never writes to the database.</li>
                 <li>Resolve errors and review warnings. Upsert replaces response pools only when explicitly enabled.</li>
                 <li>Confirm to apply atomically. Version 1 files remain supported and missing template fields become static responses.</li>
+                <li>Update-by-UUID preview shows how many endpoint/response pre-states will be versioned. After apply, Undo this import restores the complete recorded batch.</li>
             </ol>
+        </section>
+
+        <section id="version-history" class="card docs-card docs-wide">
+            <h2>Version history, compare, and restore</h2>
+            <p>Every changed endpoint/response save records its complete pre-state; no-op saves do not add revisions. Endpoint history includes collection, tags, and environment overrides.</p>
+            <ol>
+                <li>Open <strong>History</strong> in the endpoint editor or on a response row.</li>
+                <li>Select two versions for a structural diff, or choose <strong>Compare with current</strong> to compare one saved version with live values.</li>
+                <li>Review canonical request, JSON body/template, and organization changes in the shared before/after viewer.</li>
+                <li>Choose <strong>Restore</strong> and confirm the named version. Restore changes live values and appends a new rollback revision; it never rewrites existing history.</li>
+            </ol>
+            <p>An Update-by-UUID import groups all changed entity pre-states under one batch. Its success panel keeps <strong>Undo this import</strong> available and lists every affected endpoint/response before restoring them atomically.</p>
         </section>
 
         <section id="request-log" class="card docs-card">

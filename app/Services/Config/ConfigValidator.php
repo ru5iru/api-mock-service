@@ -3,6 +3,7 @@
 namespace App\Services\Config;
 
 use App\Services\Templates\ResponseTemplateEngine;
+use App\Services\Templates\TemplateCompiler;
 use Illuminate\Support\Str;
 use JsonException;
 
@@ -40,21 +41,23 @@ final class ConfigValidator
         }
 
         $this->warnUnknown($data, [
-            '$schema', 'format', 'format_version', 'exported_at', 'generator', 'options', 'warnings', 'endpoints',
+            '$schema', 'format', 'format_version', 'exported_at', 'generator', 'options', 'warnings', 'collections', 'tags', 'environments', 'endpoints',
         ], '$');
 
         if (($data['format'] ?? null) !== 'mockdeck') {
             $this->errors[] = '$.format must be exactly "mockdeck".';
         }
 
-        if (! in_array($data['format_version'] ?? null, [1, '1.0', '1.1'], true)) {
-            $this->errors[] = '$.format_version is not supported; this release accepts version 1, 1.0, or 1.1.';
+        if (! in_array($data['format_version'] ?? null, [1, '1.0', '1.1', '1.2'], true)) {
+            $this->errors[] = '$.format_version is not supported; this release accepts version 1, 1.0, 1.1, or 1.2.';
         }
+
+        $this->validateOrganization($data);
 
         if (! isset($data['endpoints']) || ! is_array($data['endpoints']) || ! array_is_list($data['endpoints'])) {
             $this->errors[] = '$.endpoints must be an array.';
         } else {
-            $this->validateEndpoints($data['endpoints']);
+            $this->validateEndpoints($data['endpoints'], $data);
         }
 
         if ($this->errors !== []) {
@@ -69,8 +72,11 @@ final class ConfigValidator
         );
     }
 
-    /** @param list<mixed> $endpoints */
-    private function validateEndpoints(array $endpoints): void
+    /**
+     * @param  list<mixed>  $endpoints
+     * @param  array<string, mixed>  $document
+     */
+    private function validateEndpoints(array $endpoints, array $document): void
     {
         if (count($endpoints) > config('mock.portable_config.max_endpoints', 500)) {
             $this->errors[] = '$.endpoints exceeds the configured endpoint limit.';
@@ -79,6 +85,24 @@ final class ConfigValidator
         $endpointUuids = [];
         $responseUuids = [];
         $responseCount = 0;
+        $knownCollections = [];
+        $knownTags = [];
+        $knownEnvironments = [];
+        foreach ((is_array($document['collections'] ?? null) ? $document['collections'] : []) as $collection) {
+            if (is_array($collection) && is_string($collection['name'] ?? null)) {
+                $knownCollections[Str::lower(trim($collection['name']))] = true;
+            }
+        }
+        foreach ((is_array($document['tags'] ?? null) ? $document['tags'] : []) as $tag) {
+            if (is_string($tag)) {
+                $knownTags[Str::lower(trim($tag))] = true;
+            }
+        }
+        foreach ((is_array($document['environments'] ?? null) ? $document['environments'] : []) as $environment) {
+            if (is_array($environment) && is_string($environment['name'] ?? null)) {
+                $knownEnvironments[Str::lower(trim($environment['name']))] = true;
+            }
+        }
 
         foreach ($endpoints as $index => $endpoint) {
             $path = "$.endpoints[{$index}]";
@@ -89,8 +113,49 @@ final class ConfigValidator
             }
 
             $this->warnUnknown($endpoint, [
-                'uuid', 'name', 'enabled', 'priority', 'requires_secret_replacement', 'request', 'responses',
+                'uuid', 'name', 'enabled', 'priority', 'collection', 'tags', 'environment_overrides', 'requires_secret_replacement', 'request', 'responses',
             ], $path);
+
+            if (isset($endpoint['collection']) && ! is_string($endpoint['collection'])) {
+                $this->errors[] = "{$path}.collection must be null or a string.";
+            } elseif (is_string($endpoint['collection'] ?? null)
+                && ! isset($knownCollections[Str::lower(trim($endpoint['collection']))])) {
+                $this->errors[] = "{$path}.collection must reference a collection in $.collections.";
+            }
+            if (isset($endpoint['tags']) && (! is_array($endpoint['tags']) || ! array_is_list($endpoint['tags']) || collect($endpoint['tags'])->contains(fn ($tag) => ! is_string($tag)))) {
+                $this->errors[] = "{$path}.tags must be an array of strings.";
+            } elseif (is_array($endpoint['tags'] ?? null)) {
+                $seenTags = [];
+                foreach ($endpoint['tags'] as $tag) {
+                    $normalizedTag = Str::lower(trim($tag));
+                    if (! isset($knownTags[$normalizedTag])) {
+                        $this->errors[] = "{$path}.tags must reference tags in $.tags.";
+                        break;
+                    }
+                    if (isset($seenTags[$normalizedTag])) {
+                        $this->errors[] = "{$path}.tags cannot contain duplicates.";
+                        break;
+                    }
+                    $seenTags[$normalizedTag] = true;
+                }
+            }
+            if (isset($endpoint['environment_overrides'])) {
+                if (! is_array($endpoint['environment_overrides'])
+                    || ($endpoint['environment_overrides'] !== [] && array_is_list($endpoint['environment_overrides']))) {
+                    $this->errors[] = "{$path}.environment_overrides must be an object.";
+                } else {
+                    foreach ($endpoint['environment_overrides'] as $environment => $enabled) {
+                        if (! is_string($environment) || ! is_bool($enabled)) {
+                            $this->errors[] = "{$path}.environment_overrides must map environment names to booleans.";
+                            break;
+                        }
+                        if (! isset($knownEnvironments[Str::lower(trim($environment))])) {
+                            $this->errors[] = "{$path}.environment_overrides must reference environments in $.environments.";
+                            break;
+                        }
+                    }
+                }
+            }
 
             $uuid = $endpoint['uuid'] ?? null;
             if (! is_string($uuid) || ! Str::isUuid($uuid)) {
@@ -140,6 +205,99 @@ final class ConfigValidator
 
         if ($responseCount > config('mock.portable_config.max_responses', 5000)) {
             $this->errors[] = 'The document exceeds the configured response limit.';
+        }
+    }
+
+    /** @param array<string, mixed> $data */
+    private function validateOrganization(array $data): void
+    {
+        $collections = $data['collections'] ?? [];
+        $tags = $data['tags'] ?? [];
+        $environments = $data['environments'] ?? [];
+        if (! is_array($collections) || ! array_is_list($collections)) {
+            $this->errors[] = '$.collections must be an array.';
+            $collections = [];
+        }
+        if (! is_array($tags) || ! array_is_list($tags)) {
+            $this->errors[] = '$.tags must be an array.';
+            $tags = [];
+        }
+        if (! is_array($environments) || ! array_is_list($environments)) {
+            $this->errors[] = '$.environments must be an array.';
+            $environments = [];
+        }
+
+        $collectionNames = [];
+        foreach ($collections as $index => $collection) {
+            if (! is_array($collection) || array_is_list($collection)
+                || ! is_string($collection['name'] ?? null)
+                || trim($collection['name']) === ''
+                || strlen($collection['name']) > 255
+                || (isset($collection['description']) && ! is_string($collection['description']))) {
+                $this->errors[] = "$.collections[{$index}] must contain a string name and optional string description.";
+            } elseif (isset($collectionNames[Str::lower(trim($collection['name']))])) {
+                $this->errors[] = "$.collections[{$index}].name is duplicated.";
+            } else {
+                $collectionNames[Str::lower(trim($collection['name']))] = true;
+            }
+        }
+
+        $tagNames = [];
+        foreach ($tags as $index => $tag) {
+            if (! is_string($tag) || trim($tag) === '') {
+                $this->errors[] = "$.tags[{$index}] must be a non-empty string.";
+            } elseif (isset($tagNames[Str::lower(trim($tag))])) {
+                $this->errors[] = "$.tags[{$index}] is duplicated regardless of case.";
+            } else {
+                $tagNames[Str::lower(trim($tag))] = true;
+            }
+        }
+
+        $defaultCount = 0;
+        $environmentNames = [];
+        foreach ($environments as $index => $environment) {
+            $path = "$.environments[{$index}]";
+            if (! is_array($environment) || array_is_list($environment)
+                || ! is_string($environment['name'] ?? null)
+                || trim($environment['name']) === ''
+                || strlen($environment['name']) > 120) {
+                $this->errors[] = "{$path} must contain a string name.";
+
+                continue;
+            }
+            $normalizedName = Str::lower(trim($environment['name']));
+            if (isset($environmentNames[$normalizedName])) {
+                $this->errors[] = "{$path}.name is duplicated.";
+            }
+            $environmentNames[$normalizedName] = true;
+            if (! is_bool($environment['is_default'] ?? null)) {
+                $this->errors[] = "{$path}.is_default must be a boolean.";
+            } elseif ($environment['is_default']) {
+                $defaultCount++;
+            }
+            if (! is_array($environment['variables'] ?? null) || ! array_is_list($environment['variables'])) {
+                $this->errors[] = "{$path}.variables must be an array.";
+
+                continue;
+            }
+            $variableKeys = [];
+            foreach ($environment['variables'] as $variableIndex => $variable) {
+                if (! is_array($variable) || array_is_list($variable)
+                    || ! is_string($variable['key'] ?? null)
+                    || preg_match('/^[A-Za-z_][A-Za-z0-9_.-]*$/', $variable['key'] ?? '') !== 1
+                    || ! is_bool($variable['is_secret'] ?? null)
+                    || (! is_string($variable['value'] ?? null) && ($variable['value'] ?? null) !== null)
+                    || (is_string($variable['value'] ?? null) && strlen($variable['value']) > 65535)) {
+                    $this->errors[] = "{$path}.variables[{$variableIndex}] is invalid.";
+                } elseif (isset($variableKeys[$variable['key']])) {
+                    $this->errors[] = "{$path}.variables[{$variableIndex}].key is duplicated.";
+                } else {
+                    $variableKeys[$variable['key']] = true;
+                }
+            }
+        }
+        if ($environments !== [] && $defaultCount !== 1) {
+            $this->errors[] = '$.environments must contain exactly one default environment.';
         }
     }
 
@@ -194,7 +352,7 @@ final class ConfigValidator
         }
 
         $this->warnUnknown($response, [
-            'uuid', 'status', 'headers', 'body', 'body_mode', 'template', 'editor_view', 'seed_mode', 'seed', 'locale', 'delay_ms', 'weight',
+            'uuid', 'status', 'headers', 'body', 'body_mode', 'template', 'editor_view', 'seed_mode', 'seed', 'locale', 'delay_ms', 'weight', 'callback',
         ], $path);
 
         $uuid = $response['uuid'] ?? null;
@@ -285,6 +443,68 @@ final class ConfigValidator
         $weight = $response['weight'] ?? null;
         if (! is_int($weight) || $weight < 1 || $weight > 1000000) {
             $this->errors[] = "{$path}.weight must be an integer between 1 and 1000000.";
+        }
+
+        if (isset($response['callback'])) {
+            $callback = $response['callback'];
+            if (! is_array($callback) || array_is_list($callback)) {
+                $this->errors[] = "{$path}.callback must be an object.";
+
+                return;
+            }
+            $this->warnUnknown($callback, [
+                'enabled', 'requires_secret_replacement', 'url', 'method', 'headers', 'body', 'delay_ms', 'delay_max_ms', 'retry',
+                'backoff_ms', 'timeout_ms', 'signing_enabled', 'signing_secret',
+                'signing_secret_redacted', 'signature_header',
+            ], "{$path}.callback");
+            if (! is_bool($callback['enabled'] ?? null)
+                || ! is_bool($callback['requires_secret_replacement'] ?? false)
+                || (($callback['requires_secret_replacement'] ?? false) && ($callback['enabled'] ?? false))
+                || ! in_array($callback['method'] ?? null, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
+                || ! is_array($callback['headers'] ?? null)
+                || ! is_int($callback['delay_ms'] ?? null) || ($callback['delay_ms'] ?? -1) < 0 || $callback['delay_ms'] > 30000
+                || ! is_int($callback['retry'] ?? null) || $callback['retry'] < 1 || $callback['retry'] > 5
+                || ! is_int($callback['backoff_ms'] ?? null) || $callback['backoff_ms'] < 0 || $callback['backoff_ms'] > 30000
+                || ! is_int($callback['timeout_ms'] ?? null) || $callback['timeout_ms'] < 100 || $callback['timeout_ms'] > 10000
+                || ! is_bool($callback['signing_enabled'] ?? null)
+                || ! is_bool($callback['signing_secret_redacted'] ?? null)
+                || (($callback['signing_enabled'] ?? false) && ! ($callback['signing_secret_redacted'] ?? false))
+                || ($callback['signing_secret'] ?? null) !== null
+                || ! is_string($callback['signature_header'] ?? null)
+                || preg_match('/^[A-Za-z0-9!#$%&*+.^_`|~-]+$/D', $callback['signature_header']) !== 1) {
+                $this->errors[] = "{$path}.callback contains invalid configuration or a plaintext signing secret.";
+            }
+            if (($callback['url'] ?? null) !== null && (! is_string($callback['url']) || strlen($callback['url']) > 2048)) {
+                $this->errors[] = "{$path}.callback.url must be null or a URL under 2048 bytes.";
+            }
+            if (($callback['body'] ?? null) !== null && (! is_string($callback['body']) || strlen($callback['body']) > 262144)) {
+                $this->errors[] = "{$path}.callback.body must be null or a JSON template under 256 KB.";
+            }
+            if (($callback['delay_max_ms'] ?? null) !== null && (! is_int($callback['delay_max_ms']) || $callback['delay_max_ms'] < ($callback['delay_ms'] ?? 0) || $callback['delay_max_ms'] > 30000)) {
+                $this->errors[] = "{$path}.callback.delay_max_ms must be within the allowed range.";
+            }
+            foreach (is_array($callback['headers'] ?? null) ? $callback['headers'] : [] as $name => $value) {
+                if (! is_string($name) || preg_match('/^[A-Za-z0-9!#$%&*+.^_`|~-]+$/D', $name) !== 1 || ! is_string($value) || preg_match('/[\r\n]/', $value) === 1) {
+                    $this->errors[] = "{$path}.callback.headers contains an invalid header.";
+                    break;
+                }
+            }
+            if ($callback['enabled'] ?? false) {
+                $url = preg_replace('/\{\{[^{}]+\}\}|\$request\.[A-Za-z0-9_.-]+/', 'example.test', (string) ($callback['url'] ?? ''));
+                if (filter_var($url, FILTER_VALIDATE_URL) === false || ! in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)) {
+                    $this->errors[] = "{$path}.callback.url must be a valid HTTP(S) URL.";
+                }
+                $validation = app(TemplateCompiler::class)->compile((string) (($callback['body'] ?? null) ?: '{}'), (string) $locale, true);
+                if ($validation->hasErrors()) {
+                    $this->errors[] = "{$path}.callback.body is not a valid JSON template.";
+                }
+            }
+            if (($callback['signing_enabled'] ?? false) && ($callback['signing_secret_redacted'] ?? false)) {
+                $this->warnings[] = "{$path}.callback signing secret is redacted; imported signing is disabled until a new secret is entered.";
+            }
+            if ($callback['requires_secret_replacement'] ?? false) {
+                $this->warnings[] = "{$path}.callback contains redacted values and remains disabled until reviewed.";
+            }
         }
     }
 

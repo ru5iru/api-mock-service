@@ -64,4 +64,23 @@ final readonly class ResponseTemplateEngine
             $requestHash,
         );
     }
+
+    /** @param array<string, mixed> $context */
+    public function renderCallback(string $template, MockResponse $response, array $context, ?string $requestHash = null): TemplateRenderResult
+    {
+        $validation = $this->compiler->compile($template, (string) $response->locale, true);
+        if ($validation->compiled === null) {
+            $issue = collect($validation->issues)->first(static fn ($item): bool => $item->severity === 'error');
+            throw new TemplateRenderException($issue?->message ?? 'Invalid callback template.', $issue?->path ?? '/');
+        }
+
+        return $this->renderer->render(
+            $validation->compiled,
+            (string) $response->locale,
+            (string) $response->seed_mode,
+            $response->seed === null ? null : (int) $response->seed,
+            $requestHash,
+            $context,
+        );
+    }
 }

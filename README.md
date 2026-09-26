@@ -11,12 +11,15 @@ The stack is Laravel 13, Livewire 4, PostgreSQL 16, PHP-FPM, nginx, and Docker C
 - Five endpoint-local cookie/auth/header signature policies
 - Deterministic conflict resolution by priority, specificity, then endpoint ID
 - Endpoint enable/disable controls and duplicate-signature prevention
+- Collections, case-insensitive tags, and global runtime environments with write-only secret variables
 - Multiple responses with weighted random selection and bounded delay
 - Opt-in JSON response templates with a schema builder, FakerPHP-backed Faker.js method mapping, validation, preview, and deterministic seeds
 - Password-protected dashboard with rate-limited login
 - Responsive endpoint and request-log filtering
 - One-click mock-host curl generation with clipboard fallback
 - Versioned JSON import/export with default secret redaction and atomic preview/apply
+- Immutable endpoint/response history with structural diffs, compare-to-current, restore, and whole-import undo
+- Asynchronous callbacks with bounded delays/retries/timeouts, optional HMAC signing, test delivery, and resend history
 - Flat JSON request logs, request IDs, rotation, and bounded cross-file tailing
 - Production startup guards for placeholder secrets
 - PHPUnit regression suite, Pint checks, Compose validation, and CI workflow
@@ -27,11 +30,15 @@ The stack is Laravel 13, Livewire 4, PostgreSQL 16, PHP-FPM, nginx, and Docker C
 |---|---|---|
 | cURL endpoint creation | Safe parsing, canonical preview, matching policy, duplicate detection | **Endpoints → New endpoint** |
 | Endpoint registry | Search/filter/sort, enable/disable, duplicate, copy mock cURL, row and bulk actions | **Endpoints** |
+| Collections and tags | Organize, filter, bulk-move, and bulk-tag endpoints without changing signatures | **Endpoints** and endpoint editor |
+| Environments | Global active environment, per-endpoint availability overrides, variables, duplication, and scoped export | Header switcher and **Environments** |
 | Exact request matching | Origin-independent V1–V5 signatures with deterministic priority/specificity resolution | Endpoint editor and runtime |
 | Response pools | Multiple status/header/body/delay responses selected by relative weight | Endpoint response editor |
 | Response templating | Builder and JSON views, mapped Faker catalog, autocomplete, validation, preview, seeds, locales | Response **Body → Template** |
 | Request observability | Structured request IDs/logs, filters, repeat grouping, unmatched diagnostics, row details | **Request log** |
 | Configuration transfer | Redacted deterministic export, preview-first create/upsert/clone import, CLI commands | **Import / export** |
+| Version history | Per-save snapshots, structural before/after diff, non-destructive restore, grouped import undo | Endpoint and response **History** panels |
+| Async callbacks | Deliver templated JSON to a test URL after the mock reply; sign, inspect, and resend attempts | Response **Callback** section and **Callback log** |
 | Dashboard security | Rate-limited login, persistent Livewire access middleware, safe production defaults | `/dashboard/login` and `.env` |
 | UI preferences | System/Light/Dark theme, compact/comfortable log density, keyboard shortcuts | Header controls and Request log |
 | Validation and CI | Compose validation, design-token checks, frontend tests, Pint, PHPUnit | `make validate` and GitHub Actions |
@@ -80,7 +87,7 @@ For a deliberately unauthenticated local-only dashboard, set `MOCK_DASHBOARD_AUT
 
 1. Sign in and choose **New endpoint**.
 2. Paste the real request as curl.
-3. Choose enabled state and priority.
+3. Choose enabled state, priority, collection, tags, and optional environment overrides.
 4. Choose whether cookies, authentication, or all headers should be ignored.
 5. Review the parsed request, canonical string, signature variant, and SHA-256 digest.
 6. Save it and configure one or more responses.
@@ -100,11 +107,30 @@ No original-URL header is required. Signatures deliberately ignore scheme, host,
 
 Every response includes `X-Request-ID`. A valid caller-provided ID is retained; otherwise MockDeck generates a UUID.
 
+Callbacks run only when a selected response has callbacks enabled. The separate `callback-worker` service processes them after the primary reply; verify it is running with `docker compose ps callback-worker`. If it is stopped, deliveries remain queued until it resumes. See [docs/USER_GUIDE.md](docs/USER_GUIDE.md) for the complete callback workflow and signing example.
+
 ## Manage endpoints and responses
 
-The endpoint registry searches name, method, path, and raw cURL; filters by method/state; and sorts by recent update, name, or priority. Each row can be opened, enabled/disabled, duplicated, exported, deleted, or copied as a MockDeck-host cURL. Selecting rows exposes bulk enable, disable, export, and delete actions.
+The endpoint registry searches name, method, path, and raw cURL; filters by method/state; and sorts by recent update, name, or priority. Each row can be opened, enabled/disabled, duplicated, exported, deleted, or copied as a MockDeck-host cURL. Selecting rows exposes bulk enable, disable, move-to-collection, add-tags, export, and delete actions.
+
+Collections and tags organize the registry without affecting request signatures. Filter by collection or multiple tag chips, show tags on endpoint rows, and use the bulk bar to move endpoints or attach tags. Deleting a collection keeps every endpoint and clears only its collection assignment.
 
 Each endpoint has a response pool. A response stores status, header JSON, bounded delay, positive weight, and either an exact static body or a JSON template. Selection probability is proportional to response weight.
+
+Saved edits are versioned without changing runtime matching. Open **History** on an endpoint or response to compare any two stored versions, compare one version with the current live entity, or restore an older state. Restore always appends a new rollback revision; existing history remains immutable.
+
+## Use environments
+
+MockDeck creates **Development** as the default active environment during migration. Existing endpoints have no overrides, so their matching behavior remains unchanged. Use the header environment switcher to change the global runtime environment, or open **Environments** to:
+
+- create, rename, duplicate, delete, and choose the default environment;
+- add public or secret key/value variables;
+- keep secrets write-only after creation; and
+- edit a duplicate independently of its source.
+
+An endpoint matches only when its normal endpoint state is enabled and its active-environment override is either absent or enabled. In the endpoint editor, **Inherit endpoint state** creates no override. Request-log entries record the active environment; older entries show an em dash.
+
+Environment-scoped exports include endpoints with no override for that environment and endpoints with an enabled override. An explicit disabled override excludes the endpoint. Environment secrets are always redacted, including when request-secret redaction is disabled.
 
 ## Use response templates
 
@@ -131,6 +157,8 @@ Useful template forms:
 
 Templates are parsed without evaluation. Reserved prototype names and unsafe/unbounded helpers are blocked; size, depth, node, repeat, argument, and output limits are configurable. Static response bodies remain untouched even when they contain `$` or `{{`.
 
+Callback JSON bodies reuse this renderer and additionally accept `{{env.KEY}}` and `$request.*` tokens. The response body itself does not gain request-context interpolation.
+
 See [docs/USER_GUIDE.md#7-build-a-response-template](docs/USER_GUIDE.md#7-build-a-response-template) for Builder/JSON usage and [the language reference](docs/USER_GUIDE.md#8-template-language-reference) for directives, escapes, aliases, limits, seeds, and runtime errors.
 
 ## Import and export configuration
@@ -139,7 +167,7 @@ Open **Import / export** in the dashboard to download all endpoints or a selecte
 
 Secret redaction is enabled by default. It removes configured authentication, cookie, API-key headers, and sensitive query values. Any affected endpoint is exported disabled with `requires_secret_replacement: true`; after import, review its curl and add deployment-appropriate credentials before enabling it.
 
-Imports are preview-first. Choose `create-only`, `upsert`, or `clone`, upload the JSON file, review errors and overlap warnings, then explicitly apply it. The apply step verifies the preview digest, repeats conflict checks under database locks, and commits all endpoint/response writes in one transaction.
+Imports are preview-first. Choose `create-only`, `upsert`, or `clone`, upload the JSON file, review errors and overlap warnings, then explicitly apply it. The apply step verifies the preview digest, repeats conflict checks under database locks, and commits all endpoint/response writes in one transaction. Update-by-UUID preview reports how many endpoint/response pre-states will be snapshotted. After apply, **Undo this import** restores every entity recorded under that import batch and appends rollback revisions.
 
 Equivalent commands are available for repeatable workflows:
 
@@ -290,11 +318,12 @@ app/
   Services/Curl/                   parser, canonicalizer, signature variants, and mock-curl builder
   Services/Config/                 native document export, validation, preview, and atomic import
   Services/Matching/               deterministic endpoint resolution
+  Services/Revisions/              normalized snapshots, structural diffs, restore, and batch undo
   Services/Response/               weighted selection strategy
   Services/Logging/                non-fatal writer and bounded rotated-log reader
   Services/Templates/              template compiler, mapped Faker catalog, schema projection, and renderer
-database/migrations/               endpoint and response schema
-docs/                              architecture, validation, and feature roadmap
+database/migrations/               endpoint, response, organization, environment, and revision schema
+docs/                              UI, operator, architecture, transfer, and validation guides
 routes/web.php                     authenticated dashboard routes
 routes/mock.php                    root and catch-all invocation routes
 tests/                             unit and feature regression coverage
