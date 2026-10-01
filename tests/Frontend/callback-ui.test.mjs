@@ -26,7 +26,9 @@ test('callback log reuses request table, links triggering request and allows lab
     assert.match(log, /class="log-table"/);
     assert.match(log, /Request log/);
     assert.match(log, /aria-label="Resend callback attempt/);
-    assert.match(dashboard, /dashboard\.callbacks\.index/);
+    assert.match(dashboard, /dashboard\.logs\.index/);
+    assert.match(read('resources/views/admin/logs.blade.php'), /aria-label="Log type"/);
+    assert.match(log, /class="search-field log-search"/);
 });
 
 test('documentation includes callback workflow and sensitive target warning', () => {

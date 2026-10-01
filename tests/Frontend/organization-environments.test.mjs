@@ -13,7 +13,8 @@ test('environment switcher and tag chips reuse documented UI primitives', () => 
     assert.match(guide, /### Environment switcher/);
     assert.match(guide, /`\.tag-chip`/);
     assert.match(layout, /livewire:admin\.environment-switcher/);
-    assert.match(layout, /data-environment-option/);
+    assert.match(layout, /js\/menu\.js/);
+    assert.match(switcher, /data-environment-option/);
     assert.match(switcher, /role="menuitemradio"/);
     assert.match(endpointIndex, /class="tag-chip selectable/);
     assert.match(endpointIndex, /bulkMoveToCollection/);

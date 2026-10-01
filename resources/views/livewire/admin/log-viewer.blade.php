@@ -19,7 +19,7 @@
                 <button class="button button-tertiary button-small" type="button" wire:click="togglePaused">
                     {{ $paused ? 'Resume refresh' : 'Pause refresh' }}
                 </button>
-                <a class="text-link" href="{{ route('dashboard.requests.index') }}" wire:navigate>View full request log →</a>
+                <a class="text-link" href="{{ route('dashboard.logs.index') }}" wire:navigate>View full request log →</a>
             </div>
         </div>
     @endunless
@@ -194,16 +194,16 @@
                                 <span class="method-badge method-{{ strtolower($event['method'] ?? 'get') }}">{{ $event['method'] ?? '—' }}</span>
                                 <code title="Host: {{ $event['_host'] ?: 'not captured' }} · Request ID: {{ $event['request_id'] ?? 'unavailable' }}">{{ $event['_path'] }}</code>
                                 @if (($event['_repeat_count'] ?? 1) > 1)
-                                    <span class="repeat-badge">×{{ $event['_repeat_count'] }}</span>
+                                    <x-badge>×{{ $event['_repeat_count'] }}</x-badge>
                                 @endif
                                 <button class="copy-row-control" type="button" data-copy-text="{{ $event['_reconstructed_curl'] }}" x-on:click.stop aria-label="Copy request curl">Copy</button>
                             </div>
                         </td>
                         <td>
-                            <span class="match-chip match-{{ $tier }}">
+                            <x-badge :variant="$tier === 'hash' ? 'success' : ($tier === 'fallback' ? 'warning' : 'danger')">
                                 <span aria-hidden="true">{{ $tier === 'hash' ? '✓' : ($tier === 'fallback' ? '~' : '!') }}</span>
                                 {{ $tier === 'hash' ? 'Hash' : ($tier === 'fallback' ? 'Fallback' : 'None') }}
-                            </span>
+                            </x-badge>
                         </td>
                         <td>
                             @if ($event['_endpoint_exists'])
@@ -214,13 +214,13 @@
                                 <span class="muted">—</span>
                             @endif
                         </td>
-                        <td><span class="tag-chip">{{ $event['environment'] ?? '—' }}</span></td>
+                        <td><x-badge>{{ $event['environment'] ?? '—' }}</x-badge></td>
                         <td>
                             <span class="status-result {{ $event['_mocked_server_response'] ? 'mocked' : 'status-result-'.intdiv((int) ($event['status_code'] ?? 0), 100).'xx' }}">
                                 <span aria-hidden="true">{{ $event['_mocked_server_response'] ? '●' : ((int) ($event['status_code'] ?? 0) >= 400 ? '!' : '✓') }}</span>
                                 {{ $event['status_code'] ?? '—' }} {{ $event['_status_label'] }}
                                 @if ($event['_mocked_server_response'])
-                                    <em title="This 5xx was intentionally returned by a matched mock response.">mocked</em>
+                                    <x-badge variant="info" title="This 5xx was intentionally returned by a matched mock response.">mocked</x-badge>
                                 @endif
                             </span>
                         </td>
@@ -238,7 +238,7 @@
                                             <div><dt>Signature version</dt><dd>{{ $event['matched_variant'] ?? 'No match' }}</dd></div>
                                             <div><dt>Response</dt><dd>{{ isset($event['response_id']) ? '#'.$event['response_id'] : 'None selected' }}</dd></div>
                                             @if (isset($event['response_id']) && isset($event['request_id']))
-                                                <div><dt>Callbacks</dt><dd><a class="table-link" href="{{ route('dashboard.callbacks.index') }}?request_log_id={{ urlencode($event['request_id']) }}" wire:navigate x-on:click.stop>View callback attempts</a></dd></div>
+                                                <div><dt>Callbacks</dt><dd><a class="table-link" href="{{ route('dashboard.logs.index', ['type' => 'callbacks', 'request_log_id' => $event['request_id']]) }}" wire:navigate x-on:click.stop>View callback attempts</a></dd></div>
                                             @endif
                                             <div><dt>Environment</dt><dd>{{ $event['environment'] ?? '—' }}</dd></div>
                                             <div><dt>Delay</dt><dd>{{ $event['delay_ms'] ?? 0 }} ms</dd></div>

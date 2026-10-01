@@ -18,5 +18,6 @@
 /storage/logs/*
 !/storage/logs/.gitignore
 /vendor
+/tests/Browser/screenshots/
 Thumbs.db
 .DS_Store

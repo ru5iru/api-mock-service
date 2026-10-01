@@ -7,17 +7,17 @@
         @forelse ($responses as $response)
             <article class="card response-card {{ $editingId === $response->id ? 'selected' : '' }}" wire:key="response-{{ $response->id }}">
                 <div class="response-status">
-                    <span class="status-dot status-{{ intdiv($response->status_code, 100) }}xx"></span>
+                    <input type="radio" name="configured-response" value="{{ $response->id }}" wire:click="edit({{ $response->id }})" @checked($editingId === $response->id || ($responses->count() === 1 && $editingId === null)) aria-label="Select response {{ $response->status_code }} for editing">
                     <strong>{{ $response->status_code }}</strong>
                 </div>
                 <div class="response-description">
                     <code>{{ ($response->body_mode ?? 'static') === 'template' ? 'JSON response template' : (Str::limit(preg_replace('/\s+/', ' ', $response->body ?? ''), 82) ?: 'Empty body') }}</code>
                     <div class="metadata-row">
                         @if (($response->body_mode ?? 'static') === 'template')
-                            <span class="state-chip enabled">Templated</span>
+                            <x-badge variant="success">Templated</x-badge>
                         @endif
                         @if ($response->callback_enabled)
-                            <span class="state-chip enabled" title="Sends an asynchronous callback">↗ Callback</span>
+                            <x-badge variant="info" title="Sends an asynchronous callback">↗ Callback</x-badge>
                         @endif
                         <span>Weight {{ $response->weight }}</span>
                         <span>{{ $response->delay_ms }} ms delay</span>
@@ -266,6 +266,7 @@
             <summary><span class="details-chevron" aria-hidden="true">›</span><span><strong>Callback</strong><small>Send an asynchronous request after the mock reply.</small></span></summary>
             <div class="callback-fields">
                 <label class="toggle-inline"><input type="checkbox" wire:model.live="callbackEnabled"><span>Enable callback</span></label>
+                <h4 class="callback-group-heading">Delivery</h4>
                 <div class="field-row two">
                     <div class="field">
                         <label for="callback-url">Target URL</label>
@@ -343,6 +344,7 @@
                     <button class="text-button" type="button" wire:click="previewCallback">Preview callback body</button>
                     @if ($callbackPreview !== '') <pre class="code-block">{{ $callbackPreview }}</pre> @endif
                 </div>
+                <h4 class="callback-group-heading">Retry policy</h4>
                 <div class="field-row three">
                     <div class="field"><label for="callback-delay">Delay min (ms)</label><input id="callback-delay" type="number" min="0" max="30000" wire:model="callbackDelayMs">@error('callbackDelayMs') <p class="field-error">{{ $message }}</p> @enderror</div>
                     <div class="field"><label for="callback-delay-max">Delay max (ms) <span>optional</span></label><input id="callback-delay-max" type="number" min="0" max="30000" wire:model="callbackDelayMaxMs">@error('callbackDelayMaxMs') <p class="field-error">{{ $message }}</p> @enderror</div>
@@ -352,6 +354,7 @@
                     <div class="field"><label for="callback-backoff">Retry backoff (ms)</label><input id="callback-backoff" type="number" min="0" max="30000" wire:model="callbackBackoffMs">@error('callbackBackoffMs') <p class="field-error">{{ $message }}</p> @enderror</div>
                     <div class="field"><label for="callback-timeout">Attempt timeout (ms)</label><input id="callback-timeout" type="number" min="100" max="10000" wire:model="callbackTimeoutMs">@error('callbackTimeoutMs') <p class="field-error">{{ $message }}</p> @enderror</div>
                 </div>
+                <h4 class="callback-group-heading">Signing</h4>
                 <div class="field-row two">
                     <div class="field">
                         <label class="toggle-inline"><input type="checkbox" wire:model.live="callbackSigningEnabled"><span>Sign requests</span></label>
@@ -365,7 +368,7 @@
                 @if ($editingId)
                     <div class="callback-actions">
                         <button class="button button-secondary button-small" type="button" wire:click="sendTestCallback">Send test callback</button>
-                        <a class="text-button" href="{{ route('dashboard.callbacks.index') }}?response_id={{ $editingId }}" wire:navigate>View callback log</a>
+                        <a class="text-button" href="{{ route('dashboard.logs.index', ['type' => 'callbacks', 'response_id' => $editingId]) }}" wire:navigate>View callback log</a>
                         @error('callbackEnabled') <p class="field-error">{{ $message }}</p> @enderror
                     </div>
                     @if ($callbackTestId && $callbackTestStatus)

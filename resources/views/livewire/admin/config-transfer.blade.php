@@ -10,7 +10,7 @@
 
             <div class="export-scope-grid">
                 <label class="field">
-                    <span>Export scope</span>
+                    <span class="sr-only">Export scope</span>
                     <select wire:model.live="exportScope">
                         <option value="all">All endpoints</option>
                         <option value="collection">One collection</option>
@@ -18,9 +18,9 @@
                     </select>
                 </label>
                 @if ($exportScope === 'collection')
-                    <label class="field"><span>Collection</span><select wire:model="exportCollectionId"><option value="">Choose collection</option>@foreach($collections as $collection)<option value="{{ $collection->id }}">{{ $collection->name }} ({{ $collection->endpoints_count }})</option>@endforeach</select></label>
+                    <label class="field"><span class="sr-only">Collection</span><select wire:model="exportCollectionId"><option value="">Choose collection</option>@foreach($collections as $collection)<option value="{{ $collection->id }}">{{ $collection->name }} ({{ $collection->endpoints_count }})</option>@endforeach</select></label>
                 @elseif ($exportScope === 'environment')
-                    <label class="field"><span>Environment</span><select wire:model="exportEnvironmentId"><option value="">Choose environment</option>@foreach($environments as $environment)<option value="{{ $environment->id }}">{{ $environment->name }}</option>@endforeach</select></label>
+                    <label class="field"><span class="sr-only">Environment</span><select wire:model="exportEnvironmentId"><option value="">Choose environment</option>@foreach($environments as $environment)<option value="{{ $environment->id }}">{{ $environment->name }}</option>@endforeach</select></label>
                 @endif
             </div>
             @if ($exportScope === 'environment')
@@ -155,10 +155,10 @@
                             <span>
                                 <strong>{{ $importMode->label() }}</strong>
                                 @if ($importMode->value === 'create-only')
-                                    <span class="safe-badge">Safe default</span>
+                                    <x-badge variant="success">Safe default</x-badge>
                                     <small>Stops without writing when an endpoint UUID already exists.</small>
                                 @elseif ($importMode->value === 'upsert')
-                                    <span class="overwrite-badge"><span aria-hidden="true">!</span> Overwrites matching endpoints &amp; responses</span>
+                                    <x-badge variant="warning"><span aria-hidden="true">!</span> Overwrites matching endpoints &amp; responses</x-badge>
                                     <small>Updates records that have the same portable UUID.</small>
                                 @else
                                     <small>Generates new UUIDs so imported records remain separate.</small>
@@ -245,7 +245,7 @@
                                 @foreach ($plan['items'] as $item)
                                     <tr>
                                         <td><strong>{{ $item['name'] ?: ($item['method'] ?? 'Endpoint').' '.($item['path'] ?? '') }}</strong><br><code>{{ $item['uuid'] }}</code></td>
-                                        <td><span class="action-chip {{ $item['action'] }}">{{ ucfirst($item['action']) }}</span></td>
+                                        <td><x-badge :variant="$item['action'] === 'create' ? 'success' : ($item['action'] === 'update' ? 'info' : 'danger')">{{ ucfirst($item['action']) }}</x-badge></td>
                                         <td>{{ $item['variant'] ?? '—' }}</td>
                                         <td>{{ $item['message'] }}</td>
                                     </tr>
@@ -294,7 +294,7 @@
                     <p class="import-undo-line">
                         <strong>{{ $summary['revision_snapshots'] }} {{ Str::plural('change', $summary['revision_snapshots']) }} made</strong>
                         @if ($importUndone)
-                            <span class="state-chip enabled">Import undone</span>
+                            <x-badge variant="success">Import undone</x-badge>
                         @else
                             <button
                                 class="text-button"

@@ -151,6 +151,7 @@ final class CallbackSimulationTest extends TestCase
         $attempts = $response->callbackAttempts()->orderBy('id')->get();
         self::assertSame(['failed', 'failed', 'success'], $attempts->pluck('status')->all());
         self::assertSame([1, 2, 3], $attempts->pluck('attempt_number')->all());
+        self::assertSame([$environment->name, $environment->name, $environment->name], $attempts->pluck('environment')->all());
         self::assertSame([$attempts[0]->id, $attempts[1]->id], $attempts->slice(1)->pluck('retry_of_id')->all());
         self::assertSame('https://receiver.test/hook/42', $attempts[0]->target_url);
         self::assertSame(['method' => 'POST', 'id' => 42, 'token' => 'hidden-token'], json_decode($attempts[0]->resolved_body, true));
@@ -161,6 +162,20 @@ final class CallbackSimulationTest extends TestCase
         $this->getJson('/api/callback-attempts')->assertOk()->assertJsonCount(3, 'data');
         self::assertStringNotContainsString('hidden-token', $this->getJson('/api/callback-attempts')->getContent());
         self::assertStringNotContainsString('hidden-token', (string) DB::table('callback_attempts')->value('resolved_body'));
+    }
+
+    public function test_callback_attempts_keep_the_environment_used_at_delivery(): void
+    {
+        $development = Environment::query()->sole();
+        $staging = Environment::query()->create(['name' => 'Staging', 'is_default' => false]);
+        $response = MockResponse::factory()->create(['callback_url' => 'https://receiver.test/hook']);
+        Http::fake(['*' => Http::response('ok', 200)]);
+
+        app(CallbackDelivery::class)->deliver($response, 'development-request', $development->id, []);
+        app(CallbackDelivery::class)->deliver($response, 'staging-request', $staging->id, []);
+
+        self::assertSame(['Development', 'Staging'], $response->callbackAttempts()->orderBy('id')->pluck('environment')->all());
+        $this->get(route('dashboard.callbacks.index'))->assertOk()->assertSee('Staging');
     }
 
     public function test_all_failed_attempts_stop_at_configured_limit(): void

@@ -327,11 +327,19 @@ final class DashboardTest extends TestCase
     {
         $this->get('/dashboard/requests')
             ->assertOk()
-            ->assertSee('Request log')
+            ->assertSee('Logs')
+            ->assertSee('Requests')
             ->assertSee('HTTP status')
             ->assertSee('Group repeats')
             ->assertSee('Compact')
             ->assertSee('Comfortable');
+    }
+
+    public function test_logs_route_shares_request_and_callback_tabs(): void
+    {
+        $this->get('/dashboard/logs')->assertOk()->assertSee('Log type')->assertSee('Group repeats');
+        $this->get('/dashboard/logs?type=callbacks')->assertOk()->assertSee('Log type')->assertSee('Callback log filters');
+        $this->get('/dashboard/callbacks')->assertOk()->assertSee('Callbacks');
     }
 
     public function test_endpoint_list_offers_a_mock_host_curl_copy_button(): void

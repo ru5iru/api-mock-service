@@ -13,6 +13,7 @@
     <link rel="preload" href="{{ asset('fonts/jetbrains-mono/jetbrains-mono-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}?v={{ filemtime(public_path('css/tokens.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
+    <script src="{{ asset('js/menu.js') }}?v={{ filemtime(public_path('js/menu.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/ui-preferences.js') }}?v={{ filemtime(public_path('js/ui-preferences.js')) }}" defer></script>
     <script src="{{ asset('js/template-editor.js') }}?v={{ filemtime(public_path('js/template-editor.js')) }}" defer data-navigate-once></script>
     @livewireStyles
@@ -26,7 +27,8 @@
 <body data-unmatched-timestamps="{{ json_encode($navigationUnmatchedTimestamps) }}">
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="app-shell">
-        <header class="topbar">
+        @persist('dashboard-topbar')
+        <header class="topbar" data-persistent-topbar>
             <a class="brand" href="{{ route('dashboard.endpoints.index') }}" wire:navigate>
                 <x-brand-mark />
                 <span>
@@ -41,15 +43,10 @@
                    @if (request()->routeIs('dashboard.endpoints.*')) aria-current="page" @endif>
                     Endpoints
                 </a>
-                <a href="{{ route('dashboard.requests.index') }}" wire:navigate
-                   class="{{ request()->routeIs('dashboard.requests.*') ? 'active' : '' }}"
-                   @if (request()->routeIs('dashboard.requests.*')) aria-current="page" @endif>
-                    Request log <span class="nav-badge" data-unmatched-badge hidden>0</span>
-                </a>
-                <a href="{{ route('dashboard.callbacks.index') }}" wire:navigate
-                   class="{{ request()->routeIs('dashboard.callbacks.*') ? 'active' : '' }}"
-                   @if (request()->routeIs('dashboard.callbacks.*')) aria-current="page" @endif>
-                    Callback log
+                <a href="{{ route('dashboard.logs.index') }}" wire:navigate
+                   class="{{ request()->routeIs('dashboard.logs.*', 'dashboard.requests.*', 'dashboard.callbacks.*') ? 'active' : '' }}"
+                   @if (request()->routeIs('dashboard.logs.*', 'dashboard.requests.*', 'dashboard.callbacks.*')) aria-current="page" @endif>
+                    Logs <span class="nav-badge" data-unmatched-badge hidden>0</span>
                 </a>
                 <a href="{{ route('dashboard.config.index') }}" wire:navigate
                    class="{{ request()->routeIs('dashboard.config.*') ? 'active' : '' }}"
@@ -58,7 +55,7 @@
                 </a>
                 <livewire:admin.environment-switcher />
                 <x-theme-control name="theme-header" />
-                <details class="user-menu">
+                <details class="user-menu" data-menu>
                     <summary aria-label="Open user menu">
                         <span class="user-avatar" aria-hidden="true">O</span>
                         <span>{{ config('mock.dashboard_auth.enabled') ? 'Operator' : 'Local' }}</span>
@@ -77,7 +74,7 @@
                 </details>
             </nav>
 
-            <details class="mobile-nav">
+            <details class="mobile-nav" data-menu>
                 <summary aria-label="Open dashboard navigation">Menu</summary>
                 <nav class="mobile-nav-panel" aria-label="Mobile dashboard navigation">
                     <a href="{{ route('dashboard.endpoints.index') }}" wire:navigate
@@ -85,14 +82,11 @@
                        @if (request()->routeIs('dashboard.endpoints.*')) aria-current="page" @endif>
                         Endpoints
                     </a>
-                    <a href="{{ route('dashboard.requests.index') }}" wire:navigate
-                       class="{{ request()->routeIs('dashboard.requests.*') ? 'active' : '' }}"
-                       @if (request()->routeIs('dashboard.requests.*')) aria-current="page" @endif>
-                        Request log <span class="nav-badge" data-unmatched-badge hidden>0</span>
+                    <a href="{{ route('dashboard.logs.index') }}" wire:navigate
+                       class="{{ request()->routeIs('dashboard.logs.*', 'dashboard.requests.*', 'dashboard.callbacks.*') ? 'active' : '' }}"
+                       @if (request()->routeIs('dashboard.logs.*', 'dashboard.requests.*', 'dashboard.callbacks.*')) aria-current="page" @endif>
+                        Logs <span class="nav-badge" data-unmatched-badge hidden>0</span>
                     </a>
-                    <a href="{{ route('dashboard.callbacks.index') }}" wire:navigate
-                       class="{{ request()->routeIs('dashboard.callbacks.*') ? 'active' : '' }}"
-                       @if (request()->routeIs('dashboard.callbacks.*')) aria-current="page" @endif>Callback log</a>
                     <a href="{{ route('dashboard.config.index') }}" wire:navigate
                        class="{{ request()->routeIs('dashboard.config.*') ? 'active' : '' }}"
                        @if (request()->routeIs('dashboard.config.*')) aria-current="page" @endif>
@@ -113,6 +107,7 @@
                 </nav>
             </details>
         </header>
+        @endpersist
 
         <main id="main-content" class="page-shell" tabindex="-1">
             {{ $slot }}
@@ -377,7 +372,8 @@
 
             try {
                 const storageKey = 'mockdeck:last-log-visit';
-                const isFullLog = window.location.pathname.endsWith('/dashboard/requests');
+                const isFullLog = window.location.pathname.endsWith('/dashboard/requests') ||
+                    (window.location.pathname.endsWith('/dashboard/logs') && new URLSearchParams(window.location.search).get('type') !== 'callbacks');
                 let lastVisit = Number(window.localStorage.getItem(storageKey) ?? 0);
                 const timestamps = JSON.parse(viewer.dataset.unmatchedTimestamps || '[]');
 
@@ -504,6 +500,16 @@
         new MutationObserver(scheduleLogSync).observe(document.body, { childList: true, subtree: true });
         document.addEventListener('livewire:navigated', () => {
             window.MockDeck.formDirty = false;
+            const path = window.location.pathname;
+            document.querySelectorAll('[data-persistent-topbar] a[wire\\:navigate]').forEach((link) => {
+                const target = new URL(link.href, window.location.href).pathname;
+                const active = target.endsWith('/dashboard') ? (path === target || path.startsWith(`${target}/endpoints/`)) : path === target;
+                if (!['/dashboard', '/dashboard/logs', '/dashboard/config'].some((route) => target.endsWith(route))) return;
+                const logsActive = target.endsWith('/dashboard/logs') && ['/dashboard/logs', '/dashboard/requests', '/dashboard/callbacks'].includes(path);
+                link.classList.toggle('active', logsActive || active);
+                if (logsActive || active) link.setAttribute('aria-current', 'page');
+                else link.removeAttribute('aria-current');
+            });
             scheduleLogSync();
         });
         scheduleLogSync();
@@ -513,43 +519,6 @@
         document.querySelector('[data-close-shortcuts]')?.addEventListener('click', () => shortcutDialog?.close());
         document.addEventListener('keydown', (event) => {
             const target = event.target;
-            const environmentTrigger = target.closest?.('[data-environment-menu] > summary');
-            if (environmentTrigger && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
-                event.preventDefault();
-                const menu = environmentTrigger.closest('[data-environment-menu]');
-                menu.open = true;
-                const options = [...menu.querySelectorAll('[data-environment-option]')];
-                (event.key === 'ArrowUp' ? options.at(-1) : options[0])?.focus();
-                return;
-            }
-            if (environmentTrigger && event.key === 'Escape') {
-                environmentTrigger.closest('[data-environment-menu]').open = false;
-                return;
-            }
-
-            const environmentOption = target.closest?.('[data-environment-option]');
-            if (environmentOption) {
-                const menu = environmentOption.closest('[data-environment-menu]');
-                const options = [...menu.querySelectorAll('[data-environment-option]')];
-                const current = options.indexOf(environmentOption);
-                let next = current;
-                if (event.key === 'ArrowDown') next = (current + 1) % options.length;
-                if (event.key === 'ArrowUp') next = (current - 1 + options.length) % options.length;
-                if (event.key === 'Home') next = 0;
-                if (event.key === 'End') next = options.length - 1;
-                if (next !== current) {
-                    event.preventDefault();
-                    options[next]?.focus();
-                    return;
-                }
-                if (event.key === 'Escape') {
-                    event.preventDefault();
-                    menu.open = false;
-                    menu.querySelector(':scope > summary')?.focus();
-                    return;
-                }
-            }
-
             const isEditing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target?.isContentEditable;
             if (isEditing || event.ctrlKey || event.metaKey || event.altKey) return;
 
