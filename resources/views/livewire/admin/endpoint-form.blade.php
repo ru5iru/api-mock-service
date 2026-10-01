@@ -112,7 +112,7 @@
                                 <tr><th scope="row">All other environments</th><td>Inherits endpoint state ({{ $enabled ? 'enabled' : 'disabled' }})</td></tr>
                                 @foreach ($environments as $environment)
                                     <tr>
-                                        <th scope="row">{{ $environment->name }} @if($environment->is_default)<span class="tag-chip">Default</span>@endif</th>
+                                        <th scope="row">{{ $environment->name }} @if($environment->is_default)<x-badge>Default</x-badge>@endif</th>
                                         <td>
                                             <select wire:model="environmentOverrides.{{ $environment->id }}" aria-label="{{ $environment->name }} override">
                                                 <option value="">Inherit endpoint state</option>

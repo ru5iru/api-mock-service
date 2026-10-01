@@ -9,7 +9,7 @@ final class CallbackAttempt extends Model
 {
     protected $fillable = [
         'response_id', 'request_log_id', 'resend_of_id', 'retry_of_id', 'attempt_number', 'target_url',
-        'method', 'resolved_headers', 'resolved_body', 'status', 'http_status', 'duration_ms', 'error',
+        'method', 'resolved_headers', 'resolved_body', 'environment', 'status', 'http_status', 'duration_ms', 'error',
     ];
 
     protected function casts(): array

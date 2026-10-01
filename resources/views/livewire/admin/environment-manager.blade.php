@@ -12,8 +12,8 @@
                 <button type="button" wire:click="selectEnvironment({{ $environment->id }})" @class(['active' => $environment->id === $selectedEnvironmentId])>
                     <span><strong>{{ $environment->name }}</strong><small>{{ $environment->variables_count }} {{ Str::plural('variable', $environment->variables_count) }}</small></span>
                     <span>
-                        @if ($environment->id === $activeEnvironmentId)<span class="state-chip enabled">Active</span>@endif
-                        @if ($environment->is_default)<span class="tag-chip">Default</span>@endif
+                        @if ($environment->id === $activeEnvironmentId)<x-badge variant="success">Active</x-badge>@endif
+                        @if ($environment->is_default)<x-badge>Default</x-badge>@endif
                     </span>
                 </button>
             @endforeach

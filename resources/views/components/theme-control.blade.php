@@ -2,10 +2,9 @@
 
 @php($menuId = 'theme-menu-'.preg_replace('/[^a-z0-9_-]/i', '-', $name))
 
-<div class="theme-menu" data-theme-menu-root>
-    <button
+<details class="theme-menu" data-theme-menu-root data-menu>
+    <summary
         class="theme-trigger"
-        type="button"
         data-theme-trigger
         aria-label="Theme: System. Choose theme."
         aria-haspopup="menu"
@@ -24,8 +23,8 @@
             <path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.5 8.5 0 1 0 20.2 15Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
         </svg>
         <span class="sr-only">Current theme: <span data-theme-label>System</span></span>
-    </button>
-    <div id="{{ $menuId }}" class="theme-menu-panel" role="menu" aria-label="Theme" data-theme-menu hidden>
+    </summary>
+    <div id="{{ $menuId }}" class="theme-menu-panel" role="menu" aria-label="Theme" data-theme-menu>
         @foreach (['system' => 'System', 'light' => 'Light', 'dark' => 'Dark'] as $value => $label)
             <button type="button" role="menuitemradio" aria-checked="false" value="{{ $value }}" data-theme-option tabindex="-1">
                 <span class="theme-option-dot" aria-hidden="true"></span>
@@ -33,4 +32,4 @@
             </button>
         @endforeach
     </div>
-</div>
+</details>

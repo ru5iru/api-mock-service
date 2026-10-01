@@ -26,6 +26,7 @@ final readonly class CallbackDelivery
         $headers = [];
         $body = '';
         $method = (string) ($response->callback_method ?: 'POST');
+        $environment = $resend?->environment;
 
         try {
             if ($resend !== null) {
@@ -34,7 +35,9 @@ final readonly class CallbackDelivery
                 $body = $resend->resolved_body;
                 $method = $resend->method;
             } else {
-                $variables = $this->environments->variables(Environment::query()->findOrFail($environmentId));
+                $sourceEnvironment = Environment::query()->findOrFail($environmentId);
+                $environment = $sourceEnvironment->name;
+                $variables = $this->environments->variables($sourceEnvironment);
                 $context = ['env' => $variables, 'request' => $requestContext];
                 $hash = hash('sha256', (string) $requestLogId);
                 $url = (string) $this->renderValue((string) $response->callback_url, $response, $context, $hash);
@@ -57,7 +60,7 @@ final readonly class CallbackDelivery
                 $headers[$name] = (string) $value;
             }
         } catch (Throwable $exception) {
-            $this->recordFailure($response, $requestLogId, $resend, $url, $method, $headers, $body, $exception);
+            $this->recordFailure($response, $requestLogId, $resend, $url, $method, $headers, $body, $environment, $exception);
 
             return;
         }
@@ -87,6 +90,7 @@ final readonly class CallbackDelivery
                 'attempt_number' => $number,
                 'target_url' => $url,
                 'method' => $method,
+                'environment' => $environment,
                 'resolved_headers' => $headers,
                 'resolved_body' => $body,
                 'status' => 'pending',
@@ -159,7 +163,7 @@ final readonly class CallbackDelivery
     }
 
     /** @param array<string, mixed> $headers */
-    private function recordFailure(MockResponse $response, ?string $requestLogId, ?CallbackAttempt $resend, string $url, string $method, array $headers, string $body, Throwable $exception): void
+    private function recordFailure(MockResponse $response, ?string $requestLogId, ?CallbackAttempt $resend, string $url, string $method, array $headers, string $body, ?string $environment, Throwable $exception): void
     {
         CallbackAttempt::query()->create([
             'response_id' => $response->id,
@@ -168,6 +172,7 @@ final readonly class CallbackDelivery
             'attempt_number' => 1,
             'target_url' => $url,
             'method' => $method,
+            'environment' => $environment,
             'resolved_headers' => $headers,
             'resolved_body' => $body,
             'status' => 'failed',

@@ -45,7 +45,7 @@
 
         <div class="schema-config">
             @if ($type === 'faker')
-                <details class="faker-picker" data-faker-picker>
+                <details class="faker-picker" data-faker-picker data-menu>
                     <summary title="{{ is_scalar($selectedMethod['sample'] ?? null) ? $selectedMethod['sample'] : json_encode($selectedMethod['sample'] ?? null) }}"><span>{{ $method }}</span><span aria-hidden="true">⌄</span></summary>
                     <div class="faker-picker-panel">
                         <label class="search-field faker-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Search methods" data-faker-search></label>
@@ -64,7 +64,7 @@
                                             title="Sample: {{ is_scalar($catalogMethod['sample']) ? $catalogMethod['sample'] : json_encode($catalogMethod['sample']) }}"
                                         >
                                             <span><code>{{ $catalogMethod['id'] }}</code><small>{{ is_scalar($catalogMethod['sample']) ? Str::limit((string) $catalogMethod['sample'], 42) : Str::limit(json_encode($catalogMethod['sample']), 42) }}</small></span>
-                                            @if ($catalogMethod['aliases'] !== [])<em class="safe-badge">Renamed aliases</em>@endif
+                                            @if ($catalogMethod['aliases'] !== [])<x-badge variant="warning">Renamed aliases</x-badge>@endif
                                         </button>
                                     @endforeach
                                 </section>

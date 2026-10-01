@@ -11,6 +11,24 @@ Source of truth:
 - UI preference behavior: `public/js/ui-preferences.js`
 - Token and contrast enforcement: `scripts/validate_design_tokens.py`
 
+The dashboard top bar is wrapped in Livewire's `@persist('dashboard-topbar')` directive across `wire:navigate` routes. Keep its brand, navigation, environment switcher, theme control, and user menu inside that one persistent header. The route content swaps in `#main-content`; on navigation the active link and `aria-current` are synchronized from the destination path without replacing the header node.
+The unmatched-request badge reserves a fixed width even when hidden so its changing count cannot move the navigation links.
+The root reserves the vertical scrollbar gutter on every route. Keep document scrolling instant during `wire:navigate` swaps; global smooth scrolling makes the old page appear to slide while Livewire resets the scroll position. Do not add page-wide fades to the persistent shell.
+
+The main navigation exposes one **Logs** destination. `/dashboard/logs` has Requests and Callbacks tabs with the same log card structure: live status, full-width search, filter row, quick actions, and table. Legacy `/dashboard/requests` and `/dashboard/callbacks` URLs render the matching tab for existing bookmarks. Deep links use `/dashboard/logs?type=callbacks` (with optional `response_id` or `request_log_id`) or `?type=requests` (with optional `search`). Keep both log types on this page when adding new log filters.
+
+With a running app and Playwright installed, run `MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/layout-smoke.mjs`. It checks the same header DOM node and bounding box across six navigations, compares page-title top coordinates (including the editor), and writes light/dark screenshots under `tests/Browser/screenshots/` for review. Run the separate accessibility audit on all routes in both themes before release.
+
+Custom menus (theme, environment, user, mobile navigation, endpoint overflow, bulk tags, and Faker picker) use native `<details data-menu>` and `public/js/menu.js`. The shared controller closes on outside click, Escape (returning focus), selection, and navigation; opening one menu closes any other. Arrow keys open from the trigger and traverse simple menu options. Searchable Faker options retain their specialized listbox keyboard behavior. The raised panel shell uses the shared border, radius, elevation, and fast motion tokens. Do not introduce a separate menu close handler in a page or feature script.
+
+Status and informational chips use `<x-badge>` with `neutral` (default), `success`, `warning`, `danger`, or `info` variants. The component owns padding, pill radius, border, and text size. Active and Default on the same card must both use this component. Keep HTTP method indicators and interactive tag filters specialized because they encode method identity or input state rather than a status label.
+
+Configured response rows use a native radio input beside the status code. The checked row identifies the response selected for editing (the sole row starts checked); response weights still govern runtime selection when several responses exist. Keep its accessible label explicit and preserve arrow-key navigation within the radio group.
+
+Compact filter selects on Endpoints, Request log, Callback log, and Import/export show their current option without a visible caption row. Every filter still has a specific accessible name, supplied by a visually hidden label or `aria-label`. Keep ordinary edit-form labels visible.
+
+Request events record the environment name and ID at invocation. Callback attempts store the environment name at delivery, including retries and resends; the Callback log displays that stored name. A dash indicates an older record created before environment logging or a missing source environment. Never infer a historical environment from the currently active one.
+
 If this guide and the implementation disagree, update the implementation or this guide in the same change. Do not add undocumented tokens or reusable patterns.
 
 ## 1. Tokens
@@ -55,6 +73,8 @@ Light values are declared on `:root, [data-theme="light"]`. Dark values override
 
 Use this scale for new spacing. Existing one-off measurements in `app.css` are implementation debt, not additional tokens.
 
+For dense nested content, the outer `.card` carries the strong perimeter. The endpoint signature preview uses a softly filled request summary, a code surface without an inset shadow, and a warning edge for excluded headers. Avoid stacking separate full borders for adjacent parts of the same preview; keep their content and use spacing from this scale to group it.
+
 ### Radius and border tokens
 
 | Token | Light | Dark |
@@ -82,6 +102,8 @@ Use this scale for new spacing. Existing one-off measurements in `app.css` are i
 | `--motion-base` | `180ms ease-out` | Same |
 
 Dark-mode elevation uses a raised surface and border, not a shadow. Motion is suppressed while themes change and reduced to effectively zero when `prefers-reduced-motion: reduce` is active.
+
+Use `--motion-fast` for input state and menu entry, and `--motion-base` for chevrons, disclosure content, toast, and dialog entry. Dashboard route content swaps immediately inside the persistent shell; do not add a route fade or delay. The global reduced-motion rule shortens these entry animations.
 
 ### Core surface tokens
 
@@ -211,6 +233,8 @@ At 1200px and wider it grows to `min(1180px, calc(100% - 64px))`. At 740px and b
 
 Blade component: `resources/views/components/page-header.blade.php`.
 
+The title and breadcrumbs start at the same top edge on every dashboard route, regardless of whether a description is present. Keep the shared 48px minimum header height and top alignment; never add a page-specific top offset to Import/export or the editor.
+
 Contract:
 
 | Prop/slot | Type | Rule |
@@ -276,14 +300,9 @@ Use a switch for immediate binary state. Use a checkbox where the value is submi
 | Pattern | Size/state | Use |
 |---|---|---|
 | `.method-badge` | min 58-by-28px, 11px/500; GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS palettes | HTTP methods only. Uppercase is allowed. |
-| `.match-chip` + `.match-hash/.match-fallback/.match-none` | 4px/7px padding, 11px/500 | Request-match result: hash, fallback, or none. |
-| `.state-chip.enabled/.disabled` | 3px/7px padding, semantic border/background | Endpoint state in metadata. |
-| `.action-chip.create/.update/.error` | 4px/7px padding, 11px/500 | Import plan outcome. |
-| `.safe-badge/.overwrite-badge` | 2px/6px padding, 11px/700 | Compact safe/warning qualifier. |
-| `.nav-badge` | 21px high, pill radius | Non-zero unmatched-request count only. |
-| `.repeat-badge` | min 28px wide, pill radius | Repeated log-event count. |
-| `.tag-chip` | 24px minimum height, pill radius, neutral tokens; selected uses warning tokens | Endpoint tags, tag filters, and compact default-environment labels. Selectable chips contain a real checkbox and expose focus. |
-| `.collection-chip` | 24px minimum height, 5px radius, info tokens | An endpoint's collection. Do not use it for interactive filtering. |
+| `<x-badge>` | 24px minimum height, pill radius, shared padding | All neutral/success/warning/danger/info status and label chips: matching, endpoint state, history, import outcomes, collection, repeated count, and mocked response label. |
+| `.nav-badge` | fixed 28px width, 21px height, pill radius | Unmatched-request count; reserves its width when hidden. |
+| `.tag-chip` | 24px minimum height, pill radius, neutral tokens; selected uses warning tokens | Interactive endpoint tag filters with a real checkbox and visible focus. |
 
 Badges label concise state; they are not buttons and must not be used as section headings.
 
@@ -302,7 +321,7 @@ Every visible form control needs a real `label`. Placeholder text does not repla
 
 ### Faker method picker
 
-`.faker-picker` is a native `details` disclosure composed from the existing input, search, badge, and raised-popover primitives. Its summary is a 40px control showing the current `module.method`; the panel is at most 480px wide and 420px high, uses `--surface-raised`, `--border-strong`, `--radius-lg`, and `--shadow-lg`, and repositions within the viewport. Methods are grouped by module. Each 48px option shows the method, a sample value, and a `.safe-badge` when renamed aliases exist.
+`.faker-picker` is a native `details` disclosure composed from the existing input, search, badge, and raised-popover primitives. Its summary is a 40px control showing the current `module.method`; the panel is at most 480px wide and 420px high, uses `--surface-raised`, `--border-strong`, `--radius-lg`, and `--shadow-lg`, and repositions within the viewport. Methods are grouped by module. Each 48px option shows the method, a sample value, and an `<x-badge variant="warning">` when renamed aliases exist.
 
 The search field filters method IDs and aliases. Arrow keys move through visible options; Home/End jump to the limits; Escape closes and restores focus. The adjacent native disclosure labelled “Configure Faker arguments” renders catalog-driven fields and retains raw JSON arguments as an advanced fallback.
 
@@ -317,6 +336,8 @@ Validation remains inline below the editor. Renamed-method warnings use the exis
 ### Disclosure and accordion
 
 Current disclosures use native `details`/`summary` or a `.disclosure-button` with a chevron. The chevron rotates 90 degrees when open. Examples include canonical request, parsed headers/body, normalized request, import items, and redaction preview.
+
+The plain chevron and text trigger is the one disclosure treatment. The former full-width dark bar on `.normalized-details` and Delete environment is retired. Disclosure triggers use theme text tokens with no filled background; a destructive disclosure may use `--danger-fg` for its text. Content such as a code block may have its own contained surface. Use the shared motion token for the chevron.
 
 Use disclosure for optional details that remain on the same page. Preserve native keyboard behavior or implement a button with `aria-expanded` and `aria-controls`. Do not use disclosure for navigation or mandatory form fields.
 
@@ -487,9 +508,9 @@ The endpoint and response **History** disclosures reuse the native disclosure, r
 
 ### Callback editor and callback log
 
-- The response editor's **Callback** is a native disclosure (`.history-disclosure`) closed by default. It reuses labelled `.field` inputs, `.field-row` grids, `.code-input`, autocomplete, `.toggle-inline`, `.field-help`, and `.info-note`; no separate heading or extra visual hierarchy is added to its action row. A new `.callback-fields` grid uses spacing tokens only. Its body uses the response editor's existing `.segmented-control` Builder/JSON switch and `.schema-builder`/`.schema-row` partial; rows carry a schema target so drag and drop never changes the main response. JSON-only context tokens make Builder unavailable without rewriting the template.
+- The response editor's **Callback** is a native disclosure (`.history-disclosure`) closed by default. It reuses labelled `.field` inputs, `.field-row` grids, `.code-input`, autocomplete, `.toggle-inline`, `.field-help`, and `.info-note`. A `.callback-fields` grid uses spacing tokens and small `callback-group-heading` labels for Delivery, Retry policy, and Signing; thin token borders divide groups without adding nested cards. Its body uses the response editor's existing `.segmented-control` Builder/JSON switch and `.schema-builder`/`.schema-row` partial; rows carry a schema target so drag and drop never changes the main response. JSON-only context tokens make Builder unavailable without rewriting the template.
 - Signature help is inline beneath the masked secret input and header name; never reflect a stored secret into an input or a status message. The callback's preview uses `.code-block` colors from existing code-surface tokens.
-- The **Callback log** uses `.log-filter-panel`, `.select-field` with visually hidden captions, `.table-scroll`, `.log-table`, `.day-separator`, method badges, state chips, the request-log relative time, and labelled `.icon-button` for Resend. `.callback-filters` adapts to one column on mobile; the table scrolls inside its card instead of expanding the page.
+- The **Callbacks tab** uses the same `.log-card`, `.log-statusbar`, full-width `.search-field.log-search`, `.log-filters`, `.quick-filter-row`, `.table-scroll`, and `.log-table` structure as Requests. Its three filters are method, status, and time. It retains method badges, state chips, relative time, and a labelled `.icon-button` for Resend. The filter grid adapts to one column on mobile; the table scrolls inside its card instead of expanding the page.
 - **Resend** reuses a named action with an accessible label and an inline status. Pending, success, failure, timeout, and empty states use existing semantic tokens and feedback patterns. Links between request and callback logs use `.table-link`.
 
 Syntax tokens are available for flags, URLs, headers, strings, and keys. The response-template editor adds catalog autocomplete to the existing code-input surface; it does not introduce a general syntax-highlighting editor. A reusable syntax-highlighting component remains **undecided — pick on first use, then add here**.

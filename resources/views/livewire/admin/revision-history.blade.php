@@ -16,7 +16,7 @@
                 <article class="revision-row {{ in_array($revision->id, $selectedRevisionIds, true) ? 'selected' : '' }}" wire:key="revision-{{ $revision->id }}">
                     <span class="revision-marker" aria-hidden="true"></span>
                     <div class="revision-copy">
-                        <div><strong>Version {{ $revision->version_number }}</strong><span class="action-chip {{ $revision->source === 'rollback' ? 'update' : 'create' }}">{{ str_replace('_', ' ', $revision->source) }}</span></div>
+                        <div><strong>Version {{ $revision->version_number }}</strong><x-badge :variant="$revision->source === 'rollback' ? 'info' : 'success'">{{ str_replace('_', ' ', $revision->source) }}</x-badge></div>
                         <p>{{ $revision->display_summary }}</p>
                         <small title="{{ $revision->created_at->toIso8601String() }}">{{ $revision->created_at->diffForHumans() }}</small>
                     </div>
@@ -51,7 +51,7 @@
                 <article class="revision-diff-change renderer-{{ $change['renderer'] }}">
                     <div class="revision-diff-heading">
                         <code>{{ $change['path'] }}</code>
-                        <span class="action-chip {{ $change['type'] === 'removed' ? 'error' : ($change['type'] === 'added' ? 'create' : 'update') }}">{{ $change['type'] }}</span>
+                        <x-badge :variant="$change['type'] === 'removed' ? 'danger' : ($change['type'] === 'added' ? 'success' : 'info')">{{ $change['type'] }}</x-badge>
                     </div>
                     <div class="revision-diff-values">
                         <div>

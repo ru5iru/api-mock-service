@@ -89,7 +89,7 @@
                 </label>
                 <button class="button button-tertiary button-small" type="button" wire:click="bulkMoveToCollection">Move to collection</button>
                 @if ($availableTags->isNotEmpty())
-                    <details class="bulk-tag-picker">
+                    <details class="bulk-tag-picker" data-menu>
                         <summary class="button button-tertiary button-small">Add tags</summary>
                         <div>
                             @foreach ($availableTags as $tag)
@@ -158,10 +158,10 @@
                                     </details>
                                 </div>
                                 <div class="metadata-row">
-                                    <span class="state-label {{ $endpoint->enabled ? 'enabled' : 'disabled' }}"><i></i>{{ $endpoint->enabled ? 'Enabled' : 'Disabled' }}</span>
+                                    <x-badge :variant="$endpoint->enabled ? 'success' : 'warning'"><i class="badge-dot" aria-hidden="true"></i>{{ $endpoint->enabled ? 'Enabled' : 'Disabled' }}</x-badge>
                                     <span>{{ $endpoint->responses_count }} {{ Str::plural('response', $endpoint->responses_count) }}</span>
                                     @if ($endpoint->has_callback)
-                                        <span class="state-chip enabled" title="Contains a response with an asynchronous callback">↗ Callback</span>
+                                        <x-badge variant="info" title="Contains a response with an asynchronous callback">↗ Callback</x-badge>
                                     @endif
                                     @if ($endpoint->priority !== 0)
                                         <span>Priority {{ $endpoint->priority }}</span>
@@ -174,7 +174,7 @@
                                 </div>
                                 @if ($endpoint->collection || $endpoint->tags->isNotEmpty())
                                     <div class="endpoint-taxonomy">
-                                        @if ($endpoint->collection)<span class="collection-chip">{{ $endpoint->collection->name }}</span>@endif
+                                        @if ($endpoint->collection)<x-badge variant="info">{{ $endpoint->collection->name }}</x-badge>@endif
                                         @foreach ($endpoint->tags as $tag)<span class="tag-chip">{{ $tag->name }}</span>@endforeach
                                     </div>
                                 @endif
@@ -210,7 +210,7 @@
 
                         <a class="button button-tertiary button-small" href="{{ route('dashboard.endpoints.edit', $endpoint) }}" wire:navigate>Edit</a>
 
-                        <details class="overflow-menu">
+                        <details class="overflow-menu" data-menu>
                             <summary aria-label="More actions for {{ $endpoint->displayName() }}">•••</summary>
                             <div>
                                 <button type="button" wire:click="duplicate({{ $endpoint->id }})">Duplicate</button>

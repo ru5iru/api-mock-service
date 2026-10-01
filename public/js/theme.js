@@ -58,47 +58,6 @@
         }));
     }
 
-    function closeMenu(rootElement, restoreFocus) {
-        if (!rootElement) {
-            return;
-        }
-
-        var trigger = rootElement.querySelector('[data-theme-trigger]');
-        var menu = rootElement.querySelector('[data-theme-menu]');
-        if (!trigger || !menu) {
-            return;
-        }
-
-        menu.hidden = true;
-        trigger.setAttribute('aria-expanded', 'false');
-        if (restoreFocus) {
-            trigger.focus();
-        }
-    }
-
-    function closeAllMenus(exception) {
-        document.querySelectorAll('[data-theme-menu-root]').forEach(function (rootElement) {
-            if (rootElement !== exception) {
-                closeMenu(rootElement, false);
-            }
-        });
-    }
-
-    function openMenu(rootElement, focusActive) {
-        var trigger = rootElement.querySelector('[data-theme-trigger]');
-        var menu = rootElement.querySelector('[data-theme-menu]');
-        if (!trigger || !menu) {
-            return;
-        }
-
-        closeAllMenus(rootElement);
-        menu.hidden = false;
-        trigger.setAttribute('aria-expanded', 'true');
-        if (focusActive) {
-            (menu.querySelector('[aria-checked="true"]') || menu.querySelector('[data-theme-option]'))?.focus();
-        }
-    }
-
     function setMode(nextMode) {
         if (allowedModes.indexOf(nextMode) < 0) {
             return;
@@ -136,7 +95,6 @@
     document.addEventListener('livewire:navigated', function () {
         // Livewire may morph <html>; restore the singleton state before the next paint.
         applyTheme();
-        closeAllMenus();
     });
 
     new MutationObserver(function () {
@@ -152,62 +110,8 @@
     });
 
     document.addEventListener('click', function (event) {
-        var trigger = event.target.closest?.('[data-theme-trigger]');
-        if (trigger) {
-            var rootElement = trigger.closest('[data-theme-menu-root]');
-            var menu = rootElement?.querySelector('[data-theme-menu]');
-            if (menu?.hidden) {
-                openMenu(rootElement, false);
-            } else {
-                closeMenu(rootElement, false);
-            }
-            return;
-        }
-
         var option = event.target.closest?.('[data-theme-option]');
-        if (option) {
-            setMode(option.value);
-            closeMenu(option.closest('[data-theme-menu-root]'), true);
-            return;
-        }
-
-        closeAllMenus();
-    });
-
-    document.addEventListener('keydown', function (event) {
-        var trigger = event.target.closest?.('[data-theme-trigger]');
-        if (trigger && ['ArrowDown', 'ArrowUp'].indexOf(event.key) >= 0) {
-            event.preventDefault();
-            openMenu(trigger.closest('[data-theme-menu-root]'), true);
-            return;
-        }
-
-        var option = event.target.closest?.('[data-theme-option]');
-        if (!option) {
-            if (event.key === 'Escape') {
-                document.querySelectorAll('[data-theme-menu-root]').forEach(function (rootElement) {
-                    if (!rootElement.querySelector('[data-theme-menu]')?.hidden) {
-                        closeMenu(rootElement, true);
-                    }
-                });
-            }
-            return;
-        }
-
-        var options = Array.from(option.closest('[data-theme-menu]').querySelectorAll('[data-theme-option]'));
-        var currentIndex = options.indexOf(option);
-        var nextIndex = currentIndex;
-        if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % options.length;
-        if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + options.length) % options.length;
-        if (event.key === 'Home') nextIndex = 0;
-        if (event.key === 'End') nextIndex = options.length - 1;
-        if (nextIndex !== currentIndex) {
-            event.preventDefault();
-            options[nextIndex].focus();
-        } else if (event.key === 'Escape') {
-            event.preventDefault();
-            closeMenu(option.closest('[data-theme-menu-root]'), true);
-        }
+        if (option) setMode(option.value);
     });
 
     window.MockDeckTheme = {

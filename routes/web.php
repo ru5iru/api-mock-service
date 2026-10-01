@@ -31,8 +31,9 @@ Route::prefix('dashboard')
     ->group(function (): void {
         Route::post('/logout', [DashboardSessionController::class, 'destroy'])->name('logout');
         Route::get('/', [EndpointController::class, 'index'])->name('endpoints.index');
-        Route::view('/requests', 'admin.requests')->name('requests.index');
-        Route::view('/callbacks', 'admin.callbacks')->name('callbacks.index');
+        Route::view('/logs', 'admin.logs')->name('logs.index');
+        Route::view('/requests', 'admin.logs')->name('requests.index');
+        Route::view('/callbacks', 'admin.logs')->name('callbacks.index');
         Route::view('/docs', 'admin.docs')->name('docs');
         Route::view('/config', 'admin.config')->name('config.index');
         Route::view('/environments', 'admin.environments')->name('environments.index');

@@ -31,6 +31,15 @@ final class CallbackLog extends Component
 
     public string $message = '';
 
+    public bool $paused = false;
+
+    public string $clock = 'local';
+
+    public function togglePaused(): void
+    {
+        $this->paused = ! $this->paused;
+    }
+
     public function clearFilters(): void
     {
         $this->search = '';
