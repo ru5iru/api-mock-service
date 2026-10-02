@@ -5,29 +5,22 @@ namespace App\Services\Callbacks;
 use App\Jobs\DeliverCallback;
 use App\Models\CallbackAttempt;
 use App\Models\MockResponse;
+use App\Services\Templates\TemplateContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Queue;
 use Throwable;
 
 final class CallbackDispatcher
 {
+    public function __construct(private readonly TemplateContext $contexts) {}
+
     public function afterResponse(MockResponse $response, Request $request, string $requestId, int $environmentId): void
     {
         if (! $response->callback_enabled) {
             return;
         }
 
-        $context = [
-            'id' => $requestId,
-            'method' => $request->method(),
-            'url' => $request->fullUrl(),
-            'body' => substr($request->getContent(), 0, 65536),
-            'headers' => array_map(static fn (array $values): string => (string) ($values[0] ?? ''), $request->headers->all()),
-        ];
-        $json = json_decode(substr($request->getContent(), 0, 65536), true);
-        if (is_array($json)) {
-            $context['json'] = $json;
-        }
+        $context = $this->contexts->capture($request, $requestId);
 
         $this->enqueue($response->id, $requestId, $environmentId, $context);
     }

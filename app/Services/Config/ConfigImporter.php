@@ -13,10 +13,12 @@ use App\Services\Curl\HashVariant;
 use App\Services\Curl\ParsedCurl;
 use App\Services\Environments\EnvironmentContext;
 use App\Services\Matching\MatchPrecedence;
+use App\Services\Response\SelectionConfigurationValidator;
 use App\Services\Revisions\RevisionManager;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Throwable;
 
@@ -208,6 +210,21 @@ final readonly class ConfigImporter
                     $action = 'error';
                     $message = $responseConflict;
                     $errors[] = "Endpoint {$name}: {$responseConflict}";
+                }
+            }
+
+            if ($action !== 'error' && $mode === ImportMode::Upsert && $byUuid !== null && ! $replaceResponses) {
+                $combined = $source['responses'];
+                $importedUuids = array_column($combined, 'uuid');
+                foreach ($byUuid->responses()->whereNotIn('uuid', $importedUuids)->with('rules')->get() as $retained) {
+                    $combined[] = $this->revisions->snapshot($retained);
+                }
+                try {
+                    app(SelectionConfigurationValidator::class)->validate($source, $combined);
+                } catch (ValidationException $exception) {
+                    $action = 'error';
+                    $message = 'Merged response selection is invalid; replace the response pool or include all selection responses.';
+                    $errors[] = "Endpoint {$name}: {$message} ".implode(' ', $exception->validator->errors()->all());
                 }
             }
 
@@ -405,6 +422,8 @@ final readonly class ConfigImporter
             'name' => $source['name'],
             'enabled' => $enabled,
             'priority' => (int) $source['priority'],
+            'selection_mode' => $source['selection_mode'] ?? 'weighted',
+            'sequence_on_exhaust' => $source['sequence_on_exhaust'] ?? null,
             'method' => $parsed->method,
             'raw_curl' => $source['request']['curl'],
             'normalized_curl' => $variant->normalized,
@@ -459,13 +478,23 @@ final readonly class ConfigImporter
             'locale' => $source['locale'] ?? 'en',
             'delay_ms' => (int) $source['delay_ms'],
             'weight' => (int) $source['weight'],
+            'sequence_order' => $source['sequence_order'] ?? null,
+            'is_default' => (bool) ($source['is_default'] ?? false),
             ...$this->callbackAttributes($source),
         ];
         $current = collect($this->revisions->snapshot($response))->only(array_keys($expected))->all();
         ksort($current);
         ksort($expected);
 
-        return $current !== $expected;
+        if ($current !== $expected) {
+            return true;
+        }
+        $rules = $response->rules->map(static fn ($rule): array => $rule->only(['field_type', 'field_name', 'operator', 'value', 'priority']))->all();
+        $expectedRules = $source['response_rules'] ?? [];
+        sort($rules);
+        sort($expectedRules);
+
+        return $rules !== $expectedRules;
     }
 
     /** @param array<string, mixed> $source
@@ -546,6 +575,8 @@ final readonly class ConfigImporter
                 'name' => $source['name'],
                 'enabled' => $enabled,
                 'priority' => $source['priority'],
+                'selection_mode' => $source['selection_mode'] ?? 'weighted',
+                'sequence_on_exhaust' => $source['sequence_on_exhaust'] ?? null,
                 'method' => $parsed->method,
                 'raw_curl' => $source['request']['curl'],
                 'normalized_curl' => $variant->normalized,
@@ -592,8 +623,13 @@ final readonly class ConfigImporter
                     'locale' => $responseSource['locale'] ?? 'en',
                     'delay_ms' => $responseSource['delay_ms'],
                     'weight' => $responseSource['weight'],
+                    'sequence_order' => $responseSource['sequence_order'] ?? null,
+                    'is_default' => (bool) ($responseSource['is_default'] ?? false),
                     ...$this->callbackAttributes($responseSource),
                 ])->save();
+                $response->rules()->delete();
+                $response->rules()->createMany($responseSource['response_rules'] ?? []);
+                $response->unsetRelation('rules');
                 if ($responseBefore !== null && $this->revisions->recordIfChanged(
                     $response,
                     $responseBefore,
@@ -624,6 +660,11 @@ final readonly class ConfigImporter
                     $revisionSnapshots++;
                 }
             }
+
+            app(SelectionConfigurationValidator::class)->validate(
+                $endpoint->toArray(),
+                $endpoint->responses()->with('rules')->get()->map(fn (MockResponse $response): array => $this->revisions->snapshot($response))->all(),
+            );
 
             if ($endpointBefore !== null && $this->revisions->recordIfChanged(
                 $endpoint,

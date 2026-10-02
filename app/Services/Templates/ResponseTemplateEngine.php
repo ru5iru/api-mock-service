@@ -10,6 +10,7 @@ final readonly class ResponseTemplateEngine
     public function __construct(
         private TemplateCompiler $compiler,
         private TemplateRenderer $renderer,
+        private TemplateContext $contexts,
     ) {}
 
     public function validate(string $template, string $locale = 'en'): TemplateValidationResult
@@ -29,17 +30,20 @@ final readonly class ResponseTemplateEngine
             ];
         }
 
-        $rendered = $this->renderer->render($validation->compiled, $locale, $seedMode, $seed);
+        $synthetic = $this->contexts->usesContext($template);
+        $context = $synthetic ? $this->contexts->preview($template) : null;
+        $rendered = $this->renderer->render($validation->compiled, $locale, $seedMode, $seed, null, $context);
 
         return [
             'output' => $rendered->output,
             'bytes' => $rendered->bytes,
             'render_ms' => $rendered->renderMs,
             'issues' => $validation->issueArrays(),
+            'synthetic_context' => $synthetic,
         ];
     }
 
-    public function renderResponse(MockResponse $response, ?string $requestHash = null): TemplateRenderResult
+    public function renderResponse(MockResponse $response, ?string $requestHash = null, ?array $context = null): TemplateRenderResult
     {
         $cacheKey = sprintf(
             'mockdeck:response-template:%d:%s',
@@ -62,6 +66,7 @@ final readonly class ResponseTemplateEngine
             (string) $response->seed_mode,
             $response->seed === null ? null : (int) $response->seed,
             $requestHash,
+            $context,
         );
     }
 

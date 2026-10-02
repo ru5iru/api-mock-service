@@ -389,6 +389,11 @@ final class TemplateSchemaConverter
 
                 return $row;
             }
+            // Request/environment context remains JSON-only; Builder cannot represent it losslessly.
+            $unescapedContext = str_replace('\\{{', "\0ESCAPED_OPEN\0", $value);
+            if (preg_match('/\$request\.|\{\{\s*(?:env|request)\./', $unescapedContext) === 1) {
+                return null;
+            }
             if (preg_match('/^\$([A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*)(?:\((.*)\))?$/s', $value, $match) === 1) {
                 $row['type'] = str_starts_with($match[1], 'number.') ? 'number' : ($match[1] === 'datatype.boolean' ? 'boolean' : 'faker');
                 if ($row['type'] === 'faker') {

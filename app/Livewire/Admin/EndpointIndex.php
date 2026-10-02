@@ -112,7 +112,7 @@ final class EndpointIndex extends Component
 
     public function duplicate(int $endpointId): void
     {
-        $source = MockEndpoint::query()->with(['responses', 'tags', 'environmentOverrides'])->findOrFail($endpointId);
+        $source = MockEndpoint::query()->with(['responses.rules', 'tags', 'environmentOverrides'])->findOrFail($endpointId);
 
         DB::transaction(function () use ($source): void {
             $copy = $source->replicate(['uuid']);
@@ -121,7 +121,8 @@ final class EndpointIndex extends Component
             $copy->save();
 
             foreach ($source->responses as $response) {
-                $copy->responses()->save($response->replicate(['uuid']));
+                $newResponse = $copy->responses()->save($response->replicate(['uuid']));
+                $newResponse->rules()->createMany($response->rules->map(fn ($rule) => $rule->only(['field_type', 'field_name', 'operator', 'value', 'priority']))->all());
             }
             $copy->tags()->sync($source->tags->modelKeys());
             $copy->environmentOverrides()->sync($source->environmentOverrides->mapWithKeys(

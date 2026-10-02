@@ -17,6 +17,8 @@ final class MockResponse extends Model
 
     protected $fillable = [
         'uuid',
+        'sequence_order',
+        'is_default',
         'status_code',
         'headers',
         'body',
@@ -65,6 +67,8 @@ final class MockResponse extends Model
             'status_code' => 'integer',
             'delay_ms' => 'integer',
             'weight' => 'integer',
+            'sequence_order' => 'integer',
+            'is_default' => 'boolean',
             'seed' => 'integer',
             'callback_enabled' => 'boolean',
             'callback_headers' => 'array',
@@ -92,6 +96,11 @@ final class MockResponse extends Model
     }
 
     /** @return HasMany<CallbackAttempt, $this> */
+    public function rules(): HasMany
+    {
+        return $this->hasMany(ResponseRule::class, 'response_id')->orderBy('priority')->orderBy('id');
+    }
+
     public function callbackAttempts(): HasMany
     {
         return $this->hasMany(CallbackAttempt::class, 'response_id');

@@ -970,3 +970,14 @@ kbd { min-width: 30px; padding: 4px 7px; border: 1px solid var(--border-strong);
     :root { --border: var(--border-strong); }
     .card, .toolbar { box-shadow: none; }
 }
+
+/* Response selection composes existing cards, fields, badges, and preview tokens. */
+.selection-settings { display: grid; gap: var(--space-3); padding: var(--space-4); }
+.selection-settings h3 { margin: 0; }
+.selection-response-card { flex-wrap: wrap; }
+.selection-response-details { flex-basis: 100%; min-width: 0; display: grid; gap: var(--space-2); }
+.selection-move-actions { display: flex; }
+.rule-condition-row { padding-block: var(--space-3); border-bottom: var(--border-width) solid var(--border); }
+.selection-preview { min-width: 0; overflow-wrap: anywhere; }
+.selection-preview ol, .selection-preview ul { padding-left: var(--space-5); }
+@media (max-width: 720px) { .selection-settings .segmented-control { flex-wrap: wrap; } .rule-condition-row .field-row { grid-template-columns: minmax(0, 1fr); } }

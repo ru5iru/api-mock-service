@@ -43,7 +43,7 @@ return [
     ],
 
     'portable_config' => [
-        'generator_version' => '1.2.0',
+        'generator_version' => '1.3.0',
         'max_bytes' => (int) env('MOCK_CONFIG_MAX_BYTES', 2097152),
         'max_endpoints' => (int) env('MOCK_CONFIG_MAX_ENDPOINTS', 500),
         'max_responses' => (int) env('MOCK_CONFIG_MAX_RESPONSES', 5000),

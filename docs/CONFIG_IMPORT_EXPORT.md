@@ -1,6 +1,6 @@
 # Native configuration import and export
 
-MockDeck's native JSON format moves endpoint definitions, responses, collections, tags, and environments between installations without coupling files to database IDs or trusted hashes. The current media type is `application/vnd.mockdeck.config+json`; the current format version is `1.2`, with version `1`, `1.0`, and `1.1` imports retained for backward compatibility.
+MockDeck's native JSON format moves endpoint definitions, responses, collections, tags, and environments between installations without coupling files to database IDs or trusted hashes. The current media type is `application/vnd.mockdeck.config+json`; the current format version is `1.3`, with version `1`, `1.0`, `1.1`, and `1.2` imports retained for backward compatibility.
 
 ## Safe dashboard workflow
 
@@ -64,9 +64,9 @@ Callback URL, method, headers, JSON body, timing, and signature-header name are 
 
 ## Document contract
 
-The current checked-in contract is `resources/schemas/mockdeck-config-v1.2.schema.json`; earlier schemas remain available for older documents. A current document contains:
+The current checked-in contract is `resources/schemas/mockdeck-config-v1.3.schema.json`; earlier schemas remain available for older documents. A current document contains:
 
-- `format: "mockdeck"` and `format_version: "1.2"`;
+- `format: "mockdeck"` and `format_version: "1.3"`;
 - collection definitions, case-insensitive tag names, and environment definitions;
 - non-secret environment variable values plus redacted secret placeholders;
 - endpoint collection, tags, and named environment overrides;
@@ -157,3 +157,15 @@ make test-feature
 ```
 
 The feature suite covers deterministic redaction, create-only round trips, UUID upsert idempotency, exact conflict blocking, overlap warnings, required acknowledgement, protected routes, HTTP preview/apply, CLI dry-run/apply, and portable UUID generation.
+
+## Response selection in format 1.3
+
+Endpoints include `selection_mode` (`weighted`, `sequence`, or `rule`). Weighted selection remains the default. `sequence_on_exhaust` is `repeat_last`, `loop`, or `not_found` in sequence mode and null in other modes.
+
+Responses include nullable, zero-based `sequence_order`, boolean `is_default`, and `response_rules`. Each condition has `field_type` (`header`, `query`, `body_json_path`), `field_name`, `operator` (`equals`, `contains`, `regex`, `exists`), nullable `value`, and non-negative integer `priority`. Exists does not use a value; other operators require a string. Regex values use PHP pattern delimiters, for example `/^ready$/i`. Conditions on one response use AND. Rule-bearing responses are checked by their lowest condition priority; ties use response weight, then UUID. Exactly one response must be marked default in rule mode. Sequence orders must contain every position from zero through the response count minus one, without duplicates or gaps.
+
+Version `1`, `1.0`, `1.1`, and `1.2` documents always import as weighted selection with no sequence order, default marker, or conditions, even if newer selection fields appear in the file. A version 1.3 upsert that merges unmentioned local responses must leave the combined selection configuration valid; preview blocks invalid merged defaults or sequence orders and suggests authoritative response-pool replacement.
+
+`endpoint_call_state` is runtime data. Sequence positions, total match counts, last matched timestamps, and environment/database IDs are never exported or imported. New imports and clones have no call-state rows until first traffic. Updating an existing endpoint by UUID preserves its runtime state. Revision restore and import undo restore selection configuration and conditions while leaving runtime state unchanged.
+
+Request-context tokens (`$request.method`, `$request.url`, `$request.body`, `$request.id`, `$request.json.<path>`) and `{{env.KEY}}` remain ordinary text in the existing `template` field. Export/import preserves that text exactly; their addition requires no extra portable fields or version bump on its own. Secret environment values remain excluded, so replace them locally before serving templates that need them.

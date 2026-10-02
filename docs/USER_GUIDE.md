@@ -144,7 +144,7 @@ An endpoint can have one or more responses. Each response has:
 - a positive integer weight;
 - Static or Template body mode.
 
-Selection probability is proportional to weight. For example, weights `1` and `3` produce approximately 25% and 75% selection over many calls. MockDeck does not store records or scenario state, so the builder intentionally does not create a locked `id` field.
+Selection probability is proportional to weight. For example, weights `1` and `3` produce approximately 25% and 75% selection over many calls. MockDeck does not persist generated records, so the builder intentionally does not create a locked `id` field. Endpoint selection counters are independent runtime state.
 
 ### Static body
 
@@ -363,7 +363,7 @@ Environment-scoped export includes endpoints that inherit their state and endpoi
 
 For **Update by UUID**, preview also reports how many endpoint/response pre-states will receive a revision. Every changed existing entity is snapshotted under one import batch before its imported values replace the live values. The success panel keeps **Undo this import** available; one confirmation lists the affected entities and restores all recorded pre-states atomically. The undo itself appends rollback revisions, so it does not erase evidence of the import.
 
-Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Version 1/1.0/1.1 files remain supported; missing template and organization fields use backward-compatible defaults. Current exports use format `1.2`.
+Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Versions 1/1.0/1.1/1.2 remain supported; missing fields use backward-compatible defaults, with Weighted selection and no rules. Current exports use format `1.3`.
 
 CLI equivalents:
 
@@ -396,7 +396,7 @@ Each saved response can send an independent HTTP request after its normal mock r
 
 The callback runs in a dedicated background worker (`docker compose ps callback-worker`); stopped workers leave new jobs queued. Choose a fixed minimum delay, or set a larger maximum for a random range (up to 30 seconds). **Max attempts** includes the first delivery (1–5 total); non-2xx HTTP responses and network errors retry until the first success or this limit, waiting the configured backoff between attempts. Each attempt has a hard 100–10,000 ms timeout. Redirects do not count as success and are not followed automatically.
 
-URL, headers, and JSON body support `{{env.KEY}}` values from the *active environment at invocation time* plus `$request.method`, `$request.url`, `$request.body`, `$request.id`, `$request.json.field`, and `{{$request.method}}` interpolation. The JSON body also supports the same `$module.method`, `$repeat`, `$pick`, and other directives as response templating. Choose **Builder** for representable field-based JSON or **JSON** for context tokens and advanced directives; switching to JSON does not erase the body, and Builder is disabled when the body cannot be represented faithfully. The editor's JSON autocomplete and **Preview callback body** use the same shared Faker compiler/renderer. Request tokens apply only to callbacks, not ordinary response bodies. The preview uses synthetic request data, and a missing environment variable fails the callback attempt without changing the primary reply.
+URL, headers, and JSON body support `{{env.KEY}}` values from the *active environment at invocation time* plus `$request.method`, `$request.url`, `$request.body`, `$request.id`, `$request.json.field`, and `{{$request.method}}` interpolation. The JSON body also supports the same `$module.method`, `$repeat`, `$pick`, and other directives as response templating. Choose **Builder** for representable field-based JSON or **JSON** for context tokens and advanced directives; switching to JSON does not erase the body, and Builder is disabled when the body cannot be represented faithfully. The editor's JSON autocomplete and **Preview callback body** use the same shared Faker compiler/renderer. Request tokens are also available in ordinary response templates through their JSON editor. The preview uses synthetic request data, and a missing environment variable fails the callback attempt without changing the primary reply.
 
 For example, set URL to `https://{{env.WEBHOOK_HOST}}/events`, header `X-Request: {{$request.method}}`, and body:
 
@@ -463,9 +463,53 @@ See [VALIDATION.md](VALIDATION.md) for complete automated and manual release che
 
 - Matching uses five fixed header policies; arbitrary per-field query/header/body predicates are not implemented.
 - Upstream origin is intentionally excluded from signatures.
-- Response selection is weighted random, not stateful scenarios or request-rule selection.
-- Response templates serve JSON only; request-context interpolation is callback-only.
+- Response selection supports weighted random, environment-scoped sequences, and request conditions. Scenario scripting remains outside this wave.
+- Response templates serve JSON only; request-context interpolation is supported in the JSON editor.
 - Builder is intentionally a lossless subset of the JSON template language.
 - OpenAPI generation/import, recording/proxying, verification assertions, and third-party format adapters remain planned.
 
 For implementation boundaries, read [ARCHITECTURE.md](ARCHITECTURE.md). For UI changes, read [UI_GUIDE.md](UI_GUIDE.md).
+
+## 20. Request context in ordinary response templates
+
+Response Body → Template → JSON accepts `$request.method`, `$request.url`, `$request.body`, `$request.id`, `$request.json.<dotted.path>`, and `{{env.KEY}}`. For example:
+
+```json
+{"requestId":"$request.id","userId":"$request.json.user.id","message":"Hello {{$request.method}}","region":"{{env.REGION}}"}
+```
+
+The live response uses the matched incoming request, the same request ID returned in `X-Request-ID`, and environment values active when rendering. Missing JSON paths return JSON null. A misspelled request field is a save-time validation error. Missing environment variables remain render-time errors.
+
+Request body context is limited to 64 KiB. Above that bound the body and JSON tokens return null, the rest of the template still renders, and Logs records a warning with the request ID and byte limit. The original request remains available to matching; this limit applies to template context capture.
+
+Preview uses synthetic request samples, visibly labelled beside its output, rather than captured traffic. Environment references use the active environment; previews referencing secret variables are hidden. The same sample builder serves callback preview/test. Context tokens are deliberately JSON-editor-only in Wave 1; Builder is disabled without rewriting the template. Existing static bodies remain literal, and context-free templates retain their rendering behavior. Templates remain text fields in configuration transfer; this track requires no migration or new portable fields.
+
+## 21. Sequence and rule-based response selection
+
+Open an endpoint and use the Configured responses selection controls. Existing endpoints remain **Weighted**: one response is deterministic, and multiple responses retain the existing relative-weight algorithm.
+
+**Selection settings are a draft until Save selection.** Editing a response body still uses that response form's Save action. The selection preview describes draft configuration without consuming a request or advancing a counter.
+
+### Sequence
+
+Choose Sequence, drag response handles or use their Earlier/Later keyboard buttons, and save. Positions are contiguous and zero based internally; the UI labels them from one. Choose On exhaust:
+
+- Repeat last: continue returning the final response.
+- Loop: start again at the first response.
+- Not found: return diagnostic HTTP 404 with `reason: sequence_exhausted`.
+
+Runtime state is independent per endpoint and environment. The readout shows the next call position for the active environment. Reset sequence confirms that environment and resets its position only; lifetime match count and other environments are retained. Saving/reordering configuration also retains runtime position, so explicitly reset when restarting a test scenario. Adding responses appends sequence positions; deletion closes the gap.
+
+### Rule-based
+
+Choose Rule-based and expand Conditions on a response. A condition chooses Header, Query, or Body JSON path, a field name, an operator, and a value. Body paths use dotted syntax such as `user.id`. Header matching is case-insensitive by name. Operators are Equals (exact scalar text), Contains (substring), Regex (PHP regular expression with delimiters such as `/approved/i`), and Exists (no value needed). JSON booleans compare as `true` or `false`; missing fields do not match except that Exists reports their absence as false.
+
+All conditions on one response are combined with AND. Rule-bearing responses are tried by their lowest condition priority, lower first. Dragging responses renumbers their condition priorities globally; priorities can also be edited directly. Ties use existing response weight descending, then stable UUID. The first full match wins. Unruled responses are not competing conditions. Exactly one **Default / fallback** response is required; selecting one clears the other draft default, and saving updates the pool atomically. The fallback's own conditions are not evaluated.
+
+The selection preview lists the ordered conditions and fallback badge. Missing fallback, invalid priority/order, or invalid regex blocks saving with inline feedback. Deleting the saved fallback names its consequence in confirmation and remains blocked until a different fallback has been selected and saved; the editor never saves a rule pool without one.
+
+### History and transfer
+
+Selection fields and conditions are configuration and are versioned. Restoring an older sequence position shifts sibling response positions with rollback revisions; restoring a fallback can clear the sibling fallback with a revision. Invalid rule configuration restores are rejected atomically. Pre-Wave-1 endpoint snapshots default to Weighted and pre-Wave-1 response snapshots default to no rules. Counters/positions are runtime state and are never restored by history.
+
+Current native exports use 1.3 and include modes, order, default flags, and conditions. Old 1–1.2 files retain Weighted behavior. New imports and clones have no call state until matched; upserts preserve destination runtime state. No verification/assertion API is added in this wave.
