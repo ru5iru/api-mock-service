@@ -91,6 +91,8 @@
                 <li><strong>Static:</strong> returned exactly as stored; dollar signs and braces remain literal.</li>
                 <li><strong>Template:</strong> parsed and rendered for every matching request.</li>
             </ul>
+            <p>Choose <strong>Weighted</strong>, <strong>Sequence</strong>, or <strong>Rule-based</strong> above the configured response list, then select <strong>Save selection</strong>. Sequence uses the existing row drag handles (or up/down controls); choose Repeat last, Loop, or Not found on exhaustion. The next-call readout and confirmed Reset sequence are scoped to the active environment.</p>
+            <p>Rule-based selection combines each response's Conditions with AND, tries responses in ascending condition priority, and requires exactly one Default / fallback. Drag responses to change global rule priority. The saved fallback cannot be deleted until a replacement has been selected and saved. Selection preview shows the next response or ordered conditions without advancing runtime state.</p>
         </section>
 
         <section id="async-callbacks" class="card docs-card docs-wide">
@@ -107,6 +109,7 @@
             <h2>Response templating</h2>
             <p>Choose <strong>Body → Template</strong> to generate response JSON with Faker data. Templating is opt-in per response; existing static responses are unchanged. Preview and live serving use the same server-side parser and renderer.</p>
             <p>The backend maps supported Faker.js-shaped method names to FakerPHP 1.24. No Faker runtime or template evaluator is shipped to the browser. Successful templates default to <code>application/json</code> when the response does not define Content-Type.</p>
+            <p>In the JSON editor, use <code>$request.method</code>, <code>$request.url</code>, <code>$request.id</code>, <code>$request.body</code>, <code>$request.json.user.name</code>, and <code>@verbatim{{env.KEY}}@endverbatim</code>. Inline text such as <code>@verbatimHello {{$request.method}}@endverbatim</code> works too. Preview labels its synthetic request samples. Missing JSON paths resolve to null; bodies over 64 KiB omit body/JSON context and produce a visible warning in Logs. Request/environment tokens require the JSON editor in this wave.</p>
             <h3>Workflow</h3>
             <ol>
                 <li>Choose <strong>Builder</strong> for a simple schema or <strong>JSON</strong> for the complete language.</li>
@@ -249,7 +252,7 @@
             </ol>
             <h3>Import</h3>
             <ol>
-                <li>Choose a MockDeck JSON file and select Create only, Upsert, or Clone.</li>
+                <li>Choose a MockDeck JSON file and select Create only, Upsert, or Clone. Native format 1.3 includes selection mode, sequence order/exhaustion, fallback flags, and response rules. Versions 1–1.2 import as Weighted. Runtime call counters and sequence positions are never exported or inherited by new imports/clones.</li>
                 <li>Preview the complete plan; preview never writes to the database.</li>
                 <li>Resolve errors and review warnings. Upsert replaces response pools only when explicitly enabled.</li>
                 <li>Confirm to apply atomically. Version 1 files remain supported and missing template fields become static responses.</li>

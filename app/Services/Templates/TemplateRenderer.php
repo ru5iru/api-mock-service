@@ -21,7 +21,7 @@ final class TemplateRenderer
     /** @var array<string, mixed>|null */
     private ?array $context = null;
 
-    public function __construct(private readonly FakerMethodCatalog $catalog) {}
+    public function __construct(private readonly FakerMethodCatalog $catalog, private readonly TemplateContext $contexts) {}
 
     public function render(CompiledTemplate $template, string $locale, string $seedMode, ?int $seed, ?string $requestHash = null, ?array $context = null): TemplateRenderResult
     {
@@ -190,7 +190,34 @@ final class TemplateRenderer
         }
 
         $sentinel = "\0MOCKDECK_ESCAPED_OPEN\0";
-        $protected = str_replace('\\{{', $sentinel, $value);
+        $literals = [];
+        $protected = preg_replace_callback('/\\\\\{\{[^{}]*\}\}/', static function (array $match) use (&$literals): string {
+            $key = "\0MOCKDECK_LITERAL_".count($literals)."\0";
+            $literals[$key] = substr($match[0], 1);
+
+            return $key;
+        }, $value) ?? $value;
+        $protected = str_replace('\\{{', $sentinel, $protected);
+        if ($this->context !== null) {
+            // Resolve only source tokens: captured values must never be re-interpolated.
+            $parts = preg_split('/(\{\{[^{}]+\}\})/', $protected, -1, PREG_SPLIT_DELIM_CAPTURE);
+            foreach ($parts as &$part) {
+                if (str_starts_with($part, '{{')) {
+                    continue;
+                }
+                $part = preg_replace_callback('/(?<![\$A-Za-z0-9_])\$request\.[A-Za-z_][A-Za-z0-9_.-]*/', function (array $match) use ($path, &$literals): string {
+                    $resolved = $this->contextValue(substr($match[0], 1), $path);
+                    $key = "\0MOCKDECK_LITERAL_".count($literals)."\0";
+                    $literals[$key] = is_scalar($resolved) || $resolved === null
+                        ? (string) $resolved
+                        : json_encode($resolved, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+
+                    return $key;
+                }, $part) ?? $part;
+            }
+            unset($part);
+            $protected = implode('', $parts);
+        }
         $rendered = preg_replace_callback('/\{\{([^{}]+)\}\}/', function (array $match) use ($path, $index): string {
             $expression = trim($match[1]);
             if ($expression === '$index') {
@@ -229,46 +256,13 @@ final class TemplateRenderer
         }, $protected);
 
         $rendered ??= $protected;
-        if ($this->context !== null) {
-            $rendered = preg_replace_callback('/(?<![\$A-Za-z0-9_])\$request\.[A-Za-z_][A-Za-z0-9_.-]*/', function (array $match) use ($path): string {
-                $resolved = $this->contextValue(substr($match[0], 1), $path);
 
-                return is_scalar($resolved) || $resolved === null
-                    ? (string) $resolved
-                    : json_encode($resolved, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-            }, $rendered);
-        }
-
-        return str_replace($sentinel, '{{', $rendered);
+        return strtr(str_replace($sentinel, '{{', $rendered), $literals);
     }
 
     private function contextValue(string $expression, string $path): mixed
     {
-        [$namespace, $key] = explode('.', $expression, 2);
-        $values = $this->context[$namespace] ?? [];
-
-        if ($namespace === 'env') {
-            if (! array_key_exists($key, $values)) {
-                throw new TemplateRenderException("Unknown environment variable: {$key}.", $path, '{{'.$expression.'}}');
-            }
-
-            return $values[$key];
-        }
-
-        foreach (explode('.', $key) as $part) {
-            if ($namespace === 'request' && str_starts_with($key, 'headers.') && is_array($values)) {
-                $matching = array_filter(array_keys($values), static fn (string $header): bool => strcasecmp($header, $part) === 0);
-                if ($matching !== []) {
-                    $part = (string) reset($matching);
-                }
-            }
-            if (! is_array($values) || ! array_key_exists($part, $values)) {
-                throw new TemplateRenderException("Unknown request field: {$key}.", $path, '$'.$expression);
-            }
-            $values = $values[$part];
-        }
-
-        return $values;
+        return $this->contexts->resolve($expression, $this->context ?? [], $path);
     }
 
     /** @return list<mixed> */

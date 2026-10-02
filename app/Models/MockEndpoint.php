@@ -18,6 +18,8 @@ final class MockEndpoint extends Model
 
     protected $fillable = [
         'uuid',
+        'selection_mode',
+        'sequence_on_exhaust',
         'collection_id',
         'name',
         'enabled',
@@ -94,6 +96,11 @@ final class MockEndpoint extends Model
     {
         return $this->hasMany(Revision::class, 'entity_id')
             ->where('entity_type', 'endpoint');
+    }
+
+    public function callStates(): HasMany
+    {
+        return $this->hasMany(EndpointCallState::class, 'endpoint_id');
     }
 
     public function displayName(): string

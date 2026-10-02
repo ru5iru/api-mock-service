@@ -9,8 +9,9 @@ use App\Services\Environments\EnvironmentContext;
 use App\Services\Logging\MockRequestLogger;
 use App\Services\Matching\EndpointMatch;
 use App\Services\Matching\EndpointMatcher;
-use App\Services\Response\ResponseSelectorInterface;
+use App\Services\Response\ResponseSelectionService;
 use App\Services\Templates\ResponseTemplateEngine;
+use App\Services\Templates\TemplateContext;
 use App\Services\Templates\TemplateRenderException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -24,10 +25,15 @@ use Throwable;
  */
 final class MockInvocationController extends Controller
 {
+    private ?string $selectionReason = null;
+
+    /** @var array<string, mixed>|null */
+    private ?array $templateCapture = null;
+
     public function __construct(
         private readonly IncomingRequestFactory $requestFactory,
         private readonly EndpointMatcher $matcher,
-        private readonly ResponseSelectorInterface $selector,
+        private readonly ResponseSelectionService $selector,
         private readonly MockRequestLogger $logger,
         private readonly CurlHasher $hasher,
         private readonly ResponseTemplateEngine $templates,
@@ -37,6 +43,8 @@ final class MockInvocationController extends Controller
 
     public function __invoke(Request $request): Response
     {
+        $this->selectionReason = null;
+        $this->templateCapture = null;
         $startedAt = hrtime(true);
         $match = null;
         $selected = null;
@@ -66,20 +74,26 @@ final class MockInvocationController extends Controller
                 return $response;
             }
 
-            if ($match->endpoint->responses->isEmpty()) {
-                $statusCode = 500;
-                $response = response()->json([
-                    'error' => 'The matched mock has no configured responses',
-                    'endpoint_id' => $match->endpoint->id,
-                ], $statusCode);
-
+            // The final integration boundary: selection first, context-aware rendering next.
+            $environment = $this->environments->active();
+            $selection = $this->selector->select($match->endpoint, $request, $environment);
+            $this->selectionReason = $selection->reason;
+            $selected = $selection->response;
+            if ($selected === null) {
+                $exhausted = $selection->reason === 'sequence_exhausted';
+                $statusCode = $exhausted ? 404 : 500;
+                $payload = $exhausted
+                    ? ['error' => 'No mock configured for this request', 'method' => $captured->method, 'url' => $captured->url, 'reason' => 'sequence_exhausted']
+                    : ($selection->reason === 'no_responses'
+                        ? ['error' => 'The matched mock has no configured responses', 'endpoint_id' => $match->endpoint->id]
+                        : ['error' => 'The matched mock has invalid response selection configuration', 'endpoint_id' => $match->endpoint->id, 'reason' => $selection->reason]);
+                $response = response()->json($payload, $statusCode);
                 $response->headers->set('X-Request-ID', $requestId);
                 $this->writeLog($request, $effectiveUrl, $requestId, $startedAt, $match, null, $statusCode, 0);
 
                 return $response;
             }
 
-            $selected = $this->selector->select($match->endpoint->responses);
             $statusCode = $selected->status_code;
             $delayMs = min(max(0, $selected->delay_ms), (int) config('mock.max_delay_ms', 30000));
 
@@ -93,7 +107,13 @@ final class MockInvocationController extends Controller
                 $templated = true;
                 $variant = $match->variant ?? 'V1';
                 $requestHash = $this->hasher->variants($captured)[$variant]->hash;
-                $rendered = $this->templates->renderResponse($selected, $requestHash);
+                $context = null;
+                $contexts = app(TemplateContext::class);
+                if ($contexts->usesContext((string) $selected->template)) {
+                    $this->templateCapture = $contexts->capture($request, $requestId);
+                    $context = $contexts->build($this->templateCapture, $environment);
+                }
+                $rendered = $this->templates->renderResponse($selected, $requestHash, $context);
                 $body = $rendered->json;
                 $renderMs = $rendered->renderMs;
 
@@ -213,6 +233,8 @@ final class MockInvocationController extends Controller
             'matched_variant' => $match?->variant,
             'endpoint_id' => $match?->endpoint->id,
             'response_id' => $responseId,
+            'selection_mode' => $match?->endpoint->selection_mode,
+            'selection_reason' => $this->selectionReason ?? 'no_endpoint_matched',
             'status_code' => $statusCode,
             'delay_ms' => $delayMs,
             'duration_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
@@ -220,6 +242,11 @@ final class MockInvocationController extends Controller
             'environment_id' => $this->environments->active()->id,
         ];
 
+        if (($this->templateCapture['body_context_omitted'] ?? false) === true) {
+            $context['context_warning'] = 'request_body_context_omitted';
+            $context['body_bytes'] = $this->templateCapture['body_bytes'];
+            $context['context_limit_bytes'] = TemplateContext::MAX_BODY_BYTES;
+        }
         if ($error !== null) {
             $context['error'] = $error;
         }

@@ -106,7 +106,7 @@ Open `http://localhost:18473/dashboard`. Verify:
 Import/export smoke check:
 
 1. Export one endpoint with secret redaction enabled.
-2. Confirm the JSON has `format: "mockdeck"`, a supported `format_version` (`1`, `"1.0"`, `"1.1"`, or `"1.2"`), and no numeric database IDs or derived hashes.
+2. Confirm the JSON has `format: "mockdeck"`, a supported `format_version` (`1`, `"1.0"`, `"1.1"`, `"1.2"`, or `"1.3"`), and no numeric database IDs or derived hashes.
 3. If the source curl contained auth, cookies, an API-key header, or a configured sensitive query key, confirm the value is absent and the endpoint is disabled with `requires_secret_replacement: true`.
 4. Preview the file in `clone` mode; confirm no rows are written before **Apply import**.
 5. Review and acknowledge warnings, apply, and confirm endpoint/response counts.
@@ -139,6 +139,26 @@ Callback smoke check (use a local disposable receiver):
 6. Verify a non-2xx response is retried only up to Max attempts, a stalled receiver times out, and neither affects the mock response or subsequent requests.
 7. Export even with `--include-sensitive`; check that the signing secret, secret environment values, resolved callback payloads, and attempts are absent. Import a signed callback and confirm signing remains disabled until a new secret is entered.
 8. Check the editor and callback log at 1440px, 1024px, and 390px in both themes; run axe on each view and resolve any accessibility findings before release.
+
+## Wave 1 browser and runtime checks
+
+With Playwright installed and a running app, run the existing layout smoke in both themes:
+
+```bash
+MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/layout-smoke.mjs
+```
+
+The selection/context workflow smoke creates named fixtures and a public `NAME` variable. Configure both the running app and the shell's PHP process with the **same dedicated disposable database**, app key, and environment; never point this fixture at an operator database. Migrate that database, then run:
+
+```bash
+MOCKDECK_BROWSER_FIXTURE=1 MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/wave1-smoke.mjs
+```
+
+Set `MOCKDECK_PHP` if the fixture should use a specific PHP executable, and `MOCKDECK_SCREENSHOT_DIR` for a different screenshot directory. The workflow checks sequence drag/keyboard order, real calls and confirmed reset, rule conditions and exactly-one-fallback validation, protected fallback deletion, shared synthetic template preview, and JSON-only context editing. It checks 1440, 1024, and 390px in both themes.
+
+Backend Wave 1 coverage is in `TemplateContextTest`, `RequestContextTemplateTest`, `ResponseSelectionTest`, `ConcurrentSequenceSelectionTest`, `WaveOneEditorTest`, `WaveOnePortabilityTest`, and `WaveOneInvocationTest`. The concurrency test starts 16 simultaneous independent processes twice (selection service and HTTP kernel), using disposable on-disk SQLite, and requires PDO SQLite and process spawning. It verifies positions 0–15 exactly once and counters of 16. Production database locking still requires validation on the deployed database; an unavailable Docker daemon is not a passing `make validate` result.
+
+For manual acceptance, invoke templates containing method, ID, JSON path, and environment tokens; check missing paths return null and an oversized body (>65,536 bytes) returns null for body/JSON while Logs shows the structured warning. Verify all three sequence exhaust modes, per-environment reset, priority/AND rule matching and fallback, old revision defaults, format 1.3 round trips, old 1–1.2 Weighted imports, and absence of runtime state in export/import.
 
 ## Runtime smoke test
 
@@ -190,6 +210,7 @@ Confirm the relevant migrations are marked as run:
 - `2026_09_24_000001_add_templating_to_mock_responses_table`
 - `2026_09_25_000001_add_collections_tags_and_environments`
 - `2026_09_25_000002_create_revisions_table`
+- `2026_10_02_000001_add_response_selection`
 
 Existing endpoints should report signature version `2` after migration.
 
@@ -233,9 +254,9 @@ Repeat that check with a different scheme/host but the same path; it must also b
 | Version history | three-edit sequencing, no-op suppression, structural/current diff parity, append-only restore, grouped import snapshots and atomic undo |
 | Dashboard | CRUD, cross-origin duplicate prevention, copy-curl generation, filters, state toggling, authentication/logout |
 | Portable config | UUIDs, deterministic/redacted export, validation, preview token/digest, exact/overlap conflicts, atomic create/upsert, HTTP and CLI flows |
-| Responses | create, update, delete, weighted selection |
+| Responses | create, update, delete, unchanged weighted selection, atomic environment-scoped sequences, exhaustion/reset, ordered AND rules and fallback validation |
 | Templates | typed/interpolated calls, directives, escapes, aliases, blocked methods, every limit, deterministic seeds, locales, Builder round trips, APIs, serving and error path |
-| Logging | non-fatal handler failure, request IDs, rotated-file tailing, malformed-line tolerance |
+| Logging | non-fatal handler failure, request IDs, rotated-file tailing, malformed-line tolerance, selection reason and oversized-context warning visibility |
 
 ## CI
 

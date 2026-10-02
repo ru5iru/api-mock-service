@@ -48,9 +48,11 @@ final class ConfigValidator
             $this->errors[] = '$.format must be exactly "mockdeck".';
         }
 
-        if (! in_array($data['format_version'] ?? null, [1, '1.0', '1.1', '1.2'], true)) {
-            $this->errors[] = '$.format_version is not supported; this release accepts version 1, 1.0, 1.1, or 1.2.';
+        if (! in_array($data['format_version'] ?? null, [1, '1.0', '1.1', '1.2', '1.3'], true)) {
+            $this->errors[] = '$.format_version is not supported; this release accepts version 1, 1.0, 1.1, 1.2, or 1.3.';
         }
+
+        $data = $this->normalizeSelection($data);
 
         $this->validateOrganization($data);
 
@@ -113,7 +115,7 @@ final class ConfigValidator
             }
 
             $this->warnUnknown($endpoint, [
-                'uuid', 'name', 'enabled', 'priority', 'collection', 'tags', 'environment_overrides', 'requires_secret_replacement', 'request', 'responses',
+                'uuid', 'name', 'enabled', 'priority', 'selection_mode', 'sequence_on_exhaust', 'collection', 'tags', 'environment_overrides', 'requires_secret_replacement', 'request', 'responses',
             ], $path);
 
             if (isset($endpoint['collection']) && ! is_string($endpoint['collection'])) {
@@ -196,6 +198,8 @@ final class ConfigValidator
             if ($responses === []) {
                 $this->warnings[] = "{$path} has no responses and will return a configuration error when matched.";
             }
+
+            $this->validateSelection($endpoint, $path);
 
             $responseCount += count($responses);
             foreach ($responses as $responseIndex => $response) {
@@ -352,7 +356,7 @@ final class ConfigValidator
         }
 
         $this->warnUnknown($response, [
-            'uuid', 'status', 'headers', 'body', 'body_mode', 'template', 'editor_view', 'seed_mode', 'seed', 'locale', 'delay_ms', 'weight', 'callback',
+            'uuid', 'status', 'headers', 'body', 'body_mode', 'template', 'editor_view', 'seed_mode', 'seed', 'locale', 'delay_ms', 'weight', 'sequence_order', 'is_default', 'response_rules', 'callback',
         ], $path);
 
         $uuid = $response['uuid'] ?? null;
@@ -445,6 +449,8 @@ final class ConfigValidator
             $this->errors[] = "{$path}.weight must be an integer between 1 and 1000000.";
         }
 
+        $this->validateRules($response, $path);
+
         if (isset($response['callback'])) {
             $callback = $response['callback'];
             if (! is_array($callback) || array_is_list($callback)) {
@@ -504,6 +510,110 @@ final class ConfigValidator
             }
             if ($callback['requires_secret_replacement'] ?? false) {
                 $this->warnings[] = "{$path}.callback contains redacted values and remains disabled until reviewed.";
+            }
+        }
+    }
+
+    /** Older documents cannot opt into newer response-selection behavior. */
+    private function normalizeSelection(array $data): array
+    {
+        $modern = ($data['format_version'] ?? null) === '1.3';
+        if (! is_array($data['endpoints'] ?? null)) {
+            return $data;
+        }
+        foreach ($data['endpoints'] as &$endpoint) {
+            if (! is_array($endpoint)) {
+                continue;
+            }
+            if (! $modern) {
+                $endpoint['selection_mode'] = 'weighted';
+                $endpoint['sequence_on_exhaust'] = null;
+            } else {
+                $endpoint += ['selection_mode' => 'weighted'];
+                $endpoint += ['sequence_on_exhaust' => ($endpoint['selection_mode'] === 'sequence' ? 'repeat_last' : null)];
+            }
+            if (is_array($endpoint['responses'] ?? null)) {
+                foreach ($endpoint['responses'] as &$response) {
+                    if (! is_array($response)) {
+                        continue;
+                    }
+                    if (! $modern) {
+                        $response['sequence_order'] = null;
+                        $response['is_default'] = false;
+                        $response['response_rules'] = [];
+                    } else {
+                        $response += ['sequence_order' => null, 'is_default' => false, 'response_rules' => []];
+                    }
+                }
+                unset($response);
+            }
+        }
+        unset($endpoint);
+
+        return $data;
+    }
+
+    private function validateSelection(array $endpoint, string $path): void
+    {
+        $mode = $endpoint['selection_mode'];
+        if (! in_array($mode, ['weighted', 'sequence', 'rule'], true)) {
+            $this->errors[] = "{$path}.selection_mode must be weighted, sequence, or rule.";
+        }
+        $exhaust = $endpoint['sequence_on_exhaust'];
+        if (($mode === 'sequence' && ! in_array($exhaust, ['repeat_last', 'loop', 'not_found'], true))
+            || ($mode !== 'sequence' && $exhaust !== null)) {
+            $this->errors[] = "{$path}.sequence_on_exhaust must be repeat_last, loop, or not_found for sequence mode and null otherwise.";
+        }
+        $responses = array_filter($endpoint['responses'], 'is_array');
+        if ($mode === 'rule' && count(array_filter($responses, static fn (array $response): bool => ($response['is_default'] ?? null) === true)) !== 1) {
+            $this->errors[] = "{$path}.responses must contain exactly one default / fallback response in rule mode.";
+        }
+        if ($mode === 'sequence') {
+            $orders = array_column($responses, 'sequence_order');
+            sort($orders);
+            if ($orders !== ($responses === [] ? [] : range(0, count($responses) - 1))) {
+                $this->errors[] = "{$path}.responses.sequence_order must contain each position from 0 through response count minus one exactly once.";
+            }
+            if ($responses === []) {
+                $this->errors[] = "{$path}.responses must not be empty in sequence mode.";
+            }
+        }
+    }
+
+    private function validateRules(array $response, string $path): void
+    {
+        if (($response['sequence_order'] ?? null) !== null && (! is_int($response['sequence_order']) || $response['sequence_order'] < 0)) {
+            $this->errors[] = "{$path}.sequence_order must be null or a non-negative integer.";
+        }
+        if (! is_bool($response['is_default'] ?? null)) {
+            $this->errors[] = "{$path}.is_default must be a boolean.";
+        }
+        $rules = $response['response_rules'] ?? null;
+        if (! is_array($rules) || ! array_is_list($rules) || count($rules) > 100) {
+            $this->errors[] = "{$path}.response_rules must be an array of at most 100 conditions.";
+
+            return;
+        }
+        foreach ($rules as $index => $rule) {
+            $rulePath = "{$path}.response_rules[{$index}]";
+            if (! is_array($rule) || array_is_list($rule)) {
+                $this->errors[] = "{$rulePath} must be an object.";
+
+                continue;
+            }
+            $this->warnUnknown($rule, ['field_type', 'field_name', 'operator', 'value', 'priority'], $rulePath);
+            if (! in_array($rule['field_type'] ?? null, ['header', 'query', 'body_json_path'], true)
+                || ! is_string($rule['field_name'] ?? null) || trim($rule['field_name'] ?? '') === '' || strlen($rule['field_name'] ?? '') > 255
+                || ! in_array($rule['operator'] ?? null, ['equals', 'contains', 'regex', 'exists'], true)
+                || ! is_int($rule['priority'] ?? null) || $rule['priority'] < 0
+                || (($rule['value'] ?? null) !== null && (! is_string($rule['value']) || strlen($rule['value']) > 65535))
+                || (($rule['operator'] ?? null) !== 'exists' && ! is_string($rule['value'] ?? null))) {
+                $this->errors[] = "{$rulePath} contains invalid condition fields.";
+
+                continue;
+            }
+            if ($rule['operator'] === 'regex' && @preg_match($rule['value'], '') === false) {
+                $this->errors[] = "{$rulePath}.value must be a valid PHP regular expression including delimiters.";
             }
         }
     }

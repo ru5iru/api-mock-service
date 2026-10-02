@@ -9,6 +9,7 @@ use App\Services\Callbacks\CallbackDispatcher;
 use App\Services\Environments\EnvironmentContext;
 use App\Services\Revisions\RevisionManager;
 use App\Services\Templates\TemplateCompiler;
+use App\Services\Templates\TemplateContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -94,21 +95,16 @@ final class ResponseCallbackController extends Controller
         return response()->json(['data' => $this->safeConfiguration($response->refresh())]);
     }
 
-    public function test(MockResponse $response, CallbackDispatcher $callbacks, EnvironmentContext $environment): JsonResponse
+    public function test(MockResponse $response, CallbackDispatcher $callbacks, EnvironmentContext $environment, TemplateContext $contexts): JsonResponse
     {
         if (! $response->callback_enabled) {
             throw ValidationException::withMessages(['callback_enabled' => 'Enable and save callbacks before sending a test.']);
         }
 
         $id = 'callback-test-'.Str::uuid();
-        $callbacks->enqueue($response->id, $id, $environment->active()->id, [
-            'id' => $id,
-            'method' => 'POST',
-            'url' => url('/api/responses/'.$response->id.'/callback/test'),
-            'body' => '{}',
-            'json' => [],
-            'headers' => [],
-        ]);
+        $callbacks->enqueue($response->id, $id, $environment->active()->id,
+            $contexts->synthetic($id, url('/api/responses/'.$response->id.'/callback/test')),
+        );
 
         return response()->json(['data' => ['status' => 'queued', 'request_log_id' => $id]], 202);
     }

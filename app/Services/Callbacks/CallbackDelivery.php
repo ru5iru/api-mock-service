@@ -5,15 +5,15 @@ namespace App\Services\Callbacks;
 use App\Models\CallbackAttempt;
 use App\Models\Environment;
 use App\Models\MockResponse;
-use App\Services\Environments\EnvironmentContext;
 use App\Services\Templates\ResponseTemplateEngine;
+use App\Services\Templates\TemplateContext;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 use Throwable;
 
 final readonly class CallbackDelivery
 {
-    public function __construct(private ResponseTemplateEngine $templates, private EnvironmentContext $environments) {}
+    public function __construct(private ResponseTemplateEngine $templates, private TemplateContext $contexts) {}
 
     /**
      * All delays, network calls, and retries run in the dedicated callback worker.
@@ -37,8 +37,7 @@ final readonly class CallbackDelivery
             } else {
                 $sourceEnvironment = Environment::query()->findOrFail($environmentId);
                 $environment = $sourceEnvironment->name;
-                $variables = $this->environments->variables($sourceEnvironment);
-                $context = ['env' => $variables, 'request' => $requestContext];
+                $context = $this->contexts->build($requestContext, $sourceEnvironment);
                 $hash = hash('sha256', (string) $requestLogId);
                 $url = (string) $this->renderValue((string) $response->callback_url, $response, $context, $hash);
                 $headers = $this->renderValue($response->callback_headers ?? [], $response, $context, $hash);

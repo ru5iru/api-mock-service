@@ -8,6 +8,7 @@ use App\Models\MockEndpoint;
 use App\Models\MockResponse;
 use App\Models\Revision;
 use App\Models\Tag;
+use App\Services\Response\SelectionConfigurationValidator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -30,6 +31,8 @@ final readonly class RevisionManager
                 'name' => $entity->name,
                 'enabled' => (bool) $entity->enabled,
                 'priority' => (int) $entity->priority,
+                'selection_mode' => $entity->selection_mode ?? 'weighted',
+                'sequence_on_exhaust' => $entity->selection_mode === 'sequence' ? ($entity->sequence_on_exhaust ?? 'repeat_last') : null,
                 'method' => $entity->method,
                 'raw_curl' => $entity->raw_curl,
                 'normalized_curl' => $entity->normalized_curl,
@@ -47,6 +50,8 @@ final readonly class RevisionManager
         }
 
         if ($entity instanceof MockResponse) {
+            $entity->loadMissing('rules');
+
             return $this->normalize([
                 'id' => $entity->id,
                 'mock_endpoint_id' => $entity->mock_endpoint_id,
@@ -62,6 +67,9 @@ final readonly class RevisionManager
                 'locale' => $entity->locale,
                 'delay_ms' => (int) $entity->delay_ms,
                 'weight' => (int) $entity->weight,
+                'sequence_order' => $entity->sequence_order,
+                'is_default' => (bool) $entity->is_default,
+                'response_rules' => $entity->rules->map(static fn ($rule): array => $rule->only(['field_type', 'field_name', 'operator', 'value', 'priority']))->values()->all(),
                 'callback_enabled' => (bool) $entity->callback_enabled,
                 'callback_url' => $entity->callback_url,
                 'callback_method' => $entity->callback_method ?? 'POST',
@@ -162,6 +170,7 @@ final readonly class RevisionManager
     {
         return DB::transaction(function () use ($revision): Revision {
             $entity = $this->applySnapshot($revision->entity_type, $revision->snapshot);
+            $this->validateSelection($entity instanceof MockEndpoint ? $entity : $entity->endpoint);
 
             return $this->record(
                 $entity,
@@ -200,6 +209,11 @@ final readonly class RevisionManager
                     'rollback',
                     note: 'Undid import '.$batchId,
                 )->id;
+            }
+
+            foreach ($revisions as $revision) {
+                $entity = $this->findEntity($revision->entity_type, $revision->entity_id);
+                $this->validateSelection($entity instanceof MockEndpoint ? $entity : $entity->endpoint);
             }
 
             return ['batch_id' => $batchId, 'restored' => count($created), 'revisions' => $created];
@@ -260,8 +274,10 @@ final readonly class RevisionManager
     private function applySnapshot(string $type, array $snapshot): Model
     {
         if ($type === 'endpoint') {
-            $endpoint = MockEndpoint::query()->findOrFail((int) $snapshot['id']);
-            $attributes = collect($snapshot)->except(['id', 'uuid', 'tags', 'environment_overrides'])->all();
+            $endpoint = MockEndpoint::query()->whereKey((int) $snapshot['id'])->lockForUpdate()->firstOrFail();
+            $attributes = collect($snapshot)->except(['id', 'uuid', 'tags', 'environment_overrides', 'endpoint_call_state', 'call_states'])->all();
+            $attributes['selection_mode'] = $attributes['selection_mode'] ?? 'weighted';
+            $attributes['sequence_on_exhaust'] = $attributes['selection_mode'] === 'sequence' ? ($attributes['sequence_on_exhaust'] ?? 'repeat_last') : null;
             $collectionId = $attributes['collection_id'] ?? null;
             $attributes['collection_id'] = $collectionId !== null && Collection::query()->whereKey($collectionId)->exists()
                 ? $collectionId
@@ -277,6 +293,10 @@ final readonly class RevisionManager
                 ->mapWithKeys(static fn (bool $enabled, int|string $id): array => [(int) $id => ['enabled' => $enabled]])
                 ->all());
 
+            if ($endpoint->selection_mode === 'sequence') {
+                $this->restoreSequenceOrder($endpoint);
+            }
+
             return $endpoint->refresh()->load(['tags', 'environmentOverrides']);
         }
 
@@ -284,6 +304,9 @@ final readonly class RevisionManager
             // Revisions created before callback support have no callback keys.
             // Restoring one returns callback settings to their original defaults.
             $defaults = [
+                'sequence_order' => null,
+                'is_default' => false,
+                'response_rules' => [],
                 'callback_enabled' => false,
                 'callback_url' => null,
                 'callback_method' => 'POST',
@@ -317,7 +340,20 @@ final readonly class RevisionManager
                 $response->uuid = $snapshot['uuid'];
                 $response->mock_endpoint_id = (int) $snapshot['mock_endpoint_id'];
             }
-            $response->fill(collect($snapshot)->except(['id', 'uuid', 'mock_endpoint_id', 'callback_signing_secret'])->all())->save();
+            $endpoint = MockEndpoint::query()->whereKey($response->mock_endpoint_id)->lockForUpdate()->firstOrFail();
+            if ($snapshot['is_default']) {
+                foreach ($endpoint->responses()->where('is_default', true)->whereKeyNot($response->id)->get() as $sibling) {
+                    $before = $this->snapshot($sibling);
+                    $sibling->update(['is_default' => false]);
+                    $this->recordIfChanged($sibling, $before, 'rollback', note: 'Fallback changed by response revision restore');
+                }
+            }
+            $response->fill(collect($snapshot)->except(['id', 'uuid', 'mock_endpoint_id', 'callback_signing_secret', 'response_rules', 'endpoint_call_state', 'call_states'])->all())->save();
+            $response->rules()->delete();
+            $response->rules()->createMany($snapshot['response_rules']);
+            if ($endpoint->selection_mode === 'sequence') {
+                $this->restoreSequenceOrder($endpoint, $response, $snapshot['sequence_order']);
+            }
             if (array_key_exists('callback_signing_secret', $snapshot)) {
                 // Snapshots contain ciphertext; avoid encrypting it a second time.
                 DB::table('mock_responses')->where('id', $response->id)->update([
@@ -329,6 +365,40 @@ final readonly class RevisionManager
         }
 
         throw new InvalidArgumentException('Unsupported revision entity type.');
+    }
+
+    /** Keep sequence positions contiguous when a restored response changes its place. */
+    private function restoreSequenceOrder(MockEndpoint $endpoint, ?MockResponse $restored = null, ?int $position = null): void
+    {
+        $responses = $endpoint->responses()->with('rules')->lockForUpdate()->get()
+            ->reject(fn (MockResponse $response): bool => $restored !== null && $response->id === $restored->id)
+            ->sort(fn (MockResponse $left, MockResponse $right): int => [
+                $left->sequence_order ?? PHP_INT_MAX, $left->uuid,
+            ] <=> [$right->sequence_order ?? PHP_INT_MAX, $right->uuid])
+            ->values()->all();
+        if ($restored !== null) {
+            // Old snapshots without an order join the end of the current sequence.
+            $position = max(0, min($position ?? count($responses), count($responses)));
+            array_splice($responses, $position, 0, [$restored]);
+        }
+        foreach ($responses as $order => $response) {
+            if ($response->sequence_order === $order) {
+                continue;
+            }
+            $before = $this->snapshot($response);
+            $response->update(['sequence_order' => $order]);
+            if ($restored === null || $response->id !== $restored->id) {
+                $this->recordIfChanged($response, $before, 'rollback', note: 'Sequence order adjusted by revision restore');
+            }
+        }
+    }
+
+    private function validateSelection(MockEndpoint $endpoint): void
+    {
+        app(SelectionConfigurationValidator::class)->validate(
+            $endpoint->toArray(),
+            $endpoint->responses()->with('rules')->get()->map(fn (MockResponse $response): array => $this->snapshot($response))->all(),
+        );
     }
 
     /**

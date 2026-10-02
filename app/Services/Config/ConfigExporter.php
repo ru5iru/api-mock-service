@@ -30,7 +30,7 @@ final readonly class ConfigExporter
         }
 
         $endpoints = MockEndpoint::query()
-            ->with(['responses', 'collection', 'tags', 'environmentOverrides'])
+            ->with(['responses.rules', 'collection', 'tags', 'environmentOverrides'])
             ->when($endpointUuids !== null, fn ($query) => $query->whereIn('uuid', $endpointUuids))
             ->when($collectionId !== null, fn ($query) => $query->where('collection_id', $collectionId))
             ->when($environmentId !== null, fn ($query) => $query->where(function ($query) use ($environmentId): void {
@@ -72,6 +72,8 @@ final readonly class ConfigExporter
                 'name' => $endpoint->name,
                 'enabled' => $requiresSecretReplacement ? false : $endpoint->enabled,
                 'priority' => $endpoint->priority,
+                'selection_mode' => $endpoint->selection_mode ?? 'weighted',
+                'sequence_on_exhaust' => $endpoint->selection_mode === 'sequence' ? ($endpoint->sequence_on_exhaust ?? 'repeat_last') : null,
                 'collection' => $endpoint->collection?->name,
                 'tags' => $endpoint->tags->pluck('name')->values()->all(),
                 'environment_overrides' => (object) $endpoint->environmentOverrides
@@ -92,13 +94,13 @@ final readonly class ConfigExporter
         })->all();
 
         $data = [
-            '$schema' => 'https://mockdeck.dev/schemas/config-v1.2.json',
+            '$schema' => 'https://mockdeck.dev/schemas/config-v1.3.json',
             'format' => 'mockdeck',
-            'format_version' => '1.2',
+            'format_version' => '1.3',
             'exported_at' => now()->utc()->format('Y-m-d\TH:i:s\Z'),
             'generator' => [
                 'name' => 'MockDeck',
-                'version' => config('mock.portable_config.generator_version', '1.2.0'),
+                'version' => config('mock.portable_config.generator_version', '1.3.0'),
             ],
             'options' => [
                 'secrets_redacted' => $redactSecrets,
@@ -182,6 +184,15 @@ final readonly class ConfigExporter
                     'locale' => (string) ($response->locale ?? 'en'),
                     'delay_ms' => $response->delay_ms,
                     'weight' => $response->weight,
+                    'sequence_order' => $response->sequence_order,
+                    'is_default' => (bool) $response->is_default,
+                    'response_rules' => $response->rules->sortBy('priority')->values()->map(static fn ($rule): array => [
+                        'field_type' => $rule->field_type,
+                        'field_name' => $rule->field_name,
+                        'operator' => $rule->operator,
+                        'value' => $rule->value,
+                        'priority' => (int) $rule->priority,
+                    ])->all(),
                     'callback' => [
                         'enabled' => (bool) $response->callback_enabled && ! $callbackRedacted,
                         'requires_secret_replacement' => $callbackRedacted,

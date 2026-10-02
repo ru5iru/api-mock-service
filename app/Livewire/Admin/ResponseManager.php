@@ -2,26 +2,32 @@
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Admin\Concerns\EditsResponseSelection;
 use App\Models\CallbackAttempt;
 use App\Models\MockEndpoint;
 use App\Services\Callbacks\CallbackDelivery;
 use App\Services\Callbacks\CallbackDispatcher;
 use App\Services\Environments\EnvironmentContext;
+use App\Services\Response\SelectionConfigurationValidator;
 use App\Services\Revisions\RevisionManager;
 use App\Services\Templates\FakerMethodCatalog;
 use App\Services\Templates\ResponseTemplateEngine;
 use App\Services\Templates\TemplateCompiler;
+use App\Services\Templates\TemplateContext;
 use App\Services\Templates\TemplateRenderException;
 use App\Services\Templates\TemplateSchemaConverter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use JsonException;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 final class ResponseManager extends Component
 {
+    use EditsResponseSelection;
+
     public int $endpointId;
 
     public ?int $editingId = null;
@@ -107,6 +113,7 @@ final class ResponseManager extends Component
     {
         $schemas = app(TemplateSchemaConverter::class);
         $this->endpointId = $endpoint->id;
+        $this->loadSelection();
         $this->builderSchema = $schemas->emptySchema();
         $this->template = $schemas->schemaToTemplate($this->builderSchema);
         $this->updatedCallbackBody();
@@ -166,9 +173,15 @@ final class ResponseManager extends Component
     #[On('revision-restored')]
     public function revisionRestored(string $entityType, int $entityId): void
     {
+        if ($entityType === 'endpoint' && $entityId === $this->endpointId) {
+            $this->loadSelection();
+
+            return;
+        }
         if ($entityType !== 'response') {
             return;
         }
+        $this->loadSelection();
 
         if ($this->editingId === $entityId) {
             $this->edit($entityId);
@@ -334,8 +347,19 @@ final class ResponseManager extends Component
         }
 
         DB::transaction(function () use ($attributes): void {
+            $endpoint = $this->endpoint()->newQuery()->lockForUpdate()->findOrFail($this->endpointId);
+            $pool = $endpoint->responses()->with('rules')->get();
+            $selectionRows = $pool->map(fn ($item) => array_merge($item->toArray(), ['response_rules' => $item->rules->toArray()]))->all();
             if ($this->editingId === null) {
-                $this->endpoint()->responses()->create($attributes);
+                $selectionRows[] = ['sequence_order' => $endpoint->selection_mode === 'sequence' ? $pool->count() : null, 'is_default' => false, 'response_rules' => []];
+            }
+            app(SelectionConfigurationValidator::class)->validate($endpoint->toArray(), $selectionRows);
+            if ($this->editingId === null) {
+                $newAttributes = $attributes;
+                if ($endpoint->selection_mode === 'sequence') {
+                    $newAttributes['sequence_order'] = $pool->count();
+                }
+                $endpoint->responses()->create($newAttributes);
 
                 return;
             }
@@ -350,14 +374,33 @@ final class ResponseManager extends Component
         session()->flash('response-status', $this->editingId === null ? 'Response added.' : 'Response updated.');
         $this->dispatch('toast', message: $this->editingId === null ? 'Response added.' : 'Response updated.');
         $this->resetForm();
+        $this->loadSelection();
     }
 
     public function delete(int $responseId): void
     {
-        $this->endpoint()->responses()->findOrFail($responseId)->delete();
+        DB::transaction(function () use ($responseId): void {
+            $endpoint = $this->endpoint()->newQuery()->lockForUpdate()->findOrFail($this->endpointId);
+            $response = $endpoint->responses()->findOrFail($responseId);
+            if ($endpoint->selection_mode === 'rule' && $response->is_default) {
+                throw ValidationException::withMessages([
+                    'selection_mode' => 'Deleting the fallback would leave rule mode invalid. Select and save another fallback first.',
+                ]);
+            }
+            $response->delete();
+            if ($endpoint->selection_mode === 'sequence') {
+                $revisions = app(RevisionManager::class);
+                foreach ($endpoint->responses()->reorder()->orderBy('sequence_order')->orderBy('id')->get() as $position => $item) {
+                    $before = $revisions->snapshot($item);
+                    $item->update(['sequence_order' => $position]);
+                    $revisions->recordIfChanged($item, $before);
+                }
+            }
+        }, 3);
         if ($this->editingId === $responseId) {
             $this->resetForm();
         }
+        $this->loadSelection();
         session()->flash('response-status', 'Response deleted.');
         $this->dispatch('toast', message: 'Response deleted.');
     }
@@ -366,25 +409,19 @@ final class ResponseManager extends Component
     {
         $this->callbackPreview = '';
         try {
-            $environment = app(EnvironmentContext::class);
-            $secretKeys = $environment->active()->variables()->where('is_secret', true)->pluck('key');
-            preg_match_all('/\{\{\s*env\.([A-Za-z_][A-Za-z0-9_.-]*)\s*\}\}/', $this->callbackBody, $references);
-            if (collect($references[1])->contains(fn (string $key): bool => $secretKeys->contains($key))) {
-                $this->callbackPreview = '[Preview hidden: the body references a secret environment variable.]';
-
-                return;
-            }
             $response = $this->editingId === null
                 ? $this->endpoint()->responses()->make(['locale' => $this->locale, 'seed_mode' => $this->seedMode, 'seed' => $this->seed])
                 : $this->endpoint()->responses()->findOrFail($this->editingId);
-            $context = ['env' => $environment->variables(), 'request' => [
-                'id' => 'preview', 'method' => 'POST', 'url' => url('/preview'),
-                'body' => '{}', 'json' => [], 'headers' => [],
-            ]];
+            $context = app(TemplateContext::class)->preview($this->callbackBody);
             $this->callbackPreview = app(ResponseTemplateEngine::class)
                 ->renderCallback($this->callbackBody, $response, $context, 'preview')->json;
             $this->resetErrorBag('callbackBody');
         } catch (\Throwable $exception) {
+            if ($exception instanceof TemplateRenderException && $exception->issueCode === 'SECRET_PREVIEW_HIDDEN') {
+                $this->callbackPreview = '[Preview hidden: the body references a secret environment variable.]';
+
+                return;
+            }
             // Do not reflect exception details, which may contain environment secrets.
             $this->addError('callbackBody', 'Preview failed. Check the JSON and available context tokens.');
         }
@@ -401,10 +438,7 @@ final class ResponseManager extends Component
         $id = 'callback-test-'.Str::uuid();
         $this->callbackTestId = $id;
         $this->callbackTestStatus = 'Queued';
-        app(CallbackDispatcher::class)->enqueue($this->editingId, $id, app(EnvironmentContext::class)->active()->id, [
-            'id' => $id, 'method' => 'POST', 'url' => url('/preview'),
-            'body' => '{}', 'json' => [], 'headers' => [],
-        ]);
+        app(CallbackDispatcher::class)->enqueue($this->editingId, $id, app(EnvironmentContext::class)->active()->id, app(TemplateContext::class)->synthetic($id));
     }
 
     public function pollCallbackTest(): void
@@ -654,6 +688,11 @@ JSON;
 
     public function reorderSchemaRow(string $path, int $from, int $to, string $target = 'response'): void
     {
+        if ($target === 'selection') {
+            $this->reorderSelectionResponse($from, $to);
+
+            return;
+        }
         $schema = $target === 'callback' ? $this->callbackBuilderSchema : $this->builderSchema;
         $rows = data_get($schema, $path, []);
         if (! is_array($rows) || ! isset($rows[$from]) || ! isset($rows[$to]) || $from === $to) {
@@ -722,8 +761,32 @@ JSON;
 
     public function render(): View
     {
+        $endpoint = $this->endpoint();
+        $environment = app(EnvironmentContext::class)->active();
+        $state = $endpoint->callStates()->where('environment_id', $environment->id)->first();
+        $pool = $endpoint->responses()->with('rules')->get()->keyBy('id');
+        $responses = collect($this->responseOrder)->map(fn ($id) => $pool->get($id))->filter()->values();
+        $position = (int) ($state?->sequence_position ?? 0);
+        $next = null;
+        if ($responses->isNotEmpty()) {
+            $index = $position;
+            if ($index >= $responses->count()) {
+                $index = match ($this->sequenceOnExhaust) {
+                    'loop' => $index % $responses->count(),
+                    'repeat_last' => $responses->count() - 1,
+                    default => null,
+                };
+            }
+            $next = $index === null ? null : $responses->get($index);
+        }
+
         return view('livewire.admin.response-manager', [
-            'responses' => $this->endpoint()->responses()->get(),
+            'responses' => $responses,
+            'selectionEnvironment' => $environment,
+            'sequencePosition' => $position,
+            'nextSequenceResponse' => $next,
+            'rulePreview' => $responses->filter(fn ($item) => $item->id !== $this->fallbackResponseId && ($this->responseRules[$item->id] ?? []) !== [])
+                ->sortBy(fn ($item) => collect($this->responseRules[$item->id])->min('priority'))->values(),
             'fakerCatalog' => app(FakerMethodCatalog::class)->catalog(),
             'templateLocales' => config('mock.templates.locales', ['en']),
         ]);

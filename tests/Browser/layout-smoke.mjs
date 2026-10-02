@@ -41,7 +41,8 @@ try {
             } else if (name !== 'endpoints') {
                 await page.locator(`.topnav > a[href$="/dashboard/${route}"]`).click();
             }
-            await page.waitForURL(`**/dashboard${route ? `/${route}` : ''}`);
+            await page.waitForURL((url) => url.pathname === `/dashboard${route ? `/${route.split('?')[0]}` : ''}`
+                && (name !== 'callbacks' || url.searchParams.get('type') === 'callbacks'));
             assert.equal(await page.evaluate(() => window.__headerNode === document.querySelector('[data-persistent-topbar]')), true, `${name}: header remounted`);
             const box = await page.locator('[data-persistent-topbar]').boundingBox();
             for (const key of ['x', 'y', 'width', 'height']) assert.ok(Math.abs(box[key] - baseline[key]) <= 2, `${name}: header ${key} drifted`);

@@ -331,6 +331,8 @@ Use this picker only to choose a supported Faker method from the server catalog.
 
 `.template-json-editor` extends the existing `.code-input` surface; it remains a plain textarea and JSON is its single source of truth. `.template-autocomplete` is a fixed raised popover, at most 420px wide and 260px high, using the picker surface/border/radius tokens. Typing `$` or `{{` filters the server catalog; each 40px option shows a method and sample in monospace. Arrow keys change the active option, Enter/Tab inserts it, and Escape closes the list. The popover chooses above or below the editor and clamps to the viewport edge.
 
+The ordinary response `.template-preview` uses the existing `.info-note` caption to state that request-context output contains synthetic samples, not captured traffic. Environment references use current variables; secret-bearing previews are hidden. Context-token templates remain JSON-only with the existing Builder-unavailable message. This reuses existing patterns and adds no separate preview component.
+
 Validation remains inline below the editor. Renamed-method warnings use the existing warning panel and `.text-button` quick fix. Use this pattern only for JSON response templates; raw JSON fields without catalog tokens remain ordinary `.code-input` controls.
 
 ### Disclosure and accordion
@@ -506,6 +508,18 @@ The endpoint and response **History** disclosures reuse the native disclosure, r
 - **Restore** always uses the existing confirm mechanism, names the version, states that live values change, and states that a new rollback revision is appended. History is never rewritten.
 - Import completion reuses the inline-result pattern for `N changes made · Undo this import`; its one confirmation names every affected endpoint/response.
 
+### Response selection and condition rows
+
+The selection editor reuses `.card`, `.segmented-control`, labelled `.field`/`.field-row` controls, native plain `history-disclosure`, badges, inline validation, and the existing `wire:confirm` mechanism. `.selection-settings` composes those tokens; no new color or motion tokens are introduced.
+
+- Selection changes remain drafts until **Save selection**; the read-only Selection preview is explicitly badged Draft. The preview composes the existing signature-panel treatment and never advances runtime counters.
+- The **rule-condition row** is a documented composition: two existing field rows hold field type/name/operator then value/priority/remove, with a token border between conditions. On narrow screens both rows become single columns. This is a form, not a nested card or data table. Every control has a visible label; Exists disables the value input.
+- Response ordering reuses the Faker builder's exact `data-schema-row`/drag listener with `data-schema-target="selection"`; its Livewire dispatch adapter updates response order rather than template JSON. Keyboard Earlier/Later actions remain visible. Rule response moves renumber condition priorities across the endpoint.
+- Default/fallback is a single-choice native radio with its existing toggle-inline treatment. The fallback badge appears in both response and preview. Saved fallback deletion confirmation states why it is blocked until an alternative is saved.
+- Sequence reset confirmation names the active environment and states that match counts and other environments are retained. The position status uses `.info-note`/`role="status"`.
+
+Only the rule-condition row composition is newly documented. Menus, disclosures, segmented choices, preview surfaces, drag handling, and feedback reuse existing patterns rather than introducing alternatives.
+
 ### Callback editor and callback log
 
 - The response editor's **Callback** is a native disclosure (`.history-disclosure`) closed by default. It reuses labelled `.field` inputs, `.field-row` grids, `.code-input`, autocomplete, `.toggle-inline`, `.field-help`, and `.info-note`. A `.callback-fields` grid uses spacing tokens and small `callback-group-heading` labels for Delivery, Retry policy, and Signing; thin token borders divide groups without adding nested cards. Its body uses the response editor's existing `.segmented-control` Builder/JSON switch and `.schema-builder`/`.schema-row` partial; rows carry a schema target so drag and drop never changes the main response. JSON-only context tokens make Builder unavailable without rewriting the template.
@@ -514,6 +528,8 @@ The endpoint and response **History** disclosures reuse the native disclosure, r
 - **Resend** reuses a named action with an accessible label and an inline status. Pending, success, failure, timeout, and empty states use existing semantic tokens and feedback patterns. Links between request and callback logs use `.table-link`.
 
 Syntax tokens are available for flags, URLs, headers, strings, and keys. The response-template editor adds catalog autocomplete to the existing code-input surface; it does not introduce a general syntax-highlighting editor. A reusable syntax-highlighting component remains **undecided — pick on first use, then add here**.
+
+Request log selection diagnostics use the existing warning badge and detail-list components (sequence exhaustion and omitted oversized body context). No new visual pattern is introduced. Conditions disclosures preserve their open state across Livewire rule edits using `wire:ignore.self`; the shared disclosure controller still synchronizes accessibility attributes.
 
 ## 8. Accessibility baseline
 

@@ -14,7 +14,7 @@ final class MockRequestLogger
     public function write(array $context): void
     {
         try {
-            $level = ($context['match_tier'] ?? null) === 'fallback' ? 'warning' : 'info';
+            $level = ($context['match_tier'] ?? null) === 'fallback' || isset($context['context_warning']) ? 'warning' : 'info';
             Log::channel('mock_requests')->log($level, 'mock_request', $context);
         } catch (Throwable $exception) {
             error_log('MockDeck request logging failed: '.$exception::class);

@@ -14,11 +14,11 @@ final class TemplateCompiler
 
     private string $source = '';
 
-    private bool $allowContext = false;
+    private bool $allowContext = true;
 
     public function __construct(private readonly FakerMethodCatalog $catalog) {}
 
-    public function compile(string $source, string $locale = 'en', bool $allowContext = false): TemplateValidationResult
+    public function compile(string $source, string $locale = 'en', bool $allowContext = true): TemplateValidationResult
     {
         $this->issues = [];
         $this->nodes = 0;
@@ -272,6 +272,8 @@ final class TemplateCompiler
         }
 
         if ($this->allowContext && preg_match('/^\$request\.[A-Za-z_][A-Za-z0-9_.-]*$/D', $value) === 1) {
+            $this->validateContextExpression(substr($value, 1), $path, $value);
+
             return;
         }
 
@@ -282,6 +284,12 @@ final class TemplateCompiler
             }
 
             return;
+        }
+
+        if ($this->allowContext && preg_match_all('/(?<![\$A-Za-z0-9_])\$request\.[A-Za-z_][A-Za-z0-9_.-]*/', preg_replace('/\\\\\{\{[^{}]*\}\}/', '', $value), $tokens)) {
+            foreach ($tokens[0] as $token) {
+                $this->validateContextExpression(substr($token, 1), $path, $token);
+            }
         }
 
         $protected = str_replace('\\{{', "\0ESCAPED_OPEN\0", $value);
@@ -297,6 +305,8 @@ final class TemplateCompiler
                 }
 
                 if ($this->allowContext && preg_match('/^(?:env|\$?request)\.[A-Za-z_][A-Za-z0-9_.-]*$/D', $expression) === 1) {
+                    $this->validateContextExpression(ltrim($expression, '$'), $path, '{{'.$expression.'}}');
+
                     continue;
                 }
 
@@ -311,6 +321,13 @@ final class TemplateCompiler
                     $this->validateMethod($methodMatch[1], $args, $path, '{{'.$expression.'}}');
                 }
             }
+        }
+    }
+
+    private function validateContextExpression(string $expression, string $path, string $token): void
+    {
+        if (str_starts_with($expression, 'request.') && ! TemplateContext::validRequestExpression($expression)) {
+            $this->issue('error', 'UNKNOWN_METHOD', $path, 'Unknown request context token: '.$token.'.', $token);
         }
     }
 
