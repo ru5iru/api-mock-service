@@ -9,7 +9,7 @@ const dashboard = read('resources/views/layouts/dashboard.blade.php');
 const guide = read('docs/UI_GUIDE.md');
 
 test('callback editor uses existing disclosure and documents raw-body HMAC signing', () => {
-    assert.match(editor, /<details class="history-disclosure callback-disclosure">/);
+    assert.match(editor, /<details class="history-disclosure callback-disclosure"[^>]*>/);
     assert.match(editor, /data-template-editor-root/);
     assert.match(editor, /setCallbackEditorView\('builder'\)/);
     assert.match(editor, /schemaModel' => 'callbackBuilderSchema'/);

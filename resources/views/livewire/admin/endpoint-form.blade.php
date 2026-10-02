@@ -1,4 +1,4 @@
-<form wire:submit="save" class="endpoint-editor" data-unsaved-form>
+<form wire:submit="saveAll" class="endpoint-editor" data-unsaved-form>
     @php
         $requestReady = (bool) $preview && ! $duplicate && ! $isExample;
         $matchingReady = (bool) $preview;
@@ -365,9 +365,9 @@
         </div>
         <div>
             <a class="button button-secondary" href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Cancel</a>
-            <button class="button button-primary" type="submit" wire:loading.attr="disabled" wire:target="save" @disabled(! $requestReady) @if ($saveBlockReason !== '') aria-describedby="endpoint-action-status" title="{{ $saveBlockReason }}" @endif>
-                <span wire:loading.remove wire:target="save">{{ $endpointId ? 'Save changes' : 'Create endpoint' }}</span>
-                <span wire:loading wire:target="save">Saving…</span>
+            <button class="button button-primary" type="submit" wire:loading.attr="disabled" wire:target="saveAll,finishSavingAll" @disabled(! $requestReady || $savingAll) @if ($saveBlockReason !== '') aria-describedby="endpoint-action-status" title="{{ $saveBlockReason }}" @endif>
+                <span wire:loading.remove wire:target="saveAll,finishSavingAll">{{ $savingAll ? 'Saving…' : ($endpointId ? 'Save changes' : 'Create endpoint') }}</span>
+                <span wire:loading wire:target="saveAll,finishSavingAll">Saving…</span>
             </button>
         </div>
     </div>

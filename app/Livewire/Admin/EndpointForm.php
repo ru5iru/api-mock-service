@@ -14,6 +14,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -58,6 +59,41 @@ CURL;
     public array $touchedSections = [];
 
     public bool $submitAttempted = false;
+
+    #[Locked]
+    public bool $savingAll = false;
+
+    public function saveAll(CurlParser $parser, CurlHasher $hasher): mixed
+    {
+        if ($this->endpointId === null) {
+            return $this->save($parser, $hasher);
+        }
+        if (! $this->savingAll) {
+            $this->savingAll = true;
+            $this->dispatch('save-response-drafts', endpointId: $this->endpointId)->to(ResponseManager::class);
+        }
+
+        return null;
+    }
+
+    #[On('response-drafts-saved')]
+    public function finishSavingAll(int $endpointId, CurlParser $parser, CurlHasher $hasher): mixed
+    {
+        if ($endpointId !== $this->endpointId || ! $this->savingAll) {
+            return null;
+        }
+        $this->savingAll = false;
+
+        return $this->save($parser, $hasher);
+    }
+
+    #[On('response-drafts-save-failed')]
+    public function responseDraftsFailed(int $endpointId): void
+    {
+        if ($endpointId === $this->endpointId) {
+            $this->savingAll = false;
+        }
+    }
 
     public function mount(?MockEndpoint $endpoint = null): void
     {

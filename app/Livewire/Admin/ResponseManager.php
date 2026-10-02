@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use JsonException;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -29,6 +30,14 @@ final class ResponseManager extends Component
     use EditsResponseSelection;
 
     public int $endpointId;
+
+    private bool $savingDrafts = false;
+
+    #[Locked]
+    public string $savedFormFingerprint = '';
+
+    #[Locked]
+    public string $savedSelectionFingerprint = '';
 
     public ?int $editingId = null;
 
@@ -117,6 +126,7 @@ final class ResponseManager extends Component
         $this->builderSchema = $schemas->emptySchema();
         $this->template = $schemas->schemaToTemplate($this->builderSchema);
         $this->updatedCallbackBody();
+        $this->savedFormFingerprint = $this->formFingerprint();
     }
 
     public function edit(int $responseId): void
@@ -126,7 +136,7 @@ final class ResponseManager extends Component
         $response = $this->endpoint()->responses()->findOrFail($responseId);
         $this->editingId = $response->id;
         $this->statusCode = $response->status_code;
-        $this->headersJson = json_encode($response->headers ?? new \stdClass, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $this->headersJson = json_encode(($response->headers ?? []) === [] ? new \stdClass : $response->headers, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $this->body = (string) ($response->body ?? '');
         $this->bodyMode = (string) ($response->body_mode ?? 'static');
         $this->template = (string) ($response->template ?? $schemas->schemaToTemplate($schemas->emptySchema()));
@@ -163,6 +173,73 @@ final class ResponseManager extends Component
         $this->callbackTestId = null;
         $this->callbackTestStatus = '';
         $this->resetValidation();
+        $this->savedFormFingerprint = $this->formFingerprint();
+    }
+
+    #[On('save-response-drafts')]
+    public function savePendingDrafts(int $endpointId): void
+    {
+        if ($endpointId !== $this->endpointId) {
+            return;
+        }
+        $selectionDraft = $this->selectionDraft();
+        $selectionBaseline = $this->savedSelectionFingerprint;
+        $formChanged = $this->formFingerprint() !== $this->savedFormFingerprint;
+        $this->resetValidation();
+        $this->savingDrafts = true;
+        try {
+            DB::transaction(function () use ($formChanged): void {
+                if ($this->selectionFingerprint() !== $this->savedSelectionFingerprint) {
+                    $this->saveSelection();
+                }
+                if ($formChanged) {
+                    $this->save();
+                    if ($this->getErrorBag()->isNotEmpty()) {
+                        throw ValidationException::withMessages($this->getErrorBag()->getMessages());
+                    }
+                }
+            }, 3);
+        } catch (ValidationException $exception) {
+            foreach ($selectionDraft as $key => $value) {
+                $this->{$key} = $value;
+            }
+            $this->savedSelectionFingerprint = $selectionBaseline;
+            $this->setErrorBag($exception->errors());
+            $this->dispatch('response-drafts-save-failed', endpointId: $this->endpointId)->to(EndpointForm::class);
+
+            return;
+        } finally {
+            $this->savingDrafts = false;
+        }
+        $this->dispatch('response-drafts-saved', endpointId: $this->endpointId)->to(EndpointForm::class);
+    }
+
+    private function formFingerprint(): string
+    {
+        $fields = ['editingId', 'statusCode', 'headersJson', 'body', 'bodyMode', 'template', 'editorView', 'seedMode', 'seed', 'locale', 'delayMs', 'weight', 'callbackEnabled', 'callbackUrl', 'callbackMethod', 'callbackHeadersJson', 'callbackBody', 'callbackDelayMs', 'callbackDelayMaxMs', 'callbackRetry', 'callbackBackoffMs', 'callbackTimeoutMs', 'callbackSigningEnabled', 'callbackSigningSecret', 'callbackSignatureHeader'];
+
+        return hash('sha256', json_encode(array_map(fn (string $field): mixed => $this->{$field}, $fields), JSON_THROW_ON_ERROR));
+    }
+
+    private function selectionDraft(): array
+    {
+        $draft = [];
+        foreach (['selectionMode', 'sequenceOnExhaust', 'responseOrder', 'fallbackResponseId', 'responseRules'] as $field) {
+            $draft[$field] = $this->{$field};
+        }
+
+        return $draft;
+    }
+
+    private function selectionFingerprint(): string
+    {
+        return hash('sha256', json_encode($this->selectionDraft(), JSON_THROW_ON_ERROR));
+    }
+
+    public function editCallback(int $responseId): void
+    {
+        $this->edit($responseId);
+        $this->dispatch('open-callback-editor', endpointId: $this->endpointId);
     }
 
     public function createNew(): void
@@ -228,7 +305,7 @@ final class ResponseManager extends Component
             return;
         }
 
-        if ($headers !== null && (! is_array($headers) || array_is_list($headers))) {
+        if ($headers !== null && (! is_array($headers) || ! json_decode($validated['headersJson']) instanceof \stdClass)) {
             $this->addError('headersJson', 'Headers must be a JSON object of header names and values.');
 
             return;
@@ -836,6 +913,7 @@ JSON;
         $this->callbackTestId = null;
         $this->callbackTestStatus = '';
         $this->resetValidation();
+        $this->savedFormFingerprint = $this->formFingerprint();
     }
 
     private function clearPreview(): void

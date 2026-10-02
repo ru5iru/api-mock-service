@@ -558,3 +558,9 @@ Request log selection diagnostics use the existing warning badge and detail-list
 8. Check 1440px, 1024px, and 390px layouts for overflow, wrapping, and covered content.
 9. Use the code-surface pattern and disable ligatures for raw technical data.
 10. Update this guide and automated checks in the same change when adding a reusable pattern or token.
+
+The endpoint sticky Save changes action saves dirty response and selection drafts before endpoint navigation. A locked baseline distinguishes a changed response from an untouched Add response form, preventing unintended extra responses. Invalid drafts retain their values and show the existing validation-panel/role=alert treatment; Save changes is disabled through the coordinated save. No new visual component is introduced.
+
+On pages with the measured sticky action bar, the notification region sits above that same measured height plus `--space-4`. Toasts must never cover or intercept the Save changes button. The shared bar synchronizer updates and clears this offset during navigation and resize.
+
+Callback configuration appears directly below the response editor heading/validation panel, before status/body fields. Each response row exposes a labelled Callback action that selects the response and opens the existing native disclosure. Its open state persists through Livewire field edits using `wire:ignore.self`, and the shared disclosure synchronizer owns aria-expanded. When expanded, the response form uses the existing static layout behavior so long callback controls remain reachable. These reuse documented buttons/disclosures; no new token or visual pattern is introduced.

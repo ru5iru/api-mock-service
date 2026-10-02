@@ -263,3 +263,7 @@ Repeat that check with a different scheme/host but the same path; it must also b
 `.github/workflows/ci.yml` repeats Composer validation, Pint, and the full PHPUnit suite on pushes and pull requests. A local `make validate` should pass before every push.
 
 The tracked `.gitignore` placeholders under `storage/framework/cache/data`, `storage/framework/sessions`, `storage/framework/views`, and `storage/logs` are required. Git does not retain empty directories; removing these files makes a clean Composer install fail during Laravel `package:discover` with `Please provide a valid cache path.`
+
+### Response save regression
+
+Against the same dedicated fixture database/server, run `MOCKDECK_BROWSER_FIXTURE=1 MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/response-save-smoke.mjs`. It checks sticky Save changes, persisted edits after reload, no accidental additional response, inline failure with draft retention, and corrected retry in both themes. `EndpointSaveDraftsTest` also covers transactional response/selection validation and empty header objects.

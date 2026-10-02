@@ -513,3 +513,11 @@ The selection preview lists the ordered conditions and fallback badge. Missing f
 Selection fields and conditions are configuration and are versioned. Restoring an older sequence position shifts sibling response positions with rollback revisions; restoring a fallback can clear the sibling fallback with a revision. Invalid rule configuration restores are rejected atomically. Pre-Wave-1 endpoint snapshots default to Weighted and pre-Wave-1 response snapshots default to no rules. Counters/positions are runtime state and are never restored by history.
 
 Current native exports use 1.3 and include modes, order, default flags, and conditions. Old 1–1.2 files retain Weighted behavior. New imports and clones have no call state until matched; upserts preserve destination runtime state. No verification/assertion API is added in this wave.
+
+### Saving endpoint and response drafts
+
+On an existing endpoint, **Save changes** saves edited response fields and selection drafts before saving the endpoint and navigating. An untouched Add response form does not create another response. **Add response** / **Update response** and **Save selection** remain available to save their respective sections directly. Validation errors keep the page and drafts visible; correct the inline message and retry. Response/selection saves occur before the endpoint save, so an endpoint validation error can leave those sections saved while the endpoint still needs correction.
+
+### Finding callback configuration
+
+Open an existing endpoint, then select **Callback** on the configured response row. This selects that response and opens **Callback configuration** near the top of the response editor. Enable callback and enter its Target URL, method, headers, body, retry policy, and optional signature. Save with **Update response** or **Save changes**. New responses show the same disclosure near the top of **Add response**. Create the endpoint first if it has not yet been saved.

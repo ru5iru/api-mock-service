@@ -538,6 +538,7 @@ details[data-menu][open] > :not(summary) { animation: menu-enter var(--motion-fa
 .response-description { min-width: 0; flex: 1; }
 .response-description > code { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: 11px; }
 .response-form { position: sticky; top: 98px; }
+.response-form:has(.callback-disclosure[open]) { position: static; }
 .form-title-row { margin-bottom: 21px; padding-bottom: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .form-title-row h3 { margin: 3px 0 0; font-size: var(--font-size-md); }
 .field-row { display: grid; align-items: start; gap: 11px; }

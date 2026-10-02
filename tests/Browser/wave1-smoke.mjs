@@ -43,7 +43,9 @@ try {
         await row(fixture.first).getByRole('button', { name: `Move response ${fixture.first} later`, exact: true }).focus();
         await commit(() => page.keyboard.press('Enter'));
         await poll(async () => (await rows.first().getAttribute('wire:key')) === `response-${fixture.second}`, 'Keyboard reorder failed');
-        await commit(() => row(fixture.second).locator('[data-schema-drag-handle]').dragTo(row(fixture.first)));
+        while (await page.locator('[data-dismiss-toast]').count()) await page.locator('[data-dismiss-toast]').first().click();
+        await row(fixture.second).scrollIntoViewIfNeeded();
+        await commit(() => row(fixture.second).locator('[data-schema-drag-handle]').dragTo(row(fixture.first), { sourcePosition: { x: 4, y: 4 }, targetPosition: { x: 70, y: 15 } }));
         await poll(async () => (await rows.first().getAttribute('wire:key')) === `response-${fixture.first}`, 'Pointer drag reorder failed');
         await save();
         const served = await page.request.get(`${base}/wave1-browser`);
@@ -107,8 +109,32 @@ try {
             await page.screenshot({ path: resolve(shots, `${theme}-wave1-${width}.png`), fullPage: true });
             await poll(async () => await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2), `${theme}: document overflows at ${width}px`);
         }
+        await page.setViewportSize({ width: 1440, height: 1000 });
+        while (await page.locator('[data-dismiss-toast]').count()) await page.locator('[data-dismiss-toast]').first().click();
+        // Regression: sticky Save changes previously submitted only EndpointForm and lost response drafts.
+        await commit(() => row(fixture.first).getByRole('button', { name: 'Edit', exact: true }).click());
+        await page.locator('#response-body').fill('{"response":"saved globally"}');
+        const globalSave = async () => {
+            await page.locator('[data-sticky-action-bar]').getByRole('button', { name: 'Save changes', exact: true }).click();
+            await poll(async () => await page.locator('.response-form h3').innerText() === 'Add response', 'Global save did not finish response save/navigation');
+        };
+        await globalSave();
+        await page.reload();
+        await poll(async () => (await row(fixture.first).innerText()).includes('saved globally'), 'Global save lost the edited response');
+        assert.equal(await rows.count(), 2, 'Global save created an unwanted response');
+        await commit(() => row(fixture.first).getByRole('button', { name: 'Edit', exact: true }).click());
+        await page.locator('#response-body').fill('{"response":"first"}');
+        await page.locator('#response-weight').fill('0');
+        await page.locator('[data-sticky-action-bar]').getByRole('button', { name: 'Save changes', exact: true }).click();
+        await poll(async () => (await page.locator('.response-form [role="alert"]').innerText()).includes('not saved'), 'Global save failed without visible validation');
+        assert.equal(await page.locator('#response-body').inputValue(), '{"response":"first"}', 'Invalid draft was lost');
+        await poll(() => page.locator('[data-sticky-action-bar]').getByRole('button', { name: 'Save changes', exact: true }).isEnabled(), 'Global save stayed disabled after validation failure');
+        await page.locator('#response-weight').fill('1');
+        await globalSave();
+        await page.reload();
+
         await page.close();
-        console.log(`${theme}: selection, drag/keyboard reorder, reset, rule validation/fallback, synthetic preview and responsive checks pass`);
+        console.log(`${theme}: selection, drag/keyboard reorder, reset, rule validation/fallback, synthetic preview, global save/validation and responsive checks pass`);
     }
     assert.deepEqual(failures, [], 'Browser reported JavaScript errors');
 } finally { await browser.close(); }

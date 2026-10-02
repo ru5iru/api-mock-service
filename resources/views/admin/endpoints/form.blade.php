@@ -16,7 +16,7 @@
         <section id="responses" class="section-spacer">
             <div class="section-heading">
                 <h2>Configured responses</h2>
-                <p>One response is deterministic; multiple responses are selected by weight.</p>
+                <p>Choose how each matched request selects a response.</p>
             </div>
             <livewire:admin.response-manager :endpoint="$endpoint" />
         </section>

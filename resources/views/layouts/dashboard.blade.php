@@ -439,6 +439,7 @@
                 observedStickyActionBar = null;
                 page.classList.remove('has-sticky-action-bar');
                 page.style.removeProperty('--sticky-action-bar-height');
+                document.getElementById('toast-region')?.style.removeProperty('bottom');
                 return;
             }
 
@@ -447,6 +448,7 @@
                 if (height > 0) {
                     page.classList.add('has-sticky-action-bar');
                     page.style.setProperty('--sticky-action-bar-height', `${height}px`);
+                document.getElementById('toast-region')?.style.setProperty('bottom', `calc(${height}px + var(--space-4))`);
                 }
             };
 

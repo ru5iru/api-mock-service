@@ -129,7 +129,9 @@ trait EditsResponseSelection
         }, 3);
         $this->loadSelection();
         $this->resetValidation();
-        $this->dispatch('toast', message: 'Response selection saved. Runtime counters were retained.');
+        if (! $this->savingDrafts) {
+            $this->dispatch('toast', message: 'Response selection saved. Runtime counters were retained.');
+        }
     }
 
     public function resetSequence(): void
@@ -152,5 +154,6 @@ trait EditsResponseSelection
         $this->responseRules = $responses->mapWithKeys(fn ($response) => [$response->id => $response->rules->map(fn ($rule) => $rule->only([
             'field_type', 'field_name', 'operator', 'value', 'priority',
         ]))->all()])->all();
+        $this->savedSelectionFingerprint = $this->selectionFingerprint();
     }
 }

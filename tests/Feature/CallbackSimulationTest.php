@@ -23,6 +23,25 @@ final class CallbackSimulationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_callback_action_loads_saved_configuration_and_opens_the_editor(): void
+    {
+        $response = MockResponse::factory()->create([
+            'callback_enabled' => true,
+            'callback_url' => 'https://receiver.test/hook',
+            'callback_method' => 'PATCH',
+            'callback_body' => '{"event":"created"}',
+        ]);
+
+        Livewire::test(ResponseManager::class, ['endpoint' => $response->endpoint])
+            ->call('editCallback', $response->id)
+            ->assertSet('editingId', $response->id)
+            ->assertSet('callbackEnabled', true)
+            ->assertSet('callbackUrl', 'https://receiver.test/hook')
+            ->assertSet('callbackMethod', 'PATCH')
+            ->assertSet('callbackBody', '{"event":"created"}')
+            ->assertDispatched('open-callback-editor', endpointId: $response->endpoint->id);
+    }
+
     public function test_restoring_a_revision_from_before_callbacks_uses_callback_defaults(): void
     {
         $response = MockResponse::factory()->create();
