@@ -2,7 +2,7 @@
     <summary aria-label="Change active environment" aria-haspopup="menu" aria-expanded="false">
         <span aria-hidden="true" class="environment-dot"></span>
         <span>{{ $active?->name ?? 'Environment' }}</span>
-        <span aria-hidden="true">⌄</span>
+        <x-chevron />
     </summary>
     <div class="environment-switcher-panel" role="menu" aria-label="Active environment">
         <span class="user-menu-label">Active environment</span>

@@ -1,5 +1,5 @@
-// Dedicated database only: seed fixtures, then exercise Wave 1 controls in both themes.
-// MOCKDECK_BROWSER_FIXTURE=1 MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/wave1-smoke.mjs
+// Dedicated database only: verify global response saves through the true-tab editor.
+// MOCKDECK_BROWSER_FIXTURE=1 MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/response-save-smoke.mjs
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
@@ -29,14 +29,17 @@ try {
         await page.goto(`${base}/dashboard/endpoints/${fixture.endpoint}/edit`);
         await page.evaluate(value => localStorage.setItem('mockdeck-theme', value), theme);
         await page.reload();
+        await page.getByRole('tab', { name: /^Response/ }).click();
         const settings = page.locator('.selection-settings');
         const rows = page.locator('.selection-response-card');
         const row = id => page.locator(`[wire\\:key="response-${id}"]`);
         const commit = async action => {
-            await Promise.all([page.waitForResponse(r => r.url().includes('/update') && r.request().method() === 'POST'), action()]);
+            const [response] = await Promise.all([page.waitForResponse(r => r.url().includes('/update') && r.request().method() === 'POST'), action()]);
+            await response.finished();
         };
         // Regression: sticky Save changes previously submitted only EndpointForm and lost response drafts.
         await commit(() => row(fixture.first).getByRole('button', { name: 'Edit', exact: true }).click());
+        await poll(async () => (await page.locator('.response-form h3').innerText()).includes(`#${fixture.first}`), 'Response edit did not finish');
         await page.locator('#response-body').fill('{"response":"saved globally"}');
         const globalSave = async () => {
             await page.locator('[data-sticky-action-bar]').getByRole('button', { name: 'Save changes', exact: true }).click();
@@ -44,9 +47,11 @@ try {
         };
         await globalSave();
         await page.reload();
-        await poll(async () => (await row(fixture.first).innerText()).includes('saved globally'), 'Global save lost the edited response');
+        await page.getByRole('tab', { name: /^Response/ }).click();
         assert.equal(await rows.count(), 2, 'Global save created an unwanted response');
         await commit(() => row(fixture.first).getByRole('button', { name: 'Edit', exact: true }).click());
+        await poll(async () => (await page.locator('.response-form h3').innerText()).includes(`#${fixture.first}`), 'Saved response edit did not finish');
+        assert.deepEqual(JSON.parse(await page.locator('#response-body').inputValue()), { response: 'saved globally' }, 'Global save lost the edited response');
         await page.locator('#response-body').fill('{"response":"first"}');
         await page.locator('#response-weight').fill('0');
         await page.locator('[data-sticky-action-bar]').getByRole('button', { name: 'Save changes', exact: true }).click();

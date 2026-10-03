@@ -62,6 +62,7 @@
                     <summary aria-label="Open user menu">
                         <span class="user-avatar" aria-hidden="true">O</span>
                         <span>{{ config('mock.dashboard_auth.enabled') ? 'Operator' : 'Local' }}</span>
+                        <x-chevron />
                     </summary>
                     <div class="user-menu-panel">
                         <span class="user-menu-label">{{ config('mock.dashboard_auth.enabled') ? 'Authenticated session' : 'Local access mode' }}</span>
@@ -78,7 +79,7 @@
             </nav>
 
             <details class="mobile-nav" data-menu>
-                <summary aria-label="Open dashboard navigation">Menu</summary>
+                <summary aria-label="Open dashboard navigation">Menu<x-chevron /></summary>
                 <nav class="mobile-nav-panel" aria-label="Mobile dashboard navigation">
                     <a href="{{ route('dashboard.endpoints.index') }}" wire:navigate
                        class="{{ request()->routeIs('dashboard.endpoints.*') ? 'active' : '' }}"
@@ -424,12 +425,18 @@
 
         };
 
+        const syncDisclosureState = () => {
+            document.querySelectorAll('details[data-disclosure]').forEach((details) => {
+                const summary = details.querySelector(':scope > summary');
+                const expanded = String(details.open);
+                if (summary && summary.getAttribute('aria-expanded') !== expanded) summary.setAttribute('aria-expanded', expanded);
+            });
+        };
+
         const syncEndpointEditor = () => {
             document.querySelectorAll('[data-toast]').forEach(window.MockDeck.prepareToast);
             document.querySelectorAll('[data-auto-grow]').forEach(resizeEditor);
-            document.querySelectorAll('details[data-disclosure]').forEach((details) => {
-                details.querySelector(':scope > summary')?.setAttribute('aria-expanded', String(details.open));
-            });
+            syncDisclosureState();
             try {
                 if (window.localStorage.getItem('mockdeck:host-note-dismissed') === 'true') {
                     document.querySelector('[data-host-note]')?.remove();
@@ -515,7 +522,11 @@
                 syncEditorGeometry();
             });
         };
-        new MutationObserver(scheduleLogSync).observe(document.body, { childList: true, subtree: true });
+        new MutationObserver(() => {
+            // ARIA state must survive morphs immediately, independently of batched layout work.
+            syncDisclosureState();
+            scheduleLogSync();
+        }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open', 'aria-expanded'] });
         document.addEventListener('livewire:navigated', () => {
             window.MockDeck.formDirty = false;
             const path = window.location.pathname;

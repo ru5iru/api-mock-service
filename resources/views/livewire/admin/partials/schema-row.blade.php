@@ -30,7 +30,7 @@
 
         <label class="schema-type">
             <span class="sr-only">Field type</span>
-            <select wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.type">
+            <select class="ui-select ui-select-dense" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.type">
                 <option value="faker">Faker</option>
                 <option value="string">String</option>
                 <option value="number">Number</option>
@@ -46,9 +46,12 @@
         <div class="schema-config">
             @if ($type === 'faker')
                 <details class="faker-picker" data-faker-picker data-menu>
-                    <summary title="{{ is_scalar($selectedMethod['sample'] ?? null) ? $selectedMethod['sample'] : json_encode($selectedMethod['sample'] ?? null) }}"><span>{{ $method }}</span><span aria-hidden="true">⌄</span></summary>
+                    <summary title="{{ is_scalar($selectedMethod['sample'] ?? null) ? $selectedMethod['sample'] : json_encode($selectedMethod['sample'] ?? null) }}"><span>{{ $method }}</span><x-chevron /></summary>
                     <div class="faker-picker-panel">
-                        <label class="search-field faker-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Search methods" data-faker-search></label>
+                        <label class="search-field faker-search">
+                            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                            <input type="search" aria-label="Search Faker methods" placeholder="Search methods" data-faker-search>
+                        </label>
                         <div class="faker-options" data-faker-options role="listbox" aria-label="Faker methods">
                             @foreach ($groups as $module => $methods)
                                 <section data-faker-group>
@@ -109,19 +112,19 @@
                     </div>
                 </details>
             @elseif ($type === 'string')
-                <select aria-label="String mode" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
+                <select class="ui-select ui-select-dense" aria-label="String mode" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
                     <option value="fixed">Fixed</option>
                     <option value="interpolated">Interpolated</option>
                 </select>
-                <input type="text" placeholder="Value" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.value">
+                <input type="text" aria-label="String value" placeholder="Value" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.value">
             @elseif ($type === 'number')
-                <select aria-label="Number mode" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
+                <select class="ui-select ui-select-dense" aria-label="Number mode" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
                     <option value="fixed">Fixed</option>
                     <option value="int">Random integer</option>
                     <option value="float">Random decimal</option>
                 </select>
                 @if (($row['mode'] ?? 'fixed') === 'fixed')
-                    <input type="number" step="any" placeholder="0" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.value">
+                    <input type="number" step="any" aria-label="Number value" placeholder="0" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.value">
                 @else
                     <input type="number" step="any" aria-label="Minimum" placeholder="Min" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.min">
                     <input type="number" step="any" aria-label="Maximum" placeholder="Max" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.max">
@@ -130,13 +133,13 @@
                     @endif
                 @endif
             @elseif ($type === 'boolean')
-                <select aria-label="Boolean value" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
+                <select class="ui-select ui-select-dense" aria-label="Boolean value" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
                     <option value="true">True</option>
                     <option value="false">False</option>
                     <option value="random">Random</option>
                 </select>
             @elseif ($type === 'date')
-                <select aria-label="Date mode" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
+                <select class="ui-select ui-select-dense" aria-label="Date mode" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
                     <option value="recent">Recent</option>
                     <option value="past">Past</option>
                     <option value="future">Future</option>
@@ -152,7 +155,7 @@
                     <input type="number" min="1" aria-label="Date amount" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.{{ ($row['mode'] ?? 'recent') === 'recent' ? 'days' : 'years' }}">
                 @endif
                 @if (($row['mode'] ?? 'recent') !== 'fixed')
-                    <select aria-label="Date output format" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.format">
+                    <select class="ui-select ui-select-dense" aria-label="Date output format" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.format">
                         <option value="iso">ISO-8601</option>
                         <option value="date">Date</option>
                         <option value="epochMs">Epoch ms</option>
@@ -162,7 +165,7 @@
             @elseif ($type === 'object')
                 <span class="schema-type-summary">{{ count($row['children'] ?? []) }} {{ Str::plural('field', count($row['children'] ?? [])) }}</span>
             @elseif ($type === 'array')
-                <select aria-label="Array length mode" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.length_mode">
+                <select class="ui-select ui-select-dense" aria-label="Array length mode" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.length_mode">
                     <option value="fixed">Fixed length</option>
                     <option value="range">Min–max length</option>
                 </select>
@@ -190,7 +193,7 @@
     </div>
 
     @if ($type === 'object')
-        <details class="schema-nested" open>
+        <details class="schema-nested" data-disclosure open>
             <summary><span class="details-chevron" aria-hidden="true">›</span>Object fields</summary>
             <div class="schema-children">
                 @foreach (($row['children'] ?? []) as $childIndex => $childRow)

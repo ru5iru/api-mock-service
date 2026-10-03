@@ -9,7 +9,7 @@
                     </div>
                     <div class="field">
                         <label for="callback-method">Method</label>
-                        <select id="callback-method" wire:model="callbackMethod">
+                        <select class="ui-select" id="callback-method" wire:model="callbackMethod">
                             @foreach (['POST', 'PUT', 'PATCH', 'DELETE'] as $method)
                                 <option value="{{ $method }}">{{ $method }}</option>
                             @endforeach
@@ -41,7 +41,7 @@
                             </div>
                             @if (($callbackBuilderSchema['root'] ?? 'object') === 'list')
                                 <div class="builder-root-count">
-                                    <label class="select-field"><span class="select-caption">Count</span><select wire:model.live="callbackBuilderSchema.count_mode"><option value="fixed">Fixed</option><option value="range">Min–max</option></select></label>
+                                    <label class="select-field"><span class="select-caption">Count</span><select class="ui-select ui-select-dense" wire:model.live="callbackBuilderSchema.count_mode"><option value="fixed">Fixed</option><option value="range">Min–max</option></select></label>
                                     @if (($callbackBuilderSchema['count_mode'] ?? 'fixed') === 'range')
                                         <label class="compact-input"><span>Min</span><input type="number" min="0" max="1000" wire:model.live.debounce.400ms="callbackBuilderSchema.min"></label>
                                         <label class="compact-input"><span>Max</span><input type="number" min="0" max="1000" wire:model.live.debounce.400ms="callbackBuilderSchema.max"></label>

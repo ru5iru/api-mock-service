@@ -29,12 +29,16 @@ Use these recipes without adding page-specific classes to alter their appearance
 23. [Motion tokens](#motion-tokens)
 24. [Validation and coverage](#validation-and-coverage)
 25. [Inline editable title](#inline-editable-title)
+26. [Pagination](#pagination)
+27. [Search fields](#search-fields)
+28. [Empty and loading states](#empty-and-loading-states)
+29. [Environment and documentation navigation](#environment-and-documentation-navigation)
 
 ## Buttons
 
 **Purpose:** execute a command; use an anchor with the same classes only for navigation. A status label is a Badge, not a disabled button.
 
-**Anatomy:** inline `<button type="button" class="button button-VARIANT">label</button>` in `resources/views/livewire/admin/response-manager.blade.php`. There is no Button Blade component. Keep explicit `type`; use `submit` inside its owning form or with an explicit `form="endpoint-settings"` target for teleported save actions.
+**Anatomy:** inline `<button type="button" class="button button-VARIANT">label</button>` in `resources/views/livewire/admin/response-manager.blade.php`. There is no Button Blade component. Environment Save name and variable Save use the primary recipe, matching endpoint/response saves; secondary is for navigation, preview and auxiliary commands. Keep explicit `type`; use `submit` inside its owning form or with an explicit `form="endpoint-settings"` target for teleported save actions.
 
 **Classes/tokens:** `.button`: minimum height 36px, padding `--space-2 --space-4` (8px 16px), 1px border, `--radius-md` (6px), gap `--space-2`, 13px/600. At <=767px all `.button` elements have minimum height 44px. `.button-small` means 38px minimum, 7px 12px padding, 13px text; it does not override the mobile minimum. `.button-full` sets width 100%.
 
@@ -48,7 +52,7 @@ Use these recipes without adding page-specific classes to alter their appearance
 | Compact row command | `icon-button` | transparent / `--text-muted` / transparent | `--surface-2` / `--text` / `--border` |
 | Destructive row command | `icon-button danger` | same as row command | `--danger-bg` / `--danger-fg` / `--danger-border` |
 
-Tertiary defaults to minimum 40px and 10px horizontal padding. Text defaults to 40px, 7px 5px, no perimeter border, 1px bottom border, 13px/600. Row commands default to 40px, 8px 11px, 1px border, 5px radius, 12px/600; schema-row commands use minimum width 36px and 8px horizontal padding. Existing text-labelled Edit/Callback/Delete commands intentionally use this compact row variant.
+Tertiary defaults to minimum 40px and 10px horizontal padding. Text defaults to 40px, 7px 5px, no perimeter border, 1px bottom border, 13px/600. Row commands default to 40px, 8px 11px, 1px border, 5px radius, 12px/600; schema-row commands use minimum width 36px and 8px horizontal padding. Existing text-labelled Edit/Callback/Delete commands intentionally use this compact row variant. Destructive text commands use `text-button danger-text` with `--danger-fg` only while enabled; disabled keeps `--disabled-fg`. At <=767px row commands, text commands and segmented buttons all use minimum 44px for touch input.
 
 **States:** normal hover adds `--shadow-md`; active enabled `.button` translates down 1px and uses `--shadow-sm`. Primary starts with `--shadow-sm`. Focus-visible is the global 2px `--focus-ring` outline, offset 3px. Disabled `.button`: `--disabled-bg`, `--disabled-fg`, `--border`, no transform/shadow, not-allowed cursor; hover is excluded. Disabled row/text commands use `--disabled-fg`, not-allowed cursor. Loading uses `wire:loading.attr="disabled"` and an explicit target; it has the same disabled appearance, not a separate color.
 
@@ -74,23 +78,32 @@ Tertiary defaults to minimum 40px and 10px horizontal padding. Text defaults to 
 
 **Anatomy:** native `.field > label + select`; compact filters use `label.select-field > span.select-caption + select` in `.toolbar-controls` or `.log-filter-panel`. Custom menus use `details[data-menu] > summary + panel`; controller `public/js/menu.js`, placement `public/js/panels.js`. Theme component: `resources/views/components/theme-control.blade.php`; environment menu: `resources/views/livewire/admin/environment-switcher.blade.php`; Faker picker: `resources/views/livewire/admin/partials/schema-row.blade.php`.
 
-**Classes/tokens:** native `.field select`: width 100%, minimum height 48px, padding 10px 12px, 1px `--border-strong`, 6px radius, transparent background, `--text`. Locale/Seed and schema controls intentionally use dense 44px minimum, `--space-2 --space-3` padding, `--surface`, `--radius-md`. Filter selects: 40px minimum, 7px 39px 7px 12px, `--surface`, 1px `--border-strong`, 6px radius, `--shadow-sm`, 13px/600, `--select-chevron` 16px at right 12px. Log filters reduce horizontal padding to 10px/34px and text to 12px. Bulk selection controls intentionally use 34px minimum, 5px 34px 5px 9px, 14px chevron.
+**Classes/tokens:** every native select has `ui-select`. The standard variant has 48px minimum height, 10px 40px 10px 12px padding, 1px `--border-strong`, `--radius-md` (6px), `--surface` background and `--text`, 13px type / `--line-height-base`. `ui-select-dense` gives Locale/Seed, schema and list-count controls 44px minimum and8px block padding. `ui-select-filter` gives filters40px minimum and7px block padding; `ui-select-bulk` gives desktop bulk actions34px minimum and5px block padding. Both compact variants are44px minimum at <=767px. Filter/bulk labels use600 weight. All variants use appearance:none and **the same** `--select-chevron` image,16px at right12px center; right padding40px reserves its space. Native option colors inherit `--text`/`--surface`; the OS still owns the opened native menu.
+
+**Chevron anatomy:** `resources/views/components/chevron.blade.php`, `<x-chevron />`, renders `span.control-chevron[aria-hidden=true]`. Exactly16x16px with fixed16px flex basis and the same `--select-chevron` token used by native selects. It rotates180deg when its direct trigger has aria-expanded=true, using `--motion-fast`. Environment, Faker, user and mobile navigation triggers reuse this component; do not use font glyphs such as ⌄ for menu arrows. Theme/overflow/argument triggers retain their labelled icon affordances. Header environment/user/theme triggers have40px minimum; Faker44px; mobile navigation44px. Trigger hover uses `--accent-border`/`--control-hover`; open uses `--accent`/`--surface-2`. Theme uses its documented accent-link text.
+
 
 Custom panel perimeter is always `details[data-menu] > :not(summary)`: 1px `--border-strong`, `--radius-lg`, `--surface-raised`, `--shadow-lg`. Environment: 220px minimum, 8px padding, 4px gaps, 40px options. Theme: 150px minimum, 8px padding, 4px gaps, 36px options. User: 210px minimum, 10px padding, 3px gaps, 40px options. Overflow: 150px minimum, 7px padding. Faker: desired width 480px, maximum height 420px; arguments: desired width 360px, 12px padding. Width is clamped to viewport minus 32px; actual height shrinks to available space above/below its anchor.
 
-**States:** native hover border `--accent-border`; focus border `--accent`, `--shadow-focus`, `--surface`; disabled `--disabled-bg`, `--disabled-fg`, `--border`, not-allowed. Filter hover adds `--surface-raised`; filter focus removes its outline in favor of the focus shadow. Menu open synchronizes `summary[aria-expanded]`, enters over `--motion-fast`, closes other menus. Hover/focus options use `--surface-2`. Active theme choice uses `aria-checked`; active environment choice uses `.active`. Escape closes and restores summary focus; outside click, command selection and navigation close. Loading has no menu-specific skin: disable the owning command and report request status.
+**States:** native hover border `--accent-border`; focus border `--accent`, `--shadow-focus`, `--surface`; disabled `--disabled-bg`, `--disabled-fg`, `--border`, not-allowed. Filter hover adds `--surface-raised`; filter focus removes its outline in favor of the focus shadow. Placement measures content at the target width after resetting max-height to the configured panel limit (420px for Faker, 260px for autocomplete); never reuse a previously clipped flex-panel height as its natural size. On scroll, placement chooses the available space above/below the trigger and recovers the full allowed height when space returns. The method list uses overscroll-behavior-y:contain so scrolling past its ends cannot scroll the editor underneath. Scrolling the method list must not shrink or close its picker; leaving the usable viewport still closes an offscreen trigger’s panel. The shared menu controller initializes aria-expanded/aria-haspopup on every trigger, including newly morphed controls. Menu open synchronizes `summary[aria-expanded]`, enters over `--motion-fast`, closes sibling menus while keeping containing menus open. Closing a parent also closes its descendant panels. Escape closes the nearest menu and restores its trigger; a second Escape closes its parent. Login and error shells load panels.js before menu.js and use the same top-layer placement. Hover/focus options use `--surface-2`. Active theme choice uses `aria-checked`; active environment choice uses `.active`. Escape closes and restores summary focus; outside click, command selection and navigation close. Loading has no menu-specific skin: disable the owning command and report request status.
 
 **Examples:**
 
 ```blade
 <label class="field" for="sequence-on-exhaust"><span>On exhaust</span>
-    <select id="sequence-on-exhaust" wire:model.live="sequenceOnExhaust">
+    <select class="ui-select" id="sequence-on-exhaust" wire:model.live="sequenceOnExhaust">
         <option value="repeat_last">Repeat last</option><option value="loop">Loop</option><option value="not_found">Not found</option>
     </select>
 </label>
 <div class="toolbar-controls"><label class="select-field"><span class="select-caption">Status</span>
-    <select wire:model.live="status" aria-label="Response status"><option value="all">All statuses</option></select>
+    <select class="ui-select ui-select-filter" wire:model.live="status" aria-label="Response status"><option value="all">All statuses</option></select>
 </label></div>
+<div class="field"><label for="template-locale">Locale</label>
+    <select class="ui-select ui-select-dense" id="template-locale" wire:model.live="locale"><option value="en">en</option></select>
+</div>
+<label class="select-field bulk-select"><span class="sr-only">Move selected endpoints to collection</span>
+    <select class="ui-select ui-select-bulk" wire:model="bulkCollection" aria-label="Collection for selected endpoints"><option value="">No collection</option></select>
+</label>
 <details class="overflow-menu" data-menu>
     <summary aria-label="Endpoint actions">⋯</summary>
     <div><button type="button" wire:click="duplicate">Duplicate</button></div>
@@ -105,17 +118,23 @@ Custom panel perimeter is always `details[data-menu] > :not(summary)`: 1px `--bo
 
 **Anatomy:** inline `.field > label[for] + input|textarea|select + .field-help + .field-error`. Owner examples: `endpoint-form.blade.php`, `response-manager.blade.php`. Inputs reference help/error IDs through `aria-describedby`.
 
-**Classes/tokens:** `.field` margin-bottom 22px; labels 13px/600 with 7px bottom margin, label annotation `--text-muted`/400. Text/number inputs: 48px minimum, 10px 12px padding, 1px `--border-strong`, 6px radius, transparent background, `--text`. Textareas: 13px padding, vertical resize. Helper: 12px `--text-muted`, 6px top margin. Error: 12px/600 `--danger-fg`, margin 7px 0 0. `.field-row.two|three` uses equal `minmax(0, 1fr)` tracks, 11px gap, collapses at <=740px. Rule rows collapse at <=720px as well. Schema rows use the 44px dense recipe in Dropdowns and selects.
+**Classes/tokens:** `.field` margin-bottom 22px; labels 13px/600 with 7px bottom margin, label annotation `--text-muted`/400. Text/number inputs: 48px minimum, 10px 12px padding, 1px `--border-strong`, 6px radius, transparent background, `--text`. Native selects use the Dropdowns and selects recipe with a surface fill. Textareas: 13px padding, vertical resize. Helper: 12px `--text-muted`, 6px top margin. Error: 12px/600 `--danger-fg`, margin 7px 0 0. `.field-row.two|three` uses equal `minmax(0, 1fr)` tracks, 11px gap, collapses at <=740px. Rule rows collapse at <=720px as well. Schema rows use the44px dense recipe for both scalar inputs and selects, including inside a field wrapper; do not allow the higher-specificity standard48px field rule to override dense controls. Wrapped `label.field > span` labels have the same13px/600,7px bottom margin as explicit label/for anatomy. Schema scalar/argument, environment creation and variable-table inputs reuse accent hover/focus and disabled fg/bg/border tokens. Faker search keeps its field border on the search wrapper, not an extra border around its input.
 
 **States:** hover border `--accent-border`; focus border `--accent`, background `--surface`, `--shadow-focus`; global keyboard focus outline remains. Disabled text/textarea/select: `--disabled-fg`, `--disabled-bg`, `--border`, not-allowed. Radio/checkbox focus is not subject to text-field rules. Error text does not invent a red border state. Loading uses `.loading-label` (11px `--accent-link`) or `.spinner`, not replacement field content. Active means focused; there is no independent selected text-field variant.
+
+**Hidden uploads:** a custom upload trigger uses an `input.sr-only[type=file]`, associated with its visible label. Keep that input at 1px width/height, zero padding/border and zero minimum dimensions; the normal `.field` width/min-height recipe must not enlarge it or introduce page overflow. Visible file fields retain the native control recipe. Disable upload/import/export controls only for their explicit Livewire targets.
+
+**Dense inline fields:** `.compact-create-row input` and `.environment-variable-table input:not([type=checkbox])` share the Builder's dense scalar recipe: minimum 44px, 8px 12px padding, 1px `--border-strong`, 6px radius, `--surface`/`--text`. Creation inputs have minimum width 0; variable inputs have minimum width 140px and width 100%, contained by the horizontally scrolling table. Secret checkboxes retain 18px geometry. Do not leave these text/password controls with browser-default borders, heights or colors.
+
+**Composition boundary:** field-caption styles target direct labels/legends, `.label-row > label`, or `[data-template-editor-root] > label`. Exclude `.toggle-inline` and `.search-field`; do not use a descendant-wide `.field label` selector. Otherwise callback fields can turn a composed search wrapper from flex into block or change a grid argument label. Scalar field captions and their direct annotation spans retain the default recipe above.
 
 **Variants/examples:**
 
 ```blade
-<div class="field"><label for="endpoint-name">Name <span>optional</span></label>
-    <input id="endpoint-name" type="text" wire:model="name" aria-describedby="endpoint-name-help">
-    <small id="endpoint-name-help" class="field-help">Leave blank to use the derived name.</small>
-    @error('name') <p class="field-error">{{ $message }}</p> @enderror
+<div class="field control-field"><label for="endpoint-priority">Priority <span>-1000 to 1000</span></label>
+    <input id="endpoint-priority" type="number" min="-1000" max="1000" step="1" wire:model="priority" aria-describedby="priority-help @error('priority') priority-error @enderror">
+    <small id="priority-help" class="field-help">Use 0 normally. Increase it only to prefer this endpoint over an overlapping signature.</small>
+    @error('priority') <p id="priority-error" class="field-error">{{ $message }}</p> @enderror
 </div>
 <div class="field"><label for="response-body">Body</label>
     <textarea id="response-body" class="code-input compact" rows="8" spellcheck="false" wire:model="body"></textarea>
@@ -130,9 +149,9 @@ The raw curl `.curl-editor` is 184-460px, internally scrollable; `resizeEditor()
 ```blade
 <div class="rule-condition-row" wire:key="condition-{{ $response->id }}-{{ $ruleIndex }}">
     <div class="field-row three">
-        <label class="field"><span>Field type</span><select wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_type"><option value="header">Header</option><option value="query">Query</option><option value="body_json_path">Body JSON path</option></select></label>
+        <label class="field"><span>Field type</span><select class="ui-select" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_type"><option value="header">Header</option><option value="query">Query</option><option value="body_json_path">Body JSON path</option></select></label>
         <label class="field"><span>Field name</span><input type="text" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_name" placeholder="X-Mode / status / user.id"></label>
-        <label class="field"><span>Operator</span><select wire:model.live="responseRules.{{ $response->id }}.{{ $ruleIndex }}.operator">@foreach (['equals', 'contains', 'regex', 'exists'] as $operator)<option value="{{ $operator }}">{{ ucfirst($operator) }}</option>@endforeach</select></label>
+        <label class="field"><span>Operator</span><select class="ui-select" wire:model.live="responseRules.{{ $response->id }}.{{ $ruleIndex }}.operator">@foreach (['equals', 'contains', 'regex', 'exists'] as $operator)<option value="{{ $operator }}">{{ ucfirst($operator) }}</option>@endforeach</select></label>
     </div>
     <div class="field-row three">
         <label class="field"><span>Value</span><input type="text" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.value" @disabled($condition['operator'] === 'exists')></label>
@@ -190,7 +209,7 @@ The raw curl `.curl-editor` is 184-460px, internally scrollable; `resizeEditor()
 
 **Anatomy:** inline `div.segmented-control[role=group][aria-label] > button[type=button][aria-pressed]`. One underlying CSS recipe serves Weighted/Sequence/Rule-based, Static/Template, Builder/JSON, Object/List, Local/UTC and Compact/Comfortable. `.clock-toggle` adds only automatic left margin; `.density-toggle` is the preference-controller hook, not another visual component.
 
-**Classes/tokens:** max-content width capped at 100%, wrapping inline flex; 4px padding, 1px `--border-strong`, 6px radius, `--surface`. Buttons minimum 36px, padding 4px 12px, no border, 4px radius, 12px/600, `--text-muted`, transparent background.
+**Classes/tokens:** max-content width capped at 100%, wrapping inline flex; 4px padding, 1px `--border-strong`, 6px radius, `--surface`. Buttons minimum 36px (44px at <=767px), padding 4px 12px, no border, 4px radius, 12px/600, `--text-muted`, transparent background.
 
 **States:** hover enabled `--text` / `--surface-2`; selected `aria-pressed=true` uses `--text` / `--accent-subtle`, inset 1px `--accent-border`. Focus is global ring. Disabled `--disabled-fg` / `--disabled-bg`, not-allowed. Loading is owning-command disabled state, not a separate segment. Do not use `.active` as the only state signal.
 
@@ -492,20 +511,22 @@ In-app unsaved navigation uses the shared dialog. Browser reload/tab-close does 
 
 **Classes/tokens:** code-input `--code-bg` / `--code-fg`, 1px `--code-border`, 12px code font/line1.7, tab-size2; compact11.5px. Focus border `--accent-border`, `--shadow-focus`. Template pre max420px, overflow auto,12px, pre-wrap/wrap anywhere. Meta: top margin/padding8px, top1px `--code-border`, 11px `--code-muted`, gap12px. Empty preview minimum64px, centered `--code-muted`/12px. Schema builder margin-bottom16px, padding16px, 1px `--border`, 8px radius, `--bg`; <=740px padding12px. Autocomplete desired420px/max260px; options minimum40px/padding8px/6px radius, hover/selected `--surface-2`.
 
-**States:** preview Regenerate is a standard command; loading disables its command and reports status, not a faded code surface. Unsupported advanced JSON directives disable Builder with the existing disabled-tooltip wrapper/title. Selected autocomplete uses aria-selected; arrow keys move, Enter/Tab insert, Escape closes. Context/env tokens intentionally remain JSON-editor-only. No extra active/disabled code surface skin.
+**Toolbar commands:** `.code-block-heading button` is the compact code-surface variant for Copy/Regenerate: minimum36px,4px 8px padding,1px `--code-border`,4px radius, `--code-surface`/`--code-fg`,11px/600 UI font. Hover uses `--accent-border`/`--code-bg`; disabled uses `--disabled-fg`/`--disabled-bg`/`--border`. The Signature summary's `.copy-inline` is minimum44px wide/36px high,5px 8px padding,1px `--border-strong`,5px radius, `--surface`/`--text`,12px type; hover uses `--accent-border`/`--surface-2`. Both variants use minimum44px height at <=767px and the global focus ring. They are auxiliary code commands; configuration saves use the primary Button recipe.
+
+**States:** preview Regenerate uses the code toolbar command; loading disables its command for the explicit `previewTemplate` target and reports status, not a faded code surface. Unsupported advanced JSON directives disable Builder with the existing disabled-tooltip wrapper/title. Selected autocomplete uses aria-selected; arrow keys move, Enter/Tab insert, Escape closes. Context/env tokens intentionally remain JSON-editor-only. No extra active/disabled code surface skin.
 
 **Examples:**
 
 ```blade
 <div class="field template-json-field" data-template-editor-root><label for="response-template">JSON template</label><textarea id="response-template" class="code-input template-json-editor" rows="12" wire:model.live.debounce.400ms="template" data-template-editor></textarea></div>
-<div class="code-block-wrap template-preview"><div class="code-block-heading"><span>Preview</span><button type="button" wire:click="regeneratePreview">Regenerate</button></div><pre>{{ $templatePreview }}</pre></div>
+<div class="code-block-wrap template-preview"><div class="code-block-heading"><span>Preview</span><button type="button" wire:click="previewTemplate" wire:loading.attr="disabled" wire:target="previewTemplate">Regenerate</button></div><pre>{{ $previewOutput }}</pre></div>
 ```
 
 **Do/Don't:** preserve exact tokens on JSON/Builder switching; don't enable lossy Builder conversion. Use pre-wrap for preview data; don't allow a long curl or JSON string to paint outside the surface. Keep editor autocomplete keyboard behavior in template-editor; don't duplicate menu close logic.
 
 ### Revision history and diffs
 
-`resources/views/livewire/admin/revision-history.blade.php` uses the Disclosures recipe for the timeline and `.revision-diff-viewer` for comparisons. The viewer has 16px padding, 12px gaps, 1px `--border-strong`, 8px radius and `--surface-2`. Each `.revision-diff-change` has 1px `--border`, 6px radius and `--surface`. `.revision-diff-values` has two equal columns separated by 1px `--code-border`, collapsing to one at 720px. Each value uses a `pre` with `--code-bg`, `--code-fg`, 12px padding, 11px code text, 72px minimum and 320px maximum height, scrolling and wrapping. Change-kind badges use the existing semantic variants. Compare and Restore use the standard button variants; Restore must name the version in `data-confirm`. Do reuse the code surface and native confirmation; don't invent a separate diff modal or color palette.
+`resources/views/livewire/admin/revision-history.blade.php` uses the Disclosures recipe for the timeline and `.revision-diff-viewer` for comparisons. The viewer has 16px padding, 12px gaps, 1px `--border-strong`, 8px radius and `--surface-2`. Each `.revision-diff-change` has 1px `--border`, 6px radius and `--surface`. `.revision-diff-values` has two equal columns separated by 1px `--code-border`, collapsing to one at 720px. Each value uses a `pre` with `--code-bg`, `--code-fg`, 12px padding, 11px code text, 72px minimum and 320px maximum height, scrolling and wrapping. Change-kind badges use the existing semantic variants. Compare and Restore use the standard button variants; Restore must name the version in `data-confirm`. Do reuse the code surface and shared app confirmation; don't invent a separate diff modal or color palette.
 
 ```blade
 <livewire:admin.revision-history entity-type="endpoint" :entity-id="$endpointId" :key="'endpoint-history-'.$endpointId" />
@@ -669,7 +690,7 @@ In-app unsaved navigation uses the shared dialog. Browser reload/tab-close does 
 
 ## Validation and coverage
 
-**Purpose:** make drift detectable without claiming tests prove every visual property. **Anatomy:** `scripts/validate_design_tokens.py`, `tests/Frontend/ui-reference.test.mjs`, `tests/Browser/editor-consistency-smoke.mjs`, `tests/Browser/layout-smoke.mjs`.
+**Purpose:** make drift detectable without claiming tests prove every visual property. **Anatomy:** `scripts/validate_design_tokens.py`, `tests/Frontend/ui-reference.test.mjs`, `tests/Frontend/ui-primitives.test.mjs`, `tests/Browser/ui-guide-audit.mjs`, `tests/Browser/editor-consistency-smoke.mjs`, `tests/Browser/layout-smoke.mjs`.
 
 The Python validator scans CSS/JS/Blade for hex/rgb/hsl literals outside tokens.css and non-token font declarations. It checks 20 declared text foreground/background pairs at >=4.5:1 and 11 declared border/focus/semantic pairs at >=3:1 in both themes. It does **not** validate every contrast pairing, alpha-composited colors, every token reference, spacing, radii, height, class usage, documentation accuracy, layout or stacking. The reference tests compare token-table values to tokens.css and verify named selector/component sources. Browser assertions cover 999/1000/1001/1024/1440/390px, short viewports, response validity, disclosures, fixed offsets, menu bounds/top layer, dialog layering, toast removal/pause and template preview isolation. These are focused regressions, not exhaustive visual proof.
 
@@ -684,6 +705,8 @@ MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/layout-smoke.mjs
 ```
 
 **States/variants:** both Light and Dark are mandatory; failure is not a disabled warning state. Use a dedicated browser fixture database only.
+
+The application-wide audit checks registry/pagination, logs and details, import review, environment management, documentation, create/edit tabs, every Builder field type, rule/callback settings, history/diff and standalone login/error shells. Native select recipes, accessible control names, menu/disclosure semantics, segmented states, radio geometry, table scopes and horizontal containment are checked at responsive widths in both themes. Mutation observers restore disclosure/menu ARIA state after Livewire removes attributes; setters compare before writing to prevent observer loops. Native OS menu internals and every possible content/animation combination remain outside this automated coverage.
 
 **Do/Don't:** run actual test workers and inspect browser errors; don't report only source loading as tests passing. Disclose blocked Docker image validation; don't infer it from local PHP tests. Update reference/tests with new shared behavior; don't leave a guide that names nonexistent classes.
 
@@ -704,3 +727,71 @@ MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/layout-smoke.mjs
 ```
 
 **Do/Don't:** reuse the existing name property; don't introduce a second stored title. Keep the visible edit affordance and accessible labels; don't require a precise icon click. Save only the title on acceptance; don't accidentally persist other drafts. Keep fallback help visible only while editing; don't restore a permanent Name helper paragraph.
+
+
+## Pagination
+
+**Purpose:** navigate registry result pages; filter selects change the result set rather than its page.
+
+**Anatomy:** `resources/views/components/pagination.blade.php`, passed through `$endpoints->links('components.pagination')` from EndpointIndex. `.pagination-nav > .pagination-summary + .pagination-controls`. It uses Livewire previousPage/nextPage/gotoPage with the paginator’s real page name; the framework Tailwind view is retired because MockDeck does not load Tailwind.
+
+**Classes/tokens:** flex/wrap,12px gap; summary `--text-muted`/12px. Controls8px gap, Secondary/small buttons. `.pagination-current`:38px minimum width/height,7px12px padding,1px `--accent`,6px radius, `--accent`/`--on-accent`,13px/600;44px minimum height on mobile. Ellipsis `--text-muted`.
+
+**States:** current page is a noninteractive span with aria-current=page; first/last disable Previous/Next; loading disables only pagination through explicit wire:target. Hover/focus/disabled use the Button recipe. No animated page transition or custom spinner.
+
+**Example:**
+```blade
+<div class="pagination-wrap">{{ $endpoints->links('components.pagination') }}</div>
+```
+**Do/Don't:** preserve all numbered-page and next/previous actions; don’t substitute an unstyled framework view. Label every numbered button; don’t show a selected page as an enabled action. Wrap controls on narrow screens; don’t widen the page.
+
+## Search fields
+
+**Purpose:** compact search/filter input with a search affordance; use a labelled Form field for editable configuration.
+
+**Anatomy:** `label.search-field > .sr-only + svg[aria-hidden=true] + input[type=search]`. The same SVG path is used in registry, request/callback logs and Faker; 20px in the registry, 18px in logs/Faker. Faker search uses aria-label=Search Faker methods instead of an additional hidden caption.
+
+**Classes/tokens:** default min-height40px/min-width210px,padding0 12px,gap10px,1px `--border`,6px radius, `--bg`/`--text-muted`. Input width100%,border0,transparent, `--text`; placeholder `--placeholder`. Log/Faker sizing follows their container; it does not introduce another input perimeter.
+
+**States:** hover `--border-strong`; focus-within `--accent`, `--surface`, `--shadow-focus`. Native clear control retained. Debounce/loading belongs to the owning component; input contents stay visible.
+
+**Example:**
+```blade
+<label class="search-field"><span class="sr-only">Search endpoints</span>
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <input type="search" wire:model.live.debounce.250ms="search" placeholder="Search endpoints…">
+</label>
+```
+**Do/Don't:** name the field independently of its placeholder; don’t use an aria-hidden search glyph as its name. Put the focus treatment on the wrapper; don’t nest two visible field borders.
+
+## Empty and loading states
+
+**Purpose:** explain an empty result or an in-flight request; validation belongs to Banners and callouts.
+
+**Anatomy:** `.empty-state.card` with optional `.empty-illustration`,h3,p,.empty-actions; `.mini-empty-state` inside existing panels. Endpoint loading uses `.skeleton-list > .skeleton-row` plus sr-only Loading endpoints text; inline actions use `.loading-label`/`.spinner`.
+
+**Classes/tokens:** standard empty padding74px24px; small44px20px; heading14px, muted body max470px. Illustration62px circle,accent border/subtle fill/code text. Mini min-height130px,padding22px,gap7px, muted text and18px heading. Skeleton min-height72px,1pxborder,8px radius,surface-2/skeleton-highlight gradient. Spinner16px,2pxborder withaccent top.
+
+**States:** skeleton1.4s infinite and spinner.8s linear are explicit feedback-duration exceptions; prefers-reduced-motion suppresses animation. Empty states have no hover/selected/disabled skin; contained actions use Buttons. Empty filtered registries offer Clear filters; empty callbacks direct to Response.
+
+**Example:**
+```blade
+<div class="empty-state card"><h3>No endpoints match these filters</h3><p>Try a different search.</p><button class="button button-secondary" type="button" wire:click="clearFilters">Clear filters</button></div>
+```
+**Do/Don't:** distinguish empty configuration from empty search; don’t imply data was deleted. Keep loading text accessible; don’t rely only on animation. Use existing variants; don’t invent a page-specific empty-state palette.
+
+## Environment and documentation navigation
+
+**Purpose:** choose an environment editor or jump to guide sections; use Tabs to change endpoint configuration panels.
+
+**Anatomy:** `.environment-list-items > button` in EnvironmentManager; `.docs-toc > li > a` inside the Documentation card. Environment list selection remains a command and receives aria-pressed. Documentation links are normal in-page anchors.
+
+**Classes/tokens:** environment list padding12px,rows min52px,padding8px,gap8px,1pxtransparentborder,6pxradius, transparentfill; selected/hover accent-border/accent-subtle. Name text normal; count muted. Its desktop sticky top is measured site-nav-height plus8px, and it becomes static <=740px. Docs cards16px padding; grid24px gap; ToC two columns/32px gap, one column on mobile; links text withaccent-border underline.
+
+**States:** selected environment uses active class and aria-pressed=true. Keyboard focus uses the global ring; loading does not change row semantics. Docs anchors use standard focus; there is no separate active nav skin.
+
+**Example:**
+```blade
+<button type="button" wire:click="selectEnvironment({{ $environment->id }})" aria-pressed="{{ $environment->id === $selectedEnvironmentId ? 'true' : 'false' }}" @class(['active' => $environment->id === $selectedEnvironmentId])>{{ $environment->name }}</button>
+```
+**Do/Don't:** keep selected and globally active environment meanings distinct; don’t use a checkmark for both. Reuse card/typography tokens; don’t add route-specific heading offsets. Use document anchors for long reference content; don’t turn documentation into endpoint-style stateful tabs.

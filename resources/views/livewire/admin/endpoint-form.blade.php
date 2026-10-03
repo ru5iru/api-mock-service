@@ -75,7 +75,7 @@
                 <div class="organization-grid">
                     <div class="field">
                         <label for="endpoint-collection">Collection</label>
-                        <select id="endpoint-collection" wire:model="collectionId">
+                        <select class="ui-select" id="endpoint-collection" wire:model="collectionId">
                             <option value="">No collection</option>
                             @foreach ($collections as $endpointCollection)<option value="{{ $endpointCollection->id }}">{{ $endpointCollection->name }}</option>@endforeach
                         </select>
@@ -118,7 +118,7 @@
                                     <tr>
                                         <th scope="row">{{ $environment->name }} @if($environment->is_default)<x-badge>Default</x-badge>@endif</th>
                                         <td>
-                                            <select wire:model="environmentOverrides.{{ $environment->id }}" aria-label="{{ $environment->name }} override">
+                                            <select class="ui-select" wire:model="environmentOverrides.{{ $environment->id }}" aria-label="{{ $environment->name }} override">
                                                 <option value="">Inherit endpoint state</option>
                                                 <option value="1">Allow when endpoint is enabled</option>
                                                 <option value="0">Force disabled</option>

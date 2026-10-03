@@ -12,7 +12,7 @@
             <p class="field-help">Unsaved selection draft. <x-help-tip title="Saving selection" label="Save selection applies this mode and order. Save changes also saves these drafts. Weighted is the default mode." /></p>
             @if ($selectionMode === 'sequence')
                 <label class="field" for="sequence-on-exhaust"><span>On exhaust</span>
-                    <select id="sequence-on-exhaust" wire:model.live="sequenceOnExhaust">
+                    <select class="ui-select" id="sequence-on-exhaust" wire:model.live="sequenceOnExhaust">
                         <option value="repeat_last">Repeat last</option><option value="loop">Loop</option><option value="not_found">Not found</option>
                     </select>
                 </label>
@@ -74,7 +74,7 @@
                     <details class="overflow-menu" data-menu>
                         <summary aria-label="More actions for response {{ $response->id }}">•••</summary>
                         <div>
-                    <button class="icon-button" type="button" x-on:click="switchTab('callback')" wire:click="editCallback({{ $response->id }})" aria-label="Configure callback for response {{ $response->id }}">Callback</button>
+                    <button type="button" x-on:click="switchTab('callback')" wire:click="editCallback({{ $response->id }})" aria-label="Configure callback for response {{ $response->id }}">Callback</button>
                     <button class="danger-text" type="button" wire:click="delete({{ $response->id }})" data-confirm-title="Confirm response action" data-confirm="Delete response #{{ $response->id }} (HTTP {{ $response->status_code }}) from this endpoint? {{ $selectionMode === 'rule' && $response->is_default ? 'It is the saved fallback: deletion will be blocked until you select and save another fallback.' : 'It will no longer be available for matching requests.' }}">Delete</button>
 
                         </div>
@@ -100,9 +100,9 @@
                             @foreach ($responseRules[$response->id] ?? [] as $ruleIndex => $condition)
                                 <div class="rule-condition-row" wire:key="condition-{{ $response->id }}-{{ $ruleIndex }}">
                                     <div class="field-row three">
-                                        <label class="field"><span>Field type</span><select wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_type"><option value="header">Header</option><option value="query">Query</option><option value="body_json_path">Body JSON path</option></select></label>
+                                        <label class="field"><span>Field type</span><select class="ui-select" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_type"><option value="header">Header</option><option value="query">Query</option><option value="body_json_path">Body JSON path</option></select></label>
                                         <label class="field"><span>Field name</span><input type="text" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_name" placeholder="X-Mode / status / user.id"></label>
-                                        <label class="field"><span>Operator</span><select wire:model.live="responseRules.{{ $response->id }}.{{ $ruleIndex }}.operator">@foreach (['equals', 'contains', 'regex', 'exists'] as $operator)<option value="{{ $operator }}">{{ ucfirst($operator) }}</option>@endforeach</select></label>
+                                        <label class="field"><span>Operator</span><select class="ui-select" wire:model.live="responseRules.{{ $response->id }}.{{ $ruleIndex }}.operator">@foreach (['equals', 'contains', 'regex', 'exists'] as $operator)<option value="{{ $operator }}">{{ ucfirst($operator) }}</option>@endforeach</select></label>
                                     </div>
                                     <div class="field-row three">
                                         <label class="field"><span>Value</span><input type="text" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.value" @disabled($condition['operator'] === 'exists')></label>
@@ -218,7 +218,7 @@
             <div class="field-row three template-options">
                 <div class="field">
                     <label for="template-locale">Locale</label>
-                    <select id="template-locale" wire:model.live="locale">
+                    <select class="ui-select ui-select-dense" id="template-locale" wire:model.live="locale">
                         @foreach ($templateLocales as $availableLocale)
                             <option value="{{ $availableLocale }}">{{ $availableLocale }}</option>
                         @endforeach
@@ -226,7 +226,7 @@
                 </div>
                 <div class="field">
                     <label for="template-seed-mode">Seed</label>
-                    <select id="template-seed-mode" wire:model.live="seedMode">
+                    <select class="ui-select ui-select-dense" id="template-seed-mode" wire:model.live="seedMode">
                         <option value="random">Random</option>
                         <option value="fixed">Fixed</option>
                         <option value="request">Request signature</option>
@@ -262,7 +262,7 @@
                         <div class="builder-root-count">
                             <label class="select-field">
                                 <span class="select-caption">Count</span>
-                                <select wire:model.live="builderSchema.count_mode">
+                                <select class="ui-select ui-select-dense" wire:model.live="builderSchema.count_mode">
                                     <option value="fixed">Fixed</option>
                                     <option value="range">Min–max</option>
                                 </select>

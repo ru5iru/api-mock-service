@@ -9,7 +9,7 @@
 
         <div class="environment-list-items">
             @foreach ($environments as $environment)
-                <button type="button" wire:click="selectEnvironment({{ $environment->id }})" @class(['active' => $environment->id === $selectedEnvironmentId])>
+                <button type="button" wire:click="selectEnvironment({{ $environment->id }})" aria-pressed="{{ $environment->id === $selectedEnvironmentId ? 'true' : 'false' }}" @class(['active' => $environment->id === $selectedEnvironmentId])>
                     <span><strong>{{ $environment->name }}</strong><small>{{ $environment->variables_count }} {{ Str::plural('variable', $environment->variables_count) }}</small></span>
                     <span>
                         @if ($environment->id === $activeEnvironmentId)<x-badge variant="success">Active</x-badge>@endif
@@ -37,17 +37,17 @@
                     <span>Name</span>
                     <input type="text" wire:model="renameEnvironment">
                 </label>
-                <button class="button button-secondary" type="button" wire:click="renameSelected">Save name</button>
+                <button class="button button-primary" type="button" wire:click="renameSelected" wire:loading.attr="disabled" wire:target="renameSelected">Save name</button>
             </div>
             @error('renameEnvironment') <p class="field-error">{{ $message }}</p> @enderror
 
-            <details class="normalized-details danger-zone">
+            <details class="normalized-details danger-zone" data-disclosure>
                 <summary><span class="details-chevron" aria-hidden="true">›</span> Delete environment</summary>
                 <p>Deleting the active or default environment requires a replacement. Endpoints are not deleted.</p>
                 <div class="inline-edit-row">
                     <label class="field">
                         <span>Replacement</span>
-                        <select wire:model="replacementEnvironmentId">
+                        <select class="ui-select" wire:model="replacementEnvironmentId">
                             <option value="">Choose when required</option>
                             @foreach ($environments->where('id', '!=', $selectedEnvironmentId) as $environment)
                                 <option value="{{ $environment->id }}">{{ $environment->name }}</option>
@@ -72,7 +72,7 @@
                                 <td><input aria-label="Variable key" type="text" wire:model="variableDrafts.{{ $variable->id }}.key">@error('variableDrafts.'.$variable->id.'.key')<span class="field-error">{{ $message }}</span>@enderror</td>
                                 <td><input aria-label="Variable value" type="{{ $variable->is_secret ? 'password' : 'text' }}" wire:model="variableDrafts.{{ $variable->id }}.value" placeholder="{{ $variable->is_secret ? '•••••••• · leave blank to keep' : '' }}" autocomplete="off">@error('variableDrafts.'.$variable->id.'.value')<span class="field-error">{{ $message }}</span>@enderror</td>
                                 <td><input aria-label="Secret variable" type="checkbox" wire:model="variableDrafts.{{ $variable->id }}.is_secret"></td>
-                                <td><div class="row-actions"><button class="button button-secondary button-small" type="button" wire:click="saveVariable({{ $variable->id }})">Save</button><button class="icon-button danger" type="button" wire:click="deleteVariable({{ $variable->id }})" data-confirm-title="Confirm environment action" data-confirm="Delete {{ $variable->key }}?">Delete</button></div></td>
+                                <td><div class="row-actions"><button class="button button-primary button-small" type="button" wire:click="saveVariable({{ $variable->id }})" wire:loading.attr="disabled" wire:target="saveVariable({{ $variable->id }})">Save</button><button class="icon-button danger" type="button" wire:click="deleteVariable({{ $variable->id }})" data-confirm-title="Confirm environment action" data-confirm="Delete {{ $variable->key }}?">Delete</button></div></td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="empty-table">No variables in this environment.</td></tr>

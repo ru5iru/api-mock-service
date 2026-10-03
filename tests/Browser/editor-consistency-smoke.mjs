@@ -126,6 +126,35 @@ try {
                 return el.contains(document.elementFromPoint(box.left + 12, box.top + 12));
             });
             assert.equal(hit, true, 'Picker is trapped below another stacking context');
+            const panel = picker.locator('.faker-picker-panel');
+            // A prior constrained placement must not become the next natural height.
+            await panel.evaluate(el => {
+                el.style.maxHeight = '110px';
+                const anchor = el.closest('[data-faker-picker]').querySelector('summary');
+                for (let i = 0; i < 20; i++) window.MockDeckPanels.position(anchor, el);
+            });
+            assert.ok((await panel.boundingBox()).height >= box.height - 1, 'Repeated placement progressively shrinks the picker');
+            const list = panel.locator('.faker-options');
+            const listBox = await list.boundingBox();
+            await page.mouse.move(listBox.x + listBox.width / 2, listBox.y + listBox.height / 2);
+            for (let i = 0; i < 4; i++) {
+                await page.mouse.wheel(0, 80);
+                await page.waitForTimeout(80);
+                assert.ok((await panel.boundingBox()).height >= box.height - 1, 'Scrolling methods shrinks the picker');
+                assert.equal(await picker.evaluate(el => el.open), true, 'Scrolling methods closes the picker');
+            }
+            const originalScroll = await page.locator('[data-editor-viewport]').evaluate(el => el.scrollTop);
+            await list.evaluate(el => el.scrollTop = el.scrollHeight);
+            await page.mouse.wheel(0, 800);
+            await page.waitForTimeout(120);
+            assert.equal(await page.locator('[data-editor-viewport]').evaluate(el => el.scrollTop), originalScroll, 'Method list scroll chains into the editor');
+            assert.equal(await picker.evaluate(el => el.open), true, 'Picker disappears at the end of its method list');
+            for (const delta of [20, -20, 0]) {
+                await page.locator('[data-editor-viewport]').evaluate((el, y) => el.scrollTop = y, originalScroll + delta);
+                await page.waitForTimeout(100);
+                assert.equal(await picker.evaluate(el => el.open), true, 'Visible anchored picker disappears on page scroll');
+            }
+            assert.ok((await panel.boundingBox()).height >= box.height - 1, 'Picker does not recover its height after scrolling');
             await page.keyboard.press('Escape');
         }
         await page.setViewportSize({ width: 1024, height: 600 });

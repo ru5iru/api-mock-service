@@ -11,16 +11,16 @@
             <div class="export-scope-grid">
                 <label class="field">
                     <span class="sr-only">Export scope</span>
-                    <select wire:model.live="exportScope">
+                    <select class="ui-select" wire:model.live="exportScope">
                         <option value="all">All endpoints</option>
                         <option value="collection">One collection</option>
                         <option value="environment">One environment</option>
                     </select>
                 </label>
                 @if ($exportScope === 'collection')
-                    <label class="field"><span class="sr-only">Collection</span><select wire:model="exportCollectionId"><option value="">Choose collection</option>@foreach($collections as $collection)<option value="{{ $collection->id }}">{{ $collection->name }} ({{ $collection->endpoints_count }})</option>@endforeach</select></label>
+                    <label class="field"><span class="sr-only">Collection</span><select class="ui-select" wire:model="exportCollectionId"><option value="">Choose collection</option>@foreach($collections as $collection)<option value="{{ $collection->id }}">{{ $collection->name }} ({{ $collection->endpoints_count }})</option>@endforeach</select></label>
                 @elseif ($exportScope === 'environment')
-                    <label class="field"><span class="sr-only">Environment</span><select wire:model="exportEnvironmentId"><option value="">Choose environment</option>@foreach($environments as $environment)<option value="{{ $environment->id }}">{{ $environment->name }}</option>@endforeach</select></label>
+                    <label class="field"><span class="sr-only">Environment</span><select class="ui-select" wire:model="exportEnvironmentId"><option value="">Choose environment</option>@foreach($environments as $environment)<option value="{{ $environment->id }}">{{ $environment->name }}</option>@endforeach</select></label>
                 @endif
             </div>
             @if ($exportScope === 'environment')
@@ -108,11 +108,11 @@
 
             <div class="form-actions transfer-actions">
                 <span class="disabled-tooltip" title="{{ $selectedEndpointUuids === [] ? 'Select at least one endpoint to enable this export.' : '' }}">
-                    <button class="button button-secondary" type="button" wire:click="exportSelected" wire:loading.attr="disabled" @disabled($selectedEndpointUuids === [])>
+                    <button class="button button-secondary" type="button" wire:click="exportSelected" wire:loading.attr="disabled" wire:target="exportSelected" @disabled($selectedEndpointUuids === [])>
                         Export {{ count($selectedEndpointUuids) }} selected
                     </button>
                 </span>
-                <button class="button button-primary" type="button" wire:click="exportAll" wire:loading.attr="disabled" @disabled($endpointTotal === 0 || ($exportScope === 'collection' && $exportCollectionId === '') || ($exportScope === 'environment' && $exportEnvironmentId === '')) title="{{ $endpointTotal === 0 ? 'Create an endpoint before exporting.' : '' }}">
+                <button class="button button-primary" type="button" wire:click="exportAll" wire:loading.attr="disabled" wire:target="exportAll" @disabled($endpointTotal === 0 || ($exportScope === 'collection' && $exportCollectionId === '') || ($exportScope === 'environment' && $exportEnvironmentId === '')) title="{{ $endpointTotal === 0 ? 'Create an endpoint before exporting.' : '' }}">
                     Export all
                 </button>
             </div>
@@ -236,8 +236,8 @@
             @endif
 
             @if ($plan['items'] !== [])
-                <details class="import-items" open>
-                    <summary>Review {{ count($plan['items']) }} {{ Str::plural('item', count($plan['items'])) }}</summary>
+                <details class="import-items" data-disclosure open>
+                    <summary><span class="details-chevron" aria-hidden="true">›</span>Review {{ count($plan['items']) }} {{ Str::plural('item', count($plan['items'])) }}</summary>
                     <div class="table-scroll">
                         <table class="log-table import-table">
                             <thead><tr><th scope="col">Endpoint</th><th scope="col">Action</th><th scope="col">Signature</th><th scope="col">Reason</th></tr></thead>

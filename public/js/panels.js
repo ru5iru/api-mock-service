@@ -31,6 +31,10 @@
         const below = Math.max(0, floor - rect.bottom - gap);
         const above = Math.max(0, rect.top - ceiling - gap);
         const limit = parseFloat(panel.dataset.panelHeight) || 420;
+        // Measure unconstrained content, not the previous placement's clipped flex layout.
+        // Set the target width first so wrapped content is measured at its actual width.
+        panel.style.width = `${width}px`;
+        panel.style.maxHeight = `${limit}px`;
         const natural = Math.min(panel.scrollHeight || limit, limit);
         const down = below >= natural || below >= above;
         const available = down ? below : above;
