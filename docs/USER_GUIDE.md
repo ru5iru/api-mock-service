@@ -53,8 +53,8 @@ Keyboard shortcuts are ignored while typing in a form control:
 1. Select **New endpoint**.
 2. Replace the example with one complete absolute HTTP or HTTPS cURL command.
 3. Review the parsed method, URL, query, headers, cookies, and body. MockDeck parses text and never executes the pasted command.
-4. Set the endpoint name, enabled state, and integer priority.
-5. Choose a matching policy:
+4. Click the page title to set an optional name; Enter or blur accepts, Escape cancels, and clearing it restores the derived method/path. Set enabled state and integer priority in **Request**.
+5. Open **Matching** and choose a matching policy:
    - include meaningful headers;
    - ignore `Cookie`;
    - ignore configured authentication headers;
@@ -62,6 +62,8 @@ Keyboard shortcuts are ignored while typing in a form control:
    - ignore all headers.
 6. Review the canonical request, signature variant, and SHA-256 hash.
 7. Save the endpoint and configure at least one response.
+
+Request, Matching, Response, and Callback are separate tabs. Switching keeps unsaved edits in the current editor session and does not scroll the document. Request and Matching share the Signature sidebar; Response and Callback retain a compact method/path strip. The tabs stick below the main navigation, and the save bar stays at the viewport bottom with the scrolling panel ending above it. **Save changes** saves request settings and response/selection/callback drafts, including drafts held for another response. **Cancel edit** discards the selected response draft; navigating away asks before discarding unsaved work. The header's **History** button opens endpoint versions from every tab.
 
 Authentication is ignored by default for newly created endpoints. Transport metadata such as `Host`, `Content-Length`, `User-Agent`, `Accept`, `Connection`, and `X-Request-ID` is always excluded because clients and proxies can change it.
 
@@ -392,7 +394,7 @@ Revision summaries are intentionally short (for example, `renamed`, `priority 0�
 
 ## 16. Asynchronous callbacks
 
-Each saved response can send an independent HTTP request after its normal mock response has already been sent. Open the response editor's collapsed **Callback** section, enable it, enter an absolute HTTP(S) URL and select POST, PUT, PATCH, or DELETE. Add a JSON object of request headers and a JSON response template for the callback body. The main response's status, body, and latency do not depend on callback delivery.
+Each saved response can send an independent HTTP request after its normal mock response has already been sent. Open the endpoint's **Callback** tab and select a response's **Enable callback** or **Edit callback** action. Enter an absolute HTTP(S) URL and select POST, PUT, PATCH, or DELETE. Add a JSON object of request headers and a JSON response template for the callback body. **Save callback** applies these settings without saving unrelated response edits. The main response's status, body, and latency do not depend on callback delivery. Add a response in the **Response** tab first if the list is empty.
 
 The callback runs in a dedicated background worker (`docker compose ps callback-worker`); stopped workers leave new jobs queued. Choose a fixed minimum delay, or set a larger maximum for a random range (up to 30 seconds). **Max attempts** includes the first delivery (1–5 total); non-2xx HTTP responses and network errors retry until the first success or this limit, waiting the configured backoff between attempts. Each attempt has a hard 100–10,000 ms timeout. Redirects do not count as success and are not followed automatically.
 
@@ -513,3 +515,11 @@ The selection preview lists the ordered conditions and fallback badge. Missing f
 Selection fields and conditions are configuration and are versioned. Restoring an older sequence position shifts sibling response positions with rollback revisions; restoring a fallback can clear the sibling fallback with a revision. Invalid rule configuration restores are rejected atomically. Pre-Wave-1 endpoint snapshots default to Weighted and pre-Wave-1 response snapshots default to no rules. Counters/positions are runtime state and are never restored by history.
 
 Current native exports use 1.3 and include modes, order, default flags, and conditions. Old 1–1.2 files retain Weighted behavior. New imports and clones have no call state until matched; upserts preserve destination runtime state. No verification/assertion API is added in this wave.
+
+### Saving endpoint and response drafts
+
+On an existing endpoint, **Save changes** saves edited response fields and selection drafts before saving the endpoint and navigating. An untouched Add response form does not create another response. **Add response** / **Update response** and **Save selection** remain available to save their respective sections directly. Validation errors keep the page and drafts visible; correct the inline message and retry. Response/selection saves occur before the endpoint save, so an endpoint validation error can leave those sections saved while the endpoint still needs correction.
+
+### Finding callback configuration
+
+Open an existing endpoint's **Callback** tab, then choose **Enable callback** or **Edit callback** on its compact response row. The selected response opens Delivery settings; expand **Retry policy** and **Signing** for secondary settings. Save with **Save callback** or the global **Save changes**. The Response tab contains status, weight, delay, headers and body only. Add a saved response first if the callback list is empty. The response row's overflow menu also offers a shortcut to its callback settings.

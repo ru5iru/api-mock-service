@@ -10,8 +10,8 @@ test('environment switcher and tag chips reuse documented UI primitives', () => 
     const switcher = read('resources/views/livewire/admin/environment-switcher.blade.php');
     const endpointIndex = read('resources/views/livewire/admin/endpoint-index.blade.php');
 
-    assert.match(guide, /### Environment switcher/);
-    assert.match(guide, /`\.tag-chip`/);
+    assert.match(guide, /environment menu: `resources\/views\/livewire\/admin\/environment-switcher.blade.php`/);
+    assert.match(guide, /`\.tag-chip.selectable`/);
     assert.match(layout, /livewire:admin\.environment-switcher/);
     assert.match(layout, /js\/menu\.js/);
     assert.match(switcher, /data-environment-option/);

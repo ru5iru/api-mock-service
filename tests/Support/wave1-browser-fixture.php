@@ -14,7 +14,9 @@ require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
-MockEndpoint::query()->where('name', 'Wave 1 browser fixture')->get()->each->delete();
+MockEndpoint::query()->where('name', 'Wave 1 browser fixture')
+    ->orWhere('raw_curl', "curl 'https://api.example.test/wave1-browser'")
+    ->get()->each->delete();
 $endpoint = MockEndpoint::factory()->create([
     'name' => 'Wave 1 browser fixture',
     'raw_curl' => "curl 'https://api.example.test/wave1-browser'",

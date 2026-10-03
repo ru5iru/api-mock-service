@@ -20,7 +20,7 @@
         <div class="toolbar-controls">
             <label class="select-field">
                 <span class="select-caption">Method</span>
-                <select wire:model.live="method" aria-label="Filter by method">
+                <select class="ui-select ui-select-filter" wire:model.live="method" aria-label="Filter by method">
                     <option value="">All methods</option>
                     @foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as $option)
                         <option value="{{ $option }}">{{ $option }}</option>
@@ -29,7 +29,7 @@
             </label>
             <label class="select-field">
                 <span class="select-caption">State</span>
-                <select wire:model.live="state" aria-label="Filter by state">
+                <select class="ui-select ui-select-filter" wire:model.live="state" aria-label="Filter by state">
                     <option value="all">Any state</option>
                     <option value="enabled">Enabled</option>
                     <option value="disabled">Disabled</option>
@@ -37,7 +37,7 @@
             </label>
             <label class="select-field sort-field">
                 <span class="select-caption">Sort</span>
-                <select wire:model.live="sort" aria-label="Sort endpoints">
+                <select class="ui-select ui-select-filter" wire:model.live="sort" aria-label="Sort endpoints">
                     <option value="recent">Recently updated</option>
                     <option value="name">Name</option>
                     <option value="priority">Priority</option>
@@ -45,7 +45,7 @@
             </label>
             <label class="select-field">
                 <span class="select-caption">Collection</span>
-                <select wire:model.live="collection" aria-label="Filter by collection">
+                <select class="ui-select ui-select-filter" wire:model.live="collection" aria-label="Filter by collection">
                     <option value="all">All collections</option>
                     <option value="none">No collection</option>
                     @foreach ($collections as $endpointCollection)
@@ -82,7 +82,7 @@
             <div class="selection-actions">
                 <label class="select-field bulk-select">
                     <span class="sr-only">Move selected endpoints to collection</span>
-                    <select wire:model="bulkCollection" aria-label="Collection for selected endpoints">
+                    <select class="ui-select ui-select-bulk" wire:model="bulkCollection" aria-label="Collection for selected endpoints">
                         <option value="">No collection</option>
                         @foreach ($collections as $endpointCollection)<option value="{{ $endpointCollection->id }}">{{ $endpointCollection->name }}</option>@endforeach
                     </select>
@@ -102,7 +102,7 @@
                 <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(true)">Enable</button>
                 <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(false)">Disable</button>
                 <button class="button button-secondary button-small" type="button" wire:click="bulkExport">Export</button>
-                <button class="button button-danger button-small" type="button" wire:click="bulkDelete" wire:confirm="Delete {{ count($selected) }} selected endpoints and all of their configured responses? This cannot be undone.">Delete</button>
+                <button class="button button-danger button-small" type="button" wire:click="bulkDelete" data-confirm-title="Delete endpoint" data-confirm="Delete {{ count($selected) }} selected endpoints and all of their configured responses? This cannot be undone.">Delete</button>
                 <button class="text-button" type="button" wire:click="clearSelection">Clear</button>
             </div>
         </div>
@@ -216,7 +216,7 @@
                                 <button type="button" wire:click="duplicate({{ $endpoint->id }})">Duplicate</button>
                                 <button class="danger-text" type="button"
                                         wire:click="delete({{ $endpoint->id }})"
-                                        wire:confirm="Delete {{ $endpoint->displayName() }} and all {{ $endpoint->responses_count }} configured responses? This cannot be undone.">
+                                        data-confirm-title="Delete endpoint" data-confirm="Delete {{ $endpoint->displayName() }} and all {{ $endpoint->responses_count }} configured responses? This cannot be undone.">
                                     Delete
                                 </button>
                             </div>
@@ -243,6 +243,6 @@
     </div>
 
     @if ($endpoints->hasPages())
-        <div class="pagination-wrap">{{ $endpoints->links() }}</div>
+        <div class="pagination-wrap">{{ $endpoints->links('components.pagination') }}</div>
     @endif
 </div>

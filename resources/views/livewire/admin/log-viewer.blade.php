@@ -53,7 +53,7 @@
             <div class="log-filters">
                 <label class="select-field">
                     <span class="select-caption">Method</span>
-                    <select wire:model.live="method" aria-label="Filter by method">
+                    <select class="ui-select ui-select-filter" wire:model.live="method" aria-label="Filter by method">
                         <option value="">All methods</option>
                         @foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as $option)
                             <option value="{{ $option }}">{{ $option }}</option>
@@ -62,7 +62,7 @@
                 </label>
                 <label class="select-field">
                     <span class="select-caption">Match</span>
-                    <select wire:model.live="match" aria-label="Filter by match type">
+                    <select class="ui-select ui-select-filter" wire:model.live="match" aria-label="Filter by match type">
                         <option value="all">All match types</option>
                         <option value="hash">Exact hash</option>
                         <option value="fallback">Fallback</option>
@@ -71,7 +71,7 @@
                 </label>
                 <label class="select-field endpoint-filter">
                     <span class="select-caption">Endpoint</span>
-                    <select
+                    <select class="ui-select ui-select-filter"
                         wire:model.live="endpoint"
                         aria-label="Filter by endpoint"
                         title="{{ $endpoint === 'all' ? 'All endpoints' : ($filterEndpoints->firstWhere('id', (int) $endpoint)?->displayName() ?? 'Selected endpoint') }}"
@@ -84,7 +84,7 @@
                 </label>
                 <label class="select-field">
                     <span class="select-caption">Status</span>
-                    <select wire:model.live="status" aria-label="Filter by HTTP status">
+                    <select class="ui-select ui-select-filter" wire:model.live="status" aria-label="Filter by HTTP status">
                         <option value="all">All statuses</option>
                         <option value="2xx">2xx</option>
                         <option value="3xx">3xx</option>
@@ -94,7 +94,7 @@
                 </label>
                 <label class="select-field">
                     <span class="select-caption">Range</span>
-                    <select wire:model.live="timeRange" aria-label="Filter by time range">
+                    <select class="ui-select ui-select-filter" wire:model.live="timeRange" aria-label="Filter by time range">
                         <option value="15m">Last 15 minutes</option>
                         <option value="1h">Last hour</option>
                         <option value="24h">Last 24 hours</option>
@@ -103,7 +103,7 @@
                 </label>
                 <label class="select-field select-field-compact">
                     <span class="select-caption">Show</span>
-                    <select wire:model.live="limit" aria-label="Number of request log rows">
+                    <select class="ui-select ui-select-filter" wire:model.live="limit" aria-label="Number of request log rows">
                         <option value="10">10</option>
                         <option value="25">25</option>
                         <option value="50">50</option>
@@ -121,11 +121,11 @@
                     <input type="checkbox" wire:model.live="groupRepeats">
                     <span>Group repeats</span>
                 </label>
-                <div class="clock-toggle" role="group" aria-label="Timestamp display">
-                    <button class="{{ $clock === 'local' ? 'active' : '' }}" type="button" wire:click="$set('clock', 'local')">Local</button>
-                    <button class="{{ $clock === 'utc' ? 'active' : '' }}" type="button" wire:click="$set('clock', 'utc')">UTC</button>
+                <div class="segmented-control clock-toggle" role="group" aria-label="Timestamp display">
+                    <button type="button" wire:click="$set('clock', 'local')" aria-pressed="{{ $clock === 'local' ? 'true' : 'false' }}">Local</button>
+                    <button type="button" wire:click="$set('clock', 'utc')" aria-pressed="{{ $clock === 'utc' ? 'true' : 'false' }}">UTC</button>
                 </div>
-                <div class="density-toggle" role="group" aria-label="Request log row density">
+                <div class="segmented-control density-toggle" role="group" aria-label="Request log row density">
                     <button type="button" data-density-option="compact" aria-pressed="true">Compact</button>
                     <button type="button" data-density-option="comfortable" aria-pressed="false">Comfortable</button>
                 </div>

@@ -46,7 +46,7 @@ try {
             assert.equal(await page.evaluate(() => window.__headerNode === document.querySelector('[data-persistent-topbar]')), true, `${name}: header remounted`);
             const box = await page.locator('[data-persistent-topbar]').boundingBox();
             for (const key of ['x', 'y', 'width', 'height']) assert.ok(Math.abs(box[key] - baseline[key]) <= 2, `${name}: header ${key} drifted`);
-            const y = (await page.locator('.page-shell > .page-header h1').boundingBox()).y;
+            const y = (await page.locator('.page-shell .page-header h1').first().boundingBox()).y;
             titleY ??= y;
             assert.ok(Math.abs(y - titleY) <= 2, `${name}: title top drifted by ${y - titleY}px`);
             await page.screenshot({ path: resolve(screenshotDir, `${theme}-${name}.png`), fullPage: true });
@@ -58,7 +58,7 @@ try {
         await page.locator('#gutter-probe').evaluate((node) => node.remove());
         await page.locator('a[href$="/dashboard/endpoints/create"]').first().click();
         await page.waitForURL('**/dashboard/endpoints/create');
-        const editorY = (await page.locator('.page-shell > .page-header h1').boundingBox()).y;
+        const editorY = (await page.locator('.page-shell .page-header h1').first().boundingBox()).y;
         assert.ok(Math.abs(editorY - titleY) <= 2, `editor: breadcrumb top drifted by ${editorY - titleY}px`);
     }
 } finally {

@@ -1,3 +1,5 @@
+<div class="response-manager">
+<section id="panel-response" role="tabpanel" aria-labelledby="tab-response" x-show="activeTab === 'response'">
 <div class="response-grid {{ $bodyMode === 'template' ? 'template-active' : '' }}">
     <div class="response-list">
         <section class="card selection-settings" aria-labelledby="response-selection-title">
@@ -7,15 +9,15 @@
                     <button type="button" wire:click="setSelectionMode('{{ $mode }}')" aria-pressed="{{ $selectionMode === $mode ? 'true' : 'false' }}">{{ $label }}</button>
                 @endforeach
             </div>
-            <p class="field-help">Selection changes are drafts until Save selection. Weight-based behavior remains the default.</p>
+            <p class="field-help">Unsaved selection draft. <x-help-tip title="Saving selection" label="Save selection applies this mode and order. Save changes also saves these drafts. Weighted is the default mode." /></p>
             @if ($selectionMode === 'sequence')
                 <label class="field" for="sequence-on-exhaust"><span>On exhaust</span>
-                    <select id="sequence-on-exhaust" wire:model.live="sequenceOnExhaust">
+                    <select class="ui-select" id="sequence-on-exhaust" wire:model.live="sequenceOnExhaust">
                         <option value="repeat_last">Repeat last</option><option value="loop">Loop</option><option value="not_found">Not found</option>
                     </select>
                 </label>
-                <p class="info-note" role="status">Currently on call {{ $sequencePosition + 1 }} of {{ $responses->count() }} for {{ $selectionEnvironment->name }}. This is the next call position.</p>
-                <button class="button button-tertiary button-small" type="button" wire:click="resetSequence" wire:confirm="Reset the sequence position for {{ $selectionEnvironment->name }} only? Match counts and other environments will be retained.">Reset sequence</button>
+                <p class="field-help" role="status">Currently on call {{ $sequencePosition + 1 }} of {{ $responses->count() }} for {{ $selectionEnvironment->name }}. <x-help-tip title="Sequence position" label="This is the next call position. Reset affects only the active environment and retains match counts." /></p>
+                <button class="button button-tertiary button-small" type="button" wire:click="resetSequence" data-confirm-title="Confirm response action" data-confirm="Reset the sequence position for {{ $selectionEnvironment->name }} only? Match counts and other environments will be retained.">Reset sequence</button>
             @endif
             @php
                 $selectionErrors = collect($errors->getMessages())->filter(fn ($messages, $key) => preg_match('/^(selection_mode|sequence_on_exhaust|sequence_order|is_default|responseRules)/', $key));
@@ -25,7 +27,7 @@
                     @foreach ($selectionErrors->flatten() as $message)<p>{{ $message }}</p>@endforeach
                 </div>
             @endif
-            <button class="button button-secondary button-small" type="button" wire:click="saveSelection" wire:loading.attr="disabled" wire:target="saveSelection">Save selection</button>
+            <button class="button button-primary button-small" type="button" wire:click="saveSelection" wire:loading.attr="disabled" wire:target="saveSelection">Save selection</button>
             @if ($selectionMode !== 'weighted')
                 <section class="signature-panel selection-preview" aria-labelledby="selection-preview-title">
                     <h3 id="selection-preview-title">Selection preview <x-badge>Draft</x-badge></h3>
@@ -41,60 +43,66 @@
                         </ol>
                         <p><x-badge variant="info">Fallback</x-badge> {{ $fallbackResponseId ? 'Response #'.$fallbackResponseId : 'Choose exactly one fallback before saving.' }}</p>
                     @endif
-                    <p class="field-help">Preview does not advance counters. All conditions on one response must match.</p>
+                    <p class="field-help">Preview only. <x-help-tip title="Selection preview" label="Preview does not advance counters. In rule mode, all conditions on one response must match; the first full match wins." /></p>
                 </section>
             @endif
         </section>
-
-        @if (session('response-status'))
-            <div class="flash inline" role="status"><span class="flash-icon">✓</span>{{ session('response-status') }}</div>
-        @endif
 
         @forelse ($responses as $responseIndex => $response)
             <article class="card response-card selection-response-card {{ $editingId === $response->id ? 'selected' : '' }}" wire:key="response-{{ $response->id }}" data-schema-row data-schema-parent="responses" data-schema-index="{{ $responseIndex }}" data-schema-target="selection">
                 @if ($selectionMode !== 'weighted')
                     <span class="schema-drag-handle" draggable="true" data-schema-drag-handle title="Drag to reorder responses" aria-hidden="true">⋮⋮</span>
+
+                @endif
+                <div class="response-status">
+                    <x-radio name="configured-response" value="{{ $response->id }}" wire:click="edit({{ $response->id }})" :checked="$editingId === $response->id || ($responses->count() === 1 && $editingId === null)" aria-label="Select response {{ $response->status_code }} for editing" />
+                    <strong>{{ $response->status_code }}</strong>
+                </div>
+                <div class="response-description response-row-summary" title="{{ ($response->body_mode ?? 'static') === 'template' ? 'JSON response template' : ($response->body ?: 'Empty body') }}">
+                    @if ($selectionMode === 'weighted')Weight {{ $response->weight }}@endif
+                    @if ($selectionMode === 'sequence')<x-badge variant="info">Position {{ $responseIndex + 1 }}</x-badge>@endif
+                    @if ($selectionMode === 'rule')
+                        @if ($fallbackResponseId === $response->id)
+                            <x-badge variant="info">Fallback</x-badge>
+                        @else
+                            {{ count($responseRules[$response->id] ?? []) }} conditions
+                        @endif
+                    @endif
+                </div>
+                <div class="endpoint-actions">
+                    <button class="icon-button" type="button" wire:click="edit({{ $response->id }})">Edit</button>
+                    <details class="overflow-menu" data-menu>
+                        <summary aria-label="More actions for response {{ $response->id }}">•••</summary>
+                        <div>
+                    <button type="button" x-on:click="switchTab('callback')" wire:click="editCallback({{ $response->id }})" aria-label="Configure callback for response {{ $response->id }}">Callback</button>
+                    <button class="danger-text" type="button" wire:click="delete({{ $response->id }})" data-confirm-title="Confirm response action" data-confirm="Delete response #{{ $response->id }} (HTTP {{ $response->status_code }}) from this endpoint? {{ $selectionMode === 'rule' && $response->is_default ? 'It is the saved fallback: deletion will be blocked until you select and save another fallback.' : 'It will no longer be available for matching requests.' }}">Delete</button>
+
+                        </div>
+                    </details>
+                </div>
+                <details class="history-disclosure response-row-details" data-disclosure wire:ignore.self wire:key="response-details-{{ $response->id }}">
+                    <summary><span class="details-chevron" aria-hidden="true">›</span><strong>Details</strong></summary>
+                    <div class="response-row-detail-content">
+                        <code class="response-body-summary">{{ ($response->body_mode ?? 'static') === 'template' ? 'JSON response template' : (Str::limit(preg_replace('/\s+/', ' ', $response->body ?? ''), 82) ?: 'Empty body') }}</code>
+                        <div class="metadata-row"><span>{{ $response->delay_ms }} ms delay</span><span>{{ count($response->headers ?? []) }} headers</span>@if ($response->callback_enabled)<x-badge variant="info">Callback enabled</x-badge>@endif</div>
+                        @if ($selectionMode !== 'weighted')
                     <div class="selection-move-actions">
                         <button class="icon-button" type="button" wire:click="moveSelectionResponse({{ $responseIndex }}, -1)" @disabled($responseIndex === 0) aria-label="Move response {{ $response->id }} earlier">↑</button>
                         <button class="icon-button" type="button" wire:click="moveSelectionResponse({{ $responseIndex }}, 1)" @disabled($responseIndex === $responses->count() - 1) aria-label="Move response {{ $response->id }} later">↓</button>
                     </div>
-                @endif
-                <div class="response-status">
-                    <input type="radio" name="configured-response" value="{{ $response->id }}" wire:click="edit({{ $response->id }})" @checked($editingId === $response->id || ($responses->count() === 1 && $editingId === null)) aria-label="Select response {{ $response->status_code }} for editing">
-                    <strong>{{ $response->status_code }}</strong>
-                </div>
-                <div class="response-description">
-                    <code>{{ ($response->body_mode ?? 'static') === 'template' ? 'JSON response template' : (Str::limit(preg_replace('/\s+/', ' ', $response->body ?? ''), 82) ?: 'Empty body') }}</code>
-                    <div class="metadata-row">
-                        @if (($response->body_mode ?? 'static') === 'template')
-                            <x-badge variant="success">Templated</x-badge>
                         @endif
-                        @if ($response->callback_enabled)
-                            <x-badge variant="info" title="Sends an asynchronous callback">↗ Callback</x-badge>
-                        @endif
-                        @if ($selectionMode === 'weighted')<span>Weight {{ $response->weight }}</span>@endif
-                        @if ($selectionMode === 'sequence')<x-badge variant="info">Position {{ $responseIndex + 1 }}</x-badge>@endif
-                        @if ($selectionMode === 'rule' && $fallbackResponseId === $response->id)<x-badge variant="info">Fallback</x-badge>@endif
-                        <span>{{ $response->delay_ms }} ms delay</span>
-                        <span>{{ count($response->headers ?? []) }} {{ Str::plural('header', count($response->headers ?? [])) }}</span>
-                    </div>
-                </div>
-                <div class="endpoint-actions">
-                    <button class="icon-button" type="button" wire:click="edit({{ $response->id }})">Edit</button>
-                    <button class="icon-button danger" type="button" wire:click="delete({{ $response->id }})" wire:confirm="Delete response #{{ $response->id }} (HTTP {{ $response->status_code }}) from this endpoint? {{ $selectionMode === 'rule' && $response->is_default ? 'It is the saved fallback: deletion will be blocked until you select and save another fallback.' : 'It will no longer be available for matching requests.' }}">Delete</button>
-                </div>
                 @if ($selectionMode === 'rule')
                     <div class="selection-response-details">
-                        <label class="toggle-inline"><input type="radio" name="fallback-response" wire:click="setFallback({{ $response->id }})" @checked($fallbackResponseId === $response->id) aria-label="Use response {{ $response->id }} as default fallback"><span>Default / fallback</span></label>
+                        <label class="toggle-inline"><x-radio name="fallback-response" value="{{ $response->id }}" wire:click="setFallback({{ $response->id }})" :checked="$fallbackResponseId === $response->id" aria-label="Use response {{ $response->id }} as default fallback" /><span>Default / fallback</span></label>
                         <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="response-conditions-{{ $response->id }}">
                             <summary><span class="details-chevron" aria-hidden="true">›</span><strong>Conditions</strong></summary>
                             @if ($fallbackResponseId === $response->id)<p class="field-help">Fallback is selected only when no other response matches; its conditions are not evaluated.</p>@endif
                             @foreach ($responseRules[$response->id] ?? [] as $ruleIndex => $condition)
                                 <div class="rule-condition-row" wire:key="condition-{{ $response->id }}-{{ $ruleIndex }}">
                                     <div class="field-row three">
-                                        <label class="field"><span>Field type</span><select wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_type"><option value="header">Header</option><option value="query">Query</option><option value="body_json_path">Body JSON path</option></select></label>
+                                        <label class="field"><span>Field type</span><select class="ui-select" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_type"><option value="header">Header</option><option value="query">Query</option><option value="body_json_path">Body JSON path</option></select></label>
                                         <label class="field"><span>Field name</span><input type="text" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_name" placeholder="X-Mode / status / user.id"></label>
-                                        <label class="field"><span>Operator</span><select wire:model.live="responseRules.{{ $response->id }}.{{ $ruleIndex }}.operator">@foreach (['equals', 'contains', 'regex', 'exists'] as $operator)<option value="{{ $operator }}">{{ ucfirst($operator) }}</option>@endforeach</select></label>
+                                        <label class="field"><span>Operator</span><select class="ui-select" wire:model.live="responseRules.{{ $response->id }}.{{ $ruleIndex }}.operator">@foreach (['equals', 'contains', 'regex', 'exists'] as $operator)<option value="{{ $operator }}">{{ ucfirst($operator) }}</option>@endforeach</select></label>
                                     </div>
                                     <div class="field-row three">
                                         <label class="field"><span>Value</span><input type="text" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.value" @disabled($condition['operator'] === 'exists')></label>
@@ -107,9 +115,12 @@
                         </details>
                     </div>
                 @endif
-                <details class="history-disclosure response-history">
+                <details class="history-disclosure response-history" data-disclosure>
                     <summary><span class="details-chevron" aria-hidden="true">›</span><span><strong>History</strong><small>Compare or restore response versions.</small></span></summary>
                     <livewire:admin.revision-history entity-type="response" :entity-id="$response->id" :key="'response-history-'.$response->id" />
+                </details>
+
+                    </div>
                 </details>
             </article>
         @empty
@@ -124,9 +135,18 @@
         <div class="form-title-row">
             <h3>{{ $editingId ? 'Edit response #'.$editingId : 'Add response' }}</h3>
             @if ($editingId)
-                <button class="text-button" type="button" wire:click="createNew">Cancel edit</button>
+                <button class="text-button" type="button" wire:click="cancelEdit">Cancel edit</button>
             @endif
         </div>
+
+        @if ($errors->any())
+            <div class="validation-panel error-panel" role="alert">
+                <strong>Response changes were not saved.</strong>
+                @foreach (array_unique($errors->all()) as $message)<p>{{ $message }}</p>@endforeach
+            </div>
+        @endif
+
+
 
         <div class="field-row three">
             <div class="field">
@@ -154,7 +174,7 @@
 
         <fieldset class="field option-group" aria-labelledby="body-mode-label">
             <legend id="body-mode-label">Body</legend>
-            <div class="segmented-control" aria-label="Response body mode">
+            <div class="segmented-control" role="group" aria-label="Response body mode">
                 <button type="button" wire:click="setBodyMode('static')" aria-pressed="{{ $bodyMode === 'static' ? 'true' : 'false' }}">Static</button>
                 <button type="button" wire:click="setBodyMode('template')" aria-pressed="{{ $bodyMode === 'template' ? 'true' : 'false' }}">Template</button>
             </div>
@@ -186,7 +206,7 @@
             @endif
 
             <div class="template-toolbar">
-                <div class="segmented-control" aria-label="Template editor view">
+                <div class="segmented-control" role="group" aria-label="Template editor view">
                     <span class="disabled-tooltip" @if (! $builderSupported) tabindex="0" aria-label="{{ $builderUnavailableMessage }}" title="{{ $builderUnavailableMessage }}" @endif>
                         <button type="button" wire:click="setEditorView('builder')" aria-pressed="{{ $editorView === 'builder' ? 'true' : 'false' }}" @disabled(! $builderSupported)>Builder</button>
                     </span>
@@ -198,7 +218,7 @@
             <div class="field-row three template-options">
                 <div class="field">
                     <label for="template-locale">Locale</label>
-                    <select id="template-locale" wire:model.live="locale">
+                    <select class="ui-select ui-select-dense" id="template-locale" wire:model.live="locale">
                         @foreach ($templateLocales as $availableLocale)
                             <option value="{{ $availableLocale }}">{{ $availableLocale }}</option>
                         @endforeach
@@ -206,7 +226,7 @@
                 </div>
                 <div class="field">
                     <label for="template-seed-mode">Seed</label>
-                    <select id="template-seed-mode" wire:model.live="seedMode">
+                    <select class="ui-select ui-select-dense" id="template-seed-mode" wire:model.live="seedMode">
                         <option value="random">Random</option>
                         <option value="fixed">Fixed</option>
                         <option value="request">Request signature</option>
@@ -232,7 +252,7 @@
                             <h3 id="schema-builder-title">Schema</h3>
                             <p>Define fields for the generated JSON response.</p>
                         </div>
-                        <div class="segmented-control" aria-label="Schema root type">
+                        <div class="segmented-control" role="group" aria-label="Schema root type">
                             <button type="button" wire:click="$set('builderSchema.root', 'object')" aria-pressed="{{ ($builderSchema['root'] ?? 'object') === 'object' ? 'true' : 'false' }}">Object</button>
                             <button type="button" wire:click="$set('builderSchema.root', 'list')" aria-pressed="{{ ($builderSchema['root'] ?? 'object') === 'list' ? 'true' : 'false' }}">List of objects</button>
                         </div>
@@ -242,7 +262,7 @@
                         <div class="builder-root-count">
                             <label class="select-field">
                                 <span class="select-caption">Count</span>
-                                <select wire:model.live="builderSchema.count_mode">
+                                <select class="ui-select ui-select-dense" wire:model.live="builderSchema.count_mode">
                                     <option value="fixed">Fixed</option>
                                     <option value="range">Min–max</option>
                                 </select>
@@ -342,125 +362,38 @@
             </section>
         @endif
 
-        <details class="history-disclosure callback-disclosure">
-            <summary><span class="details-chevron" aria-hidden="true">›</span><span><strong>Callback</strong><small>Send an asynchronous request after the mock reply.</small></span></summary>
-            <div class="callback-fields">
-                <label class="toggle-inline"><input type="checkbox" wire:model.live="callbackEnabled"><span>Enable callback</span></label>
-                <h4 class="callback-group-heading">Delivery</h4>
-                <div class="field-row two">
-                    <div class="field">
-                        <label for="callback-url">Target URL</label>
-                        <input id="callback-url" type="text" inputmode="url" placeholder="https://example.test/webhook" wire:model="callbackUrl">
-                        @error('callbackUrl') <p class="field-error">{{ $message }}</p> @enderror
-                    </div>
-                    <div class="field">
-                        <label for="callback-method">Method</label>
-                        <select id="callback-method" wire:model="callbackMethod">
-                            @foreach (['POST', 'PUT', 'PATCH', 'DELETE'] as $method)
-                                <option value="{{ $method }}">{{ $method }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <div class="field">
-                    <label for="callback-headers">Headers <span>JSON object</span></label>
-                    <textarea id="callback-headers" class="code-input compact" rows="4" spellcheck="false" wire:model="callbackHeadersJson"></textarea>
-                    @error('callbackHeadersJson') <p class="field-error">{{ $message }}</p> @enderror
-                </div>
-                <div class="field">
-                    <div class="template-toolbar">
-                        <div class="segmented-control" aria-label="Callback body editor view">
-                            <span class="disabled-tooltip" @if (! $callbackBuilderSupported) tabindex="0" aria-label="Builder unavailable. This callback body uses features the builder cannot show; continue editing JSON." title="This callback body uses features the builder cannot show; continue editing JSON." @endif>
-                                <button type="button" wire:click="setCallbackEditorView('builder')" aria-pressed="{{ $callbackEditorView === 'builder' ? 'true' : 'false' }}" @disabled(! $callbackBuilderSupported)>Builder</button>
-                            </span>
-                            <button type="button" wire:click="setCallbackEditorView('json')" aria-pressed="{{ $callbackEditorView === 'json' ? 'true' : 'false' }}">JSON</button>
-                        </div>
-                    </div>
-                    @if ($callbackEditorView === 'builder')
-                        <section class="schema-builder" aria-label="Callback body schema">
-                            <div class="section-heading section-heading-inline">
-                                <p>Define callback JSON fields using the response template builder.</p>
-                                <div class="segmented-control" aria-label="Callback schema root type">
-                                    <button type="button" wire:click="$set('callbackBuilderSchema.root', 'object')" aria-pressed="{{ ($callbackBuilderSchema['root'] ?? 'object') === 'object' ? 'true' : 'false' }}">Object</button>
-                                    <button type="button" wire:click="$set('callbackBuilderSchema.root', 'list')" aria-pressed="{{ ($callbackBuilderSchema['root'] ?? 'object') === 'list' ? 'true' : 'false' }}">List of objects</button>
-                                </div>
-                            </div>
-                            @if (($callbackBuilderSchema['root'] ?? 'object') === 'list')
-                                <div class="builder-root-count">
-                                    <label class="select-field"><span class="select-caption">Count</span><select wire:model.live="callbackBuilderSchema.count_mode"><option value="fixed">Fixed</option><option value="range">Min–max</option></select></label>
-                                    @if (($callbackBuilderSchema['count_mode'] ?? 'fixed') === 'range')
-                                        <label class="compact-input"><span>Min</span><input type="number" min="0" max="1000" wire:model.live.debounce.400ms="callbackBuilderSchema.min"></label>
-                                        <label class="compact-input"><span>Max</span><input type="number" min="0" max="1000" wire:model.live.debounce.400ms="callbackBuilderSchema.max"></label>
-                                    @else
-                                        <label class="compact-input"><span>Items</span><input type="number" min="0" max="1000" wire:model.live.debounce.400ms="callbackBuilderSchema.count"></label>
-                                    @endif
-                                </div>
-                            @endif
-                            <div class="schema-rows">
-                                @foreach (($callbackBuilderSchema['fields'] ?? []) as $fieldIndex => $fieldRow)
-                                    @include('livewire.admin.partials.schema-row', [
-                                        'row' => $fieldRow,
-                                        'rowPath' => 'fields.'.$fieldIndex,
-                                        'parentPath' => 'fields',
-                                        'rowIndex' => $fieldIndex,
-                                        'depth' => 0,
-                                        'showKey' => true,
-                                        'schemaModel' => 'callbackBuilderSchema',
-                                        'schemaTarget' => 'callback',
-                                    ])
-                                @endforeach
-                            </div>
-                            <button class="button button-secondary button-small add-schema-row" type="button" wire:click="addSchemaRow('fields', 'callback')"><span aria-hidden="true">+</span> Add field</button>
-                        </section>
-                    @else
-                        <div data-template-editor-root>
-                            <label for="callback-body">Body <span>JSON template</span></label>
-                            <textarea id="callback-body" class="code-input compact" rows="8" spellcheck="false" wire:model.live.debounce.400ms="callbackBody" data-template-editor role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="callback-method-suggestions"></textarea>
-                            <div id="callback-method-suggestions" class="template-autocomplete" data-template-autocomplete role="listbox" aria-label="Callback Faker method suggestions" wire:ignore hidden></div>
-                        </div>
-                    @endif
-                    <span class="field-help">Use <code>@verbatim{{env.KEY}}@endverbatim</code>, $request.method, $request.body, $request.json.field, or the response template's Faker methods. JSON-only tokens keep the Builder option disabled until representable.</span>
-                    @error('callbackBody') <p class="field-error">{{ $message }}</p> @enderror
-                    <button class="text-button" type="button" wire:click="previewCallback">Preview callback body</button>
-                    @if ($callbackPreview !== '') <pre class="code-block">{{ $callbackPreview }}</pre> @endif
-                </div>
-                <h4 class="callback-group-heading">Retry policy</h4>
-                <div class="field-row three">
-                    <div class="field"><label for="callback-delay">Delay min (ms)</label><input id="callback-delay" type="number" min="0" max="30000" wire:model="callbackDelayMs">@error('callbackDelayMs') <p class="field-error">{{ $message }}</p> @enderror</div>
-                    <div class="field"><label for="callback-delay-max">Delay max (ms) <span>optional</span></label><input id="callback-delay-max" type="number" min="0" max="30000" wire:model="callbackDelayMaxMs">@error('callbackDelayMaxMs') <p class="field-error">{{ $message }}</p> @enderror</div>
-                    <div class="field"><label for="callback-attempts">Max attempts</label><input id="callback-attempts" type="number" min="1" max="5" wire:model="callbackRetry">@error('callbackRetry') <p class="field-error">{{ $message }}</p> @enderror</div>
-                </div>
-                <div class="field-row two">
-                    <div class="field"><label for="callback-backoff">Retry backoff (ms)</label><input id="callback-backoff" type="number" min="0" max="30000" wire:model="callbackBackoffMs">@error('callbackBackoffMs') <p class="field-error">{{ $message }}</p> @enderror</div>
-                    <div class="field"><label for="callback-timeout">Attempt timeout (ms)</label><input id="callback-timeout" type="number" min="100" max="10000" wire:model="callbackTimeoutMs">@error('callbackTimeoutMs') <p class="field-error">{{ $message }}</p> @enderror</div>
-                </div>
-                <h4 class="callback-group-heading">Signing</h4>
-                <div class="field-row two">
-                    <div class="field">
-                        <label class="toggle-inline"><input type="checkbox" wire:model.live="callbackSigningEnabled"><span>Sign requests</span></label>
-                        <label for="callback-secret">Signing secret {{ $callbackSecretSet ? '(saved; leave blank to keep)' : '' }}</label>
-                        <input id="callback-secret" type="password" autocomplete="new-password" wire:model="callbackSigningSecret">
-                        @error('callbackSigningSecret') <p class="field-error">{{ $message }}</p> @enderror
-                    </div>
-                    <div class="field"><label for="callback-signature-header">Signature header</label><input id="callback-signature-header" wire:model="callbackSignatureHeader">@error('callbackSignatureHeader') <p class="field-error">{{ $message }}</p> @enderror</div>
-                </div>
-                <p class="field-help">Signing computes the lowercase hex HMAC-SHA256 of the exact raw resolved body bytes, using your secret as the key, and sends the digest in the named header. With signing off, that header is omitted entirely.</p>
-                @if ($editingId)
-                    <div class="callback-actions">
-                        <button class="button button-secondary button-small" type="button" wire:click="sendTestCallback">Send test callback</button>
-                        <a class="text-button" href="{{ route('dashboard.logs.index', ['type' => 'callbacks', 'response_id' => $editingId]) }}" wire:navigate>View callback log</a>
-                        @error('callbackEnabled') <p class="field-error">{{ $message }}</p> @enderror
-                    </div>
-                    @if ($callbackTestId && $callbackTestStatus)
-                        <p class="info-note" role="status" @if ($callbackTestStatus === 'Queued' || $callbackTestStatus === 'Pending') wire:poll.2s="pollCallbackTest" @endif>Test callback: {{ $callbackTestStatus }}</p>
-                    @endif
-                @endif
-            </div>
-        </details>
+
 
         <button class="button button-primary button-full" type="submit" wire:loading.attr="disabled" wire:target="save" @disabled($bodyMode === 'template' && collect($templateIssues)->contains(fn ($issue) => $issue['severity'] === 'error'))>
             <span wire:loading.remove wire:target="save">{{ $editingId ? 'Update response' : 'Add response' }}</span>
             <span wire:loading wire:target="save">Saving…</span>
         </button>
     </form>
+</div>
+</section>
+<section id="panel-callback" role="tabpanel" aria-labelledby="tab-callback" x-show="activeTab === 'callback'" x-cloak>
+    <div class="callback-response-list" aria-label="Response callbacks">
+        @forelse ($responses as $responseIndex => $response)
+            @php($rowCallbackEnabled = $editingId === $response->id ? $callbackEnabled : ($pendingFormDrafts[$response->id]['state']['callbackEnabled'] ?? $response->callback_enabled))
+            <div class="card callback-response-row {{ $editingId === $response->id ? 'selected' : '' }}" wire:key="callback-row-{{ $response->id }}">
+                <x-badge>HTTP {{ $response->status_code }}</x-badge>
+                <span class="response-row-summary">@if ($selectionMode === 'sequence')Position {{ $responseIndex + 1 }}@elseif ($selectionMode === 'rule'){{ $fallbackResponseId === $response->id ? 'Fallback' : count($responseRules[$response->id] ?? []).' conditions' }}@else Weight {{ $response->weight }}@endif</span>
+                <x-badge :variant="$rowCallbackEnabled ? 'success' : 'neutral'">{{ $rowCallbackEnabled ? 'Enabled' : 'Disabled' }}</x-badge>
+                <button class="icon-button" type="button" wire:click="editCallback({{ $response->id }}, {{ $rowCallbackEnabled ? 'false' : 'true' }})" aria-label="Configure callback for response {{ $response->id }}">{{ $rowCallbackEnabled ? 'Edit callback' : 'Enable callback' }}</button>
+            </div>
+        @empty
+            <div class="card empty-state"><h3>Add a response first</h3><p>Callbacks belong to individual responses.</p><button class="button button-secondary" type="button" x-on:click="switchTab('response')">Configure responses</button></div>
+        @endforelse
+    </div>
+    @if ($responses->isNotEmpty() && $editingId)
+        <form class="card callback-form" wire:submit="saveCallback">
+            <div class="form-title-row"><h3>Callback for response #{{ $editingId }}</h3><span class="field-help">Save callback applies only these settings.</span></div>
+            @if ($errors->any())<div class="validation-panel error-panel" role="alert">@foreach (array_unique($errors->all()) as $message)<p>{{ $message }}</p>@endforeach</div>@endif
+            @include('livewire.admin.partials.callback-settings')
+            <button class="button button-primary" type="submit" wire:loading.attr="disabled" wire:target="saveCallback">Save callback</button>
+        </form>
+    @elseif ($responses->isNotEmpty())
+        <p class="field-help">Select a response to configure its callback.</p>
+    @endif
+</section>
 </div>

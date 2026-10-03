@@ -45,7 +45,7 @@ final class ConfigTransferTest extends TestCase
             ->assertSee('Safe default');
 
         self::assertSame(1, substr_count($component->html(), ' checked'));
-        self::assertStringContainsString('value="create-only" checked', $component->html());
+        self::assertMatchesRegularExpression('/<input(?=[^>]*value="create-only")(?=[^>]* checked)[^>]*>/', $component->html());
     }
 
     public function test_transfer_ui_uses_derived_endpoint_names_and_search(): void

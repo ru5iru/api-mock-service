@@ -170,7 +170,7 @@ final class DashboardTest extends TestCase
             ->assertSeeHtml('section-status neutral')
             ->assertDontSeeHtml('section-status attention')
             ->assertSee('Paste a valid curl command to continue.')
-            ->assertDontSee('Next: add a response so this endpoint can answer requests.')
+            ->assertDontSee('Next: complete response selection so this endpoint can answer requests.')
             ->set('rawCurl', 'not a curl command')
             ->assertSeeHtml('section-status attention');
     }
@@ -179,7 +179,7 @@ final class DashboardTest extends TestCase
     {
         Livewire::test(EndpointForm::class)
             ->set('rawCurl', "curl 'https://api.example.test/v1/items'")
-            ->assertSee('Next: add a response so this endpoint can answer requests.')
+            ->assertSee('Next: complete response selection so this endpoint can answer requests.')
             ->assertDontSee('Paste a valid curl command to continue.')
             ->assertSeeHtml('section-status valid');
     }

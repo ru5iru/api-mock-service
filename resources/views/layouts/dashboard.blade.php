@@ -13,6 +13,9 @@
     <link rel="preload" href="{{ asset('fonts/jetbrains-mono/jetbrains-mono-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}?v={{ filemtime(public_path('css/tokens.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
+    <script src="{{ asset('js/panels.js') }}?v={{ filemtime(public_path('js/panels.js')) }}" defer data-navigate-once></script>
+    <script src="{{ asset('js/toasts.js') }}?v={{ filemtime(public_path('js/toasts.js')) }}" data-navigate-once></script>
+    <script src="{{ asset('js/dialogs.js') }}?v={{ filemtime(public_path('js/dialogs.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/menu.js') }}?v={{ filemtime(public_path('js/menu.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/ui-preferences.js') }}?v={{ filemtime(public_path('js/ui-preferences.js')) }}" defer></script>
     <script src="{{ asset('js/template-editor.js') }}?v={{ filemtime(public_path('js/template-editor.js')) }}" defer data-navigate-once></script>
@@ -59,6 +62,7 @@
                     <summary aria-label="Open user menu">
                         <span class="user-avatar" aria-hidden="true">O</span>
                         <span>{{ config('mock.dashboard_auth.enabled') ? 'Operator' : 'Local' }}</span>
+                        <x-chevron />
                     </summary>
                     <div class="user-menu-panel">
                         <span class="user-menu-label">{{ config('mock.dashboard_auth.enabled') ? 'Authenticated session' : 'Local access mode' }}</span>
@@ -75,7 +79,7 @@
             </nav>
 
             <details class="mobile-nav" data-menu>
-                <summary aria-label="Open dashboard navigation">Menu</summary>
+                <summary aria-label="Open dashboard navigation">Menu<x-chevron /></summary>
                 <nav class="mobile-nav-panel" aria-label="Mobile dashboard navigation">
                     <a href="{{ route('dashboard.endpoints.index') }}" wire:navigate
                        class="{{ request()->routeIs('dashboard.endpoints.*') ? 'active' : '' }}"
@@ -129,23 +133,25 @@
         @endif
     </div>
 
-    <dialog id="shortcut-dialog" class="shortcut-dialog" aria-labelledby="shortcut-title">
-        <div class="dialog-heading">
-            <div>
-                <h2 id="shortcut-title">Shortcuts</h2>
-            </div>
-            <button class="icon-button" type="button" aria-label="Close shortcut help" data-close-shortcuts>×</button>
-        </div>
+    <x-dialog id="shortcut-dialog" class="shortcut-dialog" title="Shortcuts" close-label="Close shortcut help">
         <dl class="shortcut-list">
             <div><dt><kbd>N</kbd></dt><dd>New endpoint</dd></div>
             <div><dt><kbd>/</kbd></dt><dd>Focus search</dd></div>
             <div><dt><kbd>?</kbd></dt><dd>Shortcut help</dd></div>
             <div><dt><kbd>Esc</kbd></dt><dd>Close this dialog</dd></div>
         </dl>
-    </dialog>
+    </x-dialog>
+
+    <x-dialog id="confirm-dialog" title="Confirm action" close-label="Cancel confirmation">
+        <p data-confirm-message></p>
+        <x-slot:actions>
+            <button class="button button-secondary" type="button" data-confirm-cancel>Cancel</button>
+            <button class="button button-primary" type="button" data-confirm-accept>Continue</button>
+        </x-slot:actions>
+    </x-dialog>
 
     @livewireScripts
-    <script>
+    <script data-navigate-once>
         const copyText = async (value) => {
             if (navigator.clipboard?.writeText && window.isSecureContext) {
                 await navigator.clipboard.writeText(value);
@@ -191,7 +197,8 @@
             }
 
             region.appendChild(toast);
-            window.setTimeout(() => toast.remove(), 6000);
+            window.MockDeck.prepareToast(toast);
+            syncStickyActionBar();
         };
 
         document.addEventListener('click', async (event) => {
@@ -307,29 +314,35 @@
         });
 
         document.addEventListener('submit', (event) => {
-            if (event.target.matches('[data-unsaved-form]')) window.MockDeck.formDirty = false;
+            if (event.target.matches('[data-endpoint-save-form]')) window.MockDeck.formDirty = false;
         });
 
-        window.addEventListener('beforeunload', (event) => {
-            if (!window.MockDeck.formDirty) return;
-            event.preventDefault();
-            event.returnValue = '';
-        });
-
-        document.addEventListener('click', (event) => {
+        let navigationPending = false;
+        const guardUnsavedNavigation = async (event) => {
+            if (event.type === 'keydown' && event.key !== 'Enter') return;
+            if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || (event.button !== undefined && event.button !== 0)) return;
             const link = event.target.closest('a[href]');
             if (!link || link.getAttribute('href')?.startsWith('#') || !window.MockDeck.formDirty || !document.querySelector('[data-unsaved-form]')) return;
-            if (window.confirm('Leave this page? Your unsaved endpoint changes will be lost.')) {
-                window.MockDeck.formDirty = false;
-                return;
-            }
             event.preventDefault();
             event.stopImmediatePropagation();
-        }, true);
+            if (navigationPending) return;
+            navigationPending = true;
+            try {
+                if (await window.MockDeck.ask({ title: 'Discard unsaved changes?', message: 'Your unsaved endpoint changes will be lost.', danger: true, confirmLabel: 'Leave page', trigger: link })) {
+                    window.MockDeck.formDirty = false;
+                    link.click();
+                }
+            } finally {
+                navigationPending = false;
+            }
+        };
+        // Livewire starts trusted pointer navigation on mousedown/mouseup, and keyboard navigation on Enter.
+        for (const type of ['mousedown', 'keydown', 'click']) document.addEventListener(type, guardUnsavedNavigation, true);
 
         document.addEventListener('keydown', (event) => {
+            if (event.target.closest?.('dialog[open]')) return;
             if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-                const form = document.querySelector('[data-unsaved-form]');
+                const form = document.querySelector('[data-endpoint-save-form]');
                 if (form) {
                     event.preventDefault();
                     form.requestSubmit();
@@ -412,11 +425,18 @@
 
         };
 
-        const syncEndpointEditor = () => {
-            document.querySelectorAll('[data-auto-grow]').forEach(resizeEditor);
+        const syncDisclosureState = () => {
             document.querySelectorAll('details[data-disclosure]').forEach((details) => {
-                details.querySelector(':scope > summary')?.setAttribute('aria-expanded', String(details.open));
+                const summary = details.querySelector(':scope > summary');
+                const expanded = String(details.open);
+                if (summary && summary.getAttribute('aria-expanded') !== expanded) summary.setAttribute('aria-expanded', expanded);
             });
+        };
+
+        const syncEndpointEditor = () => {
+            document.querySelectorAll('[data-toast]').forEach(window.MockDeck.prepareToast);
+            document.querySelectorAll('[data-auto-grow]').forEach(resizeEditor);
+            syncDisclosureState();
             try {
                 if (window.localStorage.getItem('mockdeck:host-note-dismissed') === 'true') {
                     document.querySelector('[data-host-note]')?.remove();
@@ -439,6 +459,8 @@
                 observedStickyActionBar = null;
                 page.classList.remove('has-sticky-action-bar');
                 page.style.removeProperty('--sticky-action-bar-height');
+                document.documentElement.style.removeProperty('--sticky-action-bar-height');
+                document.getElementById('toast-region')?.style.removeProperty('bottom');
                 return;
             }
 
@@ -447,6 +469,8 @@
                 if (height > 0) {
                     page.classList.add('has-sticky-action-bar');
                     page.style.setProperty('--sticky-action-bar-height', `${height}px`);
+                    document.documentElement.style.setProperty('--sticky-action-bar-height', `${height}px`);
+                    document.getElementById('toast-region')?.style.setProperty('bottom', `calc(${height}px + var(--space-4))`);
                 }
             };
 
@@ -459,28 +483,29 @@
             }
         };
 
-        const syncSectionNavigation = () => {
-            document.querySelectorAll('[data-section-nav]').forEach((navigation) => {
-                const links = [...navigation.querySelectorAll('[data-section-link]')];
-                let current = links[0] ?? null;
-
-                links.forEach((link) => {
-                    const id = link.getAttribute('href')?.replace(/^#/, '');
-                    const section = id ? document.getElementById(id) : null;
-                    if (section && !section.classList.contains('sticky-action-bar') && section.getBoundingClientRect().top <= 120) {
-                        current = link;
-                    }
-                });
-
-                links.forEach((link) => {
-                    if (link === current && link.getAttribute('aria-current') !== 'location') {
-                        link.setAttribute('aria-current', 'location');
-                    } else if (link !== current && link.hasAttribute('aria-current')) {
-                        link.removeAttribute('aria-current');
-                    }
-                });
-            });
+        const syncEditorGeometry = () => {
+            const navHeight = Math.ceil(document.querySelector('.topbar')?.getBoundingClientRect().height ?? 65);
+            document.documentElement.style.setProperty('--site-nav-height', `${navHeight}px`);
+            const tabs = document.querySelector('[data-endpoint-tabs]');
+            const viewport = document.querySelector('[data-editor-viewport]');
+            if (viewport && tabs) {
+                const actionHeight = Math.ceil(document.querySelector('[data-sticky-action-bar]')?.getBoundingClientRect().height ?? 0);
+                const top = Math.max(viewport.getBoundingClientRect().top, navHeight + tabs.getBoundingClientRect().height);
+                const height = Math.max(0, innerHeight - top - actionHeight - 16);
+                viewport.style.setProperty('--editor-viewport-height', `${height}px`);
+            }
         };
+
+        document.addEventListener('keydown', event => {
+            const tab = event.target.closest?.('[data-endpoint-tabs] [role="tab"]');
+            if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const buttons = [...tab.parentElement.querySelectorAll('[role="tab"]')];
+            const index = buttons.indexOf(tab);
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
+            buttons[next].focus({ preventScroll: true });
+            buttons[next].click();
+        });
 
         document.addEventListener('toggle', (event) => {
             if (!event.target.matches?.('details[data-disclosure]')) return;
@@ -494,10 +519,14 @@
                 syncLogPresentation();
                 syncEndpointEditor();
                 syncStickyActionBar();
-                syncSectionNavigation();
+                syncEditorGeometry();
             });
         };
-        new MutationObserver(scheduleLogSync).observe(document.body, { childList: true, subtree: true });
+        new MutationObserver(() => {
+            // ARIA state must survive morphs immediately, independently of batched layout work.
+            syncDisclosureState();
+            scheduleLogSync();
+        }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open', 'aria-expanded'] });
         document.addEventListener('livewire:navigated', () => {
             window.MockDeck.formDirty = false;
             const path = window.location.pathname;
@@ -513,14 +542,13 @@
             scheduleLogSync();
         });
         scheduleLogSync();
+        window.addEventListener('resize', scheduleLogSync);
         document.addEventListener('scroll', scheduleLogSync, { passive: true });
 
-        const shortcutDialog = document.getElementById('shortcut-dialog');
-        document.querySelector('[data-close-shortcuts]')?.addEventListener('click', () => shortcutDialog?.close());
         document.addEventListener('keydown', (event) => {
             const target = event.target;
             const isEditing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target?.isContentEditable;
-            if (isEditing || event.ctrlKey || event.metaKey || event.altKey) return;
+            if (isEditing || target?.closest('dialog[open]') || event.ctrlKey || event.metaKey || event.altKey) return;
 
             if (event.key === 'n' || event.key === 'N') {
                 window.location.href = @js(route('dashboard.endpoints.create'));
@@ -528,7 +556,7 @@
                 event.preventDefault();
                 document.querySelector('[data-search-shortcut]')?.focus();
             } else if (event.key === '?') {
-                shortcutDialog?.showModal();
+                window.MockDeck.openDialog(document.getElementById('shortcut-dialog'));
             }
         });
     </script>

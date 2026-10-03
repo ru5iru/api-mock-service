@@ -9,12 +9,17 @@ use App\Models\Tag;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\ParsedCurl;
+use App\Services\Response\SelectionConfigurationValidator;
 use App\Services\Revisions\RevisionManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 final class EndpointForm extends Component
@@ -35,6 +40,8 @@ CURL;
     public int $priority = 0;
 
     public string $rawCurl = '';
+
+    public bool $curlExpanded = false;
 
     public bool $excludeCookies = false;
 
@@ -59,8 +66,130 @@ CURL;
 
     public bool $submitAttempted = false;
 
+    #[Url(as: 'tab', except: 'request')]
+    public string $activeTab = 'request';
+
+    public function renameEndpoint(string $value): void
+    {
+        $name = trim($value);
+        Validator::make(['name' => $name], ['name' => ['nullable', 'string', 'max:255']])->validate();
+        $this->name = $name;
+        $this->resetValidation('name');
+        if ($this->endpointId !== null) {
+            DB::transaction(function () use ($name): void {
+                $endpoint = MockEndpoint::query()->lockForUpdate()->findOrFail($this->endpointId);
+                $revisions = app(RevisionManager::class);
+                $before = $revisions->snapshot($endpoint);
+                $endpoint->update(['name' => $name === '' ? null : $name]);
+                $revisions->recordIfChanged($endpoint, $before);
+            });
+        }
+    }
+
+    #[Locked]
+    public bool $savingAll = false;
+
+    #[Locked]
+    public ?bool $draftResponseReady = null;
+
+    #[Locked]
+    public ?bool $draftCallbackReady = null;
+
+    #[On('callback-draft-validity')]
+    public function updateCallbackValidity(int $endpointId, bool $valid): void
+    {
+        if ($endpointId === $this->endpointId) {
+            $this->draftCallbackReady = $valid;
+        }
+    }
+
+    #[On('show-editor-tab')]
+    public function showEditorTab(string $tab): void
+    {
+        if (in_array($tab, ['request', 'matching', 'response', 'callback'], true)) {
+            $this->activeTab = $tab;
+        }
+    }
+
+    #[On('response-selection-validity')]
+    public function updateResponseValidity(int $endpointId, bool $valid): void
+    {
+        if ($endpointId === $this->endpointId) {
+            $this->draftResponseReady = $valid;
+            $this->touchSection('response');
+        }
+    }
+
+    public function responseSectionReady(): bool
+    {
+        if ($this->draftResponseReady !== null) {
+            return $this->draftResponseReady;
+        }
+        $endpoint = $this->endpointId ? MockEndpoint::query()->with('responses.rules')->find($this->endpointId) : null;
+        if (! $endpoint || $endpoint->responses->isEmpty()) {
+            return false;
+        }
+        try {
+            app(SelectionConfigurationValidator::class)->validate($endpoint->toArray(), $endpoint->responses->toArray());
+
+            return true;
+        } catch (ValidationException) {
+            return false;
+        }
+    }
+
+    public function requestMetadataReady(): bool
+    {
+        return Validator::make([
+            'name' => $this->name, 'priority' => $this->priority,
+            'collectionId' => $this->collectionId, 'tagIds' => $this->tagIds,
+            'environmentOverrides' => $this->environmentOverrides,
+        ], [
+            'name' => ['nullable', 'string', 'max:255'],
+            'priority' => ['required', 'integer', 'between:-1000,1000'],
+            'collectionId' => ['nullable', 'integer', 'exists:collections,id'],
+            'tagIds' => ['array'], 'tagIds.*' => ['integer', 'distinct', 'exists:tags,id'],
+            'environmentOverrides.*' => ['nullable', 'in:,0,1'],
+        ])->passes() && Environment::query()->whereKey(array_keys($this->environmentOverrides))->count() === count($this->environmentOverrides);
+    }
+
+    public function saveAll(CurlParser $parser, CurlHasher $hasher): mixed
+    {
+        if ($this->endpointId === null) {
+            return $this->save($parser, $hasher);
+        }
+        if (! $this->savingAll) {
+            $this->savingAll = true;
+            $this->dispatch('save-response-drafts', endpointId: $this->endpointId)->to(ResponseManager::class);
+        }
+
+        return null;
+    }
+
+    #[On('response-drafts-saved')]
+    public function finishSavingAll(int $endpointId, CurlParser $parser, CurlHasher $hasher): mixed
+    {
+        if ($endpointId !== $this->endpointId || ! $this->savingAll) {
+            return null;
+        }
+        $this->savingAll = false;
+
+        return $this->save($parser, $hasher);
+    }
+
+    #[On('response-drafts-save-failed')]
+    public function responseDraftsFailed(int $endpointId): void
+    {
+        if ($endpointId === $this->endpointId) {
+            $this->savingAll = false;
+        }
+    }
+
     public function mount(?MockEndpoint $endpoint = null): void
     {
+        if (! in_array($this->activeTab, ['request', 'matching', 'response', 'callback'], true)) {
+            $this->activeTab = 'request';
+        }
         if ($endpoint === null) {
             $prefill = request()->query('curl');
             if (is_string($prefill) && strlen($prefill) <= 1048576) {
@@ -113,7 +242,7 @@ CURL;
 
     public function touchSection(string $section): void
     {
-        if (in_array($section, ['request', 'matching', 'response'], true)
+        if (in_array($section, ['request', 'matching', 'response', 'callback'], true)
             && ! in_array($section, $this->touchedSections, true)) {
             $this->touchedSections[] = $section;
         }
@@ -130,6 +259,7 @@ CURL;
     {
         $this->touchSection('request');
         $this->rawCurl = '';
+        $this->curlExpanded = false;
         $this->resetValidation('rawCurl');
     }
 
@@ -290,7 +420,7 @@ CURL;
 
         $destination = route('dashboard.endpoints.edit', ['endpoint' => $endpoint->id]);
 
-        return $this->redirect($created ? $destination.'#responses' : $destination, navigate: true);
+        return $this->redirect($created ? $destination.'?tab=response' : $destination.($this->activeTab === 'request' ? '' : '?tab='.$this->activeTab), navigate: true);
     }
 
     public function render(): View
@@ -343,6 +473,7 @@ CURL;
             'collections' => Collection::query()->orderBy('name')->get(),
             'availableTags' => Tag::query()->orderBy('name')->get(),
             'environments' => Environment::query()->orderByDesc('is_default')->orderBy('name')->get(),
+            'endpoint' => $this->endpointId ? MockEndpoint::query()->findOrFail($this->endpointId) : null,
         ]);
     }
 

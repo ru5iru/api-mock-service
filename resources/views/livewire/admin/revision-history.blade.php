@@ -29,7 +29,7 @@
                             class="text-button danger-text"
                             type="button"
                             wire:click="restore({{ $revision->id }})"
-                            wire:confirm="Restore version {{ $revision->version_number }}? The current live values will change, and the restored state will be saved as a new rollback revision."
+                            data-confirm-title="Restore version" data-confirm="Restore version {{ $revision->version_number }}? The current live values will change, and the restored state will be saved as a new rollback revision."
                         >Restore</button>
                     </div>
                 </article>
