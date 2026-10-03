@@ -3,18 +3,21 @@
 
     const menus = () => [...document.querySelectorAll('details[data-menu]')];
     const trigger = (menu) => menu.querySelector(':scope > summary');
+    const panel = (menu) => menu.querySelector(':scope > :not(summary)');
     const options = (menu) => [...menu.querySelectorAll('[role="menuitemradio"], [role="option"], button, a')]
         .filter((item) => !item.hidden && !item.closest('[hidden]') && !item.disabled);
 
     function close(menu, focus = false) {
         if (!menu?.open) return;
         menu.open = false;
+        window.MockDeckPanels?.close(panel(menu));
         if (focus) trigger(menu)?.focus();
     }
 
     function open(menu, focus = false, last = false) {
         menus().forEach((other) => { if (other !== menu) close(other); });
         menu.open = true;
+        window.MockDeckPanels?.open(trigger(menu), panel(menu));
         if (focus) {
             const items = options(menu);
             (last ? items.at(-1) : items.find((item) => item.getAttribute('aria-checked') === 'true') || items[0])?.focus();
@@ -25,10 +28,14 @@
         const menu = event.target;
         if (!menu.matches?.('details[data-menu]')) return;
         trigger(menu)?.setAttribute('aria-expanded', String(menu.open));
-        if (menu.open) menus().forEach((other) => { if (other !== menu) close(other); });
+        if (menu.open) {
+            menus().forEach((other) => { if (other !== menu) close(other); });
+            window.MockDeckPanels?.open(trigger(menu), panel(menu));
+        } else window.MockDeckPanels?.close(panel(menu));
     }, true);
 
     document.addEventListener('click', (event) => {
+        if (event.target.closest?.('dialog')) return;
         const menu = event.target.closest?.('details[data-menu]');
         if (!menu) {
             menus().forEach((item) => close(item));
@@ -40,6 +47,7 @@
     });
 
     document.addEventListener('keydown', (event) => {
+        if (event.target.closest?.('dialog[open]')) return;
         const menu = event.target.closest?.('details[data-menu]');
         if (event.key === 'Escape') {
             const openMenu = menu?.open ? menu : menus().find((item) => item.open);

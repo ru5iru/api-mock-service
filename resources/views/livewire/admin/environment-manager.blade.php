@@ -54,7 +54,7 @@
                             @endforeach
                         </select>
                     </label>
-                    <button class="button button-danger" type="button" wire:click="deleteSelected" wire:confirm="Delete {{ $selectedEnvironment->name }}? Its variables and endpoint overrides will be removed.">Delete</button>
+                    <button class="button button-danger" type="button" wire:click="deleteSelected" data-confirm-title="Confirm environment action" data-confirm="Delete {{ $selectedEnvironment->name }}? Its variables and endpoint overrides will be removed.">Delete</button>
                 </div>
                 @error('replacementEnvironmentId') <p class="field-error">{{ $message }}</p> @enderror
             </details>
@@ -72,7 +72,7 @@
                                 <td><input aria-label="Variable key" type="text" wire:model="variableDrafts.{{ $variable->id }}.key">@error('variableDrafts.'.$variable->id.'.key')<span class="field-error">{{ $message }}</span>@enderror</td>
                                 <td><input aria-label="Variable value" type="{{ $variable->is_secret ? 'password' : 'text' }}" wire:model="variableDrafts.{{ $variable->id }}.value" placeholder="{{ $variable->is_secret ? '•••••••• · leave blank to keep' : '' }}" autocomplete="off">@error('variableDrafts.'.$variable->id.'.value')<span class="field-error">{{ $message }}</span>@enderror</td>
                                 <td><input aria-label="Secret variable" type="checkbox" wire:model="variableDrafts.{{ $variable->id }}.is_secret"></td>
-                                <td><div class="row-actions"><button class="button button-secondary button-small" type="button" wire:click="saveVariable({{ $variable->id }})">Save</button><button class="icon-button danger" type="button" wire:click="deleteVariable({{ $variable->id }})" wire:confirm="Delete {{ $variable->key }}?">Delete</button></div></td>
+                                <td><div class="row-actions"><button class="button button-secondary button-small" type="button" wire:click="saveVariable({{ $variable->id }})">Save</button><button class="icon-button danger" type="button" wire:click="deleteVariable({{ $variable->id }})" data-confirm-title="Confirm environment action" data-confirm="Delete {{ $variable->key }}?">Delete</button></div></td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="empty-table">No variables in this environment.</td></tr>

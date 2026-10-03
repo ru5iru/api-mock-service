@@ -15,11 +15,11 @@
             <label class="select-field"><span class="select-caption">Time</span><select wire:model.live="timeRange" aria-label="Callback time range"><option value="15m">Last 15 minutes</option><option value="1h">Last hour</option><option value="24h">Last 24 hours</option><option value="all">All available</option></select></label>
         </div>
         <div class="quick-filter-row">
-            <div class="clock-toggle" role="group" aria-label="Callback timestamp display">
+            <div class="segmented-control clock-toggle" role="group" aria-label="Callback timestamp display">
                 <button class="{{ $clock === 'local' ? 'active' : '' }}" type="button" wire:click="$set('clock', 'local')" aria-pressed="{{ $clock === 'local' ? 'true' : 'false' }}">Local</button>
                 <button class="{{ $clock === 'utc' ? 'active' : '' }}" type="button" wire:click="$set('clock', 'utc')" aria-pressed="{{ $clock === 'utc' ? 'true' : 'false' }}">UTC</button>
             </div>
-            <div class="density-toggle" role="group" aria-label="Callback log row density">
+            <div class="segmented-control density-toggle" role="group" aria-label="Callback log row density">
                 <button type="button" data-density-option="compact" aria-pressed="true">Compact</button>
                 <button type="button" data-density-option="comfortable" aria-pressed="false">Comfortable</button>
             </div>

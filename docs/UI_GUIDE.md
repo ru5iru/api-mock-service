@@ -1,43 +1,521 @@
-# MockDeck UI guide
+# MockDeck UI Component Reference
 
-This document records the UI system currently implemented in MockDeck. It is a reference for maintaining existing screens and adding new ones without introducing a parallel visual language.
+Use these recipes without adding page-specific classes to alter their appearance. The CSS and Blade paths below are authoritative. Update this reference and its source-verification tests in the same change as a shared component. Token names resolve to **exact light and dark values** in [Theme tokens](#theme-tokens); geometry is identical in both themes unless stated otherwise. `transparent` means the ancestor surface shows through, not a new color.
 
-Source of truth:
+## Contents
 
-- Design tokens: `public/css/tokens.css`
-- Component and layout styles: `public/css/app.css`
-- Shared Blade components: `resources/views/components/`
-- Theme behavior: `public/js/theme.js`
-- UI preference behavior: `public/js/ui-preferences.js`
-- Token and contrast enforcement: `scripts/validate_design_tokens.py`
+1. [Buttons](#buttons)
+2. [Dropdowns and selects](#dropdowns-and-selects)
+3. [Form fields](#form-fields)
+4. [Toggles and switches](#toggles-and-switches)
+5. [Radio controls](#radio-controls)
+6. [Segmented controls](#segmented-controls)
+7. [Badges and chips](#badges-and-chips)
+8. [Disclosures](#disclosures)
+9. [Cards and panels](#cards-and-panels)
+10. [Banners and callouts](#banners-and-callouts)
+11. [Toasts](#toasts)
+12. [Tables](#tables)
+13. [Tabs and stepper](#tabs-and-stepper)
+14. [Tooltips](#tooltips)
+15. [Drag-reorder rows](#drag-reorder-rows)
+16. [Sticky elements](#sticky-elements)
+17. [Dialogs](#dialogs)
+18. [Page shell and navigation](#page-shell-and-navigation)
+19. [Code and preview surfaces](#code-and-preview-surfaces)
+20. [Theme tokens](#theme-tokens)
+21. [Typography scale](#typography-scale)
+22. [Spacing scale](#spacing-scale)
+23. [Motion tokens](#motion-tokens)
+24. [Validation and coverage](#validation-and-coverage)
+25. [Inline editable title](#inline-editable-title)
 
-The dashboard top bar is wrapped in Livewire's `@persist('dashboard-topbar')` directive across `wire:navigate` routes. Keep its brand, navigation, environment switcher, theme control, and user menu inside that one persistent header. The route content swaps in `#main-content`; on navigation the active link and `aria-current` are synchronized from the destination path without replacing the header node.
-The unmatched-request badge reserves a fixed width even when hidden so its changing count cannot move the navigation links.
-The root reserves the vertical scrollbar gutter on every route. Keep document scrolling instant during `wire:navigate` swaps; global smooth scrolling makes the old page appear to slide while Livewire resets the scroll position. Do not add page-wide fades to the persistent shell.
+## Buttons
 
-The main navigation exposes one **Logs** destination. `/dashboard/logs` has Requests and Callbacks tabs with the same log card structure: live status, full-width search, filter row, quick actions, and table. Legacy `/dashboard/requests` and `/dashboard/callbacks` URLs render the matching tab for existing bookmarks. Deep links use `/dashboard/logs?type=callbacks` (with optional `response_id` or `request_log_id`) or `?type=requests` (with optional `search`). Keep both log types on this page when adding new log filters.
+**Purpose:** execute a command; use an anchor with the same classes only for navigation. A status label is a Badge, not a disabled button.
 
-With a running app and Playwright installed, run `MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/layout-smoke.mjs`. It checks the same header DOM node and bounding box across six navigations, compares page-title top coordinates (including the editor), and writes light/dark screenshots under `tests/Browser/screenshots/` for review. Run the separate accessibility audit on all routes in both themes before release.
+**Anatomy:** inline `<button type="button" class="button button-VARIANT">label</button>` in `resources/views/livewire/admin/response-manager.blade.php`. There is no Button Blade component. Keep explicit `type`; use `submit` inside its owning form or with an explicit `form="endpoint-settings"` target for teleported save actions.
 
-Custom menus (theme, environment, user, mobile navigation, endpoint overflow, bulk tags, and Faker picker) use native `<details data-menu>` and `public/js/menu.js`. The shared controller closes on outside click, Escape (returning focus), selection, and navigation; opening one menu closes any other. Arrow keys open from the trigger and traverse simple menu options. Searchable Faker options retain their specialized listbox keyboard behavior. The raised panel shell uses the shared border, radius, elevation, and fast motion tokens. Do not introduce a separate menu close handler in a page or feature script.
+**Classes/tokens:** `.button`: minimum height 36px, padding `--space-2 --space-4` (8px 16px), 1px border, `--radius-md` (6px), gap `--space-2`, 13px/600. At <=767px all `.button` elements have minimum height 44px. `.button-small` means 38px minimum, 7px 12px padding, 13px text; it does not override the mobile minimum. `.button-full` sets width 100%.
 
-Status and informational chips use `<x-badge>` with `neutral` (default), `success`, `warning`, `danger`, or `info` variants. The component owns padding, pill radius, border, and text size. Active and Default on the same card must both use this component. Keep HTTP method indicators and interactive tag filters specialized because they encode method identity or input state rather than a status label.
+| Variant | Classes | Background / text / border | Hover delta |
+|---|---|---|---|
+| Primary | `button button-primary` | `--accent` / `--on-accent` / `--accent` | Background and border `--accent-hover` |
+| Secondary | `button button-secondary` | transparent / `--text` / `--text` | `--surface-2` / `--accent-hover` / `--accent` |
+| Tertiary | `button button-tertiary` | transparent / `--text` / transparent | `--surface-2` / `--accent-hover` / `--border`; no shadow |
+| Danger | `button button-danger` | `--danger-fill` / `--on-danger` / `--danger-fill` | Fill and border `--danger-fill-hover` |
+| Text | `text-button` | transparent / `--text-muted` / bottom transparent | Text `--text`, bottom border `--accent` |
+| Compact row command | `icon-button` | transparent / `--text-muted` / transparent | `--surface-2` / `--text` / `--border` |
+| Destructive row command | `icon-button danger` | same as row command | `--danger-bg` / `--danger-fg` / `--danger-border` |
 
-Configured response rows use a native radio input beside the status code. The checked row identifies the response selected for editing (the sole row starts checked); response weights still govern runtime selection when several responses exist. Keep its accessible label explicit and preserve arrow-key navigation within the radio group.
+Tertiary defaults to minimum 40px and 10px horizontal padding. Text defaults to 40px, 7px 5px, no perimeter border, 1px bottom border, 13px/600. Row commands default to 40px, 8px 11px, 1px border, 5px radius, 12px/600; schema-row commands use minimum width 36px and 8px horizontal padding. Existing text-labelled Edit/Callback/Delete commands intentionally use this compact row variant.
 
-Compact filter selects on Endpoints, Request log, Callback log, and Import/export show their current option without a visible caption row. Every filter still has a specific accessible name, supplied by a visually hidden label or `aria-label`. Keep ordinary edit-form labels visible.
+**States:** normal hover adds `--shadow-md`; active enabled `.button` translates down 1px and uses `--shadow-sm`. Primary starts with `--shadow-sm`. Focus-visible is the global 2px `--focus-ring` outline, offset 3px. Disabled `.button`: `--disabled-bg`, `--disabled-fg`, `--border`, no transform/shadow, not-allowed cursor; hover is excluded. Disabled row/text commands use `--disabled-fg`, not-allowed cursor. Loading uses `wire:loading.attr="disabled"` and an explicit target; it has the same disabled appearance, not a separate color.
 
-Request events record the environment name and ID at invocation. Callback attempts store the environment name at delivery, including retries and resends; the Callback log displays that stored name. A dash indicates an older record created before environment logging or a missing source environment. Never infer a historical environment from the currently active one.
+**Examples (all variants and size modifiers):**
 
-If this guide and the implementation disagree, update the implementation or this guide in the same change. Do not add undocumented tokens or reusable patterns.
+```blade
+<button class="button button-primary button-small" type="button" wire:click="saveSelection" wire:loading.attr="disabled" wire:target="saveSelection">Save selection</button>
+<a class="button button-secondary" href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Cancel</a>
+<button class="button button-tertiary button-small" type="button" wire:click="resetSequence" data-confirm="Reset the active environment only?">Reset sequence</button>
+<button class="button button-danger" type="button" wire:click="delete" data-confirm="Delete this item?">Delete</button>
+<button class="text-button" type="button" wire:click="createNew">Cancel edit</button>
+<button class="icon-button" type="button" wire:click="edit({{ $response->id }})">Edit</button>
+<button class="icon-button danger" type="button" wire:click="delete({{ $response->id }})" data-confirm="Delete response?">Delete</button>
+<button class="button button-primary button-full" type="submit">Sign in</button>
+```
 
-## 1. Tokens
+**Do/Don't:** use primary for Save selection, Save changes, Add response and Update response; don't demote a configuration save to outline. Use tertiary for Reset sequence with confirmation; don't imply it saves configuration. Name icon-only actions with `aria-label` and a title; don't rely on the glyph alone. Set a loading target; don't disable unrelated controls during another component's request.
 
-All visual values must come from `public/css/tokens.css`. Components must not contain literal colors or literal font stacks. `make design-validate` enforces those rules and checks the declared contrast pairs.
+## Dropdowns and selects
 
-Light values are declared on `:root, [data-theme="light"]`. Dark values override that base on `[data-theme="dark"]`. A repeated value in the tables below means the dark theme inherits the light value.
 
-### Typography tokens
+**Purpose:** native selects choose a form value; custom menus expose commands or searchable choices. Do not replace a three-option select with a custom popover.
+
+**Anatomy:** native `.field > label + select`; compact filters use `label.select-field > span.select-caption + select` in `.toolbar-controls` or `.log-filter-panel`. Custom menus use `details[data-menu] > summary + panel`; controller `public/js/menu.js`, placement `public/js/panels.js`. Theme component: `resources/views/components/theme-control.blade.php`; environment menu: `resources/views/livewire/admin/environment-switcher.blade.php`; Faker picker: `resources/views/livewire/admin/partials/schema-row.blade.php`.
+
+**Classes/tokens:** native `.field select`: width 100%, minimum height 48px, padding 10px 12px, 1px `--border-strong`, 6px radius, transparent background, `--text`. Locale/Seed and schema controls intentionally use dense 44px minimum, `--space-2 --space-3` padding, `--surface`, `--radius-md`. Filter selects: 40px minimum, 7px 39px 7px 12px, `--surface`, 1px `--border-strong`, 6px radius, `--shadow-sm`, 13px/600, `--select-chevron` 16px at right 12px. Log filters reduce horizontal padding to 10px/34px and text to 12px. Bulk selection controls intentionally use 34px minimum, 5px 34px 5px 9px, 14px chevron.
+
+Custom panel perimeter is always `details[data-menu] > :not(summary)`: 1px `--border-strong`, `--radius-lg`, `--surface-raised`, `--shadow-lg`. Environment: 220px minimum, 8px padding, 4px gaps, 40px options. Theme: 150px minimum, 8px padding, 4px gaps, 36px options. User: 210px minimum, 10px padding, 3px gaps, 40px options. Overflow: 150px minimum, 7px padding. Faker: desired width 480px, maximum height 420px; arguments: desired width 360px, 12px padding. Width is clamped to viewport minus 32px; actual height shrinks to available space above/below its anchor.
+
+**States:** native hover border `--accent-border`; focus border `--accent`, `--shadow-focus`, `--surface`; disabled `--disabled-bg`, `--disabled-fg`, `--border`, not-allowed. Filter hover adds `--surface-raised`; filter focus removes its outline in favor of the focus shadow. Menu open synchronizes `summary[aria-expanded]`, enters over `--motion-fast`, closes other menus. Hover/focus options use `--surface-2`. Active theme choice uses `aria-checked`; active environment choice uses `.active`. Escape closes and restores summary focus; outside click, command selection and navigation close. Loading has no menu-specific skin: disable the owning command and report request status.
+
+**Examples:**
+
+```blade
+<label class="field" for="sequence-on-exhaust"><span>On exhaust</span>
+    <select id="sequence-on-exhaust" wire:model.live="sequenceOnExhaust">
+        <option value="repeat_last">Repeat last</option><option value="loop">Loop</option><option value="not_found">Not found</option>
+    </select>
+</label>
+<div class="toolbar-controls"><label class="select-field"><span class="select-caption">Status</span>
+    <select wire:model.live="status" aria-label="Response status"><option value="all">All statuses</option></select>
+</label></div>
+<details class="overflow-menu" data-menu>
+    <summary aria-label="Endpoint actions">⋯</summary>
+    <div><button type="button" wire:click="duplicate">Duplicate</button></div>
+</details>
+```
+
+**Do/Don't:** reuse `data-menu`; don't add a feature-specific outside-click controller. Reserve action-bar/toast space through `MockDeckPanels`; don't use viewport height alone. Keep an accessible native-select label even when captions are hidden; don't hide meaning with the caption. Use the native Popover top layer where supported; don't solve a stacking trap by escalating arbitrary z-indexes. Older browsers fall back to fixed positioning and do not get the same top-layer guarantee.
+
+## Form fields
+
+**Purpose:** editable scalar/multiline data with visible labels; compact table controls retain a hidden label, not a second layout.
+
+**Anatomy:** inline `.field > label[for] + input|textarea|select + .field-help + .field-error`. Owner examples: `endpoint-form.blade.php`, `response-manager.blade.php`. Inputs reference help/error IDs through `aria-describedby`.
+
+**Classes/tokens:** `.field` margin-bottom 22px; labels 13px/600 with 7px bottom margin, label annotation `--text-muted`/400. Text/number inputs: 48px minimum, 10px 12px padding, 1px `--border-strong`, 6px radius, transparent background, `--text`. Textareas: 13px padding, vertical resize. Helper: 12px `--text-muted`, 6px top margin. Error: 12px/600 `--danger-fg`, margin 7px 0 0. `.field-row.two|three` uses equal `minmax(0, 1fr)` tracks, 11px gap, collapses at <=740px. Rule rows collapse at <=720px as well. Schema rows use the 44px dense recipe in Dropdowns and selects.
+
+**States:** hover border `--accent-border`; focus border `--accent`, background `--surface`, `--shadow-focus`; global keyboard focus outline remains. Disabled text/textarea/select: `--disabled-fg`, `--disabled-bg`, `--border`, not-allowed. Radio/checkbox focus is not subject to text-field rules. Error text does not invent a red border state. Loading uses `.loading-label` (11px `--accent-link`) or `.spinner`, not replacement field content. Active means focused; there is no independent selected text-field variant.
+
+**Variants/examples:**
+
+```blade
+<div class="field"><label for="endpoint-name">Name <span>optional</span></label>
+    <input id="endpoint-name" type="text" wire:model="name" aria-describedby="endpoint-name-help">
+    <small id="endpoint-name-help" class="field-help">Leave blank to use the derived name.</small>
+    @error('name') <p class="field-error">{{ $message }}</p> @enderror
+</div>
+<div class="field"><label for="response-body">Body</label>
+    <textarea id="response-body" class="code-input compact" rows="8" spellcheck="false" wire:model="body"></textarea>
+</div>
+<label class="compact-input"><span>Items</span><input type="number" min="0" max="1000" wire:model.live="builderSchema.count"></label>
+```
+
+The raw curl `.curl-editor` is 184-460px, internally scrollable; `resizeEditor()` measures the textarea itself, with no mirror. Successfully parsed curl is replaced by `.curl-summary` (flex, 8px gap; method badge, wrapping 12px URL and tertiary Edit request). No content, parse errors and examples remain expanded. Explicit editing remains open until Done editing; never collapse mid-edit on every keystroke.
+
+**Rule-condition row recipe:** inside the response's Conditions disclosure, `.rule-condition-row` has 12px block padding and a 1px `--border` bottom separator. Compose two `.field-row.three` rows; at 720px these become one column. Field type/name/operator come first, then value/priority/remove. Exists disables only Value using the standard disabled field state. Add uses tertiary; Remove uses the destructive row-command variant. All conditions on a response use AND; the editable numeric priority and response move commands share endpoint-wide order.
+
+```blade
+<div class="rule-condition-row" wire:key="condition-{{ $response->id }}-{{ $ruleIndex }}">
+    <div class="field-row three">
+        <label class="field"><span>Field type</span><select wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_type"><option value="header">Header</option><option value="query">Query</option><option value="body_json_path">Body JSON path</option></select></label>
+        <label class="field"><span>Field name</span><input type="text" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_name" placeholder="X-Mode / status / user.id"></label>
+        <label class="field"><span>Operator</span><select wire:model.live="responseRules.{{ $response->id }}.{{ $ruleIndex }}.operator">@foreach (['equals', 'contains', 'regex', 'exists'] as $operator)<option value="{{ $operator }}">{{ ucfirst($operator) }}</option>@endforeach</select></label>
+    </div>
+    <div class="field-row three">
+        <label class="field"><span>Value</span><input type="text" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.value" @disabled($condition['operator'] === 'exists')></label>
+        <label class="field"><span>Priority (lower first)</span><input type="number" min="0" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.priority"></label>
+        <button class="icon-button danger" type="button" wire:click="removeRule({{ $response->id }}, {{ $ruleIndex }})" aria-label="Remove condition {{ $ruleIndex + 1 }} from response {{ $response->id }}">Remove</button>
+    </div>
+</div>
+```
+
+**Do/Don't:** keep field labels visible; don't use placeholder-only forms. Preserve raw curl when collapsing; don't truncate stored data to create a summary. Use validation text next to the affected field; don't emit a success toast for a parse state. Use minmax tracks and wrapping; don't widen the viewport for a long value.
+
+## Toggles and switches
+
+**Purpose:** independent boolean values; exclusive alternatives use Radio controls or Segmented controls.
+
+**Anatomy:** native checkbox in `.toggle-inline`; endpoint enabled uses `label.switch-control > input[type=checkbox] + span[aria-hidden]`; matching policy uses `label.toggle-row > span(strong + small) + input[type=checkbox]` in `endpoint-form.blade.php`.
+
+**Classes/tokens:** inline minimum 38px, 7px 10px padding, 8px gap, 13px; checkbox 18px with `--accent` accent-color. `.switch-control` track 40x23px, 1px `--border-strong`, pill radius, `--toggle-off`; thumb 15px, `--toggle-thumb`, top/left 3px. Matching track 44x24px, 16px thumb, same token families. `.toggle-row.overridden` opacity .68.
+
+**States:** checked track/border `--accent`; switch thumb translates 17px, matching thumb 20px. Switch focus-visible span gets 2px `--focus-ring` outline, 3px offset. Matching inputs receive global focus. `.toggle-row input:disabled` is not-allowed; overridden rows are dimmed. Hover has no independent track delta. Loading uses a disabled native checkbox when needed; no custom loading switch skin.
+
+**Variants/examples:**
+
+```blade
+<label class="switch-control"><input type="checkbox" wire:model="enabled" aria-label="Endpoint enabled"><span aria-hidden="true"></span></label>
+<label class="toggle-row"><span><strong>Ignore all headers</strong><small>Method, path/query and body still match.</small></span><input type="checkbox" wire:model.live="excludeHeaders"></label>
+<label class="toggle-inline"><input type="checkbox" wire:model.live="callbackEnabled"><span>Enable callback</span></label>
+```
+
+**Do/Don't:** use a checkbox for boolean semantics; don't use a button that merely looks like a switch. Show why a policy is overridden; don't permit apparently editable ignored choices. Use a radio for fallback; don't allow multiple independent fallback checkboxes.
+
+## Radio controls
+
+**Purpose:** one value in a named exclusive group. Response edit selection and runtime fallback are different groups, with the **same single control**.
+
+**Anatomy:** `resources/views/components/radio.blade.php`; `<x-radio :checked="expression" name="group" ... />` renders `input[type=radio].ui-radio`, forwarding native and Livewire attributes. Used for configured-response, fallback-response and import-mode; no other native radio implementation exists in views.
+
+**Classes/tokens:** exactly 16x16px, margin 0, 1px `--border-strong`, pill radius, `--surface`, no native appearance, fixed flex basis. `.radio-option` import wrapper intentionally adds margin-top 3px to the same control. Checked: `--accent` border/fill, inset `0 0 0 3px --surface` creates the filled dot. Both themes use the same anatomy.
+
+**States:** hover enabled border `--accent-hover`; focus global 2px `--focus-ring` / 3px offset; checked as above; disabled `--border`, `--disabled-bg`, not-allowed; transition `--motion-fast`. There is no radio-specific loading state; disable it during its owning operation. Parent selected row may also use `.selected` (see Cards and panels), without altering radio size.
+
+**Examples:**
+
+```blade
+<x-radio name="configured-response" value="{{ $response->id }}" wire:click="edit({{ $response->id }})" :checked="$editingId === $response->id" aria-label="Select response {{ $response->status_code }} for editing" />
+<label class="toggle-inline"><x-radio name="fallback-response" value="{{ $response->id }}" wire:click="setFallback({{ $response->id }})" :checked="$fallbackResponseId === $response->id" aria-label="Use response {{ $response->id }} as default fallback" /><span>Default / fallback</span></label>
+<label class="radio-option"><x-radio name="import-mode" value="upsert" wire:model.live="mode" :checked="$mode === 'upsert'" /><span><strong>Update existing</strong></span></label>
+```
+
+**Do/Don't:** use `x-radio` everywhere; don't size fallback as a checkbox. Keep explicit group names and labels; don't combine edit-selection and fallback into one group. Preserve native arrow-key semantics; don't reimplement the radio in a clickable div.
+
+## Segmented controls
+
+**Purpose:** a small, mutually exclusive set of visible modes; use a Select for longer or dynamic option lists.
+
+**Anatomy:** inline `div.segmented-control[role=group][aria-label] > button[type=button][aria-pressed]`. One underlying CSS recipe serves Weighted/Sequence/Rule-based, Static/Template, Builder/JSON, Object/List, Local/UTC and Compact/Comfortable. `.clock-toggle` adds only automatic left margin; `.density-toggle` is the preference-controller hook, not another visual component.
+
+**Classes/tokens:** max-content width capped at 100%, wrapping inline flex; 4px padding, 1px `--border-strong`, 6px radius, `--surface`. Buttons minimum 36px, padding 4px 12px, no border, 4px radius, 12px/600, `--text-muted`, transparent background.
+
+**States:** hover enabled `--text` / `--surface-2`; selected `aria-pressed=true` uses `--text` / `--accent-subtle`, inset 1px `--accent-border`. Focus is global ring. Disabled `--disabled-fg` / `--disabled-bg`, not-allowed. Loading is owning-command disabled state, not a separate segment. Do not use `.active` as the only state signal.
+
+**Variants/examples:**
+
+```blade
+<div class="segmented-control" role="group" aria-label="Response selection mode">
+    @foreach (['weighted' => 'Weighted', 'sequence' => 'Sequence', 'rule' => 'Rule-based'] as $mode => $label)
+        <button type="button" wire:click="setSelectionMode('{{ $mode }}')" aria-pressed="{{ $selectionMode === $mode ? 'true' : 'false' }}">{{ $label }}</button>
+    @endforeach
+</div>
+<div class="segmented-control clock-toggle" role="group" aria-label="Timestamp display">
+    <button type="button" wire:click="$set('clock', 'local')" aria-pressed="{{ $clock === 'local' ? 'true' : 'false' }}">Local</button>
+    <button type="button" wire:click="$set('clock', 'utc')" aria-pressed="{{ $clock === 'utc' ? 'true' : 'false' }}">UTC</button>
+</div>
+<div class="segmented-control density-toggle" role="group" aria-label="Row density">
+    <button type="button" data-density-option="compact" aria-pressed="true">Compact</button>
+    <button type="button" data-density-option="comfortable" aria-pressed="false">Comfortable</button>
+</div>
+```
+
+**Do/Don't:** use the exact same classes for editor/log modes; don't clone a smaller clock-only skin. Keep `aria-pressed` current; don't signal selection through color alone. Wrap at narrow widths; don't overflow the card.
+
+## Badges and chips
+
+**Purpose:** noninteractive status metadata; tags are input choices and HTTP method pills encode identity, not status.
+
+**Anatomy:** `resources/views/components/badge.blade.php`; `<x-badge variant="...">text</x-badge>` produces `.ui-badge.ui-badge-VARIANT`.
+
+**Classes/tokens:** minimum 24px, 3px 7px padding, 1px border, pill radius, 4px gap, 11px/500, line-height 1.5. Neutral uses `--surface-2` / `--text-muted` / `--border-strong`; semantic variants use matching `--VARIANT-bg`, `--VARIANT-fg`, `--VARIANT-border`. Dot `.badge-dot` is 8px, currentColor.
+
+**States:** badges have no hover, active, disabled or loading state and no focus stop. A title may clarify metadata. Interactive `.tag-chip.selectable` is the separate checkbox-backed chip variant: `.selected` uses `--accent-subtle` / `--text` / `--accent-border`; focus-within uses the focus outline. Method badges use get/post/put token triples; DELETE uses danger and HEAD/OPTIONS are neutral.
+
+**Variants/examples:**
+
+```blade
+<x-badge>Draft</x-badge>
+<x-badge variant="success">Templated</x-badge>
+<x-badge variant="warning">Renamed aliases</x-badge>
+<x-badge variant="danger">Failed</x-badge>
+<x-badge variant="info">Fallback</x-badge>
+<label class="tag-chip selectable {{ in_array($tag->id, $tagIds, true) ? 'selected' : '' }}"><input type="checkbox" wire:model="tagIds" value="{{ $tag->id }}"><span>{{ $tag->name }}</span></label>
+<span class="method-badge method-get">GET</span>
+```
+
+**Do/Don't:** use info badges for Position N and Fallback; don't style ad hoc spans. Keep semantic token triples together; don't combine warning foreground with info background. Keep tags interactive and labelled; don't turn status badges into undocumented buttons.
+
+## Disclosures
+
+**Purpose:** in-flow optional detail; unlike a menu, opening shifts content below it and never floats over it.
+
+**Anatomy:** the single `details[data-disclosure] > summary > .details-chevron + label` pattern. `normalized-details` is compact technical detail; `history-disclosure` is a richer heading/caption layout. Inline owners: endpoint/response editor. Nested schema disclosure uses the same native details behavior with `.schema-nested`.
+
+**Classes/tokens:** normalized: top margin 12px; summary minimum 40px, 8px 0 padding, transparent background, `--text-muted`, 12px/600. History summary: minimum 48px, 8px gap. Chevron is inline-block, margin-right 7px, 16px/500, rotates 90deg when open; `--motion-base`. There is no extra frame on the summary. Content uses its own table/code styles.
+
+**States:** default closed; hover normalized summary text `--text`; focus global outline. Open chevron rotates and content enters over `--motion-base`. A capturing `toggle` listener in `dashboard.blade.php` synchronizes `summary[aria-expanded]`; initialization does the same. Disabled/loading variants do not exist: disable the individual contained action, not the disclosure. Use `wire:ignore.self` and a stable `wire:key` when Livewire changes inside an operator-opened disclosure.
+
+**Examples:**
+
+```blade
+<details class="normalized-details" data-disclosure wire:ignore.self wire:key="matching-header-details">
+    <summary><span class="details-chevron" aria-hidden="true">›</span> Header matching details</summary>
+    <div class="parsed-policy-list"><div><code>Authorization</code><span>excluded authentication</span></div></div>
+</details>
+<details class="history-disclosure" data-disclosure wire:ignore.self wire:key="response-conditions-{{ $response->id }}">
+    <summary><span class="details-chevron" aria-hidden="true">›</span><strong>Conditions</strong></summary>
+    <button class="button button-tertiary button-small" type="button" wire:click="addRule({{ $response->id }})">Add condition</button>
+</details>
+```
+
+**Do/Don't:** collapse the full matching-header list by default; don't repeat every exclusion in Signature and Matching. Keep Signature to five exclusions plus a count; don't hide the full list permanently. Use data-menu for floating commands; don't add absolute positioning to a disclosure. Callback configuration belongs in the Callback tab and opens from a compact response row; don't embed it inside the primary response form. Reuse `livewire/admin/partials/callback-settings.blade.php` for Delivery, Retry policy and Signing. Save callback updates only callback fields; the global save also persists response drafts held across tab and response switches.
+
+## Cards and panels
+
+**Purpose:** frame a repeated item or a specific editing/preview tool, not every page band.
+
+**Anatomy:** inline `.card`, optional `.card-heading > div(h2 + p)`, content. Signature uses `.card.preview-card.sticky-card`; configured responses `.card.response-card.selection-response-card`; selection editor `.card.selection-settings`. There is no generic Card Blade component.
+
+**Classes/tokens:** base `--surface`, 1px `--border`, 8px radius, `--shadow-sm`. Form/preview/response-form padding 16px. Selection-settings padding 16px and grid gap 12px. Response row padding 16px, transparent 2px top border, 15px gap. Heading bottom margin 16px, bottom padding 12px and 1px `--border`. Header text 14px/600.
+
+**States:** base card has no active/focus/disabled/loading skin. Interactive response row hover: top border `--accent-border`, `--surface-hover`, `--shadow-md`; `.selected`: `--accent` border, `--accent-subtle` fill, top border stays 2px. Loading data uses the existing skeleton or status, not dimmed input cards. Sticky preview behavior is specified in Sticky elements; full response forms are static to keep their bottom controls reachable.
+
+**Compact response variant:** `.selection-response-card` overrides row padding to `--space-2 --space-3` (8px 12px), gap `--space-2`, flex layout, including mobile. Status uses 4px 8px padding and no bottom margin. Keep only status, weight/position/conditions or Fallback, Edit, overflow actions and Details on the default line. `.response-row-summary` truncates; body text remains available via title and the Details disclosure. `.response-row-details` removes outer margin/padding/border, gives its summary 4px block padding and 11px type, and expands to full row width only when open. `.response-row-detail-content` uses 8px grid gap and top padding. Delay, headers, keyboard reorder, conditions/fallback controls and response History live there. Callback rows use `.callback-response-row`, 8px 12px padding, 8px gap, status/mode/enabled badges and a trailing action; selected border/fill use accent tokens. Use the existing shared overflow menu and disclosure controllers. Both themes share this geometry.
+
+**Examples:**
+
+```blade
+<section class="card selection-settings" aria-labelledby="response-selection-title"><h3 id="response-selection-title">Response selection</h3></section>
+<section class="card preview-card sticky-card"><div class="card-heading tight"><div><h2>Signature</h2><p>The canonical request saved for matching.</p></div></div></section>
+<article class="card response-card selection-response-card {{ $editingId === $response->id ? 'selected' : '' }}"><div class="response-status"><strong>{{ $response->status_code }}</strong></div></article>
+```
+
+Selection preview is a plain `.selection-preview` section within selection settings: min-width 0, wrapping, 20px list indent. It reuses the Signature content treatment; `signature-panel` is an existing semantic hook, **not a CSS skin**. The only new reusable floating primitive is the shared anchored-panel placement. Rule-condition rows compose existing fields/rows/actions: 12px block padding, bottom 1px `--border`; no nested condition cards.
+
+**Do/Don't:** use the outer card perimeter; don't add a card per condition. Keep selection preview in the selection tool; don't invent another floating card. Allow row text to wrap on mobile; don't force status/actions outside their container.
+
+Keep compact response summaries on one line with secondary metadata under Details; don't restore a multi-line body/metadata stack by default. Keep Callback Retry policy and Signing collapsed using `details[data-disclosure]`; don't remove their controls from the mounted form or change delivery semantics to reduce space.
+
+## Banners and callouts
+
+**Purpose:** persistent context or actionable validation; transient operation feedback is a Toast.
+
+**Anatomy:** inline `.info-note` or `.validation-panel.warning-panel|error-panel` with optional strong heading, paragraph/list; `.parse-status` is persistent parser state. Owner: endpoint/response editor.
+
+**Classes/tokens:** info: margin-top 14px, padding 15px 17px, 1px `--info-border`, left 3px `--info-fg`, 6px radius, `--info-bg` / `--info-fg`, 12px. Validation: margin 12px 0, same padding/radius/left width; warning and error use their semantic triples (error maps to danger). Parser status: minimum 40px, margin-top 8px, padding 8px 10px, 6px radius, 13px, 6px gap; idle `--surface-2` / `--text-muted` / `--border`, success/danger triples when parsed/error.
+
+**States:** no hover/active/loading/disabled variant. Parser loading adds `.loading-label`; status content remains. Alerts use role alert for invalid save/parse; informational previews use role note/status as appropriate. Banners do not auto-dismiss; Parsed describes the still-current request, not a past success action. The former duplicate `.flash.inline` response-save banner is removed.
+
+**Variants/examples:**
+
+```blade
+<div class="info-note" role="note">Request-context values are synthetic samples, not captured traffic.</div>
+<div class="validation-panel warning-panel" role="alert"><strong>Review curl behavior</strong></div>
+<div class="validation-panel error-panel" role="alert"><strong>Rule-based selection requires exactly one Default / fallback response.</strong></div>
+<div class="parse-status success" role="status"><span aria-hidden="true">✓</span><strong>Parsed:</strong> POST</div>
+```
+
+**Do/Don't:** keep validation until fixed; don't time away actionable errors. Use toasts for Response updated; don't flash an identical persistent banner. Mark synthetic preview values; don't imply they came from live requests.
+
+## Toasts
+
+**Purpose:** transient result feedback, not persistent request state or field validation.
+
+**Anatomy:** `#toast-region[aria-live=polite][aria-atomic=false]` in `dashboard.blade.php`; `.toast.toast-success|toast-danger[data-toast] > .toast-icon + message span + optional .toast-action + button[data-dismiss-toast]`. `window.MockDeck.toast(message, tone, action)` creates text safely through `textContent`. Session `status` renders the same toast markup. `public/js/toasts.js` owns lifetime for both paths.
+
+**Classes/tokens:** region width min(420px, viewport minus 32px), right 20px (14px <=740px), 10px gap, fixed, z-index 100, pointer-events none. Bottom `calc(var(--sticky-action-bar-height, 0px) + var(--space-4))`. Toast minimum 52px, padding 11px 12px, 1px `--border-strong`, left 3px semantic foreground, 7px radius, 10px gap, `--surface` / `--text`, `--shadow-lg`, 14px. Icon 24x24px, semantic bg/fg, circular, 700 weight. Dismiss/action minimum 36px, 5px padding, 5px radius, transparent, `--text-muted`.
+
+**States/variants:** success uses `toast-success`, checkmark, `--success-fg/bg`, role status; danger uses `toast-danger`, exclamation, `--danger-fg/bg`, role alert. These are the supported tones; there are no warning/info toast skins. Button hover `--surface-2` / `--text`; focus global ring. No active/disabled/loading toast variant. Lifetime is **6000ms of unpaused time**, initialized once per node; mouseenter and focusin pause elapsed time, mouseleave/focusout resume the remainder only when neither hovered nor focused. Movement within the toast does not resume it. Manual dismissal removes immediately. Toast creation calls `syncStickyActionBar()` synchronously, in addition to shared observer updates.
+
+**Examples:**
+
+```blade
+<button class="button button-primary" type="button" x-on:click="window.MockDeck.toast('Copied.', 'success')">Copy</button>
+<button class="button button-secondary" type="button" x-on:click="window.MockDeck.toast('Could not copy.', 'danger')">Report failure</button>
+```
+
+Server equivalent: `$this->dispatch('toast', message: 'Response updated.');`. Do not also flash `response-status`. The small lifetime API loads synchronously before the inline dashboard controller: deferring it creates a race with the first animation-frame sync and session toasts.
+
+**Do/Don't:** use one notification surface; don't stack permanent and timed copies of success. Call the shared API; don't implement another timer. Pause the remaining time; don't reset the full six seconds after hover. Keep the region outside main but inherit its offset from the root; don't depend solely on an inline bottom style.
+
+## Tables
+
+**Purpose:** scan structured rows with aligned columns; small key/value previews may instead use a definition list.
+
+**Anatomy:** `.table-scroll > table.log-table|header-table` with thead/th[scope=col] and tbody; `.header-table-wrap` is the horizontal wrapper inside disclosures. Owner: log viewer, callback log, endpoint form.
+
+**Classes/tokens:** header-table width100%, collapsed borders, 12px; cells padding9px 10px, bottom1px `--border`, top alignment. Column headings 11px uppercase, `--text-muted`, `--surface-2`; row headings `--text`, data `--text-muted`, wrap anywhere. Log cells height36px, padding4px 10px, top1px `--border`, `--surface`; comfortable density height44px/padding8px vertically. Log headings are sticky top0/z5 within the scroll wrapper. All exact-data cells disable ligatures.
+
+**States:** row hover/selection use their owning table's declared selectors, not a new generic table variant; focus belongs to contained controls. Disabled/loading states belong to controls and existing loading row/spinner. Empty table content uses a full-width colspan message. Density changes cell geometry only, not colors.
+
+**Examples:**
+
+```blade
+<div class="table-scroll"><table class="header-table"><thead><tr><th scope="col">Header</th><th scope="col">Reason</th></tr></thead><tbody><tr><th scope="row">Authorization</th><td>Excluded authentication</td></tr></tbody></table></div>
+<div class="table-scroll" data-log-density="comfortable"><table class="log-table"><thead><tr><th scope="col">Status</th></tr></thead><tbody><tr><td>200</td></tr></tbody></table></div>
+```
+
+**Do/Don't:** scroll the wrapper horizontally; don't overflow the page. Keep column scopes and labelled inline controls; don't make headers look like input labels. Collapse duplicate full header review; don't render it twice by default.
+
+## Tabs and stepper
+
+**Purpose:** true tabs swap the active task while preserving the editor session. Completeness indicators are independent of the active tab.
+
+**Anatomy:** EndpointForm owns `.flow-nav > [role=tablist][data-endpoint-tabs] > button[role=tab]` and matching `[role=tabpanel][aria-labelledby]` IDs. Alpine activeTab is entangled with the existing Livewire component; tab panels remain mounted and use x-show. Switching has no anchor scrolling or component remount. The URL tab parameter supports direct links; new endpoints redirect to tab=response after creation. Signature is shared on Request/Matching; Response/Callback use `.endpoint-context-strip`.
+
+**Classes/tokens:** tab bar sticky at `--site-nav-height` (measured main nav height;65px fallback), z30, `--bg`, 1px `--border` bottom,16px bottom margin. Buttons retain minimum40px,6px 12px padding,7px gap,12px/600, `--text-muted`, transparent fill,2px transparent underline. aria-selected=true uses `--text` / `--accent` underline. Status circle18px: neutral muted/surface/border; valid success tokens/✓; attention warning tokens/!. Geometry is theme-independent.
+
+**States:** click or arrow/Home/End selects, updates aria-selected and roving tabindex; focus does not scroll. Hidden panels are display:none and have no accessible/focusable content. Drafts remain in the same Livewire components until saved, cancelled or navigation. Request/Matching/Response completeness retains its validators, including exactly one fallback in rule mode. No hover/loading/disabled tab skin beyond button hover text and global focus ring; tabs do not submit the form.
+
+**Example:**
+
+```blade
+<button id="tab-response" type="button" role="tab" aria-controls="panel-response" x-bind:aria-selected="activeTab === 'response'" x-bind:tabindex="activeTab === 'response' ? 0 : -1" x-on:click="switchTab('response')">Response</button>
+<section id="panel-response" role="tabpanel" aria-labelledby="tab-response" x-show="activeTab === 'response'">Response settings</section>
+```
+
+Logs retain route tabs via `.log-type-tabs > a[aria-current=page]`; they are not endpoint in-session panels.
+
+**Do/Don't:** keep panels mounted to preserve drafts; don't conditionally destroy a nested editor during tab switching. Keep indicator validity separate from selection; don't grant a checkmark to the active tab. Use roles and linked IDs; don't retain scroll-spy aria-current=location on true tabs. Keep secondary canonical/header/body data in disclosures; don't duplicate Signature on every tab.
+
+## Tooltips
+
+**Purpose:** optional short context; required instructions/errors stay visibly in the form.
+
+**Anatomy:** `resources/views/components/help-tip.blade.php`; focusable `.help-tip[role=button][aria-label]` containing ? and `.help-tip-content[role=tooltip]`. `public/js/panels.js` places it on hover/focus using the same anchored bounds as menus.
+
+**Classes/tokens:** trigger20x20px, margin-left5px, 1px `--border-strong`, circle, `--surface` / `--text-muted`, 12px/600. Content desired290px (max viewport minus32px), 10px 12px padding, 1px `--border-strong`, 6px radius, `--surface` / `--text`, `--shadow-lg`, 13px/1.45/400. Fallback CSS uses z60 and translateX(-50%); native `:popover-open` removes that transform and uses fixed shared placement.
+
+**States:** hidden opacity0/visibility hidden; hover/focus/focus-within or popover-open opacity1/visible, transition `--motion-base`. Focus global ring. No active/disabled/loading variant. Pointer-events none: this is explanation, not an interactive menu. It shrinks/scrolls at viewport edges and escapes the Signature card's overflow through the top layer.
+
+**Example:**
+
+```blade
+<p class="field-help">Preview only. <x-help-tip title="Selection preview" label="Preview does not advance counters. All conditions on one response must match." /></p>
+```
+
+**Do/Don't:** keep the visible summary one line; don't bury validation only in a tooltip. Use the component; don't hand-position tooltips inside overflow containers. Keep tooltip text noninteractive; don't put buttons into pointer-events-none content.
+
+## Drag-reorder rows
+
+**Purpose:** reorder configuration; drag must have keyboard-command alternatives.
+
+**Anatomy:** `data-schema-row`, `data-schema-parent`, `data-schema-index`, `data-schema-target` on a row; child `.schema-drag-handle[draggable=true][data-schema-drag-handle]`; controller `template-editor.js`. Schema partial is `livewire/admin/partials/schema-row.blade.php`. Selection reuses the same dispatcher with target `selection` and parent `responses`.
+
+**Classes/tokens:** schema row min-width0, padding8px, 1px `--border`, 6px radius, `--surface`; rows grid gap8px. Handle `--text-muted`, 14px, user-select none, grab cursor. Main grid tracks: auto / minmax(120px,.8fr) / minmax(130px,.7fr) / minmax(220px,1.8fr) / 76px / auto, gap8px; <=1000px reduces to three columns, <=740px to two. `.selection-move-actions` flex. Rule row details use full-width flex-basis and grid gap8px.
+
+**States:** handle active cursor grabbing; `.schema-dragging` border `--accent-border`, `--accent-subtle`. Focus belongs to move buttons; first/last commands disabled. No drag-specific loading state. Schema reorder cannot cross unrelated parents/targets. Rule response reorder normalizes endpoint-wide rule priorities; sequence reorder sets position order only when saved.
+
+**Examples:**
+
+```blade
+<article class="schema-row" data-schema-row data-schema-parent="fields" data-schema-index="{{ $rowIndex }}" data-schema-target="response">
+    <span class="schema-drag-handle" draggable="true" data-schema-drag-handle title="Drag to reorder" aria-hidden="true">⋮⋮</span>
+    <button class="icon-button" type="button" wire:click="moveSchemaRow('fields', {{ $rowIndex }}, -1)" aria-label="Move field earlier">↑</button>
+</article>
+<article class="card response-card selection-response-card" data-schema-row data-schema-parent="responses" data-schema-index="{{ $responseIndex }}" data-schema-target="selection">
+    <span class="schema-drag-handle" draggable="true" data-schema-drag-handle title="Drag to reorder responses" aria-hidden="true">⋮⋮</span>
+    <button class="icon-button" type="button" wire:click="moveSelectionResponse({{ $responseIndex }}, -1)" aria-label="Move response earlier">↑</button>
+</article>
+```
+
+**Do/Don't:** reuse the existing schema drag dispatcher; don't add a response-only drag library. Supply labelled earlier/later buttons; don't make drag the only input. Keep rule condition editor rows unframed; don't nest a card for every condition.
+
+## Sticky elements
+
+**Purpose:** keep navigation and save actions available without obscuring editable content.
+
+**Anatomy:** the persisted `[x-persist="dashboard-topbar"]` wrapper is sticky at top0/z40; its inner topbar is static. Making only the inner header sticky fails because its containing wrapper has exactly the header's height. Endpoint `.flow-nav` is sticky below the measured nav. `[data-editor-viewport].endpoint-panel-viewport` scrolls the active panel; the fixed action bar is teleported to body with Livewire @teleport, independent of editor ancestors. Its submit button targets form=endpoint-settings.
+
+**Classes/tokens:** actions retain bottom/left/right0,z35,minimum64px,8px horizontal-shell padding, `--surface-translucent`,1px `--border-strong`, `--shadow-sticky`. Mobile actions wrap per existing rules. Viewport height is `--editor-viewport-height`, measured from its actual top to viewport bottom minus action height and16px; initial fallback max(0px,calc(100dvh -250px)). The measured height is clamped at zero rather than a fixed minimum, so short viewports never force the panel beneath the actions. It uses overflow-y:auto, stable gutter and overscroll containment. Thus content is clipped above fixed actions at every scroll position. This is the endpoint editor’s only layout scroll container: html and body use overflow-y:clip while [data-editor-viewport] exists, automatically returning to normal document scrolling on other routes. Signature uses position:static, max-height:none and overflow:visible inside the tab viewport at every breakpoint, so its full content shares the tab scrollbar instead of introducing a second card scrollbar. Independently bounded text editors, code output, menus and modal dialogs retain their own scrolling.
+
+**States/lifecycle:** syncStickyActionBar sets measured `--sticky-action-bar-height` on document.documentElement and page-shell and retains direct toast positioning. ResizeObserver handles action content changes. syncEditorGeometry measures nav/panel geometry on mutation, resize and page scroll. The root property also supplies CSS fallback to toast-region. No-bar routes clear action offsets. Panels are not transformed/contained to simulate transitions. There is no additional sticky hover/disabled/loading skin.
+
+Dashboard's delegated behavior script uses `data-navigate-once`: register observers/handlers once, then reacquire current page elements during `livewire:navigated` and geometry sync. Do not redeclare its top-level constants on navigation or retain a removed shortcut-dialog node. Layout smoke covers both themes; endpoint tab smoke additionally checks all four panels at 999/1000/1001px, desktop and mobile.
+
+**Example:**
+
+```blade
+@teleport('body')
+<div id="save-actions" class="sticky-action-bar" data-sticky-action-bar><button class="button button-primary" type="submit" form="endpoint-settings">Save changes</button></div>
+@endteleport
+```
+
+**Do/Don't:** teleport viewport actions to the body; don't place them below a transformed/contained tab ancestor. Bound the panel viewport above actions; don't rely only on end-of-document padding to avoid obstruction mid-scroll. Make the persisted wrapper sticky; don't trap a sticky header inside a header-height wrapper. Keep the root offset shared with toasts; don't scope it only to main. Use one layout scrollbar in the endpoint editor; don't add independently scrolling Signature cards or enable outer-page scrolling beside the bounded tab viewport.
+
+## Dialogs
+
+**Purpose:** modal confirmation or inspection; optional in-flow detail uses Disclosures.
+
+**Anatomy:** `resources/views/components/dialog.blade.php` renders `dialog.ui-dialog[aria-labelledby]` with `.dialog-heading`, a labelled close button, `.dialog-body` and optional `.dialog-actions`. `public/js/dialogs.js` owns opening, cancellation and focus return. Dashboard contains one shared confirm-dialog and shortcut-dialog; endpoint History uses the same component.
+
+**Classes/tokens:** `.ui-dialog` width min(440px,viewport minus32px), maximum height viewport minus32px, padding24px, 1px `--border-strong`, 8px radius, `--surface-raised` / `--text`, `--shadow-lg`, vertical scrolling. Backdrop `--overlay`, blur2px. Heading16px/600; heading row18px bottom margin/gap16px. Actions have20px top margin,8px gap and wrap. All values resolve identically in both themes except theme tokens.
+
+**States:** closed native hidden; showModal opens the browser modal top layer with native focus trapping and `--motion-base` entry. Escape, close or Cancel dismiss without executing the action; focus returns to the connected opener without scrolling. Confirm replays the original command exactly once. Cancel receives initial focus for destructive confirmation. Loading/disabled states belong to contained buttons; there is no separate modal loading skin.
+
+The shared menu controller ignores clicks and keys originating inside an open dialog. Otherwise Escape could close an underlying menu instead of the modal, and Cancel could hide the opener before focus returns. Destructive `.danger`, `.danger-text` and `.button-danger` actions all select the danger confirmation variant. Tab/Shift+Tab wrap between the first and last enabled, visible controls; the native modal keeps the background inert.
+
+The unsaved-link guard intercepts mousedown, Enter and programmatic click before Livewire's pointer-release navigation can start. It shares the same dialog and replays the original link only after acceptance. Do not rely on click alone for Livewire navigation. Hard reload/tab-close cannot wait for an asynchronous custom modal; the app does not invoke the native beforeunload dialog.
+
+**Variants/examples:**
+
+```blade
+<x-dialog id="history-dialog" title="Endpoint history" close-label="Close endpoint history">
+    <livewire:admin.revision-history entity-type="endpoint" :entity-id="$endpointId" />
+</x-dialog>
+<button class="icon-button danger" type="button" wire:click="delete({{ $response->id }})" data-confirm-title="Delete response" data-confirm="Delete response #{{ $response->id }}?">Delete</button>
+<button class="button button-tertiary button-small" type="button" wire:click="resetSequence" data-confirm-title="Reset sequence" data-confirm="Reset the active environment only? Other environments and match counts remain.">Reset sequence</button>
+```
+
+For programmatic confirmation, `await window.MockDeck.ask({title, message, danger, confirmLabel, trigger})` returns a boolean. Body text uses textContent; do not insert untrusted HTML. Destructive buttons select the danger confirm variant via their existing danger class or data-confirm-danger=true. Other commands use primary. `data-dialog-open="history-dialog"` opens an inspection dialog. `window.MockDeck.openDialog(dialog, trigger)` is the shared programmatic opener.
+
+In-app unsaved navigation uses the shared dialog. Browser reload/tab-close does not show a warning: browsers do not permit waiting for an asynchronous custom dialog during unload, and this app deliberately removes its native beforeunload prompt to meet the native-dialog-free rule. Drafts persist across editor tab switches, not a full reload.
+
+**Do/Don't:** use data-confirm with the original wire:click action; don't call confirm/alert/prompt or wire:confirm. Name the consequence and environment scope; don't ask only Are you sure. Use showModal and restore focus; don't build a high-z-index modal div. Keep cancelled actions side-effect free; don't send the Livewire command before consent.
+
+## Page shell and navigation
+
+**Purpose:** stable page framing and route navigation, distinct from the in-page section stepper.
+
+**Anatomy:** `resources/views/layouts/dashboard.blade.php`: persisted topbar `@persist('dashboard-topbar')`, `main#main-content.page-shell`, footer. `resources/views/components/page-header.blade.php`: breadcrumbs/title and actions.
+
+**Classes/tokens:** shell width min(1120px,100% - 48px), padding16px 0 48px; >=1200px width min(1180px,100% - 64px); 768-1199px width min(100% - 40px,1120px); <=740px width100% - 28px. Page header minimum48px, top-aligned; topbar minimum56px. Reserve scrollbar gutter on root. Do not add page-specific title offsets or route fades.
+
+**States/variants:** topnav active link `.active` and `aria-current=page`, accent underline; hover accent border/text; keyboard focus global. Unmatched-request badge reserves width28px even when hidden. Mobile nav uses shared data-menu. Loading swaps route content without replacing persisted header. No disabled page-header variant.
+
+**Example:**
+
+```blade
+<x-page-header title="Endpoints" description="Configured mock endpoints." />
+```
+
+**Do/Don't:** keep the header node persisted; don't put feature dialogs inside a newly transformed shell. Use one Logs route with Requests/Callbacks tabs; don't add duplicate navigation destinations. Keep historical environment labels from recorded data; don't infer them from the current switcher.
+
+## Code and preview surfaces
+
+**Purpose:** inspect exact request/template/output data; live-looking samples must be labelled synthetic.
+
+**Anatomy:** `.code-input` textarea, `.code-block-wrap` wrapper with `.code-block-heading`, `.template-preview` containing pre and `.template-preview-meta`; schema builder `.schema-builder` in response editor. JSON autocomplete uses `.template-autocomplete[data-template-autocomplete]`, template-editor controller plus shared panel placement.
+
+**Classes/tokens:** code-input `--code-bg` / `--code-fg`, 1px `--code-border`, 12px code font/line1.7, tab-size2; compact11.5px. Focus border `--accent-border`, `--shadow-focus`. Template pre max420px, overflow auto,12px, pre-wrap/wrap anywhere. Meta: top margin/padding8px, top1px `--code-border`, 11px `--code-muted`, gap12px. Empty preview minimum64px, centered `--code-muted`/12px. Schema builder margin-bottom16px, padding16px, 1px `--border`, 8px radius, `--bg`; <=740px padding12px. Autocomplete desired420px/max260px; options minimum40px/padding8px/6px radius, hover/selected `--surface-2`.
+
+**States:** preview Regenerate is a standard command; loading disables its command and reports status, not a faded code surface. Unsupported advanced JSON directives disable Builder with the existing disabled-tooltip wrapper/title. Selected autocomplete uses aria-selected; arrow keys move, Enter/Tab insert, Escape closes. Context/env tokens intentionally remain JSON-editor-only. No extra active/disabled code surface skin.
+
+**Examples:**
+
+```blade
+<div class="field template-json-field" data-template-editor-root><label for="response-template">JSON template</label><textarea id="response-template" class="code-input template-json-editor" rows="12" wire:model.live.debounce.400ms="template" data-template-editor></textarea></div>
+<div class="code-block-wrap template-preview"><div class="code-block-heading"><span>Preview</span><button type="button" wire:click="regeneratePreview">Regenerate</button></div><pre>{{ $templatePreview }}</pre></div>
+```
+
+**Do/Don't:** preserve exact tokens on JSON/Builder switching; don't enable lossy Builder conversion. Use pre-wrap for preview data; don't allow a long curl or JSON string to paint outside the surface. Keep editor autocomplete keyboard behavior in template-editor; don't duplicate menu close logic.
+
+### Revision history and diffs
+
+`resources/views/livewire/admin/revision-history.blade.php` uses the Disclosures recipe for the timeline and `.revision-diff-viewer` for comparisons. The viewer has 16px padding, 12px gaps, 1px `--border-strong`, 8px radius and `--surface-2`. Each `.revision-diff-change` has 1px `--border`, 6px radius and `--surface`. `.revision-diff-values` has two equal columns separated by 1px `--code-border`, collapsing to one at 720px. Each value uses a `pre` with `--code-bg`, `--code-fg`, 12px padding, 11px code text, 72px minimum and 320px maximum height, scrolling and wrapping. Change-kind badges use the existing semantic variants. Compare and Restore use the standard button variants; Restore must name the version in `data-confirm`. Do reuse the code surface and native confirmation; don't invent a separate diff modal or color palette.
+
+```blade
+<livewire:admin.revision-history entity-type="endpoint" :entity-id="$endpointId" :key="'endpoint-history-'.$endpointId" />
+```
+
+## Theme tokens
+
+**Purpose:** centralized visual values, not component-local colors. **Anatomy:** `public/css/tokens.css`: `:root, [data-theme="light"]` base and `[data-theme="dark"]` override. `public/js/theme.js` resolves Light/Dark/System before styles; explicit choices persist, System follows the OS. No fabricated hashed CSS files are required: captured suffixes refer to these sources.
+
+**Classes/tokens and variants:** full resolved table below; dark values include inheritance. Colors, font stacks and theme-sensitive encoded chevron remain in this file only. **States:** `.theme-switching` suppresses transitions during switch; color-scheme follows the theme. Hover/focus/disabled values belong to component recipes, not independent themes.
 
 | Token | Light | Dark |
 |---|---|---|
@@ -55,11 +533,6 @@ Light values are declared on `:root, [data-theme="light"]`. Dark values override
 | `--font-weight-medium` | `500` | Same |
 | `--font-weight-semibold` | `600` | Same |
 | `--font-weight-bold` | `700` | Same |
-
-### Spacing tokens
-
-| Token | Light | Dark |
-|---|---|---|
 | `--space-0` | `0` | Same |
 | `--space-1` | `4px` | Same |
 | `--space-2` | `8px` | Same |
@@ -70,26 +543,12 @@ Light values are declared on `:root, [data-theme="light"]`. Dark values override
 | `--space-8` | `32px` | Same |
 | `--space-10` | `40px` | Same |
 | `--space-12` | `48px` | Same |
-
-Use this scale for new spacing. Existing one-off measurements in `app.css` are implementation debt, not additional tokens.
-
-For dense nested content, the outer `.card` carries the strong perimeter. The endpoint signature preview uses a softly filled request summary, a code surface without an inset shadow, and a warning edge for excluded headers. Avoid stacking separate full borders for adjacent parts of the same preview; keep their content and use spacing from this scale to group it.
-
-### Radius and border tokens
-
-| Token | Light | Dark |
-|---|---|---|
 | `--radius-sm` | `4px` | Same |
 | `--radius-md` | `6px` | Same |
 | `--radius-lg` | `8px` | Same |
 | `--radius-pill` | `999px` | Same |
 | `--border-width` | `1px` | Same |
 | `--border-width-strong` | `2px` | Same |
-
-### Shadow and motion tokens
-
-| Token | Light | Dark |
-|---|---|---|
 | `--shadow-sm` | `0 1px 2px rgb(26 26 26 / 4%)` | `none` |
 | `--shadow-md` | `0 4px 14px rgb(26 26 26 / 7%)` | `none` |
 | `--shadow-lg` | `0 12px 32px rgb(26 26 26 / 9%)` | `none` |
@@ -100,15 +559,6 @@ For dense nested content, the outer `.card` carries the strong perimeter. The en
 | `--shadow-accent-pulse` | `0 0 0 3px rgb(153 107 7 / 30%)` | `0 0 0 3px rgb(240 199 94 / 38%)` |
 | `--motion-fast` | `120ms ease-out` | Same |
 | `--motion-base` | `180ms ease-out` | Same |
-
-Dark-mode elevation uses a raised surface and border, not a shadow. Motion is suppressed while themes change and reduced to effectively zero when `prefers-reduced-motion: reduce` is active.
-
-Use `--motion-fast` for input state and menu entry, and `--motion-base` for chevrons, disclosure content, toast, and dialog entry. Dashboard route content swaps immediately inside the persistent shell; do not add a route fade or delay. The global reduced-motion rule shortens these entry animations.
-
-### Core surface tokens
-
-| Token | Light | Dark |
-|---|---|---|
 | `--bg` | `#fafaf8` | `#14120f` |
 | `--surface` | `#ffffff` | `#1b1915` |
 | `--surface-2` | `#f5f3f0` | `#23201b` |
@@ -127,11 +577,6 @@ Use `--motion-fast` for input state and menu entry, and `--motion-base` for chev
 | `--disabled-fg` | `#514c45` | `#bdb4a4` |
 | `--skeleton-highlight` | `#ffffff` | `#312d26` |
 | `--theme-color` | `#fafaf8` | `#14120f` |
-
-### Brand and control tokens
-
-| Token | Light | Dark |
-|---|---|---|
 | `--accent` | `#996b07` | `#d1a23a` |
 | `--accent-hover` | `#805a04` | `#e1b44f` |
 | `--accent-subtle` | `#fbf3df` | `#352a14` |
@@ -143,13 +588,6 @@ Use `--motion-fast` for input state and menu entry, and `--motion-base` for chev
 | `--toggle-off` | `#746e65` | `#71695d` |
 | `--toggle-thumb` | `#ffffff` | `#f3eee4` |
 | `--select-chevron` | `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23996b07' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")` | `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23d1a23a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")` |
-
-`--select-chevron` is an encoded 16-by-16 down-chevron. Keep it in the token file because its stroke differs by theme; do not reproduce the data URI in component CSS.
-
-### Semantic feedback tokens
-
-| Token | Light | Dark |
-|---|---|---|
 | `--success-bg` | `#e7f4ee` | `#183328` |
 | `--success-fg` | `#27634d` | `#86dbb2` |
 | `--success-border` | `#65947f` | `#4f9a77` |
@@ -165,13 +603,6 @@ Use `--motion-fast` for input state and menu entry, and `--motion-base` for chev
 | `--info-bg` | `#edf4fb` | `#182b3d` |
 | `--info-fg` | `#294f7d` | `#9bcaff` |
 | `--info-border` | `#5f83aa` | `#527eaa` |
-
-Use each semantic family as a set: background, foreground, and border. Do not combine a foreground from one family with a background from another.
-
-### HTTP method, code, and syntax tokens
-
-| Token | Light | Dark |
-|---|---|---|
 | `--method-get-bg` | `#f1f8fc` | `#172d38` |
 | `--method-get-fg` | `#28536b` | `#9bd9ee` |
 | `--method-get-border` | `#6f8fa1` | `#4c8498` |
@@ -192,375 +623,84 @@ Use each semantic family as a set: background, foreground, and border. Do not co
 | `--syntax-string` | `#bdd38d` | `#c7df9a` |
 | `--syntax-key` | `#df9cb1` | `#f0abc0` |
 
-DELETE uses the danger family. HEAD and OPTIONS use neutral surface and text tokens. The code and syntax palette is intentionally dark in both themes.
+**Example:** use existing component CSS `color: var(--text); background: var(--surface); border-color: var(--border);`, never embed hex values in Blade/styles.
 
-## 2. Typography
+**Do/Don't:** resolve both themes through tokens; don't introduce literal colors outside tokens.css. Use raised dark surfaces and borders; don't add light-theme shadow colors to dark mode. Keep semantic triples together; don't mix token families to achieve contrast accidentally.
 
-The UI uses the native platform sans-serif stack through `--font-ui`. This keeps controls and prose aligned with the operating system and uses the platform emoji fonts as fallbacks. JetBrains Mono remains the shipped technical-data font through `--font-code`; its variable WOFF2 supports weights 400 through 700 and is preloaded by dashboard, sign-in, and error layouts.
+## Typography scale
 
-| Role | Size | Line height | Weight | Current selectors/examples |
-|---|---:|---:|---:|---|
-| Page title | `16px` | `1.25` | `600` | `.page-header h1`, `.page-breadcrumbs` |
-| Section heading | `14px` | `1.25` | `600` | `.section-heading h2`, `.card-heading h2` |
-| Body | `13px` | `1.5` | `400` | `body` |
-| Secondary/helper | `12px` | inherited or `1.5` | `400–500` | `.field-help`, `.select-caption`, metadata |
-| Code/data | `11–13px` | `1.5–1.7` | `400–600` | `.code-input`, `pre`, hashes, request data |
-| Table header | `11px` | inherited | `600` | `.log-table th`, `.header-table thead th` |
-| Larger metric | `17–24px` | inherited | `600` | preview and import summary values only |
+**Purpose:** dense operational hierarchy. **Anatomy:** body uses `--font-ui`; exact technical content uses `--font-code`, with ligatures disabled. Shipped JetBrains Mono variable WOFF2 is preloaded by dashboard/auth/error layouts.
 
-Rules:
+| Role | Size / line / weight | Recipe |
+|---|---|---|
+| Page title | 16px / 1.25 / 600 | `.page-header h1`, `.page-breadcrumbs` |
+| Section title | 14px / 1.25 / 600 | `.section-heading h2` |
+| Body | 13px / 1.5 / 400 | `body` |
+| Helper | 12px / inherited / 400 | `.field-help` |
+| Badge | 11px / 1.5 / 500 | `.ui-badge` |
+| Code textarea | 12px / 1.7 / inherited | `.code-input` |
+| Compact code | 11.5px / 1.7 / inherited | `.code-input.compact` |
 
-- Use weights 400, 500, and 600 for normal UI. Weight 700 is reserved for compact badges, primary actions, or strong state markers already using it.
-- Do not add serif/sans families, all-caps display styles, or wide tracking. HTTP method pills and current table headers are the only uppercase exceptions.
-- Disable ligatures on all raw or exact data. The implementation does this for `code`, `pre`, `.code-input`, log/header/import tables, hashes, endpoint/request summaries, and detail lists.
-- Cap prose and helper text near `72ch`. The page-header description is capped at `72ch`; endpoint identity lines use the same cap.
-- Nothing new should render below `11px`.
+**States/variants:** normal weight400, medium500, semibold600, bold700 for strong state/action markers. Focus/hover never alter font metrics. No loading/disabled typography variant; semantic colors change only.
 
-## 3. Layout primitives
+**Example:** `<small class="field-help">Preview only.</small>`.
 
-### Page shell
+**Do/Don't:** use existing title classes; don't add hero-scale editor headings. Keep raw data exact and ligature-free; don't use typography to merge characters visually. Wrap long text; don't use negative tracking or text below11px.
 
-`.page-shell` is centered and responsive:
+## Spacing scale
 
-```css
-width: min(1120px, calc(100% - 48px));
-padding: var(--space-4) 0 var(--space-12);
+**Purpose:** predictable grouping. **Anatomy/classes:** `--space-0/1/2/3/4/5/6/8/10/12` in tokens.css, exact values in Theme tokens. Use 4px microspacing,8px related controls,12px rows,16px panels,24-32px page grouping. Fixed existing 7/10/11/13/15/17/22px component measurements are explicitly documented geometry, not additional tokens.
+
+**States/variants:** no hover/focus/disabled/loading delta. Mobile changes layout tracks and declared padding, not arbitrary scale multipliers.
+
+**Example:** existing `.selection-settings { gap: var(--space-3); padding: var(--space-4); }`.
+
+**Do/Don't:** use the scale for new composition; don't create feature-only spacing variables. Match the documented component's geometry; don't globally change existing padding merely to eliminate a non-token pixel value.
+
+## Motion tokens
+
+**Purpose:** communicate interaction state without delaying work. **Anatomy/classes:** `--motion-fast: 120ms ease-out`, `--motion-base: 180ms ease-out`. Fast for input/menu states; base for buttons, chevrons, disclosures, toasts/dialogs. Menu enter opacity0/translateY(-4px) to opacity1/translateY(0). Spinner uses existing `.spinner` 16px, 2px `--border`, top `--accent`, `.8s linear infinite` rotation.
+
+**States:** reduced motion sets animation/transition duration .01ms, iteration1, scroll-behavior auto globally. Theme switching suppresses transitions entirely. Route navigation stays instantaneous. Loading spinner is the declared exception to duration tokens; it signals activity, not route animation.
+
+**Example:** `<span class="spinner" aria-hidden="true"></span><span>Reading file...</span>`.
+
+**Do/Don't:** honor reduced motion; don't animate route shells. Use the same entry tokens; don't invent feature-specific slow fades. Keep loading text with the spinner; don't use motion as the only status signal.
+
+## Validation and coverage
+
+**Purpose:** make drift detectable without claiming tests prove every visual property. **Anatomy:** `scripts/validate_design_tokens.py`, `tests/Frontend/ui-reference.test.mjs`, `tests/Browser/editor-consistency-smoke.mjs`, `tests/Browser/layout-smoke.mjs`.
+
+The Python validator scans CSS/JS/Blade for hex/rgb/hsl literals outside tokens.css and non-token font declarations. It checks 20 declared text foreground/background pairs at >=4.5:1 and 11 declared border/focus/semantic pairs at >=3:1 in both themes. It does **not** validate every contrast pairing, alpha-composited colors, every token reference, spacing, radii, height, class usage, documentation accuracy, layout or stacking. The reference tests compare token-table values to tokens.css and verify named selector/component sources. Browser assertions cover 999/1000/1001/1024/1440/390px, short viewports, response validity, disclosures, fixed offsets, menu bounds/top layer, dialog layering, toast removal/pause and template preview isolation. These are focused regressions, not exhaustive visual proof.
+
+**Commands/examples:**
+
+```sh
+make design-validate
+make frontend-test
+make validate
+MOCKDECK_BROWSER_FIXTURE=1 MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/editor-consistency-smoke.mjs
+MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/layout-smoke.mjs
 ```
 
-At 1200px and wider it grows to `min(1180px, calc(100% - 64px))`. At 740px and below it uses `calc(100% - 28px)`. The top bar is at least 56px high; 16px page-top padding puts the first content at 72px from the viewport top, satisfying the rule that content begins no lower than 80px below the top edge.
+**States/variants:** both Light and Dark are mandatory; failure is not a disabled warning state. Use a dedicated browser fixture database only.
 
-### PageHeader
+**Do/Don't:** run actual test workers and inspect browser errors; don't report only source loading as tests passing. Disclose blocked Docker image validation; don't infer it from local PHP tests. Update reference/tests with new shared behavior; don't leave a guide that names nonexistent classes.
 
-Blade component: `resources/views/components/page-header.blade.php`.
+## Inline editable title
 
-The title and breadcrumbs start at the same top edge on every dashboard route, regardless of whether a description is present. Keep the shared 48px minimum header height and top alignment; never add a page-specific top offset to Import/export or the editor.
+**Purpose:** rename an endpoint directly in its breadcrumb; request metadata remains in the Request panel.
 
-Contract:
+**Anatomy:** `resources/views/components/inline-title.blade.php`, inside EndpointForm's page header. A labelled button becomes a text input; Alpine keeps the temporary value local until accepted. `EndpointForm::renameEndpoint()` validates and persists only the name for an existing endpoint, recording a revision. On Create it updates the name draft until Create endpoint. It does not save unrelated request/response drafts.
 
-| Prop/slot | Type | Rule |
-|---|---|---|
-| `title` | string/null | Rendered in the page's only `h1` when breadcrumbs are absent. |
-| `description` | string/null | Optional. Show only when it adds information; do not restate the title. One muted line on normal widths, wrapping below 440px. |
-| `count` | number/string/null | Optional compact count beside the title. |
-| `breadcrumbs` | array | Each item has `label` and optional `url`; the final item is the current page. Breadcrumbs replace the plain title. |
-| `actions` | named slot | Right-aligned page-level actions. |
-| attributes | attribute bag | Additional classes/attributes merge onto the header. |
+**Classes/tokens:** `.inline-title` is wrapping inline-flex with `--space-1` gap. `.inline-title-trigger` has 4px padding, 1px transparent border, `--radius-md`, inherited title typography, `--text` and transparent background. Hover adds `--border` and `--surface-2`; global focus ring applies. `.inline-title-input` is min(500px,65vw), minimum40px, padding4px 8px, 1px `--accent-border`, 6px radius, `--surface` / `--text`, `--shadow-focus`, inherited typography. The edit-only caption uses `.field-help`. Geometry is identical in both themes.
 
-The header has a 48px minimum height, a 16px bottom margin, and a 16px gap. Use it once per page; do not add a second hero/title card.
+**States:** click or keyboard activation starts editing and selects the value. Enter or blur accepts; Escape cancels without changing the property or database and restores trigger focus. Blank displays the auto-derived METHOD /path title. Validation errors remain beside the header. There is no disabled/loading visual variant; persistence follows the Livewire action lifecycle.
+
+**Example:**
 
 ```blade
-<x-page-header title="Endpoints" :count="$count">
-    <x-slot:actions>
-        <a class="button button-primary" href="...">New endpoint</a>
-    </x-slot:actions>
-</x-page-header>
+<x-inline-title :name="$name" :placeholder="$derivedName" />
 ```
 
-### Sections, cards, and grids
-
-- `.section-heading`: 14px/600 title, 12px supporting text, 12px bottom margin, 8px bottom padding.
-- `.section-spacer`: 32px between major sections and `scroll-margin-top: 76px`.
-- `.card`: `--surface`, 1px `--border`, `--radius-lg`, `--shadow-sm`.
-- Form, preview, response, transfer, import-preview, and docs cards use 16px padding.
-- Default compact gaps are 12px to 16px. Two-column editor/response/transfer grids collapse to one column at 1000px.
-- Sticky editor sections use `scroll-margin-top: 108px` so navigation does not cover their headings.
-- Pages end with 48px shell padding. Do not recreate the former large decorative bottom gap.
-
-## 4. Components
-
-Most shared pieces are class-based primitives in `public/css/app.css`, not Blade components. Reuse the complete class/state pattern and its semantics before creating another one.
-
-### Buttons
-
-Base: `.button`, minimum 36px high, 8px/16px padding, 6px radius, 13px/600 label. On screens below 768px, buttons are at least 44px high.
-
-| Variant | Classes | Use | Do not use |
-|---|---|---|---|
-| Primary | `.button.button-primary` | One main action in a local section or form. | Multiple competing actions in the same group. |
-| Secondary | `.button.button-secondary` | Cancel, alternate, or lower-priority bounded action. | Destructive action. |
-| Tertiary | `.button.button-tertiary` | Low-emphasis toolbar action. | Primary submission. |
-| Danger | `.button.button-danger` | Confirmed destructive action. | General errors or navigation. |
-| Text | `.text-button` | Compact inline action such as reset or cancel edit. | Actions that need a bounded hit-area treatment. |
-| Icon/row action | `.icon-button` plus optional `.danger` | Repeated row actions and close buttons. | Unlabelled controls; retain an accessible name. |
-
-All variants need hover, active, and outline-based `:focus-visible` states. Disabled buttons use `--disabled-bg` and `--disabled-fg`; do not disable with opacity alone.
-
-### Toggles and segmented choices
-
-- `.switch-control`: compact 40px-high endpoint on/off switch; 40-by-23px track.
-- `.toggle-row`: labelled settings row, at least 62px high; use when the explanation belongs with the switch.
-- `.toggle-inline`: checkbox plus short label, at least 38px high; use in dense toolbars.
-- `.clock-toggle` and `.density-toggle`: two-option segmented choices with 36px-high segments and `aria-pressed` active state.
-- `.segmented-control`: general two- or three-option choice with a 1px strong border, 4px inset padding, 36px-high segments, and `aria-pressed` active state. The active segment uses `--accent-subtle` with an inset `--accent-border`; disabled segments use the disabled tokens.
-
-Use a switch for immediate binary state. Use a checkbox where the value is submitted with a form or grouped with filters. Use `.segmented-control` for a small mutually exclusive mode or view choice such as Static/Template, Builder/JSON, or Object/List of objects. Do not use it when options need supporting descriptions or when more than three options would wrap.
-
-### Chips and badges
-
-| Pattern | Size/state | Use |
-|---|---|---|
-| `.method-badge` | min 58-by-28px, 11px/500; GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS palettes | HTTP methods only. Uppercase is allowed. |
-| `<x-badge>` | 24px minimum height, pill radius, shared padding | All neutral/success/warning/danger/info status and label chips: matching, endpoint state, history, import outcomes, collection, repeated count, and mocked response label. |
-| `.nav-badge` | fixed 28px width, 21px height, pill radius | Unmatched-request count; reserves its width when hidden. |
-| `.tag-chip` | 24px minimum height, pill radius, neutral tokens; selected uses warning tokens | Interactive endpoint tag filters with a real checkbox and visible focus. |
-
-Badges label concise state; they are not buttons and must not be used as section headings.
-
-### Inputs, search, and select
-
-- Standard form controls are inside `.field`; labels are 13px/600 with a 7px gap.
-- Text inputs are at least 48px high. Textareas use 13px padding and may resize vertically.
-- `.field-help` and `.field-error` are 12px; errors use `--danger-fg` and weight 600.
-- `.search-field` is at least 40px high, has a 210px desktop minimum width, and applies focus to the wrapper via `:focus-within`.
-- `.select-field` stacks a non-wrapping `.select-caption` above form controls when the caption adds necessary context.
-- Toolbar and request-log filters keep `.select-caption` in the accessibility tree but visually hide it; the selected option is the visible label. Do not add a second visual label row above compact filters.
-- Toolbar/log selects are at least 40px high, use the tokenized chevron, and include room for it with 39px right padding.
-- Disabled controls use disabled tokens, not opacity alone.
-
-Every visible form control needs a real `label`. Placeholder text does not replace a label.
-
-### Faker method picker
-
-`.faker-picker` is a native `details` disclosure composed from the existing input, search, badge, and raised-popover primitives. Its summary is a 40px control showing the current `module.method`; the panel is at most 480px wide and 420px high, uses `--surface-raised`, `--border-strong`, `--radius-lg`, and `--shadow-lg`, and repositions within the viewport. Methods are grouped by module. Each 48px option shows the method, a sample value, and an `<x-badge variant="warning">` when renamed aliases exist.
-
-The search field filters method IDs and aliases. Arrow keys move through visible options; Home/End jump to the limits; Escape closes and restores focus. The adjacent native disclosure labelled “Configure Faker arguments” renders catalog-driven fields and retains raw JSON arguments as an advanced fallback.
-
-Use this picker only to choose a supported Faker method from the server catalog. Do not duplicate the catalog in browser code or use a general-purpose select for the full method list.
-
-### JSON template autocomplete
-
-`.template-json-editor` extends the existing `.code-input` surface; it remains a plain textarea and JSON is its single source of truth. `.template-autocomplete` is a fixed raised popover, at most 420px wide and 260px high, using the picker surface/border/radius tokens. Typing `$` or `{{` filters the server catalog; each 40px option shows a method and sample in monospace. Arrow keys change the active option, Enter/Tab inserts it, and Escape closes the list. The popover chooses above or below the editor and clamps to the viewport edge.
-
-The ordinary response `.template-preview` uses the existing `.info-note` caption to state that request-context output contains synthetic samples, not captured traffic. Environment references use current variables; secret-bearing previews are hidden. Context-token templates remain JSON-only with the existing Builder-unavailable message. This reuses existing patterns and adds no separate preview component.
-
-Validation remains inline below the editor. Renamed-method warnings use the existing warning panel and `.text-button` quick fix. Use this pattern only for JSON response templates; raw JSON fields without catalog tokens remain ordinary `.code-input` controls.
-
-### Disclosure and accordion
-
-Current disclosures use native `details`/`summary` or a `.disclosure-button` with a chevron. The chevron rotates 90 degrees when open. Examples include canonical request, parsed headers/body, normalized request, import items, and redaction preview.
-
-The plain chevron and text trigger is the one disclosure treatment. The former full-width dark bar on `.normalized-details` and Delete environment is retired. Disclosure triggers use theme text tokens with no filled background; a destructive disclosure may use `--danger-fg` for its text. Content such as a code block may have its own contained surface. Use the shared motion token for the chevron.
-
-Use disclosure for optional details that remain on the same page. Preserve native keyboard behavior or implement a button with `aria-expanded` and `aria-controls`. Do not use disclosure for navigation or mandatory form fields.
-
-### Sticky action bar
-
-`.sticky-action-bar` is fixed to the viewport bottom, at least 64px high, tokenized/translucent, and blurred. The page shell receives `.has-sticky-action-bar`; JavaScript measures the rendered bar and writes `--sticky-action-bar-height`, which is used as bottom padding.
-
-Use it for the endpoint editor's page-level save/cancel action only. Show one prioritized status message. Do not place independent section actions in it or hardcode clearance for its height.
-
-### Dialog and confirmation
-
-`.shortcut-dialog` is the current native `dialog` treatment: max 440px, 24px padding, strong border, raised surface, tokenized overlay, and a close button in `.dialog-heading`. Destructive response deletion currently uses Livewire's `wire:confirm` browser confirmation.
-
-Use a native dialog for focused modal content and restore focus on close. Use confirmation only immediately before an irreversible action. A reusable custom confirm-dialog component is **undecided — pick on first use, then add here**.
-
-### Toast and flash feedback
-
-- `.toast-region`: fixed bottom-right, max 420px, `aria-live="polite"`.
-- `.toast`: at least 52px high, 11px/12px padding; success and danger are implemented.
-- Danger toasts use `role="alert"`; non-danger toasts use `role="status"`.
-- `.flash`: in-flow success feedback, used when the message must remain near the updated content.
-
-Use toasts for completed actions and non-blocking failures. Use inline field errors for correctable field input. Do not rely on a toast as the only explanation for a blocked form.
-
-### Tooltip
-
-Blade component: `resources/views/components/help-tip.blade.php`; styles: `.help-tip` and `.help-tip-content`. The trigger is 20-by-20px; content is at most 290px with 10px/12px padding and appears on hover or focus.
-
-Use for short supplementary explanations. The essential label, error, or instruction must remain visible without opening a tooltip. Disabled-control explanations may wrap the disabled control with `.disabled-tooltip` so the explanation remains reachable.
-
-### Tables and rows
-
-- `.log-table`: 12px body; 11px/600 uppercase headers; sticky header.
-- Compact log rows are 36px high; comfortable rows are 44px high.
-- `.header-table`: 12px body with 9px/10px cells.
-- Row hover/expanded state uses `--surface-hover`; row keyboard focus uses a 2px outline.
-- Long request paths truncate with ellipsis and retain the full value in `title`; technical detail values may use `overflow-wrap: anywhere`.
-- Deleted endpoint references remain in the column as 11px muted text.
-
-Use a table for aligned, comparable records. Use cards for heterogeneous records or primary row actions that need more room.
-
-The response-template schema builder is a feature-specific composition of these primitives: `.schema-row` uses labelled inputs/selects, existing icon row actions, a decorative drag handle plus keyboard move buttons, and native disclosure for nested object fields. Nested rows use the strong-border indentation rule and stop at six levels. Keep JSON as the source of truth; do not reuse schema rows as a general data table.
-
-### Empty states
-
-- `.empty-state`: centered state with 74px/24px padding; `.small` uses 44px/20px.
-- `.preview-placeholder`: compact technical preview empty state, at least 108px high.
-- `.preview-empty`: inline import preview state, at least 56px high.
-- `.empty-table`: table-spanning state with 48px/24px padding.
-
-State what is absent, why it matters when useful, and provide one recovery action when available. Do not use an empty state for loading.
-
-### Skeleton and loading
-
-`.skeleton-row` matches the 72px endpoint-row minimum, uses only surface and skeleton tokens, and animates a horizontal highlight. `.spinner` is 16px with a 2px tokenized border. Reduced-motion rules suppress these animations.
-
-Use skeletons only where the final row shape is predictable. Use a spinner or text such as “Parsing…” for compact actions.
-
-### Theme switcher
-
-Blade component: `resources/views/components/theme-control.blade.php`. It renders one 38px icon button and a 150px-minimum menu with three 36px-minimum radio options. The selected option has a filled dot and is the only menu item in the tab order when the menu opens.
-
-Use exactly one visible theme control in each navigation context. Do not add page-local theme state or a second selector inside another menu.
-
-### Environment switcher
-
-Livewire component: `app/Livewire/Admin/EnvironmentSwitcher.php`; view: `resources/views/livewire/admin/environment-switcher.blade.php`. The trigger is a 40px bordered control composed from the existing select/menu surface, with a green state dot and the active environment name. Its raised panel reuses the user-menu border, radius, shadow, 40px option rows, and native `details` disclosure. Options use the established menu keyboard contract: Arrow Up/Down, Home/End, and Escape with focus returned to the trigger. One click opens it and one click activates an environment.
-
-Environment state is server-side and global. `EnvironmentContext` is the only source of truth; do not mirror it in browser storage. Livewire navigation re-renders from that state, so the active label must never reset or briefly show a different environment. Use this switcher only for the runtime environment, and link management rather than putting create/delete actions in its compact menu.
-
-## 5. Theme system
-
-`public/js/theme.js` owns theme state for the document. It is a closure-level singleton, initialized once before CSS in every standalone layout.
-
-- Storage key: `mockdeck-theme`.
-- Stored values: `light` or `dark`.
-- System mode is represented by the absence of an explicit stored override.
-- Allowed in-memory modes: `system`, `light`, `dark`.
-- Effective System theme comes from `matchMedia('(prefers-color-scheme: dark)')`.
-- Applied attributes: `data-theme` contains the effective light/dark theme; `data-theme-mode` contains the selected mode.
-- `color-scheme` and `<meta name="theme-color">` are synchronized with the effective theme.
-- Browser icon links are centralized in `resources/views/components/favicon-links.blade.php`. The primary `favicon.svg` switches its gold/cream and gold/dark-navy artwork with `prefers-color-scheme`; the ICO is a 16/32/48px fallback, and the Apple/PWA icons are declared through the same component and `site.webmanifest`. Keep the static light and dark SVG copies available for integrations that cannot evaluate the theme-aware SVG.
-- The in-app brand badge is `resources/views/components/brand-mark.blade.php`. It uses the static light and dark SVG copies and follows the effective `data-theme`, including an explicit Light or Dark override. Use this component in navigation and authentication/error branding; do not recreate the former bordered “M” placeholder.
-- Storage access is inside `try/catch`; theme switching still works for the current page when storage is unavailable.
-- OS changes update the app live only while System is selected.
-- `livewire:navigated` reapplies the singleton state because Livewire can morph the root attributes.
-- A root `MutationObserver` restores the theme if another operation replaces those attributes.
-- `.theme-switching` suppresses transitions for the switch itself.
-
-Interaction pattern:
-
-1. The trigger shows System, light, or dark icon state and announces the selected mode in its `aria-label`.
-2. Enter/Space activates the button; Arrow Up/Down also opens the menu and focuses the active option.
-3. The menu contains `menuitemradio` options for System, Light, and Dark.
-4. Arrow Up/Down moves between options; Home/End moves to the first/last option; Escape closes and restores trigger focus.
-5. Selecting an option applies it without navigation or scroll movement and closes the menu.
-
-Theme switching, Livewire navigation, full navigation, and reload must never cause a wrong-theme flash or reset the explicit choice. Keep the non-deferred theme script before the token and app stylesheets.
-
-## 6. Copy and voice conventions
-
-- Use sentence case for page titles, section titles, field labels, buttons, badges, filters, and menu items.
-- Keep helper text direct and short. Describe the consequence or next action, not the implementation.
-- Use an ellipsis for work in progress: “Saving…”, “Parsing…”.
-- Prefer action-first buttons: “New endpoint”, “Preview import”, “Apply import”, “Copy mock curl”.
-- Use inline field errors for invalid values; put them directly after the control.
-- Use a warning panel or inline warning for a risky but permitted action.
-- Use an info note for contextual constraints that do not block progress.
-- Use a toast/flash for an action result. Danger toasts may announce unexpected failures.
-- Blocked actions need a visible reason near the action; a tooltip may supplement it.
-- Do not use uppercase plus letter-spacing except HTTP method pills and existing table column headers.
-
-Established terms:
-
-- “Endpoint” and “response”, not route/fixture for UI labels.
-- “Signature” and “Signature version”.
-- Match values: “hash”, “fallback”, and “none”.
-- “Canonical request”.
-- “Request log” and “Recent requests”.
-- “Import / export”.
-- Import modes: “Create only”, “Update by UUID”, and “Clone with new UUIDs”.
-- Endpoint state: “Enabled” and “Disabled”.
-- Response body modes: “Static” and “Template”; template views: “Builder” and “JSON”.
-- Template method compatibility: “Renamed” warning and “Unknown method” error.
-
-Example messages:
-
-```text
-Error: Headers must be a valid JSON object.
-Warning: Sensitive request values were removed; review the curl before enabling this endpoint.
-Info: Field-level exclusions are not available.
-Next action: Paste a valid curl command to continue.
-```
-
-## 7. Data and code surfaces
-
-Raw technical content uses a dark code surface in both themes:
-
-```css
-color: var(--code-fg);
-background: var(--code-bg);
-border: 1px solid var(--code-border);
-font-family: var(--font-code);
-font-variant-ligatures: none;
-```
-
-Apply this pattern to curl, canonical requests, normalized requests, hashes, JSON, raw headers, and log payloads.
-
-- Use `.code-input` for editable raw text. It is 12px with 1.7 line-height and a tokenized placeholder.
-- Use `.code-block-wrap` for labelled read-only data; place the optional copy button in `.code-block-heading`, aligned right.
-- Use `.normalized-details` when a long value is optional; its summary is at least 46px high.
-- Use `.hash-value` and `overflow-wrap: anywhere` for unbroken values.
-- Use `white-space: pre-wrap` when preserving line breaks matters and horizontal scrolling is not required.
-- Copy buttons must state what is copied through visible text or an accessible label and provide success/failure feedback.
-- Do not apply UI ligatures to exact data; characters such as `!=` and `=>` must remain visually distinct.
-- Constrain scrollable data surfaces to their card width. Use the shared thin scrollbar treatment on tables, endpoint lists, autocomplete lists, previews, popovers, and code editors; its track, thumb, hover, and radius use existing surface, border, accent, and radius tokens. Never allow a component to create page-level horizontal scrolling.
-
-### Revision timeline and structural diff viewer
-
-The endpoint and response **History** disclosures reuse the native disclosure, request-log time treatment, action chips, text buttons, confirmation behavior, and code surfaces. This is one shared component; response history must not invent a smaller variant.
-
-- `.revision-timeline` is newest-first. A day separator appears when the calendar day changes, and each revision exposes its relative time plus an exact timestamp in `title`.
-- `.revision-row` has a single accent marker and source chip. Selecting two rows opens the shared diff viewer; **Compare with current** opens that same viewer against live state.
-- `.revision-diff-viewer` renders structural paths and added/removed/changed chips. Canonical cURL fields reuse the canonical-request code treatment, body/template fields reuse JSON code surfaces, and collection/tag/environment changes remain plain values.
-- Before/after values use two equal columns at desktop widths and one stacked column below 720px. Long content scrolls inside the code surface and never expands the page.
-- **Restore** always uses the existing confirm mechanism, names the version, states that live values change, and states that a new rollback revision is appended. History is never rewritten.
-- Import completion reuses the inline-result pattern for `N changes made · Undo this import`; its one confirmation names every affected endpoint/response.
-
-### Response selection and condition rows
-
-The selection editor reuses `.card`, `.segmented-control`, labelled `.field`/`.field-row` controls, native plain `history-disclosure`, badges, inline validation, and the existing `wire:confirm` mechanism. `.selection-settings` composes those tokens; no new color or motion tokens are introduced.
-
-- Selection changes remain drafts until **Save selection**; the read-only Selection preview is explicitly badged Draft. The preview composes the existing signature-panel treatment and never advances runtime counters.
-- The **rule-condition row** is a documented composition: two existing field rows hold field type/name/operator then value/priority/remove, with a token border between conditions. On narrow screens both rows become single columns. This is a form, not a nested card or data table. Every control has a visible label; Exists disables the value input.
-- Response ordering reuses the Faker builder's exact `data-schema-row`/drag listener with `data-schema-target="selection"`; its Livewire dispatch adapter updates response order rather than template JSON. Keyboard Earlier/Later actions remain visible. Rule response moves renumber condition priorities across the endpoint.
-- Default/fallback is a single-choice native radio with its existing toggle-inline treatment. The fallback badge appears in both response and preview. Saved fallback deletion confirmation states why it is blocked until an alternative is saved.
-- Sequence reset confirmation names the active environment and states that match counts and other environments are retained. The position status uses `.info-note`/`role="status"`.
-
-Only the rule-condition row composition is newly documented. Menus, disclosures, segmented choices, preview surfaces, drag handling, and feedback reuse existing patterns rather than introducing alternatives.
-
-### Callback editor and callback log
-
-- The response editor's **Callback** is a native disclosure (`.history-disclosure`) closed by default. It reuses labelled `.field` inputs, `.field-row` grids, `.code-input`, autocomplete, `.toggle-inline`, `.field-help`, and `.info-note`. A `.callback-fields` grid uses spacing tokens and small `callback-group-heading` labels for Delivery, Retry policy, and Signing; thin token borders divide groups without adding nested cards. Its body uses the response editor's existing `.segmented-control` Builder/JSON switch and `.schema-builder`/`.schema-row` partial; rows carry a schema target so drag and drop never changes the main response. JSON-only context tokens make Builder unavailable without rewriting the template.
-- Signature help is inline beneath the masked secret input and header name; never reflect a stored secret into an input or a status message. The callback's preview uses `.code-block` colors from existing code-surface tokens.
-- The **Callbacks tab** uses the same `.log-card`, `.log-statusbar`, full-width `.search-field.log-search`, `.log-filters`, `.quick-filter-row`, `.table-scroll`, and `.log-table` structure as Requests. Its three filters are method, status, and time. It retains method badges, state chips, relative time, and a labelled `.icon-button` for Resend. The filter grid adapts to one column on mobile; the table scrolls inside its card instead of expanding the page.
-- **Resend** reuses a named action with an accessible label and an inline status. Pending, success, failure, timeout, and empty states use existing semantic tokens and feedback patterns. Links between request and callback logs use `.table-link`.
-
-Syntax tokens are available for flags, URLs, headers, strings, and keys. The response-template editor adds catalog autocomplete to the existing code-input surface; it does not introduce a general syntax-highlighting editor. A reusable syntax-highlighting component remains **undecided — pick on first use, then add here**.
-
-Request log selection diagnostics use the existing warning badge and detail-list components (sequence exhaustion and omitted oversized body context). No new visual pattern is introduced. Conditions disclosures preserve their open state across Livewire rule edits using `wire:ignore.self`; the shared disclosure controller still synchronizes accessibility attributes.
-
-## 8. Accessibility baseline
-
-- Text contrast must be at least 4.5:1. UI boundaries, icons, and focus indicators must be at least 3:1 against adjacent colors.
-- `make design-validate` checks the registered light/dark token pairs. Add new semantic pairs to that script.
-- Interactive elements use a 2px `--focus-ring` outline with 3px offset. Do not replace the outline with shadow-only focus.
-- Retain the “Skip to main content” link and one `h1` per page.
-- Inputs require associated labels; help and error text should be referenced with `aria-describedby` where it changes how the field is used.
-- Disclosures use native `details`/`summary` or a button with `aria-expanded` and `aria-controls`.
-- Menus expose their role and selection state, support arrows/Home/End/Escape, and restore focus when closed.
-- Dialogs use native `dialog`, have a labelled heading, provide an explicit close control, and return focus after close.
-- Status updates use `role="status"`/polite live regions; urgent errors use `role="alert"`.
-- Icon-only controls require an accessible name. Decorative SVG and status marks are `aria-hidden`.
-- Touch targets are at least 44px on narrow screens where the shared button media rule applies; do not make a new control smaller than its existing equivalent.
-- Honor `prefers-reduced-motion` and `prefers-contrast`.
-
-## 9. When building a new UI piece
-
-1. Reuse the closest existing Blade component or class pattern before creating one.
-2. Use only tokens from `public/css/tokens.css`; add a semantic token only when no current token fits.
-3. Follow the 13px base type scale, sentence case, and compact heading rules.
-4. Use a real label and keep helper/error text next to its control.
-5. Define hover, active, disabled, focus, loading, empty, and error states as applicable.
-6. Make it keyboard-operable and preserve visible outline focus.
-7. Verify light and dark themes, including contrast and disabled states.
-8. Check 1440px, 1024px, and 390px layouts for overflow, wrapping, and covered content.
-9. Use the code-surface pattern and disable ligatures for raw technical data.
-10. Update this guide and automated checks in the same change when adding a reusable pattern or token.
-
-The endpoint sticky Save changes action saves dirty response and selection drafts before endpoint navigation. A locked baseline distinguishes a changed response from an untouched Add response form, preventing unintended extra responses. Invalid drafts retain their values and show the existing validation-panel/role=alert treatment; Save changes is disabled through the coordinated save. No new visual component is introduced.
-
-On pages with the measured sticky action bar, the notification region sits above that same measured height plus `--space-4`. Toasts must never cover or intercept the Save changes button. The shared bar synchronizer updates and clears this offset during navigation and resize.
-
-Callback configuration appears directly below the response editor heading/validation panel, before status/body fields. Each response row exposes a labelled Callback action that selects the response and opens the existing native disclosure. Its open state persists through Livewire field edits using `wire:ignore.self`, and the shared disclosure synchronizer owns aria-expanded. When expanded, the response form uses the existing static layout behavior so long callback controls remain reachable. These reuse documented buttons/disclosures; no new token or visual pattern is introduced.
+**Do/Don't:** reuse the existing name property; don't introduce a second stored title. Keep the visible edit affordance and accessible labels; don't require a precise icon click. Save only the title on acceptance; don't accidentally persist other drafts. Keep fallback help visible only while editing; don't restore a permanent Name helper paragraph.

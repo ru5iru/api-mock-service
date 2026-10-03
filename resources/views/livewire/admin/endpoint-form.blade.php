@@ -1,49 +1,53 @@
-<form wire:submit="saveAll" class="endpoint-editor" data-unsaved-form>
+<div class="endpoint-editor" data-unsaved-form x-data="{ activeTab: $wire.entangle('activeTab'), switchTab(tab) { this.activeTab = tab; $wire.touchSection(tab); } }">
+    <header class="page-header">
+        <div class="page-header-copy">
+            <h1 class="page-breadcrumbs"><a href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Endpoints</a><span aria-hidden="true">/</span><x-inline-title :name="$name" :placeholder="$preview ? $derivedName : 'New endpoint'" /></h1>
+            @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+        </div>
+        @if ($endpointId)<div class="page-header-actions"><button class="icon-button" type="button" data-dialog-open="endpoint-history-dialog" aria-label="Endpoint history" title="Endpoint history">↶ History</button></div>@endif
+    </header>
     @php
-        $requestReady = (bool) $preview && ! $duplicate && ! $isExample;
+        $requestReady = (bool) $preview && ! $duplicate && ! $isExample && $this->requestMetadataReady();
         $matchingReady = (bool) $preview;
-        $responseReady = $endpointId && \App\Models\MockEndpoint::query()->find($endpointId)?->responses()->exists();
+        $responseReady = $this->responseSectionReady();
         $saveBlockReason = ! $preview
             ? 'Paste a valid curl command to continue.'
             : ($duplicate
                 ? 'Resolve the duplicate signature before saving.'
-                : ($isExample ? 'Replace the example curl before saving.' : ''));
+                : ($isExample ? 'Replace the example curl before saving.' : (! $this->requestMetadataReady() ? 'Correct the request settings before saving.' : '')));
         $requestState = $requestReady ? 'valid' : (($submitAttempted || in_array('request', $touchedSections, true)) ? 'attention' : 'neutral');
         $matchingState = $matchingReady ? 'valid' : (($submitAttempted || in_array('matching', $touchedSections, true)) ? 'attention' : 'neutral');
-        $responseState = $responseReady ? 'valid' : (($submitAttempted || in_array('response', $touchedSections, true)) ? 'attention' : 'neutral');
+        $responseState = $responseReady ? 'valid' : (($endpointId || $submitAttempted || in_array('response', $touchedSections, true)) ? 'attention' : 'neutral');
+        $callbackReady = $draftCallbackReady ?? ($endpoint && $endpoint->responses()->exists());
+        $callbackState = $callbackReady ? 'valid' : (($endpointId || in_array('callback', $touchedSections, true)) ? 'attention' : 'neutral');
         $stateSymbol = static fn (string $state): string => $state === 'valid' ? '✓' : ($state === 'attention' ? '!' : '');
         $statusMessage = $saveBlockReason !== ''
             ? $saveBlockReason
             : (! $responseReady
-                ? 'Next: add a response so this endpoint can answer requests.'
+                ? 'Next: complete response selection so this endpoint can answer requests.'
                 : 'Editing '.$derivedName.' · Ctrl/⌘ + Enter saves.');
     @endphp
 
-    <nav class="flow-nav" aria-label="Endpoint sections" data-section-nav>
-        <ol>
-            <li><a href="#request-definition" data-section-link wire:click="touchSection('request')"><span>Request</span><i class="section-status {{ $requestState }}" aria-label="{{ $requestState === 'valid' ? 'Request is valid' : ($requestState === 'attention' ? 'Request needs attention' : 'Request not yet reviewed') }}">{{ $stateSymbol($requestState) }}</i></a></li>
-            <li><a href="#matching-policy" data-section-link wire:click="touchSection('matching')"><span>Matching</span><i class="section-status {{ $matchingState }}" aria-label="{{ $matchingState === 'valid' ? 'Matching policy is ready' : ($matchingState === 'attention' ? 'Matching policy needs attention' : 'Matching policy not yet reviewed') }}">{{ $stateSymbol($matchingState) }}</i></a></li>
-            <li>
-                <a href="{{ $endpointId ? '#responses' : '#save-actions' }}" data-section-link wire:click="touchSection('response')"><span>Response</span><i class="section-status {{ $responseState }}" aria-label="{{ $responseState === 'valid' ? 'A response is configured' : ($responseState === 'attention' ? 'A response is needed' : 'Response not yet reviewed') }}">{{ $stateSymbol($responseState) }}</i></a>
-            </li>
-        </ol>
+    <nav class="flow-nav" aria-label="Endpoint settings">
+        <div role="tablist" aria-label="Endpoint settings" data-endpoint-tabs>
+            @foreach (['request' => ['Request', $requestState], 'matching' => ['Matching', $matchingState], 'response' => ['Response', $responseState], 'callback' => ['Callback', $callbackState]] as $tab => [$label, $state])
+                <button id="tab-{{ $tab }}" type="button" role="tab" aria-controls="panel-{{ $tab }}" x-bind:aria-selected="activeTab === '{{ $tab }}'" x-bind:tabindex="activeTab === '{{ $tab }}' ? 0 : -1" x-on:click="switchTab('{{ $tab }}')">
+                    <span>{{ $label }}</span><i class="section-status {{ $state }}" aria-label="{{ $state === 'valid' ? ($tab === 'response' ? 'Response selection is complete' : ($tab === 'request' ? 'Request is valid' : $label.' policy is ready')) : ($state === 'attention' ? ($tab === 'response' ? 'Response selection needs attention' : ($tab === 'request' ? 'Request needs attention' : $label.' policy needs attention')) : $label.' not yet reviewed') }}">{{ $stateSymbol($state) }}</i>
+                </button>
+            @endforeach
+        </div>
     </nav>
 
+    <div class="endpoint-panel-viewport" data-editor-viewport>
+    <form id="endpoint-settings" wire:submit="saveAll" data-endpoint-save-form x-show="['request', 'matching'].includes(activeTab)">
     <div class="editor-grid">
         <div class="editor-main">
-            <section id="request-definition" class="card form-card editor-section">
+            <section id="panel-request" role="tabpanel" aria-labelledby="tab-request" class="card form-card editor-section" x-show="activeTab === 'request'">
                 <div class="card-heading">
                     <div>
                         <h2>Request</h2>
                         <p>Paste one curl command. MockDeck parses the text but never executes it.</p>
                     </div>
-                </div>
-
-                <div class="field">
-                    <label for="endpoint-name">Name <span>optional</span></label>
-                    <input id="endpoint-name" type="text" wire:model="name" placeholder="{{ $derivedName }}" aria-describedby="endpoint-name-help @error('name') endpoint-name-error @enderror">
-                    <small id="endpoint-name-help" class="field-help">Leave blank to save this endpoint as “{{ $derivedName }}”.</small>
-                    @error('name') <p id="endpoint-name-error" class="field-error">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="endpoint-control-grid">
@@ -103,7 +107,7 @@
                     </fieldset>
                 </div>
 
-                <details class="normalized-details environment-overrides">
+                <details class="normalized-details environment-overrides" data-disclosure>
                     <summary><span class="details-chevron" aria-hidden="true">›</span> Environment availability</summary>
                     <div class="table-scroll">
                         <table class="header-table">
@@ -128,6 +132,13 @@
                 </details>
 
                 <div class="field curl-field">
+                    @if ($preview && ! $isExample && ! $curlExpanded)
+                        <div class="curl-summary">
+                            <span class="method-badge method-{{ strtolower($preview['parsed']->method) }}">{{ $preview['parsed']->method }}</span>
+                            <code>{{ $preview['parsed']->url }}</code>
+                            <button class="button button-tertiary button-small" type="button" wire:click="$set('curlExpanded', true)">Edit request</button>
+                        </div>
+                    @else
                     <div class="label-row curl-label-row">
                         <label for="raw-curl">Curl command</label>
                         <div class="input-actions">
@@ -135,6 +146,7 @@
                             <button class="text-button" type="button" data-toggle-wrap>Wrap: on</button>
                             <button class="text-button" type="button" wire:click="loadExample">Load example</button>
                             <button class="text-button danger-text" type="button" wire:click="clearCurl" @disabled($rawCurl === '')>Clear</button>
+                            @if ($preview && ! $isExample)<button class="text-button" type="button" wire:click="$set('curlExpanded', false)">Done editing</button>@endif
                         </div>
                     </div>
                     <textarea
@@ -148,6 +160,7 @@
                         aria-describedby="curl-status @error('rawCurl') raw-curl-error @enderror"
                         placeholder="curl --request GET 'https://api.example.test/v1/items?limit=10'"
                     ></textarea>
+                    @endif
                     @error('rawCurl') <p id="raw-curl-error" class="field-error" role="alert">{{ $message }}</p> @enderror
 
                     <div id="curl-status" class="parse-status {{ $preview ? 'success' : ($previewError ? 'error' : 'idle') }}" aria-live="polite">
@@ -194,7 +207,7 @@
                 </div>
             </section>
 
-            <section id="matching-policy" class="card form-card editor-section">
+            <section id="panel-matching" role="tabpanel" aria-labelledby="tab-matching" class="card form-card editor-section" x-show="activeTab === 'matching'" x-cloak>
                 <div class="card-heading">
                     <div>
                         <h2>Matching</h2>
@@ -224,6 +237,8 @@
                     @endif
 
                     @if ($headerAnalysis !== [])
+                        <details class="normalized-details" data-disclosure wire:ignore.self wire:key="matching-header-details">
+                            <summary><span class="details-chevron" aria-hidden="true">›</span> Header matching details ({{ count($headerAnalysis) }})</summary>
                         <div class="parsed-policy-list">
                             @foreach ($headerAnalysis as $header)
                                 <div class="{{ $header['excluded_reason'] ? 'excluded' : '' }}">
@@ -232,6 +247,7 @@
                                 </div>
                             @endforeach
                         </div>
+                        </details>
                     @endif
                 </div>
 
@@ -259,14 +275,7 @@
                 </div>
             </section>
 
-            @if ($endpointId)
-                <section id="history" class="card form-card editor-section history-section">
-                    <details class="history-disclosure">
-                        <summary><span class="details-chevron" aria-hidden="true">›</span><span><strong>History</strong><small>Compare or restore saved endpoint versions.</small></span></summary>
-                        <livewire:admin.revision-history entity-type="endpoint" :entity-id="$endpointId" :key="'endpoint-history-'.$endpointId" />
-                    </details>
-                </section>
-            @endif
+
 
         </div>
 
@@ -300,20 +309,20 @@
                     @if (collect($headerAnalysis)->contains(fn ($header) => $header['excluded_reason'] !== null))
                         <div class="canonical-diff">
                             <strong>Removed by matching policy</strong>
-                            @foreach ($headerAnalysis as $header)
-                                @if ($header['excluded_reason'])
+                            @php($excludedHeaders = collect($headerAnalysis)->filter(fn ($header) => $header['excluded_reason'] !== null))
+                            @foreach ($excludedHeaders->take(5) as $header)
                                     <div><del>{{ $header['name'] }}: {{ $header['display_value'] }}</del><span>{{ $header['excluded_reason'] }}</span></div>
-                                @endif
                             @endforeach
+                            @if ($excludedHeaders->count() > 5)<p class="field-help">+{{ $excludedHeaders->count() - 5 }} more in Header matching details</p>@endif
                         </div>
                     @endif
 
-                    <details class="normalized-details" open>
+                    <details class="normalized-details" data-disclosure open>
                         <summary><span class="details-chevron" aria-hidden="true">›</span> Canonical request</summary>
                         <pre>{{ $displayCanonical }}</pre>
                     </details>
 
-                    <details class="normalized-details">
+                    <details class="normalized-details" data-disclosure>
                         <summary><span class="details-chevron" aria-hidden="true">›</span> Parsed headers ({{ count($headerAnalysis) }})</summary>
                         <div class="header-table-wrap">
                             <table class="header-table">
@@ -338,7 +347,7 @@
                         </div>
                     </details>
 
-                    <details class="normalized-details">
+                    <details class="normalized-details" data-disclosure>
                         <summary><span class="details-chevron" aria-hidden="true">›</span> Parsed body ({{ strlen($preview['parsed']->body) }} B)</summary>
                         <pre>{{ $prettyBody !== '' ? $prettyBody : '— empty —' }}</pre>
                         <p class="details-note">JSON keys are sorted recursively during canonicalization; array order is preserved.</p>
@@ -359,16 +368,41 @@
         </aside>
     </div>
 
+    </form>
+
+    <div x-show="['response', 'callback'].includes(activeTab)" x-cloak>
+        @if ($preview)
+            <div class="endpoint-context-strip"><span class="method-badge method-{{ strtolower($preview['parsed']->method) }}">{{ $preview['parsed']->method }}</span><code title="{{ $preview['parsed']->url }}">{{ parse_url($preview['parsed']->url, PHP_URL_PATH) ?: '/' }}</code><x-help-tip title="Full request URL" :label="$preview['parsed']->url" /></div>
+        @endif
+        @if ($endpoint)
+            <livewire:admin.response-manager :endpoint="$endpoint" :key="'endpoint-responses-'.$endpointId" />
+        @else
+            <section id="panel-response" role="tabpanel" aria-labelledby="tab-response" x-show="activeTab === 'response'" class="card empty-state"><h3>Create the endpoint first</h3><p>Save the request, then add responses.</p><button class="button button-secondary" type="button" x-on:click="switchTab('request')">Configure request</button></section>
+            <section id="panel-callback" role="tabpanel" aria-labelledby="tab-callback" x-show="activeTab === 'callback'" class="card empty-state"><h3>Add a response first</h3><p>Callbacks belong to individual responses.</p><button class="button button-secondary" type="button" x-on:click="switchTab('response')">Configure responses</button></section>
+        @endif
+    </div>
+    </div>
+
+    @if ($endpointId)
+        @teleport('body')
+            <x-dialog id="endpoint-history-dialog" class="history-dialog" title="Endpoint history" close-label="Close endpoint history" wire:ignore.self>
+                <livewire:admin.revision-history entity-type="endpoint" :entity-id="$endpointId" :key="'endpoint-history-'.$endpointId" />
+            </x-dialog>
+        @endteleport
+    @endif
+
+    @teleport('body')
     <div id="save-actions" class="sticky-action-bar" data-sticky-action-bar>
         <div>
             <p id="endpoint-action-status" class="action-note">{{ $statusMessage }}</p>
         </div>
         <div>
             <a class="button button-secondary" href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Cancel</a>
-            <button class="button button-primary" type="submit" wire:loading.attr="disabled" wire:target="saveAll,finishSavingAll" @disabled(! $requestReady || $savingAll) @if ($saveBlockReason !== '') aria-describedby="endpoint-action-status" title="{{ $saveBlockReason }}" @endif>
+            <button class="button button-primary" type="submit" form="endpoint-settings" wire:loading.attr="disabled" wire:target="saveAll,finishSavingAll" @disabled(! $requestReady || $savingAll) @if ($saveBlockReason !== '') aria-describedby="endpoint-action-status" title="{{ $saveBlockReason }}" @endif>
                 <span wire:loading.remove wire:target="saveAll,finishSavingAll">{{ $savingAll ? 'Saving…' : ($endpointId ? 'Save changes' : 'Create endpoint') }}</span>
                 <span wire:loading wire:target="saveAll,finishSavingAll">Saving…</span>
             </button>
         </div>
     </div>
-</form>
+    @endteleport
+</div>

@@ -72,7 +72,7 @@
                         </div>
                     </div>
                 </details>
-                <details class="schema-args">
+                <details class="schema-args" data-menu>
                     <summary class="icon-button" title="Configure Faker arguments" aria-label="Configure Faker arguments">⚙</summary>
                     <div>
                         @if (($selectedMethod['argsHint'] ?? []) !== [])

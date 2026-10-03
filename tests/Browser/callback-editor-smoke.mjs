@@ -33,19 +33,22 @@ try {
         const commit = async action => {
             await Promise.all([page.waitForResponse(r => r.url().includes('/update') && r.request().method() === 'POST'), action()]);
         };
-        const callback = page.locator('.callback-disclosure');
-        await commit(() => row(fixture.first).getByRole('button', { name: `Configure callback for response ${fixture.first}` }).click());
-        await poll(() => callback.evaluate(el => el.open), 'Callback action did not open configuration');
-        await commit(() => callback.getByRole('checkbox', { name: 'Enable callback' }).check());
-        assert.equal(await callback.evaluate(el => el.open), true, 'Enabling callback collapsed configuration');
+        const callback = page.locator('.callback-form');
+        await page.getByRole('tab', { name: /^Callback/ }).click();
+        await commit(() => page.locator('.callback-response-row').first().getByRole('button', { name: `Configure callback for response ${fixture.first}` }).click());
+        await poll(() => callback.isVisible(), 'Callback form did not open');
+        assert.equal(await callback.getByRole('checkbox', { name: 'Enable callback' }).isChecked(), true);
+        await commit(() => callback.getByRole('button', { name: 'JSON', exact: true }).click());
         await page.locator('#callback-url').fill('https://receiver.test/hook');
         await page.locator('#callback-method').selectOption('PATCH');
         await page.locator('#callback-body').fill('{"event":"created"}');
-        await commit(() => page.locator('.response-form').getByRole('button', { name: 'Update response', exact: true }).click());
-        await poll(async () => await page.locator('.response-form h3').innerText() === 'Add response', 'Callback configuration was not saved');
+        await commit(() => callback.getByRole('button', { name: 'Save callback', exact: true }).click());
+        await poll(async () => (await page.locator('#toast-region').innerText()).includes('Callback saved'), 'Callback configuration was not saved');
         await page.reload();
-        await commit(() => row(fixture.first).getByRole('button', { name: `Configure callback for response ${fixture.first}` }).click());
-        await poll(() => callback.evaluate(el => el.open), 'Saved callback did not reopen');
+        await page.getByRole('tab', { name: /^Callback/ }).click();
+        await commit(() => page.locator('.callback-response-row').first().getByRole('button', { name: `Configure callback for response ${fixture.first}` }).click());
+        await poll(() => callback.isVisible(), 'Saved callback did not reopen');
+        await commit(() => callback.getByRole('button', { name: 'JSON', exact: true }).click());
         assert.equal(await page.locator('#callback-url').inputValue(), 'https://receiver.test/hook');
         assert.equal(await page.locator('#callback-method').inputValue(), 'PATCH');
         assert.equal(await page.locator('#callback-body').inputValue(), '{"event":"created"}');
@@ -58,7 +61,7 @@ try {
         }
         await page.screenshot({ path: resolve(shots, `callback-editor-${theme}.png`), fullPage: true });
         await page.close();
-        console.log(`${theme}: callback action, disclosure persistence, save/reload, desktop/tablet/mobile visibility pass`);
+        console.log(`${theme}: callback tab, enable, save/reload, desktop/tablet/mobile visibility pass`);
     }
     assert.deepEqual(failures, [], 'Browser reported JavaScript errors');
 } finally { await browser.close(); }

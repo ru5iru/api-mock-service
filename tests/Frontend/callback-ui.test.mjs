@@ -4,21 +4,24 @@ import test from 'node:test';
 
 const read = (path) => readFileSync(path, 'utf8');
 const editor = read('resources/views/livewire/admin/response-manager.blade.php');
+const settings = read('resources/views/livewire/admin/partials/callback-settings.blade.php');
 const log = read('resources/views/livewire/admin/callback-log.blade.php');
 const dashboard = read('resources/views/layouts/dashboard.blade.php');
 const guide = read('docs/UI_GUIDE.md');
 
-test('callback editor uses existing disclosure and documents raw-body HMAC signing', () => {
-    assert.match(editor, /<details class="history-disclosure callback-disclosure"[^>]*>/);
-    assert.match(editor, /data-template-editor-root/);
-    assert.match(editor, /setCallbackEditorView\('builder'\)/);
-    assert.match(editor, /schemaModel' => 'callbackBuilderSchema'/);
+test('callback editor lives in its own tab and documents raw-body HMAC signing', () => {
+    assert.match(editor, /id="panel-callback" role="tabpanel"/);
+    assert.doesNotMatch(editor, /callback-disclosure/);
+    assert.match(settings, /data-template-editor-root/);
+    assert.match(settings, /setCallbackEditorView\('builder'\)/);
+    assert.match(settings, /schemaModel' => 'callbackBuilderSchema'/);
     assert.match(read('resources/views/livewire/admin/partials/schema-row.blade.php'), /data-schema-target/);
-    assert.match(editor, /Sign requests/);
-    assert.match(editor, /HMAC-SHA256 of the exact raw resolved body bytes/);
-    assert.match(editor, /type="password"/);
-    assert.match(editor, /Send test callback/);
-    assert.match(guide, /Callback editor and callback log/);
+    assert.match(settings, /Sign requests/);
+    assert.match(settings, /HMAC-SHA256 of the exact raw resolved body bytes/);
+    assert.match(settings, /type="password"/);
+    assert.match(settings, /Send test callback/);
+    assert.match(guide, /Callback configuration belongs in the Callback tab/);
+    assert.match(guide, /Owner: log viewer, callback log, endpoint form/);
 });
 
 test('callback log reuses request table, links triggering request and allows labelled resend', () => {
@@ -38,6 +41,6 @@ test('documentation includes callback workflow and sensitive target warning', ()
 });
 
 test('Blade displays the environment token example without interpreting it as an expression', () => {
-    assert.match(editor, /@verbatim\{\{env\.KEY\}\}@endverbatim/);
+    assert.match(settings, /@verbatim\{\{env\.KEY\}\}@endverbatim/);
     assert.match(read('resources/views/admin/docs.blade.php'), /@verbatim\{\{env\.KEY\}\}@endverbatim/);
 });

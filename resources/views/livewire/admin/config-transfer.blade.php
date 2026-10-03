@@ -151,7 +151,7 @@
                     <legend id="import-mode-legend">Import mode</legend>
                     @foreach ($modes as $importMode)
                         <label class="radio-option">
-                            <input type="radio" name="import-mode" value="{{ $importMode->value }}" @checked($mode === $importMode->value) wire:model.live="mode">
+                            <x-radio name="import-mode" value="{{ $importMode->value }}" :checked="$mode === $importMode->value" wire:model.live="mode" />
                             <span>
                                 <strong>{{ $importMode->label() }}</strong>
                                 @if ($importMode->value === 'create-only')
@@ -176,7 +176,7 @@
                 @endif
 
                 <span class="disabled-tooltip button-full" title="{{ ! $configFile ? 'Choose a valid JSON file before previewing the import.' : ($errors->has('configFile') ? 'Resolve the file validation error first.' : '') }}">
-                    <button class="button button-secondary button-full" type="submit" wire:loading.attr="disabled" @disabled(! $configFile || $errors->has('configFile'))>
+                    <button class="button button-secondary button-full" type="submit" wire:loading.attr="disabled" wire:target="preview" @disabled(! $configFile || $errors->has('configFile'))>
                         <span wire:loading.remove wire:target="preview,configFile">Preview import</span>
                         <span wire:loading wire:target="preview,configFile">Checking configuration…</span>
                     </button>
@@ -274,6 +274,7 @@
                         type="button"
                         wire:click="apply"
                         wire:loading.attr="disabled"
+                        wire:target="apply"
                         @disabled(! $plan['can_apply'] || ($plan['warnings'] !== [] && ! $acknowledgeWarnings))
                     >
                         <span wire:loading.remove wire:target="apply">Confirm import ({{ $changes }} {{ Str::plural('change', $changes) }})</span>
@@ -300,7 +301,7 @@
                                 class="text-button"
                                 type="button"
                                 wire:click="undoImport"
-                                wire:confirm="Undo this import and restore: {{ $undoItems->implode(', ') }}? A new rollback revision will be kept for every restored item."
+                                data-confirm-title="Undo import" data-confirm="Undo this import and restore: {{ $undoItems->implode(', ') }}? A new rollback revision will be kept for every restored item."
                             >Undo this import</button>
                         @endif
                     </p>

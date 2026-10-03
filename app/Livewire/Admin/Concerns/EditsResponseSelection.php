@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin\Concerns;
 
+use App\Livewire\Admin\EndpointForm;
 use App\Services\Environments\EnvironmentContext;
 use App\Services\Response\ResponseSelectionService;
 use App\Services\Response\SelectionConfigurationValidator;
@@ -11,6 +12,41 @@ use Illuminate\Validation\ValidationException;
 
 trait EditsResponseSelection
 {
+    public function updated(string $property): void
+    {
+        if (str_starts_with($property, 'callback')) {
+            $this->publishCallbackValidity();
+        }
+        if (preg_match('/^(selectionMode|sequenceOnExhaust|responseRules|fallbackResponseId|responseOrder)(\.|$)/', $property)) {
+            $this->publishSelectionValidity();
+        }
+    }
+
+    private function publishSelectionValidity(): void
+    {
+        $responses = $this->endpoint()->responses()->get()->map(fn ($response): array => [
+            'sequence_order' => array_search($response->id, $this->responseOrder, true),
+            'is_default' => $response->id === $this->fallbackResponseId,
+            'response_rules' => array_map(static function (array $rule): array {
+                if (is_string($rule['priority'] ?? null) && ctype_digit($rule['priority'])) {
+                    $rule['priority'] = (int) $rule['priority'];
+                }
+
+                return $rule;
+            }, $this->responseRules[$response->id] ?? []),
+        ])->all();
+        $valid = $responses !== [];
+        try {
+            app(SelectionConfigurationValidator::class)->validate([
+                'selection_mode' => $this->selectionMode, 'sequence_on_exhaust' => $this->sequenceOnExhaust,
+            ], $responses);
+        } catch (ValidationException) {
+            $valid = false;
+        }
+        $this->dispatch('response-selection-validity', endpointId: $this->endpointId, valid: $valid)
+            ->to(EndpointForm::class);
+    }
+
     public string $selectionMode = 'weighted';
 
     public string $sequenceOnExhaust = 'repeat_last';
@@ -28,6 +64,7 @@ trait EditsResponseSelection
         if (in_array($mode, ['weighted', 'sequence', 'rule'], true)) {
             $this->selectionMode = $mode;
             $this->resetErrorBag('selection_mode');
+            $this->publishSelectionValidity();
         }
     }
 
@@ -35,6 +72,7 @@ trait EditsResponseSelection
     {
         $this->endpoint()->responses()->findOrFail($id);
         $this->fallbackResponseId = $id;
+        $this->publishSelectionValidity();
     }
 
     public function addRule(int $responseId): void
@@ -44,6 +82,7 @@ trait EditsResponseSelection
             'field_type' => 'header', 'field_name' => '', 'operator' => 'equals',
             'value' => '', 'priority' => collect($this->responseRules)->flatten(1)->max('priority') + 1,
         ];
+        $this->publishSelectionValidity();
     }
 
     public function removeRule(int $responseId, int $index): void
@@ -51,6 +90,7 @@ trait EditsResponseSelection
         $this->endpoint()->responses()->findOrFail($responseId);
         if (isset($this->responseRules[$responseId][$index])) {
             array_splice($this->responseRules[$responseId], $index, 1);
+            $this->publishSelectionValidity();
         }
     }
 
@@ -155,5 +195,6 @@ trait EditsResponseSelection
             'field_type', 'field_name', 'operator', 'value', 'priority',
         ]))->all()])->all();
         $this->savedSelectionFingerprint = $this->selectionFingerprint();
+        $this->publishSelectionValidity();
     }
 }

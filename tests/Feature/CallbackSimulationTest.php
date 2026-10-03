@@ -39,7 +39,7 @@ final class CallbackSimulationTest extends TestCase
             ->assertSet('callbackUrl', 'https://receiver.test/hook')
             ->assertSet('callbackMethod', 'PATCH')
             ->assertSet('callbackBody', '{"event":"created"}')
-            ->assertDispatched('open-callback-editor', endpointId: $response->endpoint->id);
+            ->assertDispatched('callback-draft-validity', endpointId: $response->endpoint->id, valid: true);
     }
 
     public function test_restoring_a_revision_from_before_callbacks_uses_callback_defaults(): void

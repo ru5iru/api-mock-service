@@ -121,11 +121,11 @@
                     <input type="checkbox" wire:model.live="groupRepeats">
                     <span>Group repeats</span>
                 </label>
-                <div class="clock-toggle" role="group" aria-label="Timestamp display">
-                    <button class="{{ $clock === 'local' ? 'active' : '' }}" type="button" wire:click="$set('clock', 'local')">Local</button>
-                    <button class="{{ $clock === 'utc' ? 'active' : '' }}" type="button" wire:click="$set('clock', 'utc')">UTC</button>
+                <div class="segmented-control clock-toggle" role="group" aria-label="Timestamp display">
+                    <button type="button" wire:click="$set('clock', 'local')" aria-pressed="{{ $clock === 'local' ? 'true' : 'false' }}">Local</button>
+                    <button type="button" wire:click="$set('clock', 'utc')" aria-pressed="{{ $clock === 'utc' ? 'true' : 'false' }}">UTC</button>
                 </div>
-                <div class="density-toggle" role="group" aria-label="Request log row density">
+                <div class="segmented-control density-toggle" role="group" aria-label="Request log row density">
                     <button type="button" data-density-option="compact" aria-pressed="true">Compact</button>
                     <button type="button" data-density-option="comfortable" aria-pressed="false">Comfortable</button>
                 </div>

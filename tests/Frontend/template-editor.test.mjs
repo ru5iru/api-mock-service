@@ -36,7 +36,7 @@ test('new editor patterns are tokenized and recorded in the UI guide', () => {
     assert.match(css, /\.segmented-control/);
     assert.match(css, /\.faker-picker-panel[^}]*var\(--surface-raised\)/s);
     assert.match(css, /\.template-autocomplete[^}]*var\(--surface-raised\)/s);
-    assert.match(guide, /### Faker method picker/);
-    assert.match(guide, /### JSON template autocomplete/);
+    assert.match(guide, /Faker picker: `resources\/views\/livewire\/admin\/partials\/schema-row.blade.php`/);
+    assert.match(guide, /JSON autocomplete uses `\.template-autocomplete\[data-template-autocomplete\]`/);
     assert.match(guide, /\.segmented-control/);
 });

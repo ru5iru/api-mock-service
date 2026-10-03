@@ -36,7 +36,7 @@ test('shared menu closes outside, restores focus on Escape, and keeps one menu o
     assert.equal(second.root.open, false);
 
     window.MockDeckMenu.open(first.root);
-    const escape = { key: 'Escape', target: { closest() { return first.root; } }, preventDefault() { this.prevented = true; } };
+    const escape = { key: 'Escape', target: { closest(selector) { return selector === 'details[data-menu]' ? first.root : null; } }, preventDefault() { this.prevented = true; } };
     listeners.get('keydown')(escape);
     assert.equal(first.root.open, false);
     assert.equal(first.summary.focused, true);

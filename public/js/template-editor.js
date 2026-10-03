@@ -31,22 +31,16 @@
     }
 
     function positionPopover(editor, popover) {
-        var rect = editor.getBoundingClientRect();
-        var width = Math.min(420, window.innerWidth - 32);
-        var estimatedHeight = 260;
-        var left = Math.max(16, Math.min(rect.left, window.innerWidth - width - 16));
-        var below = rect.bottom + 6;
-        var top = below + estimatedHeight <= window.innerHeight
-            ? below
-            : Math.max(16, rect.top - estimatedHeight - 6);
-        popover.style.width = width + 'px';
-        popover.style.left = left + 'px';
-        popover.style.top = top + 'px';
+        popover.dataset.panelWidth = '420';
+        popover.dataset.panelHeight = '260';
+        popover.setAttribute('data-overlay-editor', '');
+        window.MockDeckPanels?.open(editor, popover);
     }
 
     function closeAutocomplete(root) {
         var popover = root?.querySelector('[data-template-autocomplete]');
         if (!popover) return;
+        window.MockDeckPanels?.close(popover);
         popover.hidden = true;
         popover.replaceChildren();
         root.querySelector('[data-template-editor]')?.setAttribute('aria-expanded', 'false');
@@ -56,19 +50,9 @@
         var summary = picker.querySelector('summary');
         var panel = picker.querySelector('.faker-picker-panel');
         if (!summary || !panel) return;
-        var rect = summary.getBoundingClientRect();
-        var width = Math.min(480, window.innerWidth - 32);
-        var height = Math.min(420, panel.scrollHeight || 420, window.innerHeight - 32);
-        var left = Math.max(16, Math.min(rect.left, window.innerWidth - width - 16));
-        var below = rect.bottom + 6;
-        var top = below + height <= window.innerHeight
-            ? below
-            : Math.max(16, rect.top - height - 6);
-        panel.style.position = 'fixed';
-        panel.style.width = width + 'px';
-        panel.style.maxHeight = height + 'px';
-        panel.style.left = left + 'px';
-        panel.style.top = top + 'px';
+        panel.dataset.panelWidth = '480';
+        panel.dataset.panelHeight = '420';
+        window.MockDeckPanels?.open(summary, panel);
     }
 
     function insertMethod(editor, item, fragment) {
@@ -119,8 +103,8 @@
                 popover.append(button);
             });
 
-            positionPopover(editor, popover);
             popover.hidden = false;
+            positionPopover(editor, popover);
             editor.setAttribute('aria-expanded', 'true');
         } catch (error) {
             closeAutocomplete(root);

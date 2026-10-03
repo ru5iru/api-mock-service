@@ -25,7 +25,8 @@ test('section tabs support neutral, attention, and valid states', () => {
     for (const state of ['neutral', 'attention', 'valid']) {
         assert.match(css, new RegExp(`\\.section-status\\.${state}`));
     }
-    assert.match(editor, /Request not yet reviewed/);
-    assert.match(editor, /Matching policy not yet reviewed/);
-    assert.match(editor, /Response not yet reviewed/);
+    assert.match(editor, /\$label\.' not yet reviewed'/);
+    assert.match(editor, /role="tab"/);
+    assert.match(editor, /x-bind:aria-selected/);
+    assert.doesNotMatch(editor, /data-section-nav|data-section-link/);
 });

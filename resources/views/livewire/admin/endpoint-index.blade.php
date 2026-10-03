@@ -102,7 +102,7 @@
                 <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(true)">Enable</button>
                 <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(false)">Disable</button>
                 <button class="button button-secondary button-small" type="button" wire:click="bulkExport">Export</button>
-                <button class="button button-danger button-small" type="button" wire:click="bulkDelete" wire:confirm="Delete {{ count($selected) }} selected endpoints and all of their configured responses? This cannot be undone.">Delete</button>
+                <button class="button button-danger button-small" type="button" wire:click="bulkDelete" data-confirm-title="Delete endpoint" data-confirm="Delete {{ count($selected) }} selected endpoints and all of their configured responses? This cannot be undone.">Delete</button>
                 <button class="text-button" type="button" wire:click="clearSelection">Clear</button>
             </div>
         </div>
@@ -216,7 +216,7 @@
                                 <button type="button" wire:click="duplicate({{ $endpoint->id }})">Duplicate</button>
                                 <button class="danger-text" type="button"
                                         wire:click="delete({{ $endpoint->id }})"
-                                        wire:confirm="Delete {{ $endpoint->displayName() }} and all {{ $endpoint->responses_count }} configured responses? This cannot be undone.">
+                                        data-confirm-title="Delete endpoint" data-confirm="Delete {{ $endpoint->displayName() }} and all {{ $endpoint->responses_count }} configured responses? This cannot be undone.">
                                     Delete
                                 </button>
                             </div>
