@@ -72,6 +72,28 @@
                     </div>
                 </div>
 
+                <div class="policy-group path-pattern-policy">
+                    <label class="toggle-row">
+                        <span><strong>Use path parameters</strong><small>Wildcard segments; query, retained headers and body still match exactly.</small></span>
+                        <input type="checkbox" wire:model.live="pathPatternEnabled" aria-label="Use path parameters">
+                    </label>
+                    @if ($pathPatternEnabled && $pathSegments !== [])
+                        <div class="path-segment-editor" aria-label="Path segments">
+                            @foreach ($pathSegments as $index => $segment)
+                                @if ($index > 0)<span aria-hidden="true">/</span>@endif
+                                @if ($segment !== '')
+                                    @php($isParameter = str_starts_with($segment, '{') && str_ends_with($segment, '}'))
+                                    <div class="path-segment-chip {{ $isParameter ? 'is-parameter' : '' }}" wire:key="path-segment-{{ $index }}">
+                                        <button type="button" class="button button-secondary button-small" wire:click="togglePathSegment({{ $index }})" aria-pressed="{{ $isParameter ? 'true' : 'false' }}" aria-label="{{ $isParameter ? 'Use literal for segment '.$index : 'Use parameter for segment '.$index }}" title="{{ $isParameter ? 'Use literal segment' : 'Use path parameter' }}">{{ $isParameter ? '{ }' : $segment }}</button>
+                                        @if ($isParameter)<input type="text" class="path-parameter-name" wire:model.live.debounce.300ms="pathParameterNames.{{ $index }}" aria-label="Parameter name for segment {{ $index }}" maxlength="80" spellcheck="false">@endif
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
+                    @error('pathPatternEnabled') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                </div>
+
                 <div class="organization-grid">
                     <div class="field">
                         <label for="endpoint-collection">Collection</label>
@@ -242,8 +264,11 @@
                         <div class="parsed-policy-list">
                             @foreach ($headerAnalysis as $header)
                                 <div class="{{ $header['excluded_reason'] ? 'excluded' : '' }}">
-                                    <code>{{ $header['name'] }}</code>
-                                    <span>{{ $header['excluded_reason'] ?: 'included in signature' }}</span>
+                                    <code>@if($header['excluded_reason'])<del>{{ $header['name'] }}</del>@else{{ $header['name'] }}@endif</code>
+                                    <span>{{ $header['excluded_reason'] ?: 'included in signature' }}@if($header['coarse_excluded'] && in_array($header['normalized_name'], $excludedHeaderNames, true)) · individual exclusion retained (redundant)@endif</span>
+                                    <label class="toggle-row field-exclusion-toggle {{ $header['coarse_excluded'] ? 'overridden' : '' }}">
+                                        <span>Exclude</span><input type="checkbox" wire:model.live="excludedHeaderNames" value="{{ $header['normalized_name'] }}" aria-label="Exclude header {{ $header['name'] }}" @disabled($header['coarse_excluded'])>
+                                    </label>
                                 </div>
                             @endforeach
                         </div>
@@ -251,12 +276,15 @@
                     @endif
                 </div>
 
-                <div class="policy-group read-only-policy">
-                    <div class="policy-heading"><div><strong>Query</strong><span>{{ count($queryParameters) }} parsed</span></div><span class="included-label">Always included</span></div>
+                <div class="policy-group">
+                    <div class="policy-heading"><div><strong>Query</strong><span>{{ count($queryParameters) }} parsed</span></div><x-badge>{{ $excludedQueryParams === [] && $excludedHeaderNames === [] ? 'Always included' : collect($queryParameters)->where('excluded', true)->count().' of '.count($queryParameters).' excluded' }}</x-badge></div>
                     @if ($queryParameters !== [])
                         <div class="parsed-policy-list">
                             @foreach ($queryParameters as $parameter)
-                                <div><code>{{ $parameter['key'] }}</code><span>{{ Str::limit($parameter['display_value'], 80) }}</span></div>
+                                <div class="{{ $parameter['excluded'] ? 'excluded' : '' }}">
+                                    <code>@if($parameter['excluded'])<del>{{ $parameter['key'] }}</del>@else{{ $parameter['key'] }}@endif</code><span>{{ Str::limit($parameter['display_value'], 80) }}</span>
+                                    <label class="toggle-row field-exclusion-toggle"><span>Exclude</span><input type="checkbox" wire:model.live="excludedQueryParams" value="{{ $parameter['key'] }}" aria-label="Exclude query {{ $parameter['key'] }}"></label>
+                                </div>
                             @endforeach
                         </div>
                     @else
@@ -269,10 +297,14 @@
                     <p>JSON object keys are sorted before hashing; other bodies are trimmed and matched as text.</p>
                 </div>
 
-                <div class="info-note policy-gap-note">
-                    <strong>Field-level exclusions are not available</strong>
-                    <p>The current signature model supports the three header policies above. Query parameters and individual headers are shown for review but cannot be excluded separately.</p>
-                </div>
+                @if ($showExclusionHint)
+                    <div class="info-note exclusion-hint" role="status">
+                        <p>Toggle Exclude next to any query parameter or header to leave it out of the signature.</p>
+                        <button type="button" class="text-button" wire:click="dismissExclusionHint" aria-label="Dismiss field exclusion hint">Dismiss</button>
+                    </div>
+                @endif
+                @error('excludedQueryParams') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                @error('excludedHeaderNames') <p class="field-error" role="alert">{{ $message }}</p> @enderror
             </section>
 
 
@@ -296,7 +328,7 @@
                     </div>
 
                     <dl class="preview-facts">
-                        <div><dt>Signature version <x-help-tip title="Signature version" label="V1 includes all headers; V2 ignores cookies; V3 ignores authentication; V4 ignores both; V5 ignores all headers." /></dt><dd>{{ $preview['variant']->name }}</dd></div>
+                        <div><dt>Signature version <x-help-tip title="Signature version" label="V1 includes all headers; V2 ignores cookies; V3 ignores authentication; V4 ignores both; V5 ignores all headers; V6 adds field exclusions or path parameters." /></dt><dd>{{ $preview['variant']->name }}</dd></div>
                         <div><dt>Headers</dt><dd>{{ count($preview['parsed']->headers) }}</dd></div>
                         <div><dt>Body</dt><dd>{{ strlen($preview['parsed']->body) }} B</dd></div>
                     </dl>
@@ -309,11 +341,11 @@
                     @if (collect($headerAnalysis)->contains(fn ($header) => $header['excluded_reason'] !== null))
                         <div class="canonical-diff">
                             <strong>Removed by matching policy</strong>
-                            @php($excludedHeaders = collect($headerAnalysis)->filter(fn ($header) => $header['excluded_reason'] !== null))
-                            @foreach ($excludedHeaders->take(5) as $header)
+                            @php($removedHeaders = collect($headerAnalysis)->filter(fn ($header) => $header['excluded_reason'] !== null))
+                            @foreach ($removedHeaders->take(5) as $header)
                                     <div><del>{{ $header['name'] }}: {{ $header['display_value'] }}</del><span>{{ $header['excluded_reason'] }}</span></div>
                             @endforeach
-                            @if ($excludedHeaders->count() > 5)<p class="field-help">+{{ $excludedHeaders->count() - 5 }} more in Header matching details</p>@endif
+                            @if ($removedHeaders->count() > 5)<p class="field-help">+{{ $removedHeaders->count() - 5 }} more in Header matching details</p>@endif
                         </div>
                     @endif
 

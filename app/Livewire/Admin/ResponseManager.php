@@ -8,6 +8,8 @@ use App\Models\MockEndpoint;
 use App\Services\Callbacks\CallbackDelivery;
 use App\Services\Callbacks\CallbackDispatcher;
 use App\Services\Environments\EnvironmentContext;
+use App\Services\Matching\PathPattern;
+use App\Services\Response\FaultConfigurationValidator;
 use App\Services\Response\SelectionConfigurationValidator;
 use App\Services\Revisions\RevisionManager;
 use App\Services\Templates\FakerMethodCatalog;
@@ -30,7 +32,7 @@ final class ResponseManager extends Component
 {
     use EditsResponseSelection;
 
-    private const FORM_FIELDS = ['editingId', 'statusCode', 'headersJson', 'body', 'bodyMode', 'template', 'editorView', 'seedMode', 'seed', 'locale', 'delayMs', 'weight', 'callbackEnabled', 'callbackUrl', 'callbackMethod', 'callbackHeadersJson', 'callbackBody', 'callbackDelayMs', 'callbackDelayMaxMs', 'callbackRetry', 'callbackBackoffMs', 'callbackTimeoutMs', 'callbackSigningEnabled', 'callbackSigningSecret', 'callbackSignatureHeader'];
+    private const FORM_FIELDS = ['editingId', 'statusCode', 'headersJson', 'body', 'bodyMode', 'template', 'editorView', 'seedMode', 'seed', 'locale', 'delayMs', 'weight', 'faultEnabled', 'faultType', 'faultDelayMsMin', 'faultDelayMsMax', 'faultProbability', 'callbackEnabled', 'callbackUrl', 'callbackMethod', 'callbackHeadersJson', 'callbackBody', 'callbackDelayMs', 'callbackDelayMaxMs', 'callbackRetry', 'callbackBackoffMs', 'callbackTimeoutMs', 'callbackSigningEnabled', 'callbackSigningSecret', 'callbackSignatureHeader'];
 
     #[Locked]
     public array $pendingFormDrafts = [];
@@ -86,6 +88,16 @@ final class ResponseManager extends Component
 
     public int $weight = 1;
 
+    public bool $faultEnabled = false;
+
+    public string $faultType = 'delay';
+
+    public int $faultDelayMsMin = 0;
+
+    public ?int $faultDelayMsMax = null;
+
+    public int $faultProbability = 100;
+
     public bool $callbackEnabled = false;
 
     public string $callbackUrl = '';
@@ -126,6 +138,50 @@ final class ResponseManager extends Component
     public ?string $callbackTestId = null;
 
     public string $callbackTestStatus = '';
+
+    #[Locked]
+    public ?string $previewPath = null;
+
+    #[Locked]
+    public bool $previewPathEnabled = false;
+
+    #[On('endpoint-path-preview')]
+    public function updateEndpointPathPreview(int $endpointId, string $path, bool $enabled): void
+    {
+        if ($endpointId !== $this->endpointId || strlen($path) > 8192 || ! str_starts_with($path, '/')) {
+            return;
+        }
+        if ($enabled) {
+            try {
+                app(PathPattern::class)->validate($path);
+            } catch (\InvalidArgumentException) {
+                return;
+            }
+        }
+        $this->previewPath = $path;
+        $this->previewPathEnabled = $enabled;
+        $this->clearPreview();
+        $this->callbackPreview = '';
+    }
+
+    private function previewEndpoint(): MockEndpoint
+    {
+        $endpoint = clone $this->endpoint();
+        if ($this->previewPath !== null) {
+            $endpoint->normalized_curl = $endpoint->method."\n".$this->previewPath."\n\n";
+            $endpoint->path_pattern_enabled = $this->previewPathEnabled;
+        }
+
+        return $endpoint;
+    }
+
+    public function updatedFaultType(): void
+    {
+        if ($this->faultType === 'timeout' && $this->faultDelayMsMin === 0) {
+            $this->faultDelayMsMin = 60000;
+            $this->faultDelayMsMax = null;
+        }
+    }
 
     public function mount(MockEndpoint $endpoint): void
     {
@@ -171,6 +227,11 @@ final class ResponseManager extends Component
         $this->clearPreview();
         $this->delayMs = $response->delay_ms;
         $this->weight = $response->weight;
+        $this->faultEnabled = (bool) $response->fault_enabled;
+        $this->faultType = (string) ($response->fault_type ?? 'delay');
+        $this->faultDelayMsMin = (int) ($response->fault_delay_ms_min ?? 0);
+        $this->faultDelayMsMax = $response->fault_delay_ms_max;
+        $this->faultProbability = (int) ($response->fault_probability ?? 100);
         $this->callbackEnabled = (bool) $response->callback_enabled;
         $this->callbackUrl = (string) ($response->callback_url ?? '');
         $this->callbackMethod = (string) $response->callback_method;
@@ -403,6 +464,7 @@ final class ResponseManager extends Component
 
         try {
             $callbackAttributes = $this->validatedCallbackAttributes($validated);
+            $faultAttributes = $this->validatedFaultAttributes($headers, $validated['bodyMode']);
         } catch (ValidationException $exception) {
             $this->setErrorBag($exception->errors());
 
@@ -422,7 +484,7 @@ final class ResponseManager extends Component
             'delay_ms' => $validated['delayMs'],
             'weight' => $validated['weight'],
         ];
-        $attributes = array_merge($attributes, $callbackAttributes);
+        $attributes = array_merge($attributes, $callbackAttributes, $faultAttributes);
 
         DB::transaction(function () use ($attributes): void {
             $endpoint = $this->endpoint()->newQuery()->lockForUpdate()->findOrFail($this->endpointId);
@@ -453,6 +515,30 @@ final class ResponseManager extends Component
         $this->dispatch('toast', message: $this->editingId === null ? 'Response added.' : 'Response updated.');
         $this->resetForm();
         $this->loadSelection();
+    }
+
+    private function validatedFaultAttributes(?array $headers, string $bodyMode): array
+    {
+        $fields = [
+            'fault_enabled' => 'faultEnabled',
+            'fault_type' => 'faultType',
+            'fault_delay_ms_min' => 'faultDelayMsMin',
+            'fault_delay_ms_max' => 'faultDelayMsMax',
+            'fault_probability' => 'faultProbability',
+        ];
+        $attributes = ['headers' => $headers, 'body_mode' => $bodyMode];
+        foreach ($fields as $attribute => $property) {
+            $attributes[$attribute] = $this->{$property};
+        }
+        try {
+            return app(FaultConfigurationValidator::class)->validate($attributes);
+        } catch (ValidationException $exception) {
+            $errors = [];
+            foreach ($exception->errors() as $field => $messages) {
+                $errors[$fields[$field] ?? $field] = $messages;
+            }
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     private function callbackRules(): array
@@ -633,7 +719,7 @@ final class ResponseManager extends Component
             $response = $this->editingId === null
                 ? $this->endpoint()->responses()->make(['locale' => $this->locale, 'seed_mode' => $this->seedMode, 'seed' => $this->seed])
                 : $this->endpoint()->responses()->findOrFail($this->editingId);
-            $context = app(TemplateContext::class)->preview($this->callbackBody);
+            $context = app(TemplateContext::class)->preview($this->callbackBody, $this->previewEndpoint());
             $this->callbackPreview = app(ResponseTemplateEngine::class)
                 ->renderCallback($this->callbackBody, $response, $context, 'preview')->json;
             $this->resetErrorBag('callbackBody');
@@ -659,7 +745,7 @@ final class ResponseManager extends Component
         $id = 'callback-test-'.Str::uuid();
         $this->callbackTestId = $id;
         $this->callbackTestStatus = 'Queued';
-        app(CallbackDispatcher::class)->enqueue($this->editingId, $id, app(EnvironmentContext::class)->active()->id, app(TemplateContext::class)->synthetic($id));
+        app(CallbackDispatcher::class)->enqueue($this->editingId, $id, app(EnvironmentContext::class)->active()->id, app(TemplateContext::class)->synthetic($id, null, $this->endpoint()));
     }
 
     public function pollCallbackTest(): void
@@ -824,7 +910,7 @@ JSON;
     {
         $templates = app(ResponseTemplateEngine::class);
         try {
-            $result = $templates->preview($this->template, $this->locale, $this->seedMode, $this->seed);
+            $result = $templates->preview($this->template, $this->locale, $this->seedMode, $this->seed, $this->previewEndpoint());
             $this->templateIssues = $result['issues'];
             $this->previewOutput = $result['output'] === null
                 ? ''
@@ -1009,6 +1095,7 @@ JSON;
             'rulePreview' => $responses->filter(fn ($item) => $item->id !== $this->fallbackResponseId && ($this->responseRules[$item->id] ?? []) !== [])
                 ->sortBy(fn ($item) => collect($this->responseRules[$item->id])->min('priority'))->values(),
             'fakerCatalog' => app(FakerMethodCatalog::class)->catalog(),
+            'contextCatalog' => app(TemplateContext::class)->catalog($this->previewEndpoint()),
             'templateLocales' => config('mock.templates.locales', ['en']),
         ]);
     }
@@ -1037,6 +1124,11 @@ JSON;
         $this->clearPreview();
         $this->delayMs = 0;
         $this->weight = 1;
+        $this->faultEnabled = false;
+        $this->faultType = 'delay';
+        $this->faultDelayMsMin = 0;
+        $this->faultDelayMsMax = null;
+        $this->faultProbability = 100;
         $this->callbackEnabled = false;
         $this->callbackUrl = '';
         $this->callbackMethod = 'POST';

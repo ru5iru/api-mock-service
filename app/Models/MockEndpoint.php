@@ -32,6 +32,9 @@ final class MockEndpoint extends Model
         'exclude_cookies',
         'exclude_auth',
         'exclude_headers',
+        'excluded_query_params',
+        'excluded_headers',
+        'path_pattern_enabled',
     ];
 
     protected static function booted(): void
@@ -56,6 +59,9 @@ final class MockEndpoint extends Model
             'exclude_cookies' => 'boolean',
             'exclude_auth' => 'boolean',
             'exclude_headers' => 'boolean',
+            'excluded_query_params' => 'array',
+            'excluded_headers' => 'array',
+            'path_pattern_enabled' => 'boolean',
         ];
     }
 
@@ -135,8 +141,17 @@ final class MockEndpoint extends Model
         ];
     }
 
+    public function hasFieldMatching(): bool
+    {
+        return (bool) $this->path_pattern_enabled || ($this->excluded_query_params ?? []) !== [] || ($this->excluded_headers ?? []) !== [];
+    }
+
     public function signatureVariant(): string
     {
+        if ($this->hasFieldMatching()) {
+            return 'V6';
+        }
+
         return $this->exclude_headers
             ? 'V5'
             : ($this->exclude_cookies && $this->exclude_auth

@@ -14,5 +14,6 @@ final readonly class EndpointMatch
         public MockEndpoint $endpoint,
         public string $tier,
         public ?string $variant,
+        public array $pathParameters = [],
     ) {}
 }

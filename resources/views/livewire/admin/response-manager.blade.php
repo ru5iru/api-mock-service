@@ -1,4 +1,4 @@
-<div class="response-manager">
+<div class="response-manager" data-context-catalog="{{ json_encode($contextCatalog) }}">
 <section id="panel-response" role="tabpanel" aria-labelledby="tab-response" x-show="activeTab === 'response'">
 <div class="response-grid {{ $bodyMode === 'template' ? 'template-active' : '' }}">
     <div class="response-list">
@@ -84,7 +84,7 @@
                     <summary><span class="details-chevron" aria-hidden="true">›</span><strong>Details</strong></summary>
                     <div class="response-row-detail-content">
                         <code class="response-body-summary">{{ ($response->body_mode ?? 'static') === 'template' ? 'JSON response template' : (Str::limit(preg_replace('/\s+/', ' ', $response->body ?? ''), 82) ?: 'Empty body') }}</code>
-                        <div class="metadata-row"><span>{{ $response->delay_ms }} ms delay</span><span>{{ count($response->headers ?? []) }} headers</span>@if ($response->callback_enabled)<x-badge variant="info">Callback enabled</x-badge>@endif</div>
+                        <div class="metadata-row"><span>{{ $response->delay_ms }} ms delay</span><span>{{ count($response->headers ?? []) }} headers</span>@if ($response->callback_enabled)<x-badge variant="info">Callback enabled</x-badge>@endif @if ($response->fault_enabled)<x-badge variant="warning">Fault: {{ $response->fault_type === 'timeout' ? 'long delay' : str_replace('_', ' ', $response->fault_type) }}</x-badge>@endif</div>
                         @if ($selectionMode !== 'weighted')
                     <div class="selection-move-actions">
                         <button class="icon-button" type="button" wire:click="moveSelectionResponse({{ $responseIndex }}, -1)" @disabled($responseIndex === 0) aria-label="Move response {{ $response->id }} earlier">↑</button>
@@ -363,6 +363,42 @@
         @endif
 
 
+
+        <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="response-fault-{{ $editingId ?? 'new' }}">
+            <summary><span class="details-chevron" aria-hidden="true">›</span><strong>Fault injection</strong>@if ($faultEnabled)<x-badge variant="warning">Enabled</x-badge>@endif</summary>
+            <label class="toggle-inline"><input type="checkbox" wire:model.live="faultEnabled"><span>Enable fault injection</span></label>
+            <p class="field-help">Applied after response selection. <x-help-tip title="Primary response faults" label="Faulted calls still count as matches. Probability is rolled for each selected response. Delay adds to the normal response delay; an empty maximum uses a fixed delay. Template previews remain normal." /></p>
+            <div class="field-row two">
+                <div class="field">
+                    <label for="response-fault-type">Fault type</label>
+                    <select class="ui-select" id="response-fault-type" wire:model.live="faultType" @disabled(! $faultEnabled)>
+                        <option value="delay">Delay</option>
+                        <option value="malformed_body">Malformed body (JSON/XML)</option>
+                        <option value="truncated_body">Truncated body</option>
+                        <option value="timeout">Timeout (long delay)</option>
+                    </select>
+                    @error('faultType') <p class="field-error">{{ $message }}</p> @enderror
+                </div>
+                <div class="field">
+                    <label for="response-fault-probability">Probability (%)</label>
+                    <input id="response-fault-probability" type="number" min="0" max="100" wire:model="faultProbability" @disabled(! $faultEnabled)>
+                    @error('faultProbability') <p class="field-error">{{ $message }}</p> @enderror
+                </div>
+            </div>
+            @if (in_array($faultType, ['delay', 'timeout'], true))
+                <div class="field-row two">
+                    <div class="field"><label for="response-fault-delay-min">Delay min (ms)</label><input id="response-fault-delay-min" type="number" min="0" max="120000" wire:model="faultDelayMsMin" @disabled(! $faultEnabled)>@error('faultDelayMsMin') <p class="field-error">{{ $message }}</p> @enderror</div>
+                    <div class="field"><label for="response-fault-delay-max">Delay max (ms) <span>optional</span></label><input id="response-fault-delay-max" type="number" min="0" max="120000" wire:model="faultDelayMsMax" @disabled(! $faultEnabled)>@error('faultDelayMsMax') <p class="field-error">{{ $message }}</p> @enderror</div>
+                </div>
+            @endif
+            @if ($faultType === 'timeout')
+                <p class="info-note">Approximation: a long delay, capped at 120 seconds. <x-help-tip title="Timeout approximation" label="Set the delay longer than your client's timeout. The proxy or PHP worker may finish first; this does not hold a connection open indefinitely or reset TCP." /></p>
+            @elseif ($faultType === 'malformed_body')
+                <p class="field-help">Replaces JSON or XML with an unfinished document.</p>
+            @elseif ($faultType === 'truncated_body')
+                <p class="field-help">Returns the first half of the rendered body's bytes.</p>
+            @endif
+        </details>
 
         <button class="button button-primary button-full" type="submit" wire:loading.attr="disabled" wire:target="save" @disabled($bodyMode === 'template' && collect($templateIssues)->contains(fn ($issue) => $issue['severity'] === 'error'))>
             <span wire:loading.remove wire:target="save">{{ $editingId ? 'Update response' : 'Add response' }}</span>

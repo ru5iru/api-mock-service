@@ -8,6 +8,7 @@ use App\Models\MockEndpoint;
 use App\Models\MockResponse;
 use App\Models\Tag;
 use App\Services\Curl\CurlParser;
+use App\Services\Response\FaultConfigurationValidator;
 use Illuminate\Database\Eloquent\Collection;
 use InvalidArgumentException;
 
@@ -87,6 +88,9 @@ final readonly class ConfigExporter
                         'exclude_cookies' => $endpoint->exclude_cookies,
                         'exclude_auth' => $endpoint->exclude_auth,
                         'exclude_headers' => $endpoint->exclude_headers,
+                        'excluded_query_params' => $endpoint->excluded_query_params ?? [],
+                        'excluded_headers' => $endpoint->excluded_headers ?? [],
+                        'path_pattern_enabled' => (bool) $endpoint->path_pattern_enabled,
                     ],
                 ],
                 'responses' => $this->responses($endpoint->responses, $redactSecrets),
@@ -94,13 +98,13 @@ final readonly class ConfigExporter
         })->all();
 
         $data = [
-            '$schema' => 'https://mockdeck.dev/schemas/config-v1.3.json',
+            '$schema' => 'https://mockdeck.dev/schemas/config-v1.4.json',
             'format' => 'mockdeck',
-            'format_version' => '1.3',
+            'format_version' => '1.4',
             'exported_at' => now()->utc()->format('Y-m-d\TH:i:s\Z'),
             'generator' => [
                 'name' => 'MockDeck',
-                'version' => config('mock.portable_config.generator_version', '1.3.0'),
+                'version' => config('mock.portable_config.generator_version', '1.4.0'),
             ],
             'options' => [
                 'secrets_redacted' => $redactSecrets,
@@ -183,6 +187,7 @@ final readonly class ConfigExporter
                     'seed' => $response->seed,
                     'locale' => (string) ($response->locale ?? 'en'),
                     'delay_ms' => $response->delay_ms,
+                    ...app(FaultConfigurationValidator::class)->attributes($response->getAttributes()),
                     'weight' => $response->weight,
                     'sequence_order' => $response->sequence_order,
                     'is_default' => (bool) $response->is_default,

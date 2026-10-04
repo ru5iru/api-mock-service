@@ -82,12 +82,14 @@ The canonical request contains the uppercase method, normalized path/query, sele
 | V3 | V1 without configured authentication headers | 40 |
 | V4 | V1 without cookies or authentication headers | 30 |
 | V5 | Method, path/query, body only | 10 |
+| V6 | Configured field exclusions and/or path pattern; retained request parts remain exact | underlying header policy |
 
 When more than one enabled endpoint matches, MockDeck chooses:
 
 1. highest priority;
-2. highest signature specificity;
-3. lowest endpoint database ID as the stable tie-breaker.
+2. literal path before a parameterized path;
+3. highest header-policy specificity;
+4. lowest endpoint database ID as the stable tie-breaker.
 
 Exact duplicate signatures are blocked. A broad header-free endpoint and a narrower header-aware endpoint can coexist; use priority to make an intentional override explicit.
 
@@ -365,7 +367,7 @@ Environment-scoped export includes endpoints that inherit their state and endpoi
 
 For **Update by UUID**, preview also reports how many endpoint/response pre-states will receive a revision. Every changed existing entity is snapshotted under one import batch before its imported values replace the live values. The success panel keeps **Undo this import** available; one confirmation lists the affected entities and restores all recorded pre-states atomically. The undo itself appends rollback revisions, so it does not erase evidence of the import.
 
-Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Versions 1/1.0/1.1/1.2 remain supported; missing fields use backward-compatible defaults, with Weighted selection and no rules. Current exports use format `1.3`.
+Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Versions 1/1.0/1.1/1.2 remain supported; missing fields use backward-compatible defaults, with Weighted selection and no rules. Current exports use format `1.4`; version 1.3 retains its selection configuration while importing without field exclusions, path patterns, or faults.
 
 CLI equivalents:
 
@@ -463,12 +465,12 @@ See [VALIDATION.md](VALIDATION.md) for complete automated and manual release che
 
 ## 19. Current limitations
 
-- Matching uses five fixed header policies; arbitrary per-field query/header/body predicates are not implemented.
+- Endpoint matching supports five coarse header policies plus exact-name query/header exclusions and optional single-segment path parameters. Arbitrary body exclusions are not implemented.
 - Upstream origin is intentionally excluded from signatures.
 - Response selection supports weighted random, environment-scoped sequences, and request conditions. Scenario scripting remains outside this wave.
 - Response templates serve JSON only; request-context interpolation is supported in the JSON editor.
 - Builder is intentionally a lossless subset of the JSON template language.
-- OpenAPI generation/import, recording/proxying, verification assertions, and third-party format adapters remain planned.
+- OpenAPI generation/import, recording/proxying, and third-party format adapters remain planned. Verification assertions operate independently of request-log retention; filtered assertions can be indeterminate when bounded call data is insufficient.
 
 For implementation boundaries, read [ARCHITECTURE.md](ARCHITECTURE.md). For UI changes, read [UI_GUIDE.md](UI_GUIDE.md).
 
@@ -514,7 +516,7 @@ The selection preview lists the ordered conditions and fallback badge. Missing f
 
 Selection fields and conditions are configuration and are versioned. Restoring an older sequence position shifts sibling response positions with rollback revisions; restoring a fallback can clear the sibling fallback with a revision. Invalid rule configuration restores are rejected atomically. Pre-Wave-1 endpoint snapshots default to Weighted and pre-Wave-1 response snapshots default to no rules. Counters/positions are runtime state and are never restored by history.
 
-Current native exports use 1.3 and include modes, order, default flags, and conditions. Old 1–1.2 files retain Weighted behavior. New imports and clones have no call state until matched; upserts preserve destination runtime state. No verification/assertion API is added in this wave.
+Current native exports use 1.4 and include modes, order, default flags, conditions, matching exclusions/path patterns, and response faults. Old 1–1.2 files retain Weighted behavior. New imports and clones have no call state until matched; upserts preserve destination runtime state. See [Verification API](VERIFICATION_API.md) for token-authenticated CI assertions and runtime resets.
 
 ### Saving endpoint and response drafts
 
@@ -522,4 +524,44 @@ On an existing endpoint, **Save changes** saves edited response fields and selec
 
 ### Finding callback configuration
 
-Open an existing endpoint's **Callback** tab, then choose **Enable callback** or **Edit callback** on its compact response row. The selected response opens Delivery settings; expand **Retry policy** and **Signing** for secondary settings. Save with **Save callback** or the global **Save changes**. The Response tab contains status, weight, delay, headers and body only. Add a saved response first if the callback list is empty. The response row's overflow menu also offers a shortcut to its callback settings.
+Open an existing endpoint's **Callback** tab, then choose **Enable callback** or **Edit callback** on its compact response row. The selected response opens Delivery settings; expand **Retry policy** and **Signing** for secondary settings. Save with **Save callback** or the global **Save changes**. The Response tab contains status, weight, delay, headers, body, and the collapsed Fault injection settings. Add a saved response first if the callback list is empty. The response row's overflow menu also offers a shortcut to its callback settings.
+
+
+## 22. Field exclusions and path parameters
+
+Open **Matching** and toggle **Exclude** beside a parsed query parameter or a header inside **Header matching details**. Query names are exact and case-sensitive; header names are normalized to lowercase. Every repeated occurrence of an excluded query name is removed from the signature. The parsed rows remain visible and marked as excluded. Coarse header policies and transport-header exclusions still apply; their individual toggles are disabled using the same treatment as overridden cookie/auth controls. Redundant saved exclusions are labelled and remain available if the coarse policy is later turned off.
+
+The short exclusion hint is dismissible and is retired instance-wide after the first exclusion is configured. There is no standing limitation banner. Empty exclusion lists preserve the previous canonical bytes and signature.
+
+In **Request**, enable **Use path parameters**. Click a segment chip to convert a literal segment into a named parameter, and edit its name inline. Click again to restore a literal segment. A complete segment such as `{id}` matches one nonempty URL segment; `/users/{id}` matches `/users/42` and `/users/abc`, but not `/users/42/orders`. Names must start with a letter or underscore, contain only letters/numbers/underscores, and be unique in that path. Encoded values are captured after splitting the URL path into segments.
+
+This is hybrid exact-request matching: only parameterized path segments are wildcards. Method, retained query parameters, retained headers, and body still match exactly through canonical hashing. V6 hashes the configured pattern path, never an individual captured path. A literal path wins over a parameterized path at equal priority; higher priority can override that preference. Endpoints without either feature retain their existing signature version and canonical hash.
+
+In Response Template → JSON, use `$request.path.id` or inline `{{$request.path.id}}`. Callback bodies and targets use the same resolver. Missing captures return null in JSON templates. Editor previews provide visibly labelled synthetic values such as `sample_id`; response and callback previews include current valid path drafts, while **Send test callback** uses saved configuration. These context expressions remain JSON-editor-only; the visual Builder is not expanded to represent them.
+
+```json
+{"userId":"$request.path.id","message":"Hello {{$request.path.id}}"}
+```
+
+Exclusions and the pattern flag are configuration: revisions and native format 1.4 preserve them. Restoring older snapshots or importing older documents defaults to no exclusions and literal paths. The pattern is stored in the existing request cURL, not in runtime call state.
+
+## 23. Inject primary-response faults
+
+Edit a response in **Response**, expand **Fault injection**, and enable it. Choose a type and a probability from 0–100%. Zero never applies; 100 always applies. Faults compose with Weighted, Sequence, and Rule-based selection. A selected faulted call still increments the verification count and enters the retained-call buffer.
+
+| Type | Effect |
+|---|---|
+| Delay | Wait the configured minimum, or a random inclusive min/max interval, then return the normal response. This is additional to the normal response delay. |
+| Malformed body | After rendering, replace JSON with `{"mockdeck_fault":` or XML with `<mockdeck-fault>`. Saving requires a JSON/XML Content-Type, including `+json`/`+xml`; templates default to JSON. |
+| Truncated body | After rendering, return exactly the first `floor(byte_length / 2)` bytes. A multibyte character may be split. This truncates bytes and does not guarantee every possible input becomes invalid syntax. |
+| Timeout (long delay) | The same bounded delay, labelled as an approximation. Selecting it suggests 60,000 ms; choose a delay longer than the client timeout. |
+
+Delay fields reuse the callback fixed/range pattern: leave maximum blank for a fixed duration. Fault delays are bounded at 120,000 ms. nginx's default 60-second upstream timeout and PHP-FPM/proxy limits may finish first. This does not guarantee an indefinite hang. TCP connection reset is not offered because PHP-FPM cannot reliably reset the client connection owned by nginx.
+
+Template Preview shows normal rendered content. Faults apply only when serving a live matched request. Logs marks injected effects with `fault_applied` and their extra `fault_delay_ms`. The declared Content-Type is retained; an explicitly configured Content-Length is corrected for changed body bytes. No-fault responses preserve normal response behavior. Fault settings travel through response drafts, global save, history, and format 1.4; old snapshots/imports default to disabled faults.
+
+## 24. Verify calls from CI
+
+Use the separate token-authenticated [Verification API](VERIFICATION_API.md) to read call counts, assert counts and request predicates, and reset runtime state before a test run. Generate the instance token with `php artisan mockdeck:api-token`; use `--rotate` to replace it and invalidate the previous token. A dashboard session cookie alone grants no access.
+
+Unfiltered assertions use the exact lifetime count since reset. Each endpoint/environment also retains at most 20 bounded call digests. Conditional assertions use the same header/query/body-JSON predicate grammar as response rules and report uncertainty when discarded or omitted information prevents proving the expected count. Reset before a focused scenario and inspect the returned message in CI. API resets clear counts, sequence positions, last-match timestamps and digests without changing endpoint/response configuration.

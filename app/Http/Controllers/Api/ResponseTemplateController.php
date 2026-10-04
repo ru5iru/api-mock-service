@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\MockEndpoint;
 use App\Services\Templates\ResponseTemplateEngine;
 use App\Services\Templates\TemplateIssue;
 use App\Services\Templates\TemplateRenderException;
@@ -30,6 +31,7 @@ final class ResponseTemplateController extends Controller
             'locale' => ['sometimes', 'string', 'in:'.implode(',', config('mock.templates.locales', ['en']))],
             'seed_mode' => ['sometimes', 'string', 'in:random,fixed,request'],
             'seed' => ['nullable', 'integer'],
+            'endpoint_id' => ['nullable', 'integer', 'exists:mock_endpoints,id'],
         ]);
 
         $seedMode = $validated['seed_mode'] ?? 'random';
@@ -48,6 +50,7 @@ final class ResponseTemplateController extends Controller
                 $validated['locale'] ?? 'en',
                 $seedMode,
                 isset($validated['seed']) ? (int) $validated['seed'] : null,
+                isset($validated['endpoint_id']) ? MockEndpoint::findOrFail($validated['endpoint_id']) : null,
             );
         } catch (TemplateRenderException $exception) {
             return response()->json([

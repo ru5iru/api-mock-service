@@ -72,7 +72,11 @@
         }
 
         try {
-            var items = (await catalog()).filter(function (item) {
+            var contextRoot = editor.closest('[data-context-catalog]');
+            var contextItems = [];
+            try { contextItems = JSON.parse(contextRoot?.dataset.contextCatalog || '[]'); } catch (_) { /* Faker catalog remains usable. */ }
+            // Request context belongs only in JSON autocomplete, never in the visual Builder.
+            var items = (await catalog()).concat(contextItems).filter(function (item) {
                 var haystack = [item.id].concat(item.aliases || []).join(' ').toLowerCase();
                 return haystack.includes(fragment.query.toLowerCase());
             }).slice(0, 10);

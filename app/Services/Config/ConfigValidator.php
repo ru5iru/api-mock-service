@@ -2,9 +2,13 @@
 
 namespace App\Services\Config;
 
+use App\Services\Curl\CurlParser;
+use App\Services\Matching\FieldMatchingConfiguration;
+use App\Services\Response\FaultConfigurationValidator;
 use App\Services\Templates\ResponseTemplateEngine;
 use App\Services\Templates\TemplateCompiler;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use JsonException;
 
 final class ConfigValidator
@@ -48,11 +52,11 @@ final class ConfigValidator
             $this->errors[] = '$.format must be exactly "mockdeck".';
         }
 
-        if (! in_array($data['format_version'] ?? null, [1, '1.0', '1.1', '1.2', '1.3'], true)) {
-            $this->errors[] = '$.format_version is not supported; this release accepts version 1, 1.0, 1.1, 1.2, or 1.3.';
+        if (! in_array($data['format_version'] ?? null, [1, '1.0', '1.1', '1.2', '1.3', '1.4'], true)) {
+            $this->errors[] = '$.format_version is not supported; this release accepts version 1, 1.0, 1.1, 1.2, 1.3, or 1.4.';
         }
 
-        $data = $this->normalizeSelection($data);
+        $data = $this->normalizeWaveTwo($this->normalizeSelection($data));
 
         $this->validateOrganization($data);
 
@@ -333,11 +337,33 @@ final class ConfigValidator
             return;
         }
 
-        $this->warnUnknown($matching, ['exclude_cookies', 'exclude_auth', 'exclude_headers'], $path.'.matching');
+        $this->warnUnknown($matching, ['exclude_cookies', 'exclude_auth', 'exclude_headers', 'excluded_query_params', 'excluded_headers', 'path_pattern_enabled'], $path.'.matching');
         foreach (['exclude_cookies', 'exclude_auth', 'exclude_headers'] as $field) {
             if (! is_bool($matching[$field] ?? null)) {
                 $this->errors[] = "{$path}.matching.{$field} must be a boolean.";
             }
+        }
+
+        foreach (['excluded_query_params', 'excluded_headers'] as $field) {
+            $names = $matching[$field] ?? [];
+            if (! is_array($names) || ! array_is_list($names) || count($names) > 100
+                || collect($names)->contains(fn ($name) => ! is_string($name) || $name === '' || strlen($name) > 255)) {
+                $this->errors[] = "{$path}.matching.{$field} must be a list of at most 100 nonempty field names under 256 bytes.";
+            }
+        }
+        if (! is_bool($matching['path_pattern_enabled'] ?? false)) {
+            $this->errors[] = "{$path}.matching.path_pattern_enabled must be a boolean.";
+        }
+
+        try {
+            $url = is_string($curl) && trim($curl) !== '' ? app(CurlParser::class)->parse($curl)->url : null;
+            app(FieldMatchingConfiguration::class)->validate($matching, $url);
+        } catch (ValidationException $exception) {
+            foreach ($exception->validator->errors()->all() as $error) {
+                $this->errors[] = "{$path}.matching: {$error}";
+            }
+        } catch (\InvalidArgumentException $exception) {
+            $this->errors[] = "{$path}.curl: ".$exception->getMessage();
         }
 
         if (($matching['exclude_headers'] ?? false) === true
@@ -356,8 +382,16 @@ final class ConfigValidator
         }
 
         $this->warnUnknown($response, [
-            'uuid', 'status', 'headers', 'body', 'body_mode', 'template', 'editor_view', 'seed_mode', 'seed', 'locale', 'delay_ms', 'weight', 'sequence_order', 'is_default', 'response_rules', 'callback',
+            'uuid', 'status', 'headers', 'body', 'body_mode', 'template', 'editor_view', 'seed_mode', 'seed', 'locale', 'delay_ms', 'weight', 'sequence_order', 'is_default', 'response_rules', 'callback', 'fault_enabled', 'fault_type', 'fault_delay_ms_min', 'fault_delay_ms_max', 'fault_probability',
         ], $path);
+
+        try {
+            app(FaultConfigurationValidator::class)->validate($response);
+        } catch (ValidationException $exception) {
+            foreach ($exception->validator->errors()->all() as $error) {
+                $this->errors[] = "{$path}: {$error}";
+            }
+        }
 
         $uuid = $response['uuid'] ?? null;
         if (! is_string($uuid) || ! Str::isUuid($uuid)) {
@@ -514,10 +548,46 @@ final class ConfigValidator
         }
     }
 
+    /** Old format versions cannot activate Wave 2 behavior through unknown keys. */
+    private function normalizeWaveTwo(array $data): array
+    {
+        $modern = ($data['format_version'] ?? null) === '1.4';
+        if (! is_array($data['endpoints'] ?? null)) {
+            return $data;
+        }
+        foreach ($data['endpoints'] as &$endpoint) {
+            if (! is_array($endpoint)) {
+                continue;
+            }
+            if (is_array($endpoint['request']['matching'] ?? null)) {
+                $matching = &$endpoint['request']['matching'];
+                $defaults = ['excluded_query_params' => [], 'excluded_headers' => [], 'path_pattern_enabled' => false];
+                $matching = $modern ? $matching + $defaults : array_replace($matching, $defaults);
+                if (is_array($matching['excluded_headers'])) {
+                    $matching['excluded_headers'] = array_map(fn ($name) => is_string($name) ? strtolower($name) : $name, $matching['excluded_headers']);
+                }
+                unset($matching);
+            }
+            if (is_array($endpoint['responses'] ?? null)) {
+                foreach ($endpoint['responses'] as &$response) {
+                    if (! is_array($response)) {
+                        continue;
+                    }
+                    $defaults = app(FaultConfigurationValidator::class)->defaults();
+                    $response = $modern ? $response + $defaults : array_replace($response, $defaults);
+                }
+                unset($response);
+            }
+        }
+        unset($endpoint);
+
+        return $data;
+    }
+
     /** Older documents cannot opt into newer response-selection behavior. */
     private function normalizeSelection(array $data): array
     {
-        $modern = ($data['format_version'] ?? null) === '1.3';
+        $modern = in_array($data['format_version'] ?? null, ['1.3', '1.4'], true);
         if (! is_array($data['endpoints'] ?? null)) {
             return $data;
         }
