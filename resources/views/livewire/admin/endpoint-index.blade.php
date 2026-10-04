@@ -53,6 +53,24 @@
                     @endforeach
                 </select>
             </label>
+            @if ($filterTags->isNotEmpty())
+                <details class="bulk-tag-picker tag-filter-picker" data-menu wire:ignore.self>
+                    <summary class="button button-secondary button-small" aria-label="Filter endpoints by tag">
+                        Tags @if ($tags !== [])<x-badge variant="info">{{ count($tags) }} selected</x-badge>@endif
+                        <x-chevron />
+                    </summary>
+                    <div>
+                        <p class="field-help">Show endpoints with any selected tag.</p>
+                        @foreach ($filterTags as $tag)
+                            <label class="tag-chip selectable {{ in_array($tag->id, $tags, true) ? 'selected' : '' }}" wire:key="tag-filter-{{ $tag->id }}">
+                                <input type="checkbox" value="{{ $tag->id }}" wire:model.live="tags" aria-label="Filter by tag {{ $tag->name }}">
+                                <span>{{ $tag->name }}</span><small>{{ $tag->endpoints_count }} {{ Str::plural('endpoint', $tag->endpoints_count) }}</small>
+                            </label>
+                        @endforeach
+                        @if ($tags !== [])<button class="text-button" type="button" wire:click="$set('tags', [])">Clear tags</button>@endif
+                    </div>
+                </details>
+            @endif
             @if ($search !== '' || $method !== '' || $state !== 'all' || $sort !== 'recent' || $collection !== 'all' || $tags !== [])
                 <button class="text-button filter-reset" type="button" wire:click="clearFilters">Clear filters</button>
             @endif
@@ -64,16 +82,6 @@
                 @endif
             </span>
         </div>
-        @if ($availableTags->isNotEmpty())
-            <div class="tag-filter-row" aria-label="Filter endpoints by tag">
-                @foreach ($availableTags as $tag)
-                    <label class="tag-chip selectable {{ in_array($tag->id, $tags, true) ? 'selected' : '' }}">
-                        <input type="checkbox" value="{{ $tag->id }}" wire:model.live="tags">
-                        <span>{{ $tag->name }}</span><small>{{ $tag->endpoints_count }}</small>
-                    </label>
-                @endforeach
-            </div>
-        @endif
     </div>
 
     @if ($selected !== [])
@@ -148,45 +156,42 @@
                                     <code class="request-target" title="{{ $endpoint->requestTarget() }}">{{ $endpoint->requestTarget() }}</code>
                                 </div>
                             @endif
-                            <div class="endpoint-detail-line">
-                                <div class="request-facts" aria-label="Request composition">
-                                    <span>{{ $stats['headers'] }} {{ Str::plural('header', $stats['headers']) }}</span>
-                                    <span>Body {{ number_format($stats['body_bytes']) }} B</span>
-                                    <details class="canonical-popover" data-stop-row-navigation data-disclosure>
-                                        <summary aria-expanded="false" aria-controls="canonical-endpoint-{{ $endpoint->id }}"><span class="details-chevron" aria-hidden="true">›</span> Canonical request</summary>
-                                        <pre id="canonical-endpoint-{{ $endpoint->id }}">{{ $endpoint->normalized_curl }}</pre>
-                                    </details>
-                                </div>
-                                <div class="metadata-row">
-                                    <x-badge :variant="$endpoint->enabled ? 'success' : 'warning'"><i class="badge-dot" aria-hidden="true"></i>{{ $endpoint->enabled ? 'Enabled' : 'Disabled' }}</x-badge>
-                                    <span>{{ $endpoint->responses_count }} {{ Str::plural('response', $endpoint->responses_count) }}</span>
-                                    @if ($endpoint->has_callback)
-                                        <x-badge variant="info" title="Contains a response with an asynchronous callback">↗ Callback</x-badge>
-                                    @endif
-                                    @if ($endpoint->priority !== 0)
-                                        <span>Priority {{ $endpoint->priority }}</span>
-                                    @endif
-                                    <span>
-                                        Signature {{ $endpoint->signatureVariant() }}
-                                        <x-help-tip title="Signature version" label="V1 includes all headers; V2 ignores cookies; V3 ignores authentication; V4 ignores both; V5 ignores all headers." />
-                                    </span>
-                                    <span title="{{ $endpoint->updated_at->toDayDateTimeString() }}">Updated {{ $endpoint->updated_at->diffForHumans() }}</span>
-                                </div>
-                                @if ($endpoint->collection || $endpoint->tags->isNotEmpty())
-                                    <div class="endpoint-taxonomy">
-                                        @if ($endpoint->collection)<x-badge variant="info">{{ $endpoint->collection->name }}</x-badge>@endif
-                                        @foreach ($endpoint->tags as $tag)<span class="tag-chip">{{ $tag->name }}</span>@endforeach
-                                    </div>
-                                @endif
-                            </div>
-                            @if ($endpoint->responses_count === 0)
-                                <div class="inline-warning">
-                                    <span aria-hidden="true">!</span>
-                                    <strong>No responses – requests will fail</strong>
-                                    <a href="{{ route('dashboard.endpoints.edit', $endpoint) }}#responses" wire:navigate data-stop-row-navigation>Add response</a>
-                                </div>
-                            @endif
                         </div>
+                    </div>
+
+                    <div class="endpoint-detail-line">
+                        <div class="request-facts" aria-label="Request composition">
+                            <span class="endpoint-header-count" title="{{ number_format($stats['headers']) }} request headers">{{ number_format($stats['headers']) }} {{ Str::plural('header', $stats['headers']) }}</span>
+                            <span class="endpoint-body-size" title="Request body: {{ number_format($stats['body_bytes']) }} bytes">Body {{ number_format($stats['body_bytes']) }} B</span>
+                            <details class="canonical-popover" data-stop-row-navigation data-disclosure data-menu>
+                                <summary aria-expanded="false" aria-controls="canonical-endpoint-{{ $endpoint->id }}"><span class="details-chevron" aria-hidden="true">›</span> Canonical request</summary>
+                                <pre id="canonical-endpoint-{{ $endpoint->id }}" data-panel-height="300">{{ $endpoint->normalized_curl }}</pre>
+                            </details>
+                        </div>
+                        <div class="metadata-row">
+                            <x-badge :variant="$endpoint->enabled ? 'success' : 'warning'"><i class="badge-dot" aria-hidden="true"></i>{{ $endpoint->enabled ? 'Enabled' : 'Disabled' }}</x-badge>
+                            <span class="endpoint-response-count" title="{{ number_format($endpoint->responses_count) }} configured responses">{{ number_format($endpoint->responses_count) }} {{ Str::plural('response', $endpoint->responses_count) }}</span>
+                            <span class="endpoint-signature-version">
+                                Signature {{ $endpoint->signatureVariant() }}
+                                <x-help-tip title="Signature version" label="V1 includes all headers; V2 ignores cookies; V3 ignores authentication; V4 ignores both; V5 ignores all headers; V6 uses field exclusions or path parameters." />
+                            </span>
+                            <span class="endpoint-updated" title="{{ $endpoint->updated_at->toDayDateTimeString() }}">Updated {{ $endpoint->updated_at->diffForHumans() }}</span>
+                        </div>
+                        @if ($endpoint->collection || $endpoint->tags->isNotEmpty() || $endpoint->has_callback || $endpoint->priority !== 0)
+                            <div class="endpoint-taxonomy">
+                                @if ($endpoint->has_callback)<x-badge variant="info" title="Contains a response with an asynchronous callback">↗ Callback</x-badge>@endif
+                                @if ($endpoint->priority !== 0)<x-badge>Priority {{ $endpoint->priority }}</x-badge>@endif
+                                @if ($endpoint->collection)<x-badge variant="info">{{ $endpoint->collection->name }}</x-badge>@endif
+                                @foreach ($endpoint->tags as $tag)<span class="tag-chip" title="Endpoint tag">{{ $tag->name }}</span>@endforeach
+                            </div>
+                        @endif
+                        @if ($endpoint->responses_count === 0)
+                            <div class="inline-warning">
+                                <span aria-hidden="true">!</span>
+                                <strong>No responses – requests will fail</strong>
+                                <a href="{{ route('dashboard.endpoints.edit', $endpoint) }}?tab=response" wire:navigate data-stop-row-navigation>Add response</a>
+                            </div>
+                        @endif
                     </div>
 
                     <div class="endpoint-actions" data-stop-row-navigation>

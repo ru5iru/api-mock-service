@@ -115,9 +115,9 @@ Select one page or individual rows to expose bulk actions for **Enable**, **Disa
 
 ### Collections and tags
 
-Collections provide one optional folder-like grouping per endpoint. Tags are case-insensitive and many-to-many. Use the Collection dropdown and tag chips in the endpoint toolbar to filter the registry. Endpoint rows show the assigned collection and tags.
+Collections provide one optional folder-like grouping per endpoint. Tags are case-insensitive and many-to-many. Use the Collection dropdown and **Tags** filter in the endpoint toolbar to filter the registry. The Tags menu matches any selected tag and shows the number of saved endpoints assigned to each. Unassigned tags stay available in the editor and bulk assignment menu, but do not clutter the filter. Endpoint rows show the assigned collection and tags.
 
-Select endpoint rows to expose **Move to collection** and **Add tags** in the bulk action bar. Deleting a collection does not delete its endpoints; their collection becomes empty. Tags can be reused across any collection.
+Select endpoint rows to expose **Move to collection** and **Add tags** in the bulk action bar. Deleting a collection does not delete its endpoints; their collection becomes empty. Tags can be reused across any collection. In the endpoint editor, **Add tag** creates/selects a tag for the current draft; **Save changes** persists its assignment. A tag created in an unsaved or cancelled draft can therefore exist without any assigned endpoints.
 
 ## 6. Environments and variables
 

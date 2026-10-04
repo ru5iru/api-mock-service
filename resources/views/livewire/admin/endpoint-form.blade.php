@@ -110,10 +110,10 @@
                     </div>
 
                     <fieldset class="field tag-input">
-                        <legend>Tags</legend>
+                        <legend>Tags <x-help-tip title="Endpoint tags" label="Use tags to filter endpoints or assign them in bulk. Save changes to store this endpoint’s tag assignments." /></legend>
                         <div class="tag-choice-list">
                             @forelse ($availableTags as $tag)
-                                <label class="tag-chip selectable {{ in_array($tag->id, $tagIds, true) ? 'selected' : '' }}">
+                                <label class="tag-chip selectable {{ in_array((string) $tag->id, array_map('strval', $tagIds), true) ? 'selected' : '' }}">
                                     <input type="checkbox" wire:model="tagIds" value="{{ $tag->id }}"><span>{{ $tag->name }}</span>
                                 </label>
                             @empty

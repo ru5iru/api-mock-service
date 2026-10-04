@@ -453,7 +453,7 @@ CURL;
         $tag ??= Tag::query()->create(['name' => trim($this->newTagName)]);
         $this->tagIds = array_values(array_unique([...$this->tagIds, $tag->id]));
         $this->newTagName = '';
-        $this->dispatch('toast', message: 'Tag selected.');
+        $this->dispatch('toast', message: 'Tag selected. Save changes to assign it to this endpoint.');
     }
 
     public function maskSecrets(): void

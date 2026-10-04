@@ -86,7 +86,7 @@ Tertiary defaults to minimum 40px and 10px horizontal padding. Text defaults to 
 
 Custom panel perimeter is always `details[data-menu] > :not(summary)`: 1px `--border-strong`, `--radius-lg`, `--surface-raised`, `--shadow-lg`. Environment: 220px minimum, 8px padding, 4px gaps, 40px options. Theme: 150px minimum, 8px padding, 4px gaps, 36px options. User: 210px minimum, 10px padding, 3px gaps, 40px options. Overflow: 150px minimum, 7px padding. Faker: desired width 480px, maximum height 420px; arguments: desired width 360px, 12px padding. Width is clamped to viewport minus 32px; actual height shrinks to available space above/below its anchor.
 
-**States:** native hover border `--accent-border`; focus border `--accent`, `--shadow-focus`, `--surface`; disabled `--disabled-bg`, `--disabled-fg`, `--border`, not-allowed. Filter hover adds `--surface-raised`; filter focus removes its outline in favor of the focus shadow. Placement measures content at the target width after resetting max-height to the configured panel limit (420px for Faker, 260px for autocomplete); never reuse a previously clipped flex-panel height as its natural size. On scroll, placement chooses the available space above/below the trigger and recovers the full allowed height when space returns. The method list uses overscroll-behavior-y:contain so scrolling past its ends cannot scroll the editor underneath. Scrolling the method list must not shrink or close its picker; leaving the usable viewport still closes an offscreen trigger’s panel. The shared menu controller initializes aria-expanded/aria-haspopup on every trigger, including newly morphed controls. Menu open synchronizes `summary[aria-expanded]`, enters over `--motion-fast`, closes sibling menus while keeping containing menus open. Closing a parent also closes its descendant panels. Escape closes the nearest menu and restores its trigger; a second Escape closes its parent. Login and error shells load panels.js before menu.js and use the same top-layer placement. Hover/focus options use `--surface-2`. Active theme choice uses `aria-checked`; active environment choice uses `.active`. Escape closes and restores summary focus; outside click, command selection and navigation close. Loading has no menu-specific skin: disable the owning command and report request status.
+**States:** native hover border `--accent-border`; focus border `--accent`, `--shadow-focus`, `--surface`; disabled `--disabled-bg`, `--disabled-fg`, `--border`, not-allowed. Filter hover adds `--surface-raised`; filter focus removes its outline in favor of the focus shadow. Placement measures content at the target width after resetting max-height to the configured panel limit (420px for Faker, 260px for autocomplete); add the computed top/bottom borders to `scrollHeight` before applying a border-box max-height. `scrollHeight` excludes borders: using it directly makes a fitting panel too short and creates unnecessary scrollbars. Never reuse a previously clipped flex-panel height as its natural size. On scroll, placement chooses the available space above/below the trigger and recovers the full allowed height when space returns. The shared controller positions panels but does not force inline overflow styles. Menu shells own overflow-y:auto; the Faker shell is a flex column with overflow:hidden, a nonshrinking search field and a min-height:0 options list. Only that list scrolls when constrained, never both list and shell. The method list uses overscroll-behavior-y:contain so scrolling past its ends cannot scroll the editor underneath. Scrolling the method list must not shrink or close its picker; leaving the usable viewport still closes an offscreen trigger’s panel. The shared menu controller initializes aria-expanded/aria-haspopup on every trigger, including newly morphed controls. Menu open synchronizes `summary[aria-expanded]`, enters over `--motion-fast`, closes sibling menus while keeping containing menus open. Closing a parent also closes its descendant panels. Escape closes the nearest menu and restores its trigger; a second Escape closes its parent. Login and error shells load panels.js before menu.js and use the same top-layer placement. Hover/focus options use `--surface-2`. Active theme choice uses `aria-checked`; active environment choice uses `.active`. Escape closes and restores summary focus; outside click, command selection and navigation close. Loading has no menu-specific skin: disable the owning command and report request status.
 
 **Examples:**
 
@@ -242,7 +242,7 @@ The raw curl `.curl-editor` is 184-460px, internally scrollable; `resizeEditor()
 
 **Classes/tokens:** minimum 24px, 3px 7px padding, 1px border, pill radius, 4px gap, 11px/500, line-height 1.5. Neutral uses `--surface-2` / `--text-muted` / `--border-strong`; semantic variants use matching `--VARIANT-bg`, `--VARIANT-fg`, `--VARIANT-border`. Dot `.badge-dot` is 8px, currentColor.
 
-**States:** badges have no hover, active, disabled or loading state and no focus stop. A title may clarify metadata. Interactive `.tag-chip.selectable` is the separate checkbox-backed chip variant: `.selected` uses `--accent-subtle` / `--text` / `--accent-border`; focus-within uses the focus outline. Method badges use get/post/put token triples; DELETE uses danger and HEAD/OPTIONS are neutral.
+**States:** badges have no hover, active, disabled or loading state and no focus stop. A title may clarify metadata. Interactive `.tag-chip.selectable` is the separate checkbox-backed chip variant: `:has(input:checked)` and hover use `--warning-bg` / `--warning-fg` / `--warning-border`; focus-within uses the focus outline. Style the native checked state immediately, including deferred Livewire drafts; do not rely on a stale server-rendered `.selected` class. Method badges use get/post/put token triples; DELETE uses danger and HEAD/OPTIONS are neutral.
 
 **Variants/examples:**
 
@@ -308,6 +308,43 @@ Selection preview is a plain `.selection-preview` section within selection setti
 **Do/Don't:** use the outer card perimeter; don't add a card per condition. Keep selection preview in the selection tool; don't invent another floating card. Allow row text to wrap on mobile; don't force status/actions outside their container.
 
 Keep compact response summaries on one line with secondary metadata under Details; don't restore a multi-line body/metadata stack by default. Keep Callback Retry policy and Signing collapsed using `details[data-disclosure]`; don't remove their controls from the mounted form or change delivery semantics to reduce space.
+
+### Endpoint registry rows
+
+**Purpose:** compare request composition and endpoint state across the registry without counts shifting neighbouring controls.
+
+**Anatomy:** `resources/views/livewire/admin/endpoint-index.blade.php`, `.endpoint-card > .row-select + .endpoint-main + .endpoint-detail-line + .endpoint-actions`. The main line contains the method/target or custom name. `.endpoint-detail-line` spans below the main line and actions; its `.request-facts` and `.metadata-row` wrappers use `display: contents` to participate in one grid. Optional callback/priority/collection/tag metadata and no-response warnings span the full detail row.
+
+**Classes/tokens:** desktop card columns are `34px minmax(0, 1fr) auto`, with areas `"select main actions" ". details details"`; gap `--space-1` by `10px`. Details use `90px 132px 136px 96px 104px 114px minmax(0, 1fr)` columns and `--space-2` gaps, in this order: headers, body bytes, canonical disclosure, state, response count, signature, updated time. Counts use `font-variant-numeric: tabular-nums`. Existing request-fact pills, method badges, status badges and button variants retain their documented skins in both themes. Text uses `--text-muted` / `--font-size-sm`; clipped counts/dates expose the full value through `title`.
+
+**Responsive behavior:** at <=900px details use `90px 132px minmax(140px, 1fr)`, and updated time spans a row. At <=740px the card uses `--space-4` padding, two equal detail columns, a full-row canonical disclosure, and actions below details; counts keep the same column starts in every card. Long paths wrap to at most two lines with the method badge aligned to the top; the full target remains available through its title, canonical request and editor. The canonical disclosure adds `data-menu` to `data-disclosure` and caps its shared anchored panel at 300px via `data-panel-height`, retaining Escape/outside-click dismissal and viewport containment. The overflow menu uses the same controller.
+
+**States:** hover/focus use the existing Card/row-link rules. Enabled/Disabled is a status badge plus the existing switch. Loading uses the registry skeleton. No separate selected-row skin or new color is introduced.
+
+```blade
+<div class="endpoint-detail-line">
+    <div class="request-facts" aria-label="Request composition">
+        <span class="endpoint-header-count">2 headers</span>
+        <span class="endpoint-body-size" title="Request body: 1,048,576 bytes">Body 1,048,576 B</span>
+        <details class="canonical-popover" data-stop-row-navigation data-disclosure data-menu>
+            <summary aria-expanded="false" aria-controls="canonical-endpoint-{{ $endpoint->id }}"><span class="details-chevron" aria-hidden="true">›</span> Canonical request</summary>
+            <pre id="canonical-endpoint-{{ $endpoint->id }}" data-panel-height="300">{{ $endpoint->normalized_curl }}</pre>
+        </details>
+    </div>
+    <div class="metadata-row">
+        <x-badge variant="success"><i class="badge-dot" aria-hidden="true"></i>Enabled</x-badge>
+        <span class="endpoint-response-count">101 responses</span>
+        <span class="endpoint-signature-version">Signature V6 <x-help-tip title="Signature version" label="Field exclusions or path parameters are enabled." /></span>
+        <span class="endpoint-updated" title="{{ $endpoint->updated_at->toDayDateTimeString() }}">Updated {{ $endpoint->updated_at->diffForHumans() }}</span>
+    </div>
+</div>
+```
+
+**Do/Don't:** reserve the same tracks across rows; do not let body-size text determine the next item's start. Keep optional metadata outside the fixed facts; do not insert callback/priority badges midway through them. Wrap at the documented breakpoints; do not introduce horizontal page scrolling.
+
+### Tag filter menu
+
+Use `details.bulk-tag-picker.tag-filter-picker[data-menu]` with a secondary/small **Tags** summary, `<x-chevron />`, 44px minimum trigger height, and the existing menu controller. The 280px panel contains existing `.tag-chip.selectable` checkbox choices with explicit “N endpoints” counts and a **Clear tags** text button. Its palette, focus, dismissal, collision handling and disabled behavior come from Dropdowns, Buttons and Badges/chips. Only assigned tags are offered, plus any currently selected tag that has become unassigned; keep all tags available for assignment. A selected-count info badge on the trigger makes an active filter visible while the menu is closed. Do not show an unexplained chip strip or zero-use choices beside Search.
 
 ## Banners and callouts
 
@@ -399,7 +436,7 @@ Logs retain route tabs via `.log-type-tabs > a[aria-current=page]`; they are not
 
 **Classes/tokens:** trigger20x20px, margin-left5px, 1px `--border-strong`, circle, `--surface` / `--text-muted`, 12px/600. Content desired290px (max viewport minus32px), 10px 12px padding, 1px `--border-strong`, 6px radius, `--surface` / `--text`, `--shadow-lg`, 13px/1.45/400. Fallback CSS uses z60 and translateX(-50%); native `:popover-open` removes that transform and uses fixed shared placement.
 
-**States:** hidden opacity0/visibility hidden; hover/focus/focus-within or popover-open opacity1/visible, transition `--motion-base`. Focus global ring. No active/disabled/loading variant. Pointer-events none: this is explanation, not an interactive menu. It shrinks/scrolls at viewport edges and escapes the Signature card's overflow through the top layer.
+**States:** hidden opacity0/visibility hidden; hover/focus/focus-within or popover-open opacity1/visible, transition `--motion-base`. Focus global ring. No active/disabled/loading variant. Pointer-events none: this is explanation, not an interactive menu. Tooltip copy explicitly uses white-space:normal and overflow-wrap:anywhere, independent of a parent metadata row’s nowrap styling. Fitting tooltips have no scrollbars; genuinely viewport-constrained content retains overflow:auto. It escapes the Signature card's overflow through the top layer.
 
 **Example:**
 
