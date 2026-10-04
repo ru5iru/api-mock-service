@@ -35,7 +35,11 @@
         // Set the target width first so wrapped content is measured at its actual width.
         panel.style.width = `${width}px`;
         panel.style.maxHeight = `${limit}px`;
-        const natural = Math.min(panel.scrollHeight || limit, limit);
+        // scrollHeight includes padding, but max-height uses the border box.
+        // Omitting the borders clips otherwise fitting menus and creates a scrollbar.
+        const style = getComputedStyle(panel);
+        const borders = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+        const natural = Math.min(Math.ceil(panel.scrollHeight + borders) || limit, limit);
         const down = below >= natural || below >= above;
         const available = down ? below : above;
         if (available < 32) {
@@ -45,7 +49,8 @@
         }
         const height = Math.min(natural, available);
         const top = down ? Math.min(rect.bottom + gap, floor - height) : Math.max(ceiling, rect.top - height - gap);
-        Object.assign(panel.style, { position: 'fixed', inset: 'auto', margin: '0', width: `${width}px`, maxHeight: `${height}px`, overflowY: 'auto', left: `${left}px`, top: `${top}px` });
+        // Each component owns its scrolling: the Faker list scrolls inside a fixed shell.
+        Object.assign(panel.style, { position: 'fixed', inset: 'auto', margin: '0', width: `${width}px`, maxHeight: `${height}px`, left: `${left}px`, top: `${top}px` });
     }
     function open(anchor, panel) {
         if (!anchor || !panel) return;

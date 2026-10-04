@@ -69,6 +69,7 @@ final class EndpointIndex extends Component
 
     public function updatedTags(): void
     {
+        $this->tags = array_values(array_unique(array_map('intval', $this->tags)));
         $this->resetPage();
     }
 
@@ -211,11 +212,14 @@ final class EndpointIndex extends Component
             }
         });
 
+        $availableTags = Tag::query()->withCount('endpoints')->orderBy('name')->get();
+
         return view('livewire.admin.endpoint-index', [
             'endpoints' => $endpoints,
             'mockCurls' => $mockCurls,
             'collections' => Collection::query()->withCount('endpoints')->orderBy('name')->get(),
-            'availableTags' => Tag::query()->withCount('endpoints')->orderBy('name')->get(),
+            'availableTags' => $availableTags,
+            'filterTags' => $availableTags->filter(fn (Tag $tag): bool => $tag->endpoints_count > 0 || in_array($tag->id, $this->tags, true)),
         ]);
     }
 
