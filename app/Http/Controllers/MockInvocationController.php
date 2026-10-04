@@ -9,6 +9,9 @@ use App\Services\Environments\EnvironmentContext;
 use App\Services\Logging\MockRequestLogger;
 use App\Services\Matching\EndpointMatch;
 use App\Services\Matching\EndpointMatcher;
+use App\Services\Response\FaultConfigurationValidator;
+use App\Services\Response\FaultInjectionService;
+use App\Services\Response\FaultPlan;
 use App\Services\Response\ResponseSelectionService;
 use App\Services\Templates\ResponseTemplateEngine;
 use App\Services\Templates\TemplateContext;
@@ -27,6 +30,10 @@ final class MockInvocationController extends Controller
 {
     private ?string $selectionReason = null;
 
+    private ?FaultPlan $faultPlan = null;
+
+    private bool $faultApplied = false;
+
     /** @var array<string, mixed>|null */
     private ?array $templateCapture = null;
 
@@ -39,11 +46,14 @@ final class MockInvocationController extends Controller
         private readonly ResponseTemplateEngine $templates,
         private readonly EnvironmentContext $environments,
         private readonly CallbackDispatcher $callbacks,
+        private readonly FaultInjectionService $faults,
     ) {}
 
     public function __invoke(Request $request): Response
     {
         $this->selectionReason = null;
+        $this->faultPlan = null;
+        $this->faultApplied = false;
         $this->templateCapture = null;
         $startedAt = hrtime(true);
         $match = null;
@@ -74,7 +84,9 @@ final class MockInvocationController extends Controller
                 return $response;
             }
 
-            // The final integration boundary: selection first, context-aware rendering next.
+            // Wave 2 integration: match/capture -> select/count -> decide fault ->
+            // render with shared context -> apply output fault -> send/log.
+            $request->attributes->set('mockdeck.path_parameters', $match->pathParameters);
             $environment = $this->environments->active();
             $selection = $this->selector->select($match->endpoint, $request, $environment);
             $this->selectionReason = $selection->reason;
@@ -94,6 +106,7 @@ final class MockInvocationController extends Controller
                 return $response;
             }
 
+            $this->faultPlan = $this->faults->decide($selected);
             $statusCode = $selected->status_code;
             $delayMs = min(max(0, $selected->delay_ms), (int) config('mock.max_delay_ms', 30000));
 
@@ -101,12 +114,20 @@ final class MockInvocationController extends Controller
                 usleep($delayMs * 1000);
             }
 
+            $this->faults->pause($this->faultPlan);
+            $delayMs += $this->faultPlan?->delayMs ?? 0;
+            $this->faultApplied = $this->faultPlan !== null && in_array($this->faultPlan->type, ['delay', 'timeout'], true);
+
             $headers = $selected->headers ?? [];
             $body = (string) ($selected->body ?? '');
             if ($selected->body_mode === 'template') {
                 $templated = true;
                 $variant = $match->variant ?? 'V1';
-                $requestHash = $this->hasher->variants($captured)[$variant]->hash;
+                // V6 canonicalizes excluded fields and the stored path pattern.
+                // A successful match guarantees the remaining canonical bytes agree.
+                $requestHash = $variant === 'V6'
+                    ? hash('sha256', $match->endpoint->normalized_curl)
+                    : $this->hasher->variants($captured)[$variant]->hash;
                 $context = null;
                 $contexts = app(TemplateContext::class);
                 if ($contexts->usesContext((string) $selected->template)) {
@@ -125,6 +146,15 @@ final class MockInvocationController extends Controller
                 }
             }
 
+            $body = $this->faults->transformBody($body, $this->faultPlan, FaultConfigurationValidator::contentType(['headers' => $headers, 'body_mode' => $selected->body_mode]));
+            if ($this->faultPlan !== null && in_array($this->faultPlan->type, ['malformed_body', 'truncated_body'], true)) {
+                $this->faultApplied = true;
+                foreach ($headers as $name => $value) {
+                    if (strcasecmp((string) $name, 'Content-Length') === 0) {
+                        $headers[$name] = (string) strlen($body);
+                    }
+                }
+            }
             $response = response($body, $statusCode);
             foreach ($headers as $name => $value) {
                 $response->headers->set((string) $name, (string) $value);
@@ -241,6 +271,11 @@ final class MockInvocationController extends Controller
             'environment' => $this->environments->active()->name,
             'environment_id' => $this->environments->active()->id,
         ];
+
+        if ($this->faultApplied && $this->faultPlan !== null) {
+            $context['fault_applied'] = $this->faultPlan->type;
+            $context['fault_delay_ms'] = $this->faultPlan->delayMs;
+        }
 
         if (($this->templateCapture['body_context_omitted'] ?? false) === true) {
             $context['context_warning'] = 'request_body_context_omitted';

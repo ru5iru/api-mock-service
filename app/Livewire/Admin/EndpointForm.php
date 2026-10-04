@@ -9,6 +9,8 @@ use App\Models\Tag;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\ParsedCurl;
+use App\Services\Matching\FieldMatchingConfiguration;
+use App\Services\Matching\PathPattern;
 use App\Services\Response\SelectionConfigurationValidator;
 use App\Services\Revisions\RevisionManager;
 use Illuminate\Contracts\View\View;
@@ -48,6 +50,22 @@ CURL;
     public bool $excludeAuth = true;
 
     public bool $excludeHeaders = false;
+
+    /** @var list<string> */
+    public array $excludedQueryParams = [];
+
+    /** @var list<string> */
+    public array $excludedHeaderNames = [];
+
+    public bool $pathPatternEnabled = false;
+
+    /** @var array<int, string> */
+    public array $pathParameterNames = [];
+
+    /** Original literal values let a converted chip return to its literal within this edit session. */
+    public array $pathLiteralValues = [];
+
+    public bool $showExclusionHint = true;
 
     public string $collectionId = '';
 
@@ -187,6 +205,7 @@ CURL;
 
     public function mount(?MockEndpoint $endpoint = null): void
     {
+        $this->showExclusionHint = ! DB::table('app_settings')->where('key', 'field_exclusion_hint_seen')->exists();
         if (! in_array($this->activeTab, ['request', 'matching', 'response', 'callback'], true)) {
             $this->activeTab = 'request';
         }
@@ -207,6 +226,13 @@ CURL;
         $this->excludeCookies = $endpoint->exclude_cookies;
         $this->excludeAuth = $endpoint->exclude_auth;
         $this->excludeHeaders = $endpoint->exclude_headers;
+        $this->excludedQueryParams = $endpoint->excluded_query_params ?? [];
+        $this->excludedHeaderNames = $endpoint->excluded_headers ?? [];
+        $this->pathPatternEnabled = (bool) $endpoint->path_pattern_enabled;
+        if ($this->showExclusionHint && ($this->excludedQueryParams !== [] || $this->excludedHeaderNames !== [])) {
+            $this->dismissExclusionHint();
+        }
+        $this->syncPathParameters();
         $this->collectionId = $endpoint->collection_id === null ? '' : (string) $endpoint->collection_id;
         $this->tagIds = $endpoint->tags()->pluck('tags.id')->map(static fn ($id): int => (int) $id)->all();
         $this->environmentOverrides = $endpoint->environmentOverrides()
@@ -238,6 +264,143 @@ CURL;
     public function updatedRawCurl(): void
     {
         $this->touchSection('request');
+        $this->pathLiteralValues = [];
+        $this->syncPathParameters();
+        $this->notifyPathPreview();
+    }
+
+    public function dismissExclusionHint(): void
+    {
+        DB::table('app_settings')->updateOrInsert(['key' => 'field_exclusion_hint_seen'], [
+            'value' => '1', 'updated_at' => now(), 'created_at' => now(),
+        ]);
+        $this->showExclusionHint = false;
+    }
+
+    public function updatedExcludedQueryParams(): void
+    {
+        $this->touchSection('matching');
+        if ($this->excludedQueryParams !== []) {
+            $this->dismissExclusionHint();
+        }
+    }
+
+    public function updatedExcludedHeaderNames(): void
+    {
+        $this->touchSection('matching');
+        if ($this->excludedHeaderNames !== []) {
+            $this->dismissExclusionHint();
+        }
+    }
+
+    public function updatedPathPatternEnabled(): void
+    {
+        $this->touchSection('request');
+        $this->syncPathParameters();
+        $this->notifyPathPreview();
+    }
+
+    public function togglePathSegment(int $index): void
+    {
+        if (! $this->pathPatternEnabled) {
+            return;
+        }
+        try {
+            $parsed = app(CurlParser::class)->parse($this->rawCurl);
+            $segments = explode('/', (string) (parse_url($parsed->url, PHP_URL_PATH) ?: '/'));
+            if (! isset($segments[$index]) || $segments[$index] === '') {
+                return;
+            }
+            if (preg_match('/^\{([^{}]+)\}$/D', $segments[$index], $match)) {
+                $segments[$index] = $this->pathLiteralValues[$index] ?? 'sample_'.$match[1];
+            } else {
+                $this->pathLiteralValues[$index] = $segments[$index];
+                $name = 'param_'.$index;
+                while (in_array($name, $this->pathParameterNames, true)) {
+                    $name .= '_';
+                }
+                $segments[$index] = '{'.$name.'}';
+            }
+            $this->replaceRequestPath($parsed, implode('/', $segments));
+            $this->syncPathParameters();
+            $this->notifyPathPreview();
+        } catch (InvalidArgumentException $exception) {
+            $this->addError('pathPatternEnabled', $exception->getMessage());
+        }
+    }
+
+    public function updatedPathParameterNames(string $value, string $index): void
+    {
+        if (! $this->pathPatternEnabled || ! ctype_digit($index)) {
+            return;
+        }
+        try {
+            $parsed = app(CurlParser::class)->parse($this->rawCurl);
+            $segments = explode('/', (string) (parse_url($parsed->url, PHP_URL_PATH) ?: '/'));
+            if (! isset($segments[(int) $index]) || ! str_starts_with($segments[(int) $index], '{')) {
+                return;
+            }
+            $segments[(int) $index] = '{'.$value.'}';
+            $path = implode('/', $segments);
+            // Keep incomplete names visible while typing; canonical validation blocks save.
+            $this->replaceRequestPath($parsed, $path);
+            $this->notifyPathPreview();
+        } catch (InvalidArgumentException $exception) {
+            $this->addError('pathPatternEnabled', $exception->getMessage());
+        }
+    }
+
+    private function syncPathParameters(): void
+    {
+        $this->pathParameterNames = [];
+        try {
+            $parsed = app(CurlParser::class)->parse($this->rawCurl);
+            foreach (explode('/', (string) (parse_url($parsed->url, PHP_URL_PATH) ?: '/')) as $index => $segment) {
+                if (preg_match('/^\{([^{}]*)\}$/D', $segment, $match)) {
+                    $this->pathParameterNames[$index] = $match[1];
+                }
+            }
+        } catch (InvalidArgumentException) {
+            // Invalid pasted curls remain in the existing parse-error flow.
+        }
+    }
+
+    private function replaceRequestPath(ParsedCurl $parsed, string $path): void
+    {
+        $url = app(PathPattern::class)->replaceUrlPath($parsed->url, $path);
+        $quote = static fn (string $value): string => "'".str_replace("'", "'\\''", $value)."'";
+        $parts = ['curl --request '.$quote($parsed->method).' '.$quote($url)];
+        foreach ($parsed->headers as $header) {
+            $parts[] = '--header '.$quote($header['name'].': '.$header['value']);
+        }
+        if ($parsed->body !== '') {
+            $parts[] = '--data-raw '.$quote($parsed->body);
+        }
+        $this->rawCurl = implode(' ', $parts);
+        $this->touchSection('request');
+    }
+
+    private function notifyPathPreview(): void
+    {
+        try {
+            $parsed = app(CurlParser::class)->parse($this->rawCurl);
+            $path = (string) (parse_url($parsed->url, PHP_URL_PATH) ?: '/');
+            if ($this->pathPatternEnabled) {
+                app(PathPattern::class)->validate($path);
+            }
+            $this->dispatch('endpoint-path-preview', endpointId: $this->endpointId, path: $path, enabled: $this->pathPatternEnabled);
+        } catch (InvalidArgumentException) {
+            // Keep the last valid synthetic preview until the path is valid again.
+        }
+    }
+
+    private function fieldMatching(?string $url = null): array
+    {
+        return app(FieldMatchingConfiguration::class)->validate([
+            'excluded_query_params' => $this->excludedQueryParams,
+            'excluded_headers' => $this->excludedHeaderNames,
+            'path_pattern_enabled' => $this->pathPatternEnabled,
+        ], $url);
     }
 
     public function touchSection(string $section): void
@@ -330,6 +493,9 @@ CURL;
             'excludeCookies' => ['boolean'],
             'excludeAuth' => ['boolean'],
             'excludeHeaders' => ['boolean'],
+            'pathPatternEnabled' => ['boolean'],
+            'excludedQueryParams' => ['array', 'max:100'],
+            'excludedHeaderNames' => ['array', 'max:100'],
             'collectionId' => ['nullable', 'integer', 'exists:collections,id'],
             'tagIds' => ['array'],
             'tagIds.*' => ['integer', 'distinct', 'exists:tags,id'],
@@ -352,12 +518,24 @@ CURL;
 
         try {
             $parsed = $parser->parse($this->rawCurl);
+            $matching = $this->fieldMatching($parsed->url);
             $variant = $hasher->forOptions(
                 $parsed,
                 $this->excludeHeaders ? false : $this->excludeCookies,
                 $this->excludeHeaders ? false : $this->excludeAuth,
                 $this->excludeHeaders,
+                $matching['excluded_query_params'],
+                $matching['excluded_headers'],
+                $matching['path_pattern_enabled'],
             );
+        } catch (ValidationException $exception) {
+            foreach ($exception->errors() as $field => $messages) {
+                $target = str_starts_with($field, 'excluded_query_params') ? 'excludedQueryParams'
+                    : (str_starts_with($field, 'excluded_headers') ? 'excludedHeaderNames' : 'pathPatternEnabled');
+                $this->addError($target, $messages[0]);
+            }
+
+            return null;
         } catch (InvalidArgumentException $exception) {
             $this->addError('rawCurl', $exception->getMessage());
 
@@ -384,7 +562,7 @@ CURL;
         $revisions = app(RevisionManager::class);
         $before = $created ? null : $revisions->snapshot($endpoint);
 
-        DB::transaction(function () use ($endpoint, $displayName, $parsed, $variant, $revisions, $before): void {
+        DB::transaction(function () use ($endpoint, $displayName, $parsed, $variant, $matching, $revisions, $before): void {
             $endpoint->fill([
                 'collection_id' => $this->collectionId === '' ? null : (int) $this->collectionId,
                 'name' => $displayName,
@@ -394,7 +572,8 @@ CURL;
                 'raw_curl' => $this->rawCurl,
                 'normalized_curl' => $variant->normalized,
                 'curl_hash' => $variant->hash,
-                'signature_version' => 2,
+                'signature_version' => $variant->name === 'V6' ? 6 : ($endpoint->exists && $endpoint->signature_version !== 6 ? $endpoint->signature_version : 2),
+                ...$matching,
                 'exclude_cookies' => $this->excludeHeaders ? false : $this->excludeCookies,
                 'exclude_auth' => $this->excludeHeaders ? false : $this->excludeAuth,
                 'exclude_headers' => $this->excludeHeaders,
@@ -434,15 +613,21 @@ CURL;
         $queryParameters = [];
         $prettyBody = '';
         $displayCanonical = '';
+        $pathSegments = [];
 
         if (trim($this->rawCurl) !== '') {
             try {
                 $parsed = $parser->parse($this->rawCurl);
+                $pathSegments = explode('/', (string) (parse_url($parsed->url, PHP_URL_PATH) ?: '/'));
+                $matching = $this->fieldMatching($parsed->url);
                 $variant = $hasher->forOptions(
                     $parsed,
                     $this->excludeHeaders ? false : $this->excludeCookies,
                     $this->excludeHeaders ? false : $this->excludeAuth,
                     $this->excludeHeaders,
+                    $matching['excluded_query_params'],
+                    $matching['excluded_headers'],
+                    $matching['path_pattern_enabled'],
                 );
                 $preview = compact('parsed', 'variant');
                 $duplicate = MockEndpoint::query()
@@ -453,13 +638,14 @@ CURL;
                 $queryParameters = $this->queryParameters($parsed);
                 $prettyBody = $this->prettyBody($parsed->body);
                 $displayCanonical = $this->maskCanonical($variant->normalized, $headerAnalysis);
-            } catch (InvalidArgumentException $exception) {
+            } catch (InvalidArgumentException|ValidationException $exception) {
                 $previewError = $exception->getMessage();
             }
         }
 
         return view('livewire.admin.endpoint-form', [
             'preview' => $preview,
+            'pathSegments' => $pathSegments,
             'previewError' => $previewError,
             'duplicate' => $duplicate,
             'derivedName' => $preview ? $this->deriveName($preview['parsed']) : 'METHOD /path',
@@ -508,7 +694,14 @@ CURL;
                 $reason = 'ignored: authentication policy';
             }
 
+            $coarseExcluded = $reason !== null;
+            if ($reason === null && in_array($name, $this->excludedHeaderNames, true)) {
+                $reason = 'ignored: individual exclusion';
+            }
+
             return [
+                'normalized_name' => $name,
+                'coarse_excluded' => $coarseExcluded,
                 'name' => $header['name'],
                 'value' => $header['value'],
                 'display_value' => $isSensitive ? '••••••••' : $header['value'],
@@ -528,7 +721,7 @@ CURL;
 
         $sensitiveKeys = array_map('strtolower', config('mock.portable_config.sensitive_query_keys', []));
 
-        return array_map(static function (string $parameter) use ($sensitiveKeys): array {
+        return array_map(function (string $parameter) use ($sensitiveKeys): array {
             [$key, $value] = array_pad(explode('=', $parameter, 2), 2, '');
             $decodedKey = urldecode($key);
             $decodedValue = urldecode($value);
@@ -537,6 +730,7 @@ CURL;
 
             return [
                 'key' => $decodedKey,
+                'excluded' => in_array($decodedKey, $this->excludedQueryParams, true),
                 'value' => $decodedValue,
                 'display_value' => $sensitive ? '••••••••' : $decodedValue,
                 'sensitive' => $sensitive,

@@ -33,6 +33,7 @@ Use these recipes without adding page-specific classes to alter their appearance
 27. [Search fields](#search-fields)
 28. [Empty and loading states](#empty-and-loading-states)
 29. [Environment and documentation navigation](#environment-and-documentation-navigation)
+30. [Path segment editor](#path-segment-editor)
 
 ## Buttons
 
@@ -795,3 +796,36 @@ The application-wide audit checks registry/pagination, logs and details, import 
 <button type="button" wire:click="selectEnvironment({{ $environment->id }})" aria-pressed="{{ $environment->id === $selectedEnvironmentId ? 'true' : 'false' }}" @class(['active' => $environment->id === $selectedEnvironmentId])>{{ $environment->name }}</button>
 ```
 **Do/Don't:** keep selected and globally active environment meanings distinct; don’t use a checkmark for both. Reuse card/typography tokens; don’t add route-specific heading offsets. Use document anchors for long reference content; don’t turn documentation into endpoint-style stateful tabs.
+
+## Path segment editor
+
+**Purpose:** turn individual path segments into named parameters within the Request tab. This is an inline configuration editor; selection/rule controls remain separate.
+
+**Anatomy:** `resources/views/livewire/admin/endpoint-form.blade.php`: the existing `.toggle-row` enables path parameters, followed by `.path-segment-editor > .path-segment-chip` and slash separators. Each chip contains a secondary/small button and, for parameters, a labelled `.path-parameter-name` input. The button exposes `aria-pressed`; activating it converts between literal and parameter. Names are unique identifiers, validated by `FieldMatchingConfiguration` and `PathPattern`. The editor modifies the existing cURL path; it introduces no separate stored path field.
+
+**Classes/tokens:** flex wrapping with `--space-1` (4px) gaps and `--space-2` (8px) top margin; chips have `min-width:0`, `max-width:100%`. Names use the existing dense field geometry: minimum 44px height, 8px/12px padding, 6px radius, 13px text, `--surface` background, `--text` foreground and 1px `--border-strong`. Input width is 10rem and shrinks within the available row. Buttons reuse `.button.button-secondary.button-small`, including their mobile minimum. Light/dark values come directly from the Theme tokens table; no component-specific colors exist.
+
+**States:** literal displays its segment; parameter displays `{ }` and its name input. Hover uses `--accent-border`; focus uses `--accent` border plus `--shadow-focus`; disabled uses `--disabled-bg`, `--disabled-fg`, `--disabled-border` and not-allowed cursor. Validation uses `.field-error`. Livewire updates the canonical preview and synthetic context catalog; no custom loading or motion variant is introduced.
+
+```blade
+<div class="path-segment-editor" aria-label="Path segments">
+    <div class="path-segment-chip is-parameter">
+        <button type="button" class="button button-secondary button-small"
+            wire:click="togglePathSegment(2)" aria-pressed="true"
+            aria-label="Use literal for segment 2">{ }</button>
+        <input type="text" class="path-parameter-name"
+            wire:model.live.debounce.300ms="pathParameterNames.2"
+            aria-label="Parameter name for segment 2" maxlength="80" spellcheck="false">
+    </div>
+</div>
+```
+
+**Do/Don't:** keep one compact wrapping row; don't create a separate multi-field form for each segment. Use actual segment indices and explicit labels; don't rely on `{ }` alone as an accessible name. Reuse secondary buttons and dense field tokens; don't add another chip color palette. Keep literal and parameter conversion keyboard-operable; don't make only the text glyph clickable.
+
+### Field exclusion rows
+
+Within `.parsed-policy-list`, append `.toggle-row.field-exclusion-toggle` to each parsed query/header row. Retain the parsed value and strike through excluded names. The toggle uses the existing 44×24 track and `.overridden` disabled treatment; coarse-policy/transport exclusions disable individual header controls, and redundant saved state is explicitly labelled. Desktop uses name/value/toggle columns; at 600px and narrower the value moves below its name while the toggle spans those two rows. Toggle hit area is at least 44px high. Use `<x-badge>` for the excluded count and `.info-note.exclusion-hint` with a text-button dismiss action for the instance-wide first-use hint.
+
+### Fault injection composition
+
+Fault injection in `response-manager.blade.php` uses `details.history-disclosure[data-disclosure]`, `toggle-inline`, native `ui-select`, `field-row.two`, standard labelled numeric inputs, `field-help`, `info-note`, `x-help-tip`, and warning badges. No new visual primitive is added. Minimum/optional-maximum fields use the callback delay layout and validation presentation; their fault-specific bound is 120000 ms. Probability uses 0–100. Disabled controls use the existing native disabled recipe. Label timeout as **Timeout (long delay)** and explain its approximation; keep this disclosure inside Response rather than Callback. Logs uses the existing warning badge for applied faults.

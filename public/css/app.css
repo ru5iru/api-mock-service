@@ -1091,3 +1091,21 @@ label.field > span:not(.sr-only):not(.field-help):not(.field-error) { display: b
 
 /* Hidden file controls must retain the shared visually-hidden geometry. */
 .field input.sr-only:not([type="checkbox"]):not([type="radio"]) { width: 1px; min-width: 0; height: 1px; min-height: 0; padding: 0; border: 0; }
+
+/* UI Guide: Path segment editor; existing field, button and toggle recipes. */
+.path-segment-editor { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; margin-top: var(--space-2); min-width: 0; }
+.path-segment-chip { display: inline-flex; gap: var(--space-1); align-items: center; min-width: 0; max-width: 100%; }
+.path-segment-chip .button { overflow-wrap: anywhere; white-space: normal; }
+.path-parameter-name { width: 10rem; max-width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 13px; }
+.path-parameter-name:hover { border-color: var(--accent-border); }
+.path-parameter-name:focus { border-color: var(--accent); box-shadow: var(--shadow-focus); outline: none; }
+.path-parameter-name:disabled { background: var(--disabled-bg); color: var(--disabled-fg); border-color: var(--disabled-border); cursor: not-allowed; }
+.parsed-policy-list > div:has(.field-exclusion-toggle) { grid-template-columns: minmax(0, .8fr) minmax(0, 1fr) auto; }
+.field-exclusion-toggle { margin: 0; padding: 0; border: 0; min-height: 44px; gap: var(--space-2); }
+.exclusion-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.exclusion-hint p { flex: 1 1 15rem; margin: 0; }
+@media (max-width: 600px) {
+    .parsed-policy-list > div:has(.field-exclusion-toggle) { grid-template-columns: minmax(0, 1fr) auto; }
+    .parsed-policy-list > div > .field-exclusion-toggle { grid-column: 2; grid-row: 1 / span 2; }
+    .parsed-policy-list > div:has(.field-exclusion-toggle) > span { grid-column: 1; overflow-wrap: anywhere; }
+}

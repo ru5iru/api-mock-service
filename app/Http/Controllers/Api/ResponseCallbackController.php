@@ -103,7 +103,7 @@ final class ResponseCallbackController extends Controller
 
         $id = 'callback-test-'.Str::uuid();
         $callbacks->enqueue($response->id, $id, $environment->active()->id,
-            $contexts->synthetic($id, url('/api/responses/'.$response->id.'/callback/test')),
+            $contexts->synthetic($id, url('/api/responses/'.$response->id.'/callback/test'), $response->endpoint),
         );
 
         return response()->json(['data' => ['status' => 'queued', 'request_log_id' => $id]], 202);

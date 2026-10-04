@@ -5,6 +5,7 @@ namespace App\Services\Response;
 use App\Models\EndpointCallState;
 use App\Models\Environment;
 use App\Models\MockEndpoint;
+use App\Services\Verification\CallDigestRecorder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -14,6 +15,7 @@ final class ResponseSelectionService
         private readonly WeightedSelectionStrategy $weighted,
         private readonly SequenceSelectionStrategy $sequence,
         private readonly RuleBasedSelectionStrategy $rules,
+        private readonly CallDigestRecorder $digests,
     ) {}
 
     public function select(MockEndpoint $endpoint, Request $request, Environment $environment): SelectionResult
@@ -34,6 +36,12 @@ final class ResponseSelectionService
                 : $this->strategy($endpoint)->select($endpoint, $responses, $request, $state);
             $state->total_match_count++;
             $state->last_matched_at = now();
+            // The verification ring and counters share the same row lock: no lost
+            // digests, including faulted responses and exhausted sequences.
+            $state->recent_call_digests = array_slice([
+                ...($state->recent_call_digests ?? []),
+                $this->digests->capture($request, $state->last_matched_at),
+            ], -CallDigestRecorder::CAPACITY);
             if ($endpoint->selection_mode === 'sequence') {
                 $state->sequence_position++;
             }

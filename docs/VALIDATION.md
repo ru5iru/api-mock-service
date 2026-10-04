@@ -106,7 +106,7 @@ Open `http://localhost:18473/dashboard`. Verify:
 Import/export smoke check:
 
 1. Export one endpoint with secret redaction enabled.
-2. Confirm the JSON has `format: "mockdeck"`, a supported `format_version` (`1`, `"1.0"`, `"1.1"`, `"1.2"`, or `"1.3"`), and no numeric database IDs or derived hashes.
+2. Confirm the JSON has `format: "mockdeck"`, a supported `format_version` (`1`, `"1.0"`, `"1.1"`, `"1.2"`, `"1.3"`, or `"1.4"`), and no numeric database IDs or derived hashes.
 3. If the source curl contained auth, cookies, an API-key header, or a configured sensitive query key, confirm the value is absent and the endpoint is disabled with `requires_secret_replacement: true`.
 4. Preview the file in `clone` mode; confirm no rows are written before **Apply import**.
 5. Review and acknowledge warnings, apply, and confirm endpoint/response counts.
@@ -267,3 +267,10 @@ The tracked `.gitignore` placeholders under `storage/framework/cache/data`, `sto
 ### Response save regression
 
 Against the same dedicated fixture database/server, run `MOCKDECK_BROWSER_FIXTURE=1 MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/response-save-smoke.mjs`. It checks sticky Save changes, persisted edits after reload, no accidental additional response, inline failure with draft retention, and corrected retry in both themes. `EndpointSaveDraftsTest` also covers transactional response/selection validation and empty header objects.
+
+
+## Wave 2 acceptance
+
+Run the full PHP suite, design-token validator, frontend tests, and both-theme layout smoke. `tests/Browser/wave2-smoke.mjs` exercises exclusion toggles, path chips, synthetic previews, fault controls and responsive action bounds with an isolated fixture database. Never use browser fixture scripts against an operator database.
+
+PHP coverage includes migration safety for unchanged canonical bytes/hashes/versions, field exclusions and wildcard segment boundaries, literal priority, shared path context, format 1.4/legacy defaults, revision/runtime-state separation, token/session auth separation, real counters/predicates, bounded-history uncertainty and resets, and measurable/broken-body faults. Timeout is checked as a bounded plan; it is not claimed to provide a real TCP reset or indefinite socket hang.

@@ -13,6 +13,8 @@ use App\Services\Curl\HashVariant;
 use App\Services\Curl\ParsedCurl;
 use App\Services\Environments\EnvironmentContext;
 use App\Services\Matching\MatchPrecedence;
+use App\Services\Matching\PatternPathMatcher;
+use App\Services\Response\FaultConfigurationValidator;
 use App\Services\Response\SelectionConfigurationValidator;
 use App\Services\Revisions\RevisionManager;
 use Illuminate\Support\Facades\Cache;
@@ -144,6 +146,9 @@ final readonly class ConfigImporter
                     (bool) $matching['exclude_cookies'],
                     (bool) $matching['exclude_auth'],
                     (bool) $matching['exclude_headers'],
+                    $matching['excluded_query_params'] ?? [],
+                    $matching['excluded_headers'] ?? [],
+                    (bool) ($matching['path_pattern_enabled'] ?? false),
                 );
                 if (trim((string) ($source['name'] ?? '')) === '') {
                     $parts = parse_url($parsed->url) ?: [];
@@ -318,29 +323,23 @@ final readonly class ConfigImporter
         }
 
         $warnings = [];
-        $importedVariants = $this->hasher->variants($parsed);
+        $matching = $source['request']['matching'];
+        $definition = new MockEndpoint([
+            'method' => $parsed->method, 'raw_curl' => $source['request']['curl'],
+            'normalized_curl' => $importedVariant->normalized, 'curl_hash' => $importedVariant->hash,
+            ...$matching,
+        ]);
+        $matcher = app(PatternPathMatcher::class);
 
         foreach ($query->get() as $local) {
             try {
                 $localParsed = $this->parser->parse($local->raw_curl);
-                $localVariants = $this->hasher->variants($localParsed);
             } catch (Throwable) {
                 continue;
             }
-
-            $localVariantName = $this->hasher->variantName(
-                $local->exclude_cookies,
-                $local->exclude_auth,
-                $local->exclude_headers,
-            );
-            $importedMatchesLocalRequest = hash_equals(
-                $importedVariant->hash,
-                $localVariants[$importedVariant->name]->hash,
-            );
-            $localMatchesImportedRequest = hash_equals(
-                $local->curl_hash,
-                $importedVariants[$localVariantName]->hash,
-            );
+            $localVariantName = $local->signatureVariant();
+            $importedMatchesLocalRequest = $matcher->matchEndpoint($definition, $localParsed) !== null;
+            $localMatchesImportedRequest = $matcher->matchEndpoint($local, $parsed) !== null;
 
             if (! $importedMatchesLocalRequest && ! $localMatchesImportedRequest) {
                 continue;
@@ -356,6 +355,9 @@ final readonly class ConfigImporter
                 $importedName,
                 $localName,
             );
+            if ((int) $source['priority'] === (int) $local->priority && (bool) $definition->path_pattern_enabled !== (bool) $local->path_pattern_enabled) {
+                $winner = $definition->path_pattern_enabled ? $localName : $importedName;
+            }
             $warnings[] = "Endpoint {$importedName} overlaps {$localName}; predicted winner: {$winner}.";
         }
 
@@ -428,10 +430,13 @@ final readonly class ConfigImporter
             'raw_curl' => $source['request']['curl'],
             'normalized_curl' => $variant->normalized,
             'curl_hash' => $variant->hash,
-            'signature_version' => 2,
+            'signature_version' => $variant->name === 'V6' ? 6 : 2,
             'exclude_cookies' => (bool) $matching['exclude_cookies'],
             'exclude_auth' => (bool) $matching['exclude_auth'],
             'exclude_headers' => (bool) $matching['exclude_headers'],
+            'excluded_query_params' => $matching['excluded_query_params'] ?? [],
+            'excluded_headers' => $matching['excluded_headers'] ?? [],
+            'path_pattern_enabled' => (bool) ($matching['path_pattern_enabled'] ?? false),
         ];
         $current = collect($this->revisions->snapshot($endpoint))->only(array_keys($expected))->all();
         ksort($current);
@@ -481,6 +486,7 @@ final readonly class ConfigImporter
             'sequence_order' => $source['sequence_order'] ?? null,
             'is_default' => (bool) ($source['is_default'] ?? false),
             ...$this->callbackAttributes($source),
+            ...app(FaultConfigurationValidator::class)->attributes($source),
         ];
         $current = collect($this->revisions->snapshot($response))->only(array_keys($expected))->all();
         ksort($current);
@@ -550,6 +556,9 @@ final readonly class ConfigImporter
                 (bool) $matching['exclude_cookies'],
                 (bool) $matching['exclude_auth'],
                 (bool) $matching['exclude_headers'],
+                $matching['excluded_query_params'] ?? [],
+                $matching['excluded_headers'] ?? [],
+                (bool) ($matching['path_pattern_enabled'] ?? false),
             );
 
             $endpoint = $mode === ImportMode::Upsert
@@ -581,10 +590,13 @@ final readonly class ConfigImporter
                 'raw_curl' => $source['request']['curl'],
                 'normalized_curl' => $variant->normalized,
                 'curl_hash' => $variant->hash,
-                'signature_version' => 2,
+                'signature_version' => $variant->name === 'V6' ? 6 : 2,
                 'exclude_cookies' => $matching['exclude_cookies'],
                 'exclude_auth' => $matching['exclude_auth'],
                 'exclude_headers' => $matching['exclude_headers'],
+                'excluded_query_params' => $matching['excluded_query_params'] ?? [],
+                'excluded_headers' => $matching['excluded_headers'] ?? [],
+                'path_pattern_enabled' => (bool) ($matching['path_pattern_enabled'] ?? false),
             ])->save();
 
             $endpoint->tags()->sync(collect($source['tags'] ?? [])->map(
@@ -626,6 +638,7 @@ final readonly class ConfigImporter
                     'sequence_order' => $responseSource['sequence_order'] ?? null,
                     'is_default' => (bool) ($responseSource['is_default'] ?? false),
                     ...$this->callbackAttributes($responseSource),
+                    ...app(FaultConfigurationValidator::class)->attributes($responseSource),
                 ])->save();
                 $response->rules()->delete();
                 $response->rules()->createMany($responseSource['response_rules'] ?? []);

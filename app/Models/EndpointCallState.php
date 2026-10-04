@@ -11,11 +11,11 @@ final class EndpointCallState extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['endpoint_id', 'environment_id', 'sequence_position', 'total_match_count', 'last_matched_at'];
+    protected $fillable = ['endpoint_id', 'environment_id', 'sequence_position', 'total_match_count', 'last_matched_at', 'recent_call_digests'];
 
     protected function casts(): array
     {
-        return ['sequence_position' => 'integer', 'total_match_count' => 'integer', 'last_matched_at' => 'datetime'];
+        return ['sequence_position' => 'integer', 'total_match_count' => 'integer', 'last_matched_at' => 'datetime', 'recent_call_digests' => 'array'];
     }
 
     public function endpoint(): BelongsTo

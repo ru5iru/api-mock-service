@@ -8,6 +8,7 @@ use App\Models\MockEndpoint;
 use App\Models\MockResponse;
 use App\Models\Revision;
 use App\Models\Tag;
+use App\Services\Response\FaultConfigurationValidator;
 use App\Services\Response\SelectionConfigurationValidator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,9 @@ final readonly class RevisionManager
                 'exclude_cookies' => (bool) $entity->exclude_cookies,
                 'exclude_auth' => (bool) $entity->exclude_auth,
                 'exclude_headers' => (bool) $entity->exclude_headers,
+                'excluded_query_params' => $entity->excluded_query_params ?? [],
+                'excluded_headers' => $entity->excluded_headers ?? [],
+                'path_pattern_enabled' => (bool) $entity->path_pattern_enabled,
                 'tags' => $entity->tags->modelKeys(),
                 'environment_overrides' => $entity->environmentOverrides
                     ->mapWithKeys(static fn ($environment): array => [
@@ -66,6 +70,7 @@ final readonly class RevisionManager
                 'seed' => $entity->seed,
                 'locale' => $entity->locale,
                 'delay_ms' => (int) $entity->delay_ms,
+                ...app(FaultConfigurationValidator::class)->attributes($entity->getAttributes()),
                 'weight' => (int) $entity->weight,
                 'sequence_order' => $entity->sequence_order,
                 'is_default' => (bool) $entity->is_default,
@@ -278,6 +283,9 @@ final readonly class RevisionManager
             $attributes = collect($snapshot)->except(['id', 'uuid', 'tags', 'environment_overrides', 'endpoint_call_state', 'call_states'])->all();
             $attributes['selection_mode'] = $attributes['selection_mode'] ?? 'weighted';
             $attributes['sequence_on_exhaust'] = $attributes['selection_mode'] === 'sequence' ? ($attributes['sequence_on_exhaust'] ?? 'repeat_last') : null;
+            $attributes['excluded_query_params'] = $attributes['excluded_query_params'] ?? [];
+            $attributes['excluded_headers'] = $attributes['excluded_headers'] ?? [];
+            $attributes['path_pattern_enabled'] = $attributes['path_pattern_enabled'] ?? false;
             $collectionId = $attributes['collection_id'] ?? null;
             $attributes['collection_id'] = $collectionId !== null && Collection::query()->whereKey($collectionId)->exists()
                 ? $collectionId
@@ -304,6 +312,7 @@ final readonly class RevisionManager
             // Revisions created before callback support have no callback keys.
             // Restoring one returns callback settings to their original defaults.
             $defaults = [
+                ...app(FaultConfigurationValidator::class)->defaults(),
                 'sequence_order' => null,
                 'is_default' => false,
                 'response_rules' => [],

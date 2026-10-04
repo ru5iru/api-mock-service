@@ -108,16 +108,9 @@ Update-by-UUID import captures changed endpoint/response pre-states under one UU
 
 ## Response strategy
 
-`ResponseSelectorInterface` accepts the endpoint response collection and returns one response. `WeightedRandomSelector` treats every weight as at least one defensively, although dashboard validation and the schema default keep valid records positive.
+`ResponseSelectionService` chooses a `SelectionStrategyInterface` implementation: Weighted, Sequence, or Rule-based. Weighted delegates to the preserved `WeightedRandomSelector`; sequence and rules receive the endpoint, response collection, incoming request and environment-scoped state. `RequestPredicateEvaluator` supplies one predicate grammar for selection and verification.
 
-To add round-robin selection:
-
-1. implement `ResponseSelectorInterface`;
-2. store any required cursor outside request-log storage;
-3. change the binding in `AppServiceProvider` or make it config-driven;
-4. add concurrency tests before enabling it.
-
-A rule-based selector that depends on incoming query/header values would require widening the interface to accept an immutable invocation context. Do that at the interface boundary rather than reading the global request inside a selector.
+`endpoint_call_state` is lazily inserted, then locked inside the selection transaction. Counters, sequence position, timestamp and the bounded recent-call ring update together. Faults and callback delivery run after selection and cannot undo a matched call. Runtime state is excluded from configuration snapshots and transfer.
 
 ## Response template pipeline
 
@@ -191,3 +184,16 @@ These diagnostics are intentional API behavior and should be preserved in client
 - Telescope can be installed for development inspection independently of mock request logs.
 - Promtail/Loki/Grafana can consume stdout or the mounted rotating files without changing application logging.
 - An external identity-aware proxy can replace or complement the built-in single-operator dashboard credentials for larger deployments.
+
+
+## Wave 2 matching and serving integration
+
+`RequestMatcher` separates the preserved indexed `ExactHashMatcher` from per-definition `PatternPathMatcher`. `EndpointMatcher` combines the eligible results: priority first, literal before parameterized paths at equal priority, then existing header-policy specificity and endpoint ID. New field exclusions reuse `CurlNormalizer`; empty arrays/false pattern flags leave its previous byte representation intact. V6 canonicalizes the configured pattern path. This is a hybrid: path captures are flexible, while method/query/retained headers/body remain exact. `PathPattern` validates and captures complete single segments; `FieldMatchingConfiguration` centralizes save/import validation.
+
+`MockInvocationController::__invoke()` is the shared serving entry point. It matches, places captures in `mockdeck.path_parameters`, selects/counts the response, decides a fault, renders with `TemplateContext`, applies any body effect, then returns/logs and schedules callback delivery. The same context service builds live and synthetic request/path/environment values. V6 request-seeded templates hash the matched canonical definition; legacy seed paths retain their original calculation.
+
+`FaultInjectionService` applies primary-response effects only. A fault plan is decided after selection. Delays are bounded; body transformations happen after rendering and preserve Content-Type while correcting an explicitly configured Content-Length. `timeout` is a long-delay approximation on the nginx/PHP-FPM stack; actual TCP reset and indefinite connection control are unavailable.
+
+`CallDigestRecorder` stores bounded predicate evidence independently of general request logs. `CallAssertionService` computes conservative count bounds when evidence has been evicted or omitted. The separate stateless verification routes authenticate a hashed instance token before model binding; interactive operator sessions never grant access. See [VERIFICATION_API.md](VERIFICATION_API.md) for the complete contract.
+
+Native format 1.4 is one coordinated update for both tracks. Config/revision services and guides are shared integration files, so the tracks are not strictly file-disjoint. No matching rehash migration is run for existing data; no verification evidence or token credential enters portable configuration or revisions.

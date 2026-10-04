@@ -14,6 +14,8 @@
                 <li><a href="#environments">Collections, tags, and environments</a></li>
                 <li><a href="#request-matching">Request matching</a></li>
                 <li><a href="#response-pools">Response pools</a></li>
+                <li><a href="#wave-two">Field exclusions, path parameters and faults</a></li>
+                <li><a href="#verification">CI verification</a></li>
                 <li><a href="#response-templating">Response templating</a></li>
                 <li><a href="#template-language">Template language</a></li>
                 <li><a href="#builder-view">Builder view</a></li>
@@ -252,12 +254,26 @@
             </ol>
             <h3>Import</h3>
             <ol>
-                <li>Choose a MockDeck JSON file and select Create only, Upsert, or Clone. Native format 1.3 includes selection mode, sequence order/exhaustion, fallback flags, and response rules. Versions 1–1.2 import as Weighted. Runtime call counters and sequence positions are never exported or inherited by new imports/clones.</li>
+                <li>Choose a MockDeck JSON file and select Create only, Upsert, or Clone. Native format 1.4 includes selection mode, sequence order/exhaustion, fallback flags, response rules, field exclusions, path patterns, and primary response faults. Version 1.3 retains selection settings while defaulting new fields off. Versions 1–1.2 import as Weighted. Runtime call counters, sequence positions, and recent call digests are never exported or inherited by new imports/clones.</li>
                 <li>Preview the complete plan; preview never writes to the database.</li>
                 <li>Resolve errors and review warnings. Upsert replaces response pools only when explicitly enabled.</li>
                 <li>Confirm to apply atomically. Version 1 files remain supported and missing template fields become static responses.</li>
                 <li>Update-by-UUID preview shows how many endpoint/response pre-states will be versioned. After apply, Undo this import restores the complete recorded batch.</li>
             </ol>
+        </section>
+
+        <section id="wave-two" class="card docs-card">
+            <h2>Field exclusions, path parameters and faults</h2>
+            <p>In Matching, toggle Exclude beside individual query parameters or headers. Excluded values remain visible for review; coarse header policies disable redundant controls. In Request, enable Use path parameters, then convert and name individual segment chips.</p>
+            <p>A path such as <code>/users/{id}</code> matches one segment. Query, retained headers and body still match exactly. Literal paths win at equal priority. V6 applies only to endpoints using exclusions or patterns; existing signatures remain unchanged.</p>
+            <p>Response and callback JSON templates can use <code>$request.path.id</code>. Preview uses sample captures. These tokens stay in the JSON editor.</p>
+            <p>In Response, expand Fault injection for probability, bounded delay, malformed JSON/XML, byte truncation or Timeout (long delay). Timeout is an approximation: proxy and worker limits still apply. TCP connection reset is not offered. Faulted calls remain counted and are labelled in Logs.</p>
+        </section>
+        <section id="verification" class="card docs-card">
+            <h2>CI verification</h2>
+            <p>Generate an instance token with <code>php artisan mockdeck:api-token</code>; it is shown once and stored as a hash. Add <code>--rotate</code> to replace the previous token. Dashboard cookies do not authenticate the verification API.</p>
+            <p>Use <code>/api/v1/verify/endpoints/{uuid}/calls</code>, <code>/assert</code>, <code>/reset</code>, or <code>/api/v1/verify/reset-all</code> with an explicit environment name. Assertions use Equals, At least or At most and optional response-rule-shaped request predicates.</p>
+            <p>Lifetime counts are exact. Conditional assertions use at most 20 bounded call digests and report indeterminate when retained data cannot prove the result. Reset before a focused CI scenario. Runtime resets do not change configuration. Full curl examples and response shapes are in <code>docs/VERIFICATION_API.md</code>.</p>
         </section>
 
         <section id="version-history" class="card docs-card docs-wide">

@@ -2,6 +2,7 @@
 
 namespace App\Services\Curl;
 
+use App\Services\Matching\PathPattern;
 use InvalidArgumentException;
 use JsonException;
 use stdClass;
@@ -17,13 +18,16 @@ final class CurlNormalizer
         bool $excludeCookies = false,
         bool $excludeAuth = false,
         bool $excludeHeaders = false,
+        array $excludedQueryParams = [],
+        array $excludedHeaders = [],
+        bool $pathPatternEnabled = false,
     ): NormalizedCurl {
         $contentType = $this->contentType($request->headers);
         $headers = $excludeHeaders
             ? []
-            : $this->canonicalHeaders($request->headers, $excludeCookies, $excludeAuth);
+            : $this->canonicalHeaders($request->headers, $excludeCookies, $excludeAuth, $excludedHeaders);
 
-        $lines = [strtoupper($request->method), $this->canonicalUrl($request->url)];
+        $lines = [strtoupper($request->method), $this->canonicalUrl($request->url, $excludedQueryParams, $pathPatternEnabled)];
         foreach ($headers as $header) {
             $lines[] = $header['name'].':'.$header['value'];
         }
@@ -38,8 +42,9 @@ final class CurlNormalizer
      * @param  list<array{name: string, value: string}>  $headers
      * @return list<array{name: string, value: string}>
      */
-    private function canonicalHeaders(array $headers, bool $excludeCookies, bool $excludeAuth): array
+    private function canonicalHeaders(array $headers, bool $excludeCookies, bool $excludeAuth, array $excludedHeaders = []): array
     {
+        $excludedHeaders = array_map(static fn (string $name): string => strtolower(trim($name)), $excludedHeaders);
         $authNames = array_map('strtolower', config('mock.auth_header_names', ['authorization']));
         $transportNames = array_map('strtolower', config('mock.transport_header_names', []));
         $canonical = [];
@@ -50,6 +55,7 @@ final class CurlNormalizer
             if (
                 $name === ''
                 || in_array($name, $transportNames, true)
+                || in_array($name, $excludedHeaders, true)
                 || ($excludeCookies && $name === 'cookie')
             ) {
                 continue;
@@ -67,7 +73,7 @@ final class CurlNormalizer
         return $canonical;
     }
 
-    private function canonicalUrl(string $url): string
+    private function canonicalUrl(string $url, array $excludedQueryParams = [], bool $pathPatternEnabled = false): string
     {
         $parts = parse_url(trim($url));
 
@@ -87,16 +93,22 @@ final class CurlNormalizer
         if ($path === '') {
             $path = '/';
         }
+        if ($pathPatternEnabled) {
+            app(PathPattern::class)->validate($path);
+        }
         $canonical = $path;
 
         if (array_key_exists('query', $parts) && $parts['query'] !== '') {
-            $canonical .= '?'.$this->canonicalQuery($parts['query']);
+            $query = $this->canonicalQuery($parts['query'], $excludedQueryParams);
+            if ($query !== '' || $excludedQueryParams === []) {
+                $canonical .= '?'.$query;
+            }
         }
 
         return $canonical;
     }
 
-    private function canonicalQuery(string $query): string
+    private function canonicalQuery(string $query, array $excludedQueryParams = []): string
     {
         $parameters = [];
 
@@ -104,6 +116,9 @@ final class CurlNormalizer
             $hasEquals = str_contains($parameter, '=');
             [$rawKey, $rawValue] = array_pad(explode('=', $parameter, 2), 2, '');
             $decodedKey = urldecode($rawKey);
+            if (in_array($decodedKey, $excludedQueryParams, true)) {
+                continue;
+            }
             $decodedValue = urldecode($rawValue);
             $parameters[] = [
                 'key' => rawurlencode($decodedKey),

@@ -232,6 +232,7 @@ final class LogViewer extends Component
                 (string) ($event['endpoint_id'] ?? ''),
                 (string) ($event['status_code'] ?? ''),
                 (string) ($event['selection_reason'] ?? ''),
+                (string) ($event['fault_applied'] ?? ''),
                 (string) ($event['context_warning'] ?? ''),
                 (string) ($event['environment_id'] ?? $event['environment'] ?? ''),
             ]);

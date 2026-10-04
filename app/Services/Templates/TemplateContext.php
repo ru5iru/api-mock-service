@@ -3,7 +3,9 @@
 namespace App\Services\Templates;
 
 use App\Models\Environment;
+use App\Models\MockEndpoint;
 use App\Services\Environments\EnvironmentContext;
+use App\Services\Matching\PathPattern;
 use Illuminate\Http\Request;
 
 /** Shared request capture, sample context, and resolution for responses and callbacks. */
@@ -26,6 +28,7 @@ final readonly class TemplateContext
             'url' => $request->fullUrl(),
             'body' => $omitted ? null : $body,
             'json' => $json,
+            'path' => $request->attributes->get('mockdeck.path_parameters', []),
             'headers' => array_map(static fn (array $values): string => (string) ($values[0] ?? ''), $request->headers->all()),
             'body_context_omitted' => $omitted,
             'body_bytes' => strlen($body),
@@ -34,10 +37,20 @@ final readonly class TemplateContext
     }
 
     /** @return array<string, mixed> */
-    public function synthetic(string $id = 'preview', ?string $url = null): array
+    public function synthetic(string $id = 'preview', ?string $url = null, ?MockEndpoint $endpoint = null): array
     {
+        $parameters = $endpoint?->path_pattern_enabled ? app(PathPattern::class)->samples($endpoint->requestPath()) : [];
+        if ($parameters !== []) {
+            $path = $endpoint->requestPath();
+            foreach ($parameters as $name => $value) {
+                $path = str_replace('{'.$name.'}', rawurlencode($value), $path);
+            }
+            $url = url($path);
+        }
+
         return [
-            'id' => $id, 'method' => 'POST', 'url' => $url ?? url('/preview'),
+            'path' => $parameters,
+            'id' => $id, 'method' => $endpoint?->path_pattern_enabled ? $endpoint->method : 'POST', 'url' => $url ?? url('/preview'),
             'body' => '{}', 'json' => [], 'headers' => [],
         ];
     }
@@ -49,9 +62,9 @@ final readonly class TemplateContext
     }
 
     /** @return array<string, mixed> */
-    public function preview(string $template): array
+    public function preview(string $template, ?MockEndpoint $endpoint = null): array
     {
-        $context = ['env' => [], 'request' => $this->synthetic()];
+        $context = ['env' => [], 'request' => $this->synthetic(endpoint: $endpoint)];
         $references = $this->environmentKeys($template);
         if ($references !== []) {
             $environment = $this->environments->active();
@@ -63,6 +76,22 @@ final readonly class TemplateContext
         }
 
         return $context;
+    }
+
+    /** JSON-editor catalog only: context expressions never enter the visual Faker Builder. */
+    public function catalog(?MockEndpoint $endpoint = null): array
+    {
+        $request = $this->synthetic(endpoint: $endpoint);
+        $items = [];
+        foreach (['method', 'url', 'id', 'body'] as $field) {
+            $items[] = ['id' => 'request.'.$field, 'module' => 'request', 'method' => $field, 'sample' => $request[$field], 'aliases' => []];
+        }
+        $items[] = ['id' => 'request.json.field', 'module' => 'request', 'method' => 'json.field', 'sample' => null, 'aliases' => []];
+        foreach ($request['path'] ?: ['paramName' => 'sample_paramName'] as $name => $value) {
+            $items[] = ['id' => 'request.path.'.$name, 'module' => 'request', 'method' => 'path.'.$name, 'sample' => $value, 'aliases' => []];
+        }
+
+        return $items;
     }
 
     public function usesContext(string $template): bool
@@ -115,7 +144,7 @@ final readonly class TemplateContext
 
     public static function validRequestExpression(string $expression): bool
     {
-        return preg_match('/^request\.(?:method|url|body|id|json|headers)(?:\.[A-Za-z0-9_-]+)*$/D', $expression) === 1
+        return preg_match('/^request\.(?:method|url|body|id|json|headers|path)(?:\.[A-Za-z0-9_-]+)*$/D', $expression) === 1
             && (preg_match('/^request\.(?:method|url|body|id)\./', $expression) !== 1);
     }
 

@@ -220,6 +220,7 @@
                                 <span aria-hidden="true">{{ $event['_mocked_server_response'] ? '●' : ((int) ($event['status_code'] ?? 0) >= 400 ? '!' : '✓') }}</span>
                                 {{ $event['status_code'] ?? '—' }} {{ $event['_status_label'] }}
                                 @if (($event['context_warning'] ?? null) === 'request_body_context_omitted')<x-badge variant="warning" title="Request body exceeded the template context limit; body and JSON tokens resolved to null.">Context omitted</x-badge>@endif
+                                @if (isset($event['fault_applied']))<x-badge variant="warning">Fault: {{ str_replace('_', ' ', $event['fault_applied']) }}</x-badge>@endif
                                 @if (($event['selection_reason'] ?? null) === 'sequence_exhausted')<x-badge variant="warning">Sequence exhausted</x-badge>@endif
                                 @if ($event['_mocked_server_response'])
                                     <x-badge variant="info" title="This 5xx was intentionally returned by a matched mock response.">mocked</x-badge>
@@ -240,6 +241,7 @@
                                             <div><dt>Signature version</dt><dd>{{ $event['matched_variant'] ?? 'No match' }}</dd></div>
                                             <div><dt>Response</dt><dd>{{ isset($event['response_id']) ? '#'.$event['response_id'] : 'None selected' }}</dd></div>
                                             @if (isset($event['selection_mode']))<div><dt>Selection mode</dt><dd>{{ $event['selection_mode'] }}</dd></div>@endif
+                                            @if (isset($event['fault_applied']))<div><dt>Injected fault</dt><dd>{{ $event['fault_applied'] }} · {{ $event['fault_delay_ms'] ?? 0 }} ms extra delay</dd></div>@endif
                                             @if (isset($event['selection_reason']))<div><dt>Selection reason</dt><dd>{{ $event['selection_reason'] }}</dd></div>@endif
                                             @if (($event['context_warning'] ?? null) === 'request_body_context_omitted')<div><dt>Template context</dt><dd>Body and JSON values omitted: {{ number_format($event['body_bytes'] ?? 0) }} bytes exceeds the {{ number_format($event['context_limit_bytes'] ?? 65536) }} byte limit. Other tokens were rendered normally.</dd></div>@endif
                                             @if (isset($event['response_id']) && isset($event['request_id']))

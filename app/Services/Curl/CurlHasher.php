@@ -28,10 +28,15 @@ final readonly class CurlHasher
         bool $excludeCookies,
         bool $excludeAuth,
         bool $excludeHeaders,
+        array $excludedQueryParams = [],
+        array $excludedHeaders = [],
+        bool $pathPatternEnabled = false,
     ): HashVariant {
-        $name = $this->variantName($excludeCookies, $excludeAuth, $excludeHeaders);
+        $name = $excludedQueryParams !== [] || $excludedHeaders !== [] || $pathPatternEnabled
+            ? 'V6'
+            : $this->variantName($excludeCookies, $excludeAuth, $excludeHeaders);
 
-        return $this->variant($name, $request, $excludeCookies, $excludeAuth, $excludeHeaders);
+        return $this->variant($name, $request, $excludeCookies, $excludeAuth, $excludeHeaders, $excludedQueryParams, $excludedHeaders, $pathPatternEnabled);
     }
 
     public function variantName(bool $excludeCookies, bool $excludeAuth, bool $excludeHeaders): string
@@ -54,12 +59,18 @@ final readonly class CurlHasher
         bool $excludeCookies,
         bool $excludeAuth,
         bool $excludeHeaders,
+        array $excludedQueryParams = [],
+        array $excludedHeaders = [],
+        bool $pathPatternEnabled = false,
     ): HashVariant {
         $normalized = $this->normalizer->normalize(
             $request,
             $excludeCookies,
             $excludeAuth,
             $excludeHeaders,
+            $excludedQueryParams,
+            $excludedHeaders,
+            $pathPatternEnabled,
         );
 
         return new HashVariant($name, $normalized->value, $normalized->hash);
