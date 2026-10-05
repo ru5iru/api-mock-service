@@ -208,7 +208,7 @@ The raw curl `.curl-editor` is 184-460px, internally scrollable; `resizeEditor()
 
 **Purpose:** a small, mutually exclusive set of visible modes; use a Select for longer or dynamic option lists.
 
-**Anatomy:** inline `div.segmented-control[role=group][aria-label] > button[type=button][aria-pressed]`. One underlying CSS recipe serves Weighted/Sequence/Rule-based, Static/Template, Builder/JSON, Object/List, Local/UTC and Compact/Comfortable. `.clock-toggle` adds only automatic left margin; `.density-toggle` is the preference-controller hook, not another visual component.
+**Anatomy:** inline `div.segmented-control[role=group][aria-label] > button[type=button][aria-pressed]`. One underlying CSS recipe serves Weighted/Sequence/Rule-based, Static/Template, Builder/JSON, Object/List, Local/UTC, Compact/Comfortable and Native/Postman. `.clock-toggle` adds only automatic left margin; `.density-toggle` is the preference-controller hook, not another visual component.
 
 **Classes/tokens:** max-content width capped at 100%, wrapping inline flex; 4px padding, 1px `--border-strong`, 6px radius, `--surface`. Buttons minimum 36px (44px at <=767px), padding 4px 12px, no border, 4px radius, 12px/600, `--text-muted`, transparent background.
 
@@ -754,7 +754,7 @@ The application-wide audit checks registry/pagination, logs and details, import 
 
 **Anatomy:** `resources/views/components/inline-title.blade.php`, inside EndpointForm's page header. A labelled button becomes a text input; Alpine keeps the temporary value local until accepted. `EndpointForm::renameEndpoint()` validates and persists only the name for an existing endpoint, recording a revision. On Create it updates the name draft until Create endpoint. It does not save unrelated request/response drafts.
 
-**Classes/tokens:** `.inline-title` is wrapping inline-flex with `--space-1` gap. `.inline-title-trigger` has 4px padding, 1px transparent border, `--radius-md`, inherited title typography, `--text` and transparent background. Hover adds `--border` and `--surface-2`; global focus ring applies. `.inline-title-input` is min(500px,65vw), minimum40px, padding4px 8px, 1px `--accent-border`, 6px radius, `--surface` / `--text`, `--shadow-focus`, inherited typography. The edit-only caption uses `.field-help`. Geometry is identical in both themes.
+**Classes/tokens:** `.inline-title` is wrapping inline-flex with `--space-1` gap. `.inline-title-trigger` has 4px padding, 1px transparent border, `--radius-md`, inherited title typography, `--text` and transparent background. Hover adds `--border` and `--surface-2`; global focus ring applies. `.inline-title-input` is min(500px,65vw), minimum40px, padding4px 8px, 1px `--accent-border`, 6px radius, `--surface` / `--text`, `--shadow-focus`, inherited typography. The decorative `.inline-title-pencil` uses inline-block and scaleX(-1), pointing its tip toward the name on its left. The edit-only caption uses `.field-help`. Geometry is identical in both themes.
 
 **States:** click or keyboard activation starts editing and selects the value. Enter or blur accepts; Escape cancels without changing the property or database and restores trigger focus. Blank displays the auto-derived METHOD /path title. Validation errors remain beside the header. There is no disabled/loading visual variant; persistence follows the Livewire action lifecycle.
 
@@ -866,3 +866,7 @@ Within `.parsed-policy-list`, append `.toggle-row.field-exclusion-toggle` to eac
 ### Fault injection composition
 
 Fault injection in `response-manager.blade.php` uses `details.history-disclosure[data-disclosure]`, `toggle-inline`, native `ui-select`, `field-row.two`, standard labelled numeric inputs, `field-help`, `info-note`, `x-help-tip`, and warning badges. No new visual primitive is added. Minimum/optional-maximum fields use the callback delay layout and validation presentation; their fault-specific bound is 120000 ms. Probability uses 0–100. Disabled controls use the existing native disabled recipe. Label timeout as **Timeout (long delay)** and explain its approximation; keep this disclosure inside Response rather than Callback. Logs uses the existing warning badge for applied faults.
+
+### External import composition
+
+`resources/views/livewire/admin/config-transfer.blade.php` reuses the **Segmented controls** recipe for Native/Postman (`aria-label="Import format"`), the existing `.file-dropzone`, **Radio controls** for import modes, `.summary-grid.import-summary-grid`, `.log-table.import-table` and `details[data-disclosure]` for per-request warnings. The `.secret-warning` banner and secondary **Mask detected secrets** action are the curl editor's existing pattern. No new visual component, token, or alternative disclosure is introduced. Invalid structure blocks confirmation; Postman mapping warnings stay informational, while Native retains its warning acknowledgement. Future format options belong in this same selector and preview.

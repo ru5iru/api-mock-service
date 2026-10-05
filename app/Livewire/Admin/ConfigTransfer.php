@@ -9,6 +9,8 @@ use App\Models\Revision;
 use App\Services\Config\ConfigExporter;
 use App\Services\Config\ConfigImporter;
 use App\Services\Config\ImportMode;
+use App\Services\Imports\MappedImportService;
+use App\Services\Imports\PostmanMapper;
 use App\Services\Revisions\RevisionManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -47,6 +49,10 @@ final class ConfigTransfer extends Component
 
     public string $mode = self::DEFAULT_IMPORT_MODE;
 
+    public string $format = 'native';
+
+    public bool $maskImportedSecrets = false;
+
     public bool $replaceResponses = false;
 
     public bool $acknowledgeWarnings = false;
@@ -70,6 +76,22 @@ final class ConfigTransfer extends Component
     public function clearSelection(): void
     {
         $this->selectedEndpointUuids = [];
+    }
+
+    public function selectFormat(string $format): void
+    {
+        if (! in_array($format, ['native', 'postman'], true)) {
+            return;
+        }
+        $this->format = $format;
+        $this->removeFile();
+        $this->maskImportedSecrets = false;
+    }
+
+    public function maskSecrets(): void
+    {
+        $this->maskImportedSecrets = true;
+        $this->preview(app(ConfigImporter::class));
     }
 
     public function updatedMode(): void
@@ -100,6 +122,7 @@ final class ConfigTransfer extends Component
     public function updatedConfigFile(): void
     {
         $this->clearPreview();
+        $this->maskImportedSecrets = false;
         $this->resetValidation();
 
         if ($this->configFile === null) {
@@ -111,14 +134,14 @@ final class ConfigTransfer extends Component
         ]);
 
         if (strtolower((string) $this->configFile->getClientOriginalExtension()) !== 'json') {
-            $this->addError('configFile', 'Choose a .json MockDeck configuration file.');
+            $this->addError('configFile', 'Choose a .json configuration file.');
 
             return;
         }
 
         $json = file_get_contents($this->configFile->getRealPath());
         try {
-            json_decode((string) $json, true, 64, JSON_THROW_ON_ERROR);
+            json_decode((string) $json, true, $this->format === 'postman' ? 2048 : 64, JSON_THROW_ON_ERROR);
         } catch (JsonException $exception) {
             $this->addError('configFile', 'This file is not valid JSON: '.$exception->getMessage());
         }
@@ -159,11 +182,12 @@ final class ConfigTransfer extends Component
         $this->validate([
             'configFile' => ['required', 'file', 'max:'.(int) ceil(config('mock.portable_config.max_bytes', 2097152) / 1024)],
             'mode' => ['required', 'in:create-only,upsert,clone'],
+            'format' => ['required', 'in:native,postman'],
             'replaceResponses' => ['boolean'],
         ]);
 
         if (strtolower((string) $this->configFile?->getClientOriginalExtension()) !== 'json') {
-            $this->addError('configFile', 'Choose a .json MockDeck configuration file.');
+            $this->addError('configFile', 'Choose a .json configuration file.');
 
             return;
         }
@@ -175,9 +199,9 @@ final class ConfigTransfer extends Component
             return;
         }
 
-        $this->plan = $importer
-            ->preview($json, ImportMode::from($this->mode), $this->replaceResponses)
-            ->toArray();
+        $this->plan = ($this->format === 'postman'
+            ? app(MappedImportService::class)->preview(app(PostmanMapper::class), $json, ImportMode::from($this->mode), $this->maskImportedSecrets)
+            : $importer->preview($json, ImportMode::from($this->mode), $this->replaceResponses))->toArray();
         $this->summary = [];
         $this->importUndone = false;
         $this->acknowledgeWarnings = false;
@@ -201,24 +225,17 @@ final class ConfigTransfer extends Component
         )));
 
         try {
-            $this->summary = $importer
-                ->apply(
-                    (string) $this->plan['token'],
-                    (string) $this->plan['digest'],
-                    $this->acknowledgeWarnings,
-                )
-                ->toArray();
+            $this->summary = (($this->plan['metadata']['format'] ?? 'native') === 'postman'
+                ? app(MappedImportService::class)->apply((string) $this->plan['token'], (string) $this->plan['digest'])
+                : $importer->apply((string) $this->plan['token'], (string) $this->plan['digest'], $this->acknowledgeWarnings))->toArray();
         } catch (InvalidArgumentException $exception) {
             $this->addError('import', $exception->getMessage());
 
             return;
         }
 
-        if ($mode === ImportMode::Clone->value) {
-            $this->importedEndpointUuids = MockEndpoint::query()
-                ->where('id', '>', $lastEndpointId)
-                ->pluck('uuid')
-                ->all();
+        if ($mode === ImportMode::Clone->value || ($this->plan['metadata']['format'] ?? 'native') === 'postman') {
+            $this->importedEndpointUuids = array_values(array_unique([...$this->importedEndpointUuids, ...MockEndpoint::query()->where('id', '>', $lastEndpointId)->pluck('uuid')->all()]));
         }
 
         $this->plan = [];

@@ -52,11 +52,11 @@ final class ConfigValidator
             $this->errors[] = '$.format must be exactly "mockdeck".';
         }
 
-        if (! in_array($data['format_version'] ?? null, [1, '1.0', '1.1', '1.2', '1.3', '1.4'], true)) {
-            $this->errors[] = '$.format_version is not supported; this release accepts version 1, 1.0, 1.1, 1.2, 1.3, or 1.4.';
+        if (! in_array($data['format_version'] ?? null, [1, '1.0', '1.1', '1.2', '1.3', '1.4', '1.5'], true)) {
+            $this->errors[] = '$.format_version is not supported; this release accepts version 1, 1.0, 1.1, 1.2, 1.3, 1.4, or 1.5.';
         }
 
-        $data = $this->normalizeWaveTwo($this->normalizeSelection($data));
+        $data = $this->normalizeProvenance($this->normalizeWaveTwo($this->normalizeSelection($data)));
 
         $this->validateOrganization($data);
 
@@ -119,7 +119,7 @@ final class ConfigValidator
             }
 
             $this->warnUnknown($endpoint, [
-                'uuid', 'name', 'enabled', 'priority', 'selection_mode', 'sequence_on_exhaust', 'collection', 'tags', 'environment_overrides', 'requires_secret_replacement', 'request', 'responses',
+                'uuid', 'name', 'external_source', 'enabled', 'priority', 'selection_mode', 'sequence_on_exhaust', 'collection', 'tags', 'environment_overrides', 'requires_secret_replacement', 'request', 'responses',
             ], $path);
 
             if (isset($endpoint['collection']) && ! is_string($endpoint['collection'])) {
@@ -382,7 +382,7 @@ final class ConfigValidator
         }
 
         $this->warnUnknown($response, [
-            'uuid', 'status', 'headers', 'body', 'body_mode', 'template', 'editor_view', 'seed_mode', 'seed', 'locale', 'delay_ms', 'weight', 'sequence_order', 'is_default', 'response_rules', 'callback', 'fault_enabled', 'fault_type', 'fault_delay_ms_min', 'fault_delay_ms_max', 'fault_probability',
+            'uuid', 'status', 'external_label', 'headers', 'body', 'body_mode', 'template', 'editor_view', 'seed_mode', 'seed', 'locale', 'delay_ms', 'weight', 'sequence_order', 'is_default', 'response_rules', 'callback', 'fault_enabled', 'fault_type', 'fault_delay_ms_min', 'fault_delay_ms_max', 'fault_probability',
         ], $path);
 
         try {
@@ -548,10 +548,49 @@ final class ConfigValidator
         }
     }
 
+    private function normalizeProvenance(array $data): array
+    {
+        if (! is_array($data['endpoints'] ?? null)) {
+            return $data;
+        }
+        foreach ($data['endpoints'] as $i => &$endpoint) {
+            if (! is_array($endpoint)) {
+                continue;
+            }
+            $endpoint['external_source'] = ($data['format_version'] ?? null) === '1.5' ? ($endpoint['external_source'] ?? null) : null;
+            $source = $endpoint['external_source'];
+            if ($source !== null) {
+                $valid = is_array($source) && ! array_is_list($source);
+                foreach (['type' => 40, 'correlation_key' => 32768, 'spec_title' => 255, 'imported_at' => 40] as $key => $max) {
+                    $valid = $valid && is_string($source[$key] ?? null) && strlen($source[$key]) <= $max;
+                }
+                if (! $valid) {
+                    $this->errors[] = "$.endpoints[{$i}].external_source must contain type, correlation_key, spec_title and imported_at strings.";
+                }
+            }
+            if (! is_array($endpoint['responses'] ?? null)) {
+                continue;
+            }
+            foreach ($endpoint['responses'] as $j => &$response) {
+                if (! is_array($response)) {
+                    continue;
+                }
+                $response['external_label'] = ($data['format_version'] ?? null) === '1.5' ? ($response['external_label'] ?? null) : null;
+                if ($response['external_label'] !== null && (! is_string($response['external_label']) || strlen($response['external_label']) > 255)) {
+                    $this->errors[] = "$.endpoints[{$i}].responses[{$j}].external_label must be null or a string of at most 255 bytes.";
+                }
+            }
+            unset($response);
+        }
+        unset($endpoint);
+
+        return $data;
+    }
+
     /** Old format versions cannot activate Wave 2 behavior through unknown keys. */
     private function normalizeWaveTwo(array $data): array
     {
-        $modern = ($data['format_version'] ?? null) === '1.4';
+        $modern = in_array($data['format_version'] ?? null, ['1.4', '1.5'], true);
         if (! is_array($data['endpoints'] ?? null)) {
             return $data;
         }
@@ -587,7 +626,7 @@ final class ConfigValidator
     /** Older documents cannot opt into newer response-selection behavior. */
     private function normalizeSelection(array $data): array
     {
-        $modern = in_array($data['format_version'] ?? null, ['1.3', '1.4'], true);
+        $modern = in_array($data['format_version'] ?? null, ['1.3', '1.4', '1.5'], true);
         if (! is_array($data['endpoints'] ?? null)) {
             return $data;
         }

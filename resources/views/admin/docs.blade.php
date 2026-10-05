@@ -254,12 +254,13 @@
             </ol>
             <h3>Import</h3>
             <ol>
-                <li>Choose a MockDeck JSON file and select Create only, Upsert, or Clone. Native format 1.4 includes selection mode, sequence order/exhaustion, fallback flags, response rules, field exclusions, path patterns, and primary response faults. Version 1.3 retains selection settings while defaulting new fields off. Versions 1–1.2 import as Weighted. Runtime call counters, sequence positions, and recent call digests are never exported or inherited by new imports/clones.</li>
+                <li>Choose a MockDeck JSON file and select Create only, Upsert, or Clone. Native format 1.5 includes selection mode, sequence order/exhaustion, fallback flags, response rules, field exclusions, path patterns, and primary response faults. Version 1.3 retains selection settings while defaulting new fields off. Versions 1–1.2 import as Weighted. Runtime call counters, sequence positions, and recent call digests are never exported or inherited by new imports/clones.</li>
                 <li>Preview the complete plan; preview never writes to the database.</li>
                 <li>Resolve errors and review warnings. Upsert replaces response pools only when explicitly enabled.</li>
                 <li>Confirm to apply atomically. Version 1 files remain supported and missing template fields become static responses.</li>
                 <li>Update-by-UUID preview shows how many endpoint/response pre-states will be versioned. After apply, Undo this import restores the complete recorded batch.</li>
             </ol>
+        <p><strong>Postman v2.1:</strong> choose Postman in the Import panel. Preview flattened folders, variable exclusions and saved examples before confirmation. Whole path variables become parameters; body variables stay literal. Scripts are never executed. Create only skips matching correlation keys; Update matching replaces the saved response pool with an undoable revision batch. Renaming or moving items breaks correlation. Companion Environment files and Postman export are not included.</p>
         </section>
 
         <section id="wave-two" class="card docs-card">

@@ -367,7 +367,7 @@ Environment-scoped export includes endpoints that inherit their state and endpoi
 
 For **Update by UUID**, preview also reports how many endpoint/response pre-states will receive a revision. Every changed existing entity is snapshotted under one import batch before its imported values replace the live values. The success panel keeps **Undo this import** available; one confirmation lists the affected entities and restores all recorded pre-states atomically. The undo itself appends rollback revisions, so it does not erase evidence of the import.
 
-Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Versions 1/1.0/1.1/1.2 remain supported; missing fields use backward-compatible defaults, with Weighted selection and no rules. Current exports use format `1.4`; version 1.3 retains its selection configuration while importing without field exclusions, path patterns, or faults.
+Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Versions 1/1.0/1.1/1.2 remain supported; missing fields use backward-compatible defaults, with Weighted selection and no rules. Current exports use format `1.5`; version 1.3 retains its selection configuration while importing without field exclusions, path patterns, or faults.
 
 CLI equivalents:
 
@@ -470,7 +470,7 @@ See [VALIDATION.md](VALIDATION.md) for complete automated and manual release che
 - Response selection supports weighted random, environment-scoped sequences, and request conditions. Scenario scripting remains outside this wave.
 - Response templates serve JSON only; request-context interpolation is supported in the JSON editor.
 - Builder is intentionally a lossless subset of the JSON template language.
-- OpenAPI generation/import, recording/proxying, and third-party format adapters remain planned. Verification assertions operate independently of request-log retention; filtered assertions can be indeterminate when bounded call data is insufficient.
+- OpenAPI generation/import, recording/proxying, and further third-party format adapters remain planned. Verification assertions operate independently of request-log retention; filtered assertions can be indeterminate when bounded call data is insufficient.
 
 For implementation boundaries, read [ARCHITECTURE.md](ARCHITECTURE.md). For UI changes, read [UI_GUIDE.md](UI_GUIDE.md).
 
@@ -516,7 +516,7 @@ The selection preview lists the ordered conditions and fallback badge. Missing f
 
 Selection fields and conditions are configuration and are versioned. Restoring an older sequence position shifts sibling response positions with rollback revisions; restoring a fallback can clear the sibling fallback with a revision. Invalid rule configuration restores are rejected atomically. Pre-Wave-1 endpoint snapshots default to Weighted and pre-Wave-1 response snapshots default to no rules. Counters/positions are runtime state and are never restored by history.
 
-Current native exports use 1.4 and include modes, order, default flags, conditions, matching exclusions/path patterns, and response faults. Old 1–1.2 files retain Weighted behavior. New imports and clones have no call state until matched; upserts preserve destination runtime state. See [Verification API](VERIFICATION_API.md) for token-authenticated CI assertions and runtime resets.
+Current native exports use 1.5 and include modes, order, default flags, conditions, matching exclusions/path patterns, and response faults. Old 1–1.2 files retain Weighted behavior. New imports and clones have no call state until matched; upserts preserve destination runtime state. See [Verification API](VERIFICATION_API.md) for token-authenticated CI assertions and runtime resets.
 
 ### Saving endpoint and response drafts
 
@@ -565,3 +565,11 @@ Template Preview shows normal rendered content. Faults apply only when serving a
 Use the separate token-authenticated [Verification API](VERIFICATION_API.md) to read call counts, assert counts and request predicates, and reset runtime state before a test run. Generate the instance token with `php artisan mockdeck:api-token`; use `--rotate` to replace it and invalidate the previous token. A dashboard session cookie alone grants no access.
 
 Unfiltered assertions use the exact lifetime count since reset. Each endpoint/environment also retains at most 20 bounded call digests. Conditional assertions use the same header/query/body-JSON predicate grammar as response rules and report uncertainty when discarded or omitted information prevents proving the expected count. Reset before a focused scenario and inspect the returned message in CI. API resets clear counts, sequence positions, last-match timestamps and digests without changing endpoint/response configuration.
+
+## Import a Postman collection
+
+Open **Import / export → Postman** and upload a **v2.1** collection JSON file. Preview shows the title, request/folder/warning counts, flattened Collection, action and saved-response count for every request. Expand each warning disclosure to review auto-excluded header/query variables, untranslated auth, skipped scripts, raw-body fallbacks and stale examples. Use **Mask detected secrets** before confirmation when credentials are detected. Warnings do not block a valid Postman import.
+
+Create only skips existing correlation keys; Update matching replaces the matched request and response pool with one undoable revision batch; Clone always creates another endpoint. Folder names flatten with ` / `; root requests use the collection title. Whole path variables become `{name}` parameters; body variables remain literal. Saved examples become equal-weight static responses, with their imported names in **Details**. Zero examples means zero responses until you add one.
+
+Renaming/moving an item or changing its method/path breaks future correlation. Update replaces local response templates, rules, callbacks and faults; runtime counters are preserved. **Undo this import** restores updated configuration and the prior response pool, but does not remove newly created endpoints. Environment-file import and Postman export are not included. See [Postman import](POSTMAN_IMPORT.md) for auth/body support and all mapping boundaries.

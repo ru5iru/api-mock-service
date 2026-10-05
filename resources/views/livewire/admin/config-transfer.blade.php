@@ -126,9 +126,13 @@
                 </div>
             </div>
 
+            <div class="segmented-control" role="group" aria-label="Import format">
+                <button type="button" wire:click="selectFormat('native')" aria-pressed="{{ $format === 'native' ? 'true' : 'false' }}">Native</button>
+                <button type="button" wire:click="selectFormat('postman')" aria-pressed="{{ $format === 'postman' ? 'true' : 'false' }}">Postman</button>
+            </div>
             <form wire:submit="preview">
                 <div class="field">
-                    <label for="config-file">MockDeck JSON file</label>
+                    <label for="config-file">{{ $format === 'postman' ? 'Postman Collection v2.1 JSON file' : 'MockDeck JSON file' }}</label>
                     <label class="file-dropzone {{ $configFile ? 'has-file' : '' }}" data-dropzone for="config-file">
                         <input class="sr-only" id="config-file" type="file" wire:model="configFile" accept=".json,application/json,application/vnd.mockdeck.config+json">
                         <span class="dropzone-icon" aria-hidden="true">⇧</span>
@@ -153,13 +157,13 @@
                         <label class="radio-option">
                             <x-radio name="import-mode" value="{{ $importMode->value }}" :checked="$mode === $importMode->value" wire:model.live="mode" />
                             <span>
-                                <strong>{{ $importMode->label() }}</strong>
+                                <strong>{{ $format === 'postman' ? match ($importMode->value) { 'upsert' => 'Update matching', 'clone' => 'Clone', default => 'Create only' } : $importMode->label() }}</strong>
                                 @if ($importMode->value === 'create-only')
                                     <x-badge variant="success">Safe default</x-badge>
-                                    <small>Stops without writing when an endpoint UUID already exists.</small>
+                                    <small>{{ $format === 'postman' ? 'Skips requests with an existing correlation key.' : 'Stops without writing when an endpoint UUID already exists.' }}</small>
                                 @elseif ($importMode->value === 'upsert')
                                     <x-badge variant="warning"><span aria-hidden="true">!</span> Overwrites matching endpoints &amp; responses</x-badge>
-                                    <small>Updates records that have the same portable UUID.</small>
+                                    <small>{{ $format === 'postman' ? 'Matches by folder, item name, method and path; replaces saved response pools.' : 'Updates records that have the same portable UUID.' }}</small>
                                 @else
                                     <small>Generates new UUIDs so imported records remain separate.</small>
                                 @endif
@@ -168,7 +172,7 @@
                     @endforeach
                 </fieldset>
 
-                @if ($mode === 'upsert')
+                @if ($mode === 'upsert' && $format === 'native')
                     <label class="confirmation-row">
                         <input type="checkbox" wire:model.live="replaceResponses">
                         <span><strong>Replace response pools</strong><br>Delete local responses omitted from updated endpoints.</span>
@@ -203,6 +207,18 @@
                 $changes = ($plan['counts']['creates'] ?? 0) + ($plan['counts']['updates'] ?? 0);
                 $skipped = count(array_filter($plan['items'], fn ($item) => ($item['action'] ?? null) === 'skip'));
             @endphp
+            @if (($plan['metadata']['format'] ?? '') === 'postman')
+                <p><strong>{{ $plan['metadata']['title'] }}</strong> · {{ $plan['metadata']['request_count'] }} requests · {{ $plan['metadata']['folder_count'] }} folders · {{ $plan['metadata']['warning_count'] }} warnings</p>
+                @if ($plan['metadata']['contains_secrets'] && ! $maskImportedSecrets)
+                    <div class="secret-warning">
+                        <span aria-hidden="true">!</span>
+                        <div><strong>Possible credentials detected</strong><p>Mask tokens, API keys, cookies, and authentication values before sharing this configuration.</p></div>
+                        <button class="button button-secondary button-small" type="button" wire:click="maskSecrets">Mask detected secrets</button>
+                    </div>
+                @elseif ($maskImportedSecrets)
+                    <p class="info-note">Detected credentials are masked as REPLACE_ME in this import.</p>
+                @endif
+            @endif
             <dl class="summary-grid import-summary-grid">
                 <div><dt>New</dt><dd>{{ $plan['counts']['creates'] ?? 0 }}</dd></div>
                 <div><dt>Updated</dt><dd>{{ $plan['counts']['updates'] ?? 0 }}</dd></div>
@@ -244,11 +260,22 @@
                             <tbody>
                                 @foreach ($plan['items'] as $item)
                                     <tr>
-                                        <td><strong>{{ $item['name'] ?: ($item['method'] ?? 'Endpoint').' '.($item['path'] ?? '') }}</strong><br><code>{{ $item['uuid'] }}</code></td>
+                                        <td><strong>{{ $item['name'] ?: ($item['method'] ?? 'Endpoint').' '.($item['path'] ?? '') }}</strong>@if (isset($item['collection']))
+                                            <br><code>{{ $item['method'] }} {{ $item['path'] }}</code>
+                                            <br><small>{{ $item['collection'] }} · {{ $item['response_count'] }} saved responses</small>
+                                        @else<br><code>{{ $item['uuid'] }}</code>@endif</td>
                                         <td><x-badge :variant="$item['action'] === 'create' ? 'success' : ($item['action'] === 'update' ? 'info' : 'danger')">{{ ucfirst($item['action']) }}</x-badge></td>
                                         <td>{{ $item['variant'] ?? '—' }}</td>
                                         <td>{{ $item['message'] }}</td>
                                     </tr>
+                                    @if (($item['warnings'] ?? []) !== [])
+                                        <tr><td colspan="4">
+                                            <details data-disclosure>
+                                                <summary><span class="details-chevron" aria-hidden="true">›</span>{{ count($item['warnings']) }} warnings for {{ $item['name'] }}</summary>
+                                                <ul>@foreach ($item['warnings'] as $warning)<li>{{ $warning }}</li>@endforeach</ul>
+                                            </details>
+                                        </td></tr>
+                                    @endif
                                 @endforeach
                             </tbody>
                         </table>
@@ -257,7 +284,7 @@
                 </details>
             @endif
 
-            @if ($plan['warnings'] !== [] && $plan['can_apply'])
+            @if ($format === 'native' && $plan['warnings'] !== [] && $plan['can_apply'])
                 <label class="confirmation-row preview-confirmation">
                     <input type="checkbox" wire:model.live="acknowledgeWarnings">
                     <span>I reviewed the warnings and want to continue.</span>
@@ -267,15 +294,15 @@
             @error('import') <p class="field-error" role="alert">{{ $message }}</p> @enderror
 
             <div class="form-actions preview-actions">
-                <button class="text-link" type="button" wire:click="exportAll">Export a backup first</button>
-                <span class="disabled-tooltip" title="{{ ! $plan['can_apply'] ? 'Resolve preview errors before importing.' : (($plan['warnings'] !== [] && ! $acknowledgeWarnings) ? 'Review and acknowledge the warnings first.' : '') }}">
+                <button class="text-button" type="button" wire:click="exportAll">Export a backup first</button>
+                <span class="disabled-tooltip" title="{{ ! $plan['can_apply'] ? 'Resolve preview errors before importing.' : (($format === 'native' && $plan['warnings'] !== [] && ! $acknowledgeWarnings) ? 'Review and acknowledge the warnings first.' : '') }}">
                     <button
                         class="button button-primary"
                         type="button"
                         wire:click="apply"
                         wire:loading.attr="disabled"
                         wire:target="apply"
-                        @disabled(! $plan['can_apply'] || ($plan['warnings'] !== [] && ! $acknowledgeWarnings))
+                        @disabled(! $plan['can_apply'] || ($format === 'native' && $plan['warnings'] !== [] && ! $acknowledgeWarnings))
                     >
                         <span wire:loading.remove wire:target="apply">Confirm import ({{ $changes }} {{ Str::plural('change', $changes) }})</span>
                         <span wire:loading wire:target="apply">Importing atomically…</span>

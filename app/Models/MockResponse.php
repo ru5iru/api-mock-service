@@ -16,6 +16,7 @@ final class MockResponse extends Model
     use HasFactory;
 
     protected $fillable = [
+        'external_label',
         'uuid',
         'sequence_order',
         'is_default',

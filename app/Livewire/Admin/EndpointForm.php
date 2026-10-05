@@ -9,6 +9,7 @@ use App\Models\Tag;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\ParsedCurl;
+use App\Services\Curl\RequestCredentialPolicy;
 use App\Services\Matching\FieldMatchingConfiguration;
 use App\Services\Matching\PathPattern;
 use App\Services\Response\SelectionConfigurationValidator;
@@ -459,26 +460,7 @@ CURL;
     public function maskSecrets(): void
     {
         $this->touchSection('request');
-        $sensitiveHeaders = implode('|', array_map(
-            static fn (string $name): string => preg_quote($name, '/'),
-            config('mock.portable_config.sensitive_headers', []),
-        ));
-
-        if ($sensitiveHeaders !== '') {
-            $this->rawCurl = (string) preg_replace_callback(
-                '/((?:-H|--header)\s+)([\'\"])(('.$sensitiveHeaders.')\s*:\s*)(.*?)(\2)/i',
-                static fn (array $match): string => $match[1].$match[2].$match[3].'REPLACE_ME'.$match[6],
-                $this->rawCurl,
-            );
-        }
-
-        foreach (config('mock.portable_config.sensitive_query_keys', []) as $key) {
-            $this->rawCurl = (string) preg_replace(
-                '/([?&]'.preg_quote((string) $key, '/').'=)[^&\'\"\s]+/i',
-                '$1REPLACE_ME',
-                $this->rawCurl,
-            );
-        }
+        $this->rawCurl = app(RequestCredentialPolicy::class)->maskCurl($this->rawCurl);
     }
 
     public function save(CurlParser $parser, CurlHasher $hasher): mixed
@@ -654,7 +636,7 @@ CURL;
             'prettyBody' => $prettyBody,
             'displayCanonical' => $displayCanonical,
             'curlWarnings' => $this->curlWarnings(),
-            'containsSecrets' => collect($headerAnalysis)->contains('sensitive', true) || $this->containsSensitiveQuery(),
+            'containsSecrets' => collect($headerAnalysis)->contains('sensitive', true) || collect($queryParameters)->contains('sensitive', true),
             'isExample' => trim($this->rawCurl) === trim(self::EXAMPLE_CURL),
             'collections' => Collection::query()->orderBy('name')->get(),
             'availableTags' => Tag::query()->orderBy('name')->get(),
@@ -674,14 +656,12 @@ CURL;
     /** @return list<array{name: string, value: string, display_value: string, sensitive: bool, excluded_reason: ?string}> */
     private function analyzeHeaders(ParsedCurl $parsed): array
     {
-        $sensitive = array_map('strtolower', config('mock.portable_config.sensitive_headers', []));
         $transport = array_map('strtolower', config('mock.transport_header_names', []));
         $auth = array_map('strtolower', config('mock.auth_header_names', []));
 
-        return array_map(function (array $header) use ($sensitive, $transport, $auth): array {
+        return array_map(function (array $header) use ($transport, $auth): array {
             $name = strtolower(trim($header['name']));
-            $isSensitive = in_array($name, $sensitive, true)
-                && ! Str::contains(Str::lower($header['value']), ['replace_me', 'replace-me', 'redacted']);
+            $isSensitive = app(RequestCredentialPolicy::class)->sensitive($name, $header['value']);
             $reason = null;
 
             if (in_array($name, $transport, true)) {
@@ -719,14 +699,11 @@ CURL;
             return [];
         }
 
-        $sensitiveKeys = array_map('strtolower', config('mock.portable_config.sensitive_query_keys', []));
-
-        return array_map(function (string $parameter) use ($sensitiveKeys): array {
+        return array_map(function (string $parameter): array {
             [$key, $value] = array_pad(explode('=', $parameter, 2), 2, '');
             $decodedKey = urldecode($key);
             $decodedValue = urldecode($value);
-            $sensitive = in_array(strtolower($decodedKey), $sensitiveKeys, true)
-                && ! Str::contains(Str::lower($decodedValue), ['replace_me', 'replace-me', 'redacted']);
+            $sensitive = app(RequestCredentialPolicy::class)->sensitive($decodedKey, $decodedValue, true);
 
             return [
                 'key' => $decodedKey,
@@ -795,17 +772,5 @@ CURL;
         }
 
         return $warnings;
-    }
-
-    private function containsSensitiveQuery(): bool
-    {
-        foreach (config('mock.portable_config.sensitive_query_keys', []) as $key) {
-            if (preg_match('/[?&]'.preg_quote((string) $key, '/').'=([^&\s]+)/i', $this->rawCurl, $matches) === 1
-                && ! Str::contains(Str::lower($matches[1]), ['replace_me', 'replace-me', 'redacted'])) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

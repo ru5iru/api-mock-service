@@ -17,6 +17,7 @@ final class MockEndpoint extends Model
     use HasFactory;
 
     protected $fillable = [
+        'external_source',
         'uuid',
         'selection_mode',
         'sequence_on_exhaust',
@@ -53,6 +54,7 @@ final class MockEndpoint extends Model
     protected function casts(): array
     {
         return [
+            'external_source' => 'array',
             'enabled' => 'boolean',
             'priority' => 'integer',
             'signature_version' => 'integer',

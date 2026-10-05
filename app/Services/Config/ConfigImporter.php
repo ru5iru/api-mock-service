@@ -421,6 +421,7 @@ final readonly class ConfigImporter
         $matching = $source['request']['matching'];
         $enabled = (bool) $source['enabled'] && ! (bool) ($source['requires_secret_replacement'] ?? false);
         $expected = [
+            'external_source' => $source['external_source'] ?? null,
             'name' => $source['name'],
             'enabled' => $enabled,
             'priority' => (int) $source['priority'],
@@ -472,6 +473,7 @@ final readonly class ConfigImporter
         $headers = array_map(static fn (mixed $value): string => (string) $value, $source['headers']);
         ksort($headers);
         $expected = [
+            'external_label' => $source['external_label'] ?? null,
             'status_code' => (int) $source['status'],
             'headers' => $headers,
             'body' => $source['body'],
@@ -581,6 +583,7 @@ final readonly class ConfigImporter
 
             $endpoint->fill([
                 'collection_id' => isset($source['collection']) ? ($organization['collections'][Str::lower($source['collection'])] ?? null) : null,
+                'external_source' => $source['external_source'] ?? null,
                 'name' => $source['name'],
                 'enabled' => $enabled,
                 'priority' => $source['priority'],
@@ -624,6 +627,7 @@ final readonly class ConfigImporter
                 }
 
                 $response->fill([
+                    'external_label' => $responseSource['external_label'] ?? null,
                     'status_code' => $responseSource['status'],
                     'headers' => array_map(static fn (mixed $value): string => (string) $value, $responseSource['headers']),
                     'body' => $responseSource['body'],

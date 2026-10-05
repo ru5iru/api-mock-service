@@ -1,6 +1,6 @@
 # Native configuration import and export
 
-MockDeck's native JSON format moves endpoint definitions, responses, collections, tags, and environments between installations without coupling files to database IDs or trusted hashes. The current media type is `application/vnd.mockdeck.config+json`; the current format version is `1.4`, with version `1`, `1.0`, `1.1`, `1.2`, and `1.3` imports retained for backward compatibility.
+MockDeck's native JSON format moves endpoint definitions, responses, collections, tags, and environments between installations without coupling files to database IDs or trusted hashes. The current media type is `application/vnd.mockdeck.config+json`; the current format version is `1.5`, with version `1`, `1.0`, `1.1`, `1.2`, `1.3`, and `1.4` imports retained for backward compatibility.
 
 ## Safe dashboard workflow
 
@@ -64,9 +64,9 @@ Callback URL, method, headers, JSON body, timing, and signature-header name are 
 
 ## Document contract
 
-The current checked-in contract is `resources/schemas/mockdeck-config-v1.4.schema.json`; earlier schemas remain available for older documents. A current document contains:
+The current checked-in contract is `resources/schemas/mockdeck-config-v1.5.schema.json`; earlier schemas remain available for older documents. A current document contains:
 
-- `format: "mockdeck"` and `format_version: "1.4"`;
+- `format: "mockdeck"` and `format_version: "1.5"`;
 - collection definitions, case-insensitive tag names, and environment definitions;
 - non-secret environment variable values plus redacted secret placeholders;
 - endpoint collection, tags, and named environment overrides;
@@ -164,7 +164,7 @@ Endpoints include `selection_mode` (`weighted`, `sequence`, or `rule`). Weighted
 
 Responses include nullable, zero-based `sequence_order`, boolean `is_default`, and `response_rules`. Each condition has `field_type` (`header`, `query`, `body_json_path`), `field_name`, `operator` (`equals`, `contains`, `regex`, `exists`), nullable `value`, and non-negative integer `priority`. Exists does not use a value; other operators require a string. Regex values use PHP pattern delimiters, for example `/^ready$/i`. Conditions on one response use AND. Rule-bearing responses are checked by their lowest condition priority; ties use response weight, then UUID. Exactly one response must be marked default in rule mode. Sequence orders must contain every position from zero through the response count minus one, without duplicates or gaps.
 
-Version `1`, `1.0`, `1.1`, and `1.2` documents always import as weighted selection with no sequence order, default marker, or conditions, even if newer selection fields appear in the file. A version 1.3/1.4 upsert that merges unmentioned local responses must leave the combined selection configuration valid; preview blocks invalid merged defaults or sequence orders and suggests authoritative response-pool replacement.
+Version `1`, `1.0`, `1.1`, and `1.2` documents always import as weighted selection with no sequence order, default marker, or conditions, even if newer selection fields appear in the file. A version 1.3/1.4/1.5 upsert that merges unmentioned local responses must leave the combined selection configuration valid; preview blocks invalid merged defaults or sequence orders and suggests authoritative response-pool replacement.
 
 `endpoint_call_state` is runtime data. Sequence positions, total match counts, last matched timestamps, and environment/database IDs are never exported or imported. New imports and clones have no call-state rows until first traffic. Updating an existing endpoint by UUID preserves its runtime state. Revision restore and import undo restore selection configuration and conditions while leaving runtime state unchanged.
 
@@ -200,3 +200,9 @@ Malformed-body faults require a JSON/XML Content-Type (templates without an expl
 Versions 1/1.0–1.3 always import with empty field exclusions, literal paths and disabled fault defaults, even if those newer keys are present. Existing 1.3 selection settings still round-trip; 1–1.2 retain the previous Weighted defaults. Revisions use the same compatible missing/null defaults. Upsert keeps destination runtime state; created or cloned endpoints have no state until a match.
 
 The entire `endpoint_call_state` table, including `recent_call_digests`, remains runtime-only. It is never exported, imported, cloned, restored, or seeded by configuration transfer. API-token hashes are instance credentials and are also excluded. Verification's 20-call ring buffer is independent of request-log retention.
+
+## External provenance in format 1.5
+
+Wave 3 adds nullable endpoint `external_source`: an object containing `type`, `correlation_key`, `spec_title`, and `imported_at` strings. Nullable response `external_label` records an external saved-example name. These fields are portable and revisioned; they do not change matching or response selection. Files from 1–1.4 default both to null, even if they contain newer provenance fields. The existing Wave 2 fields remain unchanged.
+
+The Import panel now offers Native / Postman with the shared segmented control. Native import/export behavior and warning acknowledgement stay unchanged. Postman Collection v2.1 import has correlation-based Create only / Update matching / Clone modes, flattened folders, saved examples, and informational per-request warnings. See [Postman import](POSTMAN_IMPORT.md). Postman export and OpenAPI are not included. Runtime state and verification digests remain excluded.

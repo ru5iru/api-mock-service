@@ -3,7 +3,6 @@
 namespace App\Services\Curl;
 
 use App\Services\Matching\PathPattern;
-use InvalidArgumentException;
 use JsonException;
 use stdClass;
 
@@ -75,19 +74,7 @@ final class CurlNormalizer
 
     private function canonicalUrl(string $url, array $excludedQueryParams = [], bool $pathPatternEnabled = false): string
     {
-        $parts = parse_url(trim($url));
-
-        if ($parts === false || ! isset($parts['scheme'], $parts['host'])) {
-            throw new InvalidArgumentException('The request URL must be an absolute HTTP or HTTPS URL.');
-        }
-
-        if (! in_array(strtolower($parts['scheme']), ['http', 'https'], true)) {
-            throw new InvalidArgumentException('The request URL must use HTTP or HTTPS.');
-        }
-
-        if (isset($parts['user']) || isset($parts['pass'])) {
-            throw new InvalidArgumentException('Credentials must be supplied as headers, not embedded in the URL.');
-        }
+        $parts = app(RequestUrl::class)->parse($url);
 
         $path = $parts['path'] ?? '';
         if ($path === '') {
