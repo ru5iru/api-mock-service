@@ -70,6 +70,7 @@ final readonly class ConfigExporter
 
             return [
                 'uuid' => $endpoint->uuid,
+                'external_source' => $endpoint->external_source,
                 'name' => $endpoint->name,
                 'enabled' => $requiresSecretReplacement ? false : $endpoint->enabled,
                 'priority' => $endpoint->priority,
@@ -98,13 +99,13 @@ final readonly class ConfigExporter
         })->all();
 
         $data = [
-            '$schema' => 'https://mockdeck.dev/schemas/config-v1.4.json',
+            '$schema' => 'https://mockdeck.dev/schemas/config-v1.5.json',
             'format' => 'mockdeck',
-            'format_version' => '1.4',
+            'format_version' => '1.5',
             'exported_at' => now()->utc()->format('Y-m-d\TH:i:s\Z'),
             'generator' => [
                 'name' => 'MockDeck',
-                'version' => config('mock.portable_config.generator_version', '1.4.0'),
+                'version' => config('mock.portable_config.generator_version', '1.5.0'),
             ],
             'options' => [
                 'secrets_redacted' => $redactSecrets,
@@ -176,6 +177,7 @@ final readonly class ConfigExporter
                     || ($response->callback_signing_enabled && $response->callback_signing_secret !== null);
 
                 return [
+                    'external_label' => $response->external_label,
                     'uuid' => $response->uuid,
                     'status' => $response->status_code,
                     'headers' => (object) $headers,

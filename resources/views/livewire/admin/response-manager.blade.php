@@ -83,6 +83,7 @@
                 <details class="history-disclosure response-row-details" data-disclosure wire:ignore.self wire:key="response-details-{{ $response->id }}">
                     <summary><span class="details-chevron" aria-hidden="true">›</span><strong>Details</strong></summary>
                     <div class="response-row-detail-content">
+                        @if ($response->external_label !== null)<p class="field-help">Imported example: <strong>{{ $response->external_label }}</strong></p>@endif
                         <code class="response-body-summary">{{ ($response->body_mode ?? 'static') === 'template' ? 'JSON response template' : (Str::limit(preg_replace('/\s+/', ' ', $response->body ?? ''), 82) ?: 'Empty body') }}</code>
                         <div class="metadata-row"><span>{{ $response->delay_ms }} ms delay</span><span>{{ count($response->headers ?? []) }} headers</span>@if ($response->callback_enabled)<x-badge variant="info">Callback enabled</x-badge>@endif @if ($response->fault_enabled)<x-badge variant="warning">Fault: {{ $response->fault_type === 'timeout' ? 'long delay' : str_replace('_', ' ', $response->fault_type) }}</x-badge>@endif</div>
                         @if ($selectionMode !== 'weighted')

@@ -72,6 +72,21 @@ final class StructuralJsonDiffer
             $before = $before === null ? null : '[redacted]';
             $after = $after === null ? null : '[redacted]';
         }
+        if ($root === 'import_response_pool') {
+            $redact = static function (mixed $value): mixed {
+                if (is_array($value)) {
+                    array_walk_recursive($value, static function (&$item, $key): void {
+                        if ($key === 'callback_signing_secret' && $item !== null) {
+                            $item = '[redacted]';
+                        }
+                    });
+                }
+
+                return $value;
+            };
+            $before = $redact($before);
+            $after = $redact($after);
+        }
         $renderer = match ($root) {
             'raw_curl', 'normalized_curl' => 'canonical-request',
             'body', 'template', 'callback_body' => 'json-code',

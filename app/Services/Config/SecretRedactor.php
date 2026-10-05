@@ -2,6 +2,7 @@
 
 namespace App\Services\Config;
 
+use App\Services\Curl\CurlFormatter;
 use App\Services\Curl\ParsedCurl;
 use InvalidArgumentException;
 
@@ -26,7 +27,7 @@ final class SecretRedactor
         [$url, $urlChanged] = $this->redactUrl($request->url);
 
         return new RedactedCurl(
-            $this->format(new ParsedCurl($request->method, $url, $headers, $request->body)),
+            app(CurlFormatter::class)->format(new ParsedCurl($request->method, $url, $headers, $request->body)),
             $changed || $urlChanged,
         );
     }
@@ -70,32 +71,5 @@ final class SecretRedactor
         }
 
         return [$redactedUrl, $changed];
-    }
-
-    private function format(ParsedCurl $request): string
-    {
-        $parts = [
-            'curl',
-            '--request',
-            $this->quote(strtoupper($request->method)),
-            $this->quote($request->url),
-        ];
-
-        foreach ($request->headers as $header) {
-            $parts[] = '--header';
-            $parts[] = $this->quote($header['name'].': '.$header['value']);
-        }
-
-        if ($request->body !== '') {
-            $parts[] = '--data-raw';
-            $parts[] = $this->quote($request->body);
-        }
-
-        return implode(' ', $parts);
-    }
-
-    private function quote(string $value): string
-    {
-        return "'".str_replace("'", "'\\''", $value)."'";
     }
 }

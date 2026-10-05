@@ -4,7 +4,7 @@
     <button class="inline-title-trigger" type="button" x-show="!editing" x-ref="trigger"
         x-on:click="value = $wire.name; editing = true; $nextTick(() => { $refs.input.focus(); $refs.input.select(); })"
         aria-label="Edit endpoint name" title="Edit endpoint name">
-        <span>{{ trim($name) ?: $placeholder }}</span><span aria-hidden="true">✎</span>
+        <span>{{ trim($name) ?: $placeholder }}</span><span class="inline-title-pencil" aria-hidden="true">✎</span>
     </button>
     <input class="inline-title-input" type="text" x-show="editing" x-cloak x-ref="input" x-model="value" maxlength="255"
         aria-label="Endpoint name" aria-describedby="inline-title-help" placeholder="{{ $placeholder }}"

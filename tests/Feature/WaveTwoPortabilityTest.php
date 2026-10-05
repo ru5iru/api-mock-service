@@ -53,7 +53,7 @@ final class WaveTwoPortabilityTest extends TestCase
             'total_match_count' => 7, 'recent_call_digests' => [['matched_at' => now()->toIso8601String(), 'method' => 'GET']]]);
         $json = app(ConfigExporter::class)->export(redactSecrets: false)->toJson();
         $document = json_decode($json, true);
-        self::assertSame('1.4', $document['format_version']);
+        self::assertSame('1.5', $document['format_version']);
         foreach (['recent_call_digests', 'total_match_count', 'api_tokens', 'token_hash', 'endpoint_call_state'] as $field) {
             self::assertStringNotContainsString('"'.$field.'"', $json);
         }

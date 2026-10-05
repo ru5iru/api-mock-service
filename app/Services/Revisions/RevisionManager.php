@@ -29,6 +29,7 @@ final readonly class RevisionManager
                 'id' => $entity->id,
                 'uuid' => $entity->uuid,
                 'collection_id' => $entity->collection_id,
+                'external_source' => $entity->external_source,
                 'name' => $entity->name,
                 'enabled' => (bool) $entity->enabled,
                 'priority' => (int) $entity->priority,
@@ -60,6 +61,7 @@ final readonly class RevisionManager
                 'id' => $entity->id,
                 'mock_endpoint_id' => $entity->mock_endpoint_id,
                 'uuid' => $entity->uuid,
+                'external_label' => $entity->external_label,
                 'status_code' => (int) $entity->status_code,
                 'headers' => $entity->headers,
                 'body' => $entity->body,
@@ -163,10 +165,15 @@ final readonly class RevisionManager
     public function diffCurrent(Revision $revision): array
     {
         $entity = $this->findEntity($revision->entity_type, $revision->entity_id);
+        $current = $this->snapshot($entity);
+        if ($entity instanceof MockEndpoint && array_key_exists('import_response_pool', $revision->snapshot)) {
+            $current['import_response_pool'] = $entity->responses()->get()->map(fn ($response) => $this->snapshot($response))->all();
+            $current = $this->normalize($current);
+        }
 
         return $this->diffPayload(
             $revision,
-            $this->snapshot($entity),
+            $current,
             ['kind' => 'current', 'id' => $entity->getKey(), 'version' => null],
         );
     }
@@ -276,11 +283,12 @@ final readonly class RevisionManager
     }
 
     /** @param array<string, mixed> $snapshot */
-    private function applySnapshot(string $type, array $snapshot): Model
+    private function applySnapshot(string $type, array $snapshot, bool $adjustSequence = true): Model
     {
         if ($type === 'endpoint') {
             $endpoint = MockEndpoint::query()->whereKey((int) $snapshot['id'])->lockForUpdate()->firstOrFail();
-            $attributes = collect($snapshot)->except(['id', 'uuid', 'tags', 'environment_overrides', 'endpoint_call_state', 'call_states'])->all();
+            $attributes = collect($snapshot)->except(['id', 'uuid', 'tags', 'environment_overrides', 'endpoint_call_state', 'call_states', 'import_response_pool'])->all();
+            $attributes['external_source'] = $attributes['external_source'] ?? null;
             $attributes['selection_mode'] = $attributes['selection_mode'] ?? 'weighted';
             $attributes['sequence_on_exhaust'] = $attributes['selection_mode'] === 'sequence' ? ($attributes['sequence_on_exhaust'] ?? 'repeat_last') : null;
             $attributes['excluded_query_params'] = $attributes['excluded_query_params'] ?? [];
@@ -301,6 +309,14 @@ final readonly class RevisionManager
                 ->mapWithKeys(static fn (bool $enabled, int|string $id): array => [(int) $id => ['enabled' => $enabled]])
                 ->all());
 
+            // Optional configuration pool recorded by mapped imports. Runtime call state is untouched.
+            if (array_key_exists('import_response_pool', $snapshot)) {
+                $ids = array_column($snapshot['import_response_pool'], 'id');
+                $endpoint->responses()->whereNotIn('id', $ids)->delete();
+                foreach ($snapshot['import_response_pool'] as $responseSnapshot) {
+                    $this->applySnapshot('response', $responseSnapshot, false);
+                }
+            }
             if ($endpoint->selection_mode === 'sequence') {
                 $this->restoreSequenceOrder($endpoint);
             }
@@ -312,6 +328,7 @@ final readonly class RevisionManager
             // Revisions created before callback support have no callback keys.
             // Restoring one returns callback settings to their original defaults.
             $defaults = [
+                'external_label' => null,
                 ...app(FaultConfigurationValidator::class)->defaults(),
                 'sequence_order' => null,
                 'is_default' => false,
@@ -357,10 +374,10 @@ final readonly class RevisionManager
                     $this->recordIfChanged($sibling, $before, 'rollback', note: 'Fallback changed by response revision restore');
                 }
             }
-            $response->fill(collect($snapshot)->except(['id', 'uuid', 'mock_endpoint_id', 'callback_signing_secret', 'response_rules', 'endpoint_call_state', 'call_states'])->all())->save();
+            $response->fill(collect($snapshot)->except(['id', 'uuid', 'mock_endpoint_id', 'callback_signing_secret', 'response_rules', 'endpoint_call_state', 'call_states', 'import_response_pool'])->all())->save();
             $response->rules()->delete();
             $response->rules()->createMany($snapshot['response_rules']);
-            if ($endpoint->selection_mode === 'sequence') {
+            if ($adjustSequence && $endpoint->selection_mode === 'sequence') {
                 $this->restoreSequenceOrder($endpoint, $response, $snapshot['sequence_order']);
             }
             if (array_key_exists('callback_signing_secret', $snapshot)) {

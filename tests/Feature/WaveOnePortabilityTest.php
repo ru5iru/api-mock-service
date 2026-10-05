@@ -35,7 +35,7 @@ final class WaveOnePortabilityTest extends TestCase
         $state = EndpointCallState::query()->create(['endpoint_id' => $endpoint->id, 'environment_id' => $environment->id, 'sequence_position' => 7, 'total_match_count' => 13, 'last_matched_at' => now()]);
         $json = app(ConfigExporter::class)->export(redactSecrets: false)->toJson();
         $document = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
-        self::assertSame('1.4', $document['format_version']);
+        self::assertSame('1.5', $document['format_version']);
         foreach (['endpoint_call_state', 'sequence_position', 'total_match_count', 'last_matched_at', 'response_id', 'environment_id'] as $excluded) {
             self::assertStringNotContainsString('"'.$excluded.'"', $json);
         }

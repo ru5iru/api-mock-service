@@ -19,6 +19,7 @@ final readonly class ImportPlan
         public array $items,
         public array $errors,
         public array $warnings,
+        public array $metadata = [],
     ) {}
 
     public function canApply(): bool
@@ -30,6 +31,7 @@ final readonly class ImportPlan
     public function toArray(): array
     {
         return [
+            'metadata' => $this->metadata,
             'token' => $this->token,
             'digest' => $this->digest,
             'mode' => $this->mode->value,
