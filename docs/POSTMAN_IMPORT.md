@@ -56,6 +56,10 @@ Requests without their own events inherit the nearest ancestor event list. Non-e
 
 Each saved example creates one static Response: status from `code`, response headers, body, and the example name as `external_label`. All examples have weight 1 under **Weighted** selection. Invalid JSON response bodies stay raw with a warning; invalid/missing status falls back to 200 with a warning. Duplicate response header names use the last value because MockDeck stores a header map.
 
+Saved response headers remain available in configuration for review. At serving time, the web server owns Content-Length and hop-by-hop headers such as Transfer-Encoding/Connection; stale example framing is not replayed. Postman-imported endpoints also omit the original Content-Encoding because saved example bodies are decoded text, not compressed wire bytes. Content-Type and application headers are preserved.
+
+Use the dashboard's **Copy mock curl** to test the imported signature. It preserves literal body bytes and suppresses curl's implicit form Content-Type when no header was imported. Commented/invalid JSON remains raw text, including its comments. A request name is only a label: the request URL path defines matching. If multiple items have the same signature, normal priority/ID precedence selects one endpoint; rename alone does not distinguish them. Items with no saved examples need a response added before they can answer.
+
 The original item request always defines matching. If an example's `originalRequest` headers/body differ, the preview warns that the example may be stale. Its URL does not override the item URL. Examples with no original request are accepted. Requests with zero examples create zero responses and show the existing no-response warning; no placeholder is fabricated. The imported example name is visible in the response row's **Details** disclosure.
 
 ## Modes, correlation and undo

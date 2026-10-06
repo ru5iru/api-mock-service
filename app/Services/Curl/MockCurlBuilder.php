@@ -20,9 +20,13 @@ final class MockCurlBuilder
 
         $method = strtoupper($request->method);
         $lines = ['curl '.$this->quote($url)];
+        // Braces in imported literal paths are data, never curl URL globbing.
+        if (strpbrk($url, '{}[]') !== false) {
+            $lines[] = '  --globoff';
+        }
         $curlInfersPost = $request->body !== '' && $method === 'POST';
 
-        if ($method !== 'GET' && ! $curlInfersPost) {
+        if (($method !== 'GET' && ! $curlInfersPost) || ($method === 'GET' && $request->body !== '')) {
             $lines[] = '  --request '.$this->quote($method);
         }
 
@@ -31,7 +35,18 @@ final class MockCurlBuilder
         }
 
         if ($request->body !== '') {
-            $lines[] = '  --data '.$this->quote($request->body);
+            // Suppress curl's implicit form Content-Type when none was saved:
+            // adding that header would change the endpoint's exact signature.
+            $hasContentType = false;
+            foreach ($request->headers as $header) {
+                $hasContentType = $hasContentType || strcasecmp($header['name'], 'Content-Type') === 0;
+            }
+            if (! $hasContentType) {
+                $lines[] = '  --header '.$this->quote('Content-Type:');
+            }
+            // --data-raw preserves inline body bytes, including literal @ text,
+            // rather than treating an @ prefix as a local file to read.
+            $lines[] = '  --data-raw '.$this->quote($request->body);
         }
 
         return implode(" \\\n", $lines);

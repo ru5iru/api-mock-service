@@ -2,7 +2,7 @@ FROM php:8.3-fpm-alpine
 
 ARG APP_ENV=production
 
-RUN apk add --no-cache icu-libs libpq libxml2 libzip oniguruma sqlite-libs \
+RUN apk add --no-cache curl icu-libs libpq libxml2 libzip oniguruma sqlite-libs \
     && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS icu-dev libxml2-dev libzip-dev oniguruma-dev postgresql-dev sqlite-dev \
     && docker-php-ext-install -j"$(nproc)" bcmath dom intl mbstring opcache pcntl pdo_pgsql pdo_sqlite simplexml xml xmlwriter zip \
     && apk del .build-deps
