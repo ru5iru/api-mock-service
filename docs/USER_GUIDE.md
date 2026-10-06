@@ -324,6 +324,8 @@ The response also contains `X-MockDeck-Template-Error: 1`. Logs record the error
 
 Select **Copy mock curl** from an endpoint row. MockDeck replaces the source origin with `APP_URL` and preserves method, path, query, meaningful headers, and body.
 
+The copied command uses `--data-raw` for literal body text, suppresses curl's automatic form Content-Type when the saved request has none, and disables URL globbing for literal braces/brackets. A GET request with a body keeps an explicit GET method. These transport controls ensure the command sends the request that was signed rather than introducing a different header, method, or local-file read.
+
 ```bash
 curl 'http://localhost:18473/v1/items?limit=10' \
   -H 'X-Request-ID: example-001' \

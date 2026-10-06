@@ -27,7 +27,7 @@ final class MockCurlBuilderTest extends TestCase
 curl 'http://localhost:18473/v1/items?limit=10' \
   --header 'Content-Type: application/json' \
   --header 'Authorization: Bearer replace-me' \
-  --data '{"name":"Example"}'
+  --data-raw '{"name":"Example"}'
 CURL, $curl);
     }
 

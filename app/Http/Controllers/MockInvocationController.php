@@ -12,6 +12,7 @@ use App\Services\Matching\EndpointMatcher;
 use App\Services\Response\FaultConfigurationValidator;
 use App\Services\Response\FaultInjectionService;
 use App\Services\Response\FaultPlan;
+use App\Services\Response\ResponseHeaderPolicy;
 use App\Services\Response\ResponseSelectionService;
 use App\Services\Templates\ResponseTemplateEngine;
 use App\Services\Templates\TemplateContext;
@@ -156,6 +157,7 @@ final class MockInvocationController extends Controller
                 }
             }
             $response = response($body, $statusCode);
+            $headers = app(ResponseHeaderPolicy::class)->forServing($headers, ($match->endpoint->external_source['type'] ?? null) === 'postman');
             foreach ($headers as $name => $value) {
                 $response->headers->set((string) $name, (string) $value);
             }
