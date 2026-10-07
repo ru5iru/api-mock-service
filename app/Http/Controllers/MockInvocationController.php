@@ -143,7 +143,7 @@ final class MockInvocationController extends Controller
                     static fn (string|int $name): bool => strcasecmp((string) $name, 'Content-Type') === 0,
                 );
                 if (! $hasContentType) {
-                    $headers['Content-Type'] = 'application/json';
+                    $headers['Content-Type'] = is_string(json_decode((string) $selected->template)) ? 'text/plain; charset=UTF-8' : 'application/json';
                 }
             }
 

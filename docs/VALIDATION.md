@@ -84,10 +84,14 @@ If the health command returns `502`, nginx is running but PHP-FPM is unavailable
 
 ```bash
 docker compose ps -a
-docker compose logs --tail=100 app
+docker compose logs --tail=100 app nginx
 ```
 
 The most common first-start cause is one of the production safety checks rejecting `APP_KEY`, `DB_PASSWORD`, or `MOCK_DASHBOARD_PASSWORD` because it is empty or still contains the value from `.env.example`. Update `.env`, then run `make up` again.
+
+If `/up` and the dashboard work but a particular mock returns nginx HTML `502`, inspect nginx's error log before changing matching rules. `upstream sent invalid header: "\x3a..."` indicates a replayed HTTP/2 pseudo-header such as `:status`. Current import skips these fields and the serving policy filters them from older response maps too. Rebuild and recreate `app`, `callback-worker` and `nginx` after applying the fix. No re-import is needed for serving protection; use **Update matching** only if you want stored response maps cleaned and missing example status codes inferred from `:status`.
+
+A JSON `template_render_failed` error is separate: create the referenced variable in the active Environment or change the response template. A collection item without saved examples still needs a response configured before it can answer.
 
 If PostgreSQL was already initialized before `DB_PASSWORD` changed, its persisted user password may no longer match `.env`. Preserve deployments should restore the password that initialized the volume or update the PostgreSQL role deliberately. Only for a disposable first-time database, remove the volume with `docker compose down -v` before restarting; that command permanently deletes stored endpoints and responses.
 

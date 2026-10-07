@@ -151,6 +151,21 @@
                     @error('configFile') <p class="field-error" role="alert">{{ $message }}</p> @enderror
                 </div>
 
+                @if ($format === 'postman')
+                    <details class="normalized-details" data-disclosure>
+                        <summary><span class="details-chevron" aria-hidden="true">›</span>Also import a Postman Environment file</summary>
+                        <div class="field">
+                            <label for="postman-environment-file">Environment (optional)</label>
+                            <label class="file-dropzone {{ $environmentFile ? 'has-file' : '' }}" data-dropzone for="postman-environment-file">
+                                <input class="sr-only" id="postman-environment-file" type="file" wire:model="environmentFile" accept=".json,application/json">
+                                <strong>{{ $environmentFile ? $environmentFile->getClientOriginalName() : 'Drop an Environment JSON file or browse' }}</strong>
+                                <span>Its values override embedded collection/folder candidates.</span>
+                            </label>
+                            @error('environmentFile') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                        </div>
+                    </details>
+                @endif
+
                 <fieldset class="field option-group import-modes" role="radiogroup" aria-labelledby="import-mode-legend">
                     <legend id="import-mode-legend">Import mode</legend>
                     @foreach ($modes as $importMode)
@@ -193,7 +208,7 @@
         <div class="section-heading">
             <div>
                 <h2 id="preview-heading">Preview</h2>
-                <p>No database changes are made until you confirm the import.</p>
+                <p>Endpoint import and Environment variable creation each require confirmation.</p>
             </div>
         </div>
 
@@ -209,6 +224,48 @@
             @endphp
             @if (($plan['metadata']['format'] ?? '') === 'postman')
                 <p><strong>{{ $plan['metadata']['title'] }}</strong> · {{ $plan['metadata']['request_count'] }} requests · {{ $plan['metadata']['folder_count'] }} folders · {{ $plan['metadata']['warning_count'] }} warnings</p>
+                <div class="selection-preview" aria-label="Postman variable review">
+                    @php($candidates = $plan['metadata']['variable_candidates'] ?? [])
+                    @php($unknown = collect($candidates)->filter(fn ($candidate) => ! $candidate['known'] && ! ($candidate['exists_in_environment'] ?? false))->pluck('name')->all())
+                    <strong>{{ count($candidates) }} variables referenced, {{ count($unknown) }} without a known value</strong>
+                    @if($unknown !== [])<p class="muted">{{ implode(', ', $unknown) }}</p>@endif
+                    <div class="organization-grid">
+                        <div class="field">
+                            <label for="postman-variable-mode">Variable matching</label>
+                            <select class="ui-select" id="postman-variable-mode" wire:model.live="variableMode">
+                                <option value="exclude">Exclude from matching</option><option value="resolve">Resolve using Environment</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="postman-variable-environment">Environment for creation / resolution</label>
+                            <select class="ui-select" id="postman-variable-environment" wire:model.live="variableEnvironmentId">
+                                <option value="">Choose Environment</option>
+                                @foreach($environments as $environment)<option value="{{ $environment->id }}">{{ $environment->name }}</option>@endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <p class="info-note">Exclude ignores the field. Resolve matches today's Environment value literally; a later value change can break matching. Request bodies remain literal.</p>
+                    @if($candidates !== [])
+                        <details class="normalized-details" data-disclosure wire:ignore.self wire:key="postman-variable-candidates" open>
+                            <summary><span class="details-chevron" aria-hidden="true">›</span>Review Environment variable candidates</summary>
+                            <div class="table-scroll"><table class="log-table">
+                                <thead><tr><th>Name</th><th>Candidate value</th><th>Source</th><th>Secret</th></tr></thead>
+                                <tbody>@foreach($candidates as $candidate)
+                                    <tr wire:key="postman-variable-{{ hash('sha256', $candidate['name']) }}">
+                                        <td><code>{{ $candidate['name'] }}</code></td>
+                                        <td>{{ ($candidate['exists_in_environment'] ?? false) ? 'Existing Environment value kept' : (! $candidate['known'] ? 'Empty placeholder' : ($candidate['is_secret'] ? '••••••••' : $candidate['value'])) }}</td>
+                                        <td>{{ implode(', ', $candidate['sources']) }} @if($candidate['scope_conflict'])<x-badge variant="warning">Scoped values differ</x-badge>@endif</td>
+                                        <td><label class="toggle-row"><span>Secret</span><input type="checkbox" wire:model="variableSecretChoices.{{ hash('sha256', $candidate['name']) }}" aria-label="Mark {{ $candidate['name'] }} as secret"></label></td>
+                                    </tr>
+                                @endforeach</tbody>
+                            </table></div>
+                            <button class="button button-primary button-small" type="button" wire:click="createEnvironmentVariables" data-confirm="Create the reviewed variables in the selected Environment? Existing variables will be kept." wire:loading.attr="disabled" wire:target="createEnvironmentVariables" @disabled($variableEnvironmentId === '')>Create these as Environment variables</button>
+                            <small class="muted">Creates missing keys only. Existing values are kept; unknown candidates get an empty value.</small>
+                        </details>
+                    @endif
+                    @error('variableEnvironmentId') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                    @error('variables') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                </div>
                 @if ($plan['metadata']['contains_secrets'] && ! $maskImportedSecrets)
                     <div class="secret-warning">
                         <span aria-hidden="true">!</span>
@@ -268,9 +325,23 @@
                                         <td>{{ $item['variant'] ?? '—' }}</td>
                                         <td>{{ $item['message'] }}</td>
                                     </tr>
+                                    @if(! empty($item['variable_fields']))
+                                        <tr><td colspan="4"><details class="normalized-details" data-disclosure wire:ignore.self wire:key="postman-variable-fields-{{ $loop->index }}">
+                                            <summary><span class="details-chevron" aria-hidden="true">›</span>Variable fields · {{ count($item['variable_fields']) }}</summary>
+                                            @foreach($item['variable_fields'] as $field)
+                                                <div class="field">
+                                                    <label for="variable-field-{{ $field['id'] }}">{{ ucfirst($field['field_type']) }} {{ $field['field_name'] }} · {{ implode(', ', $field['tokens']) }}</label>
+                                                    <select class="ui-select ui-select-dense" id="variable-field-{{ $field['id'] }}" wire:model.live="variableFieldOverrides.{{ $field['id'] }}">
+                                                        <option value="default">Import default ({{ $variableMode }})</option><option value="exclude">Exclude from matching</option><option value="resolve">Resolve using Environment</option>
+                                                    </select>
+                                                    @if($field['error'])<p class="field-error">{{ $field['error'] }}</p>@endif
+                                                </div>
+                                            @endforeach
+                                        </details></td></tr>
+                                    @endif
                                     @if (($item['warnings'] ?? []) !== [])
                                         <tr><td colspan="4">
-                                            <details data-disclosure>
+                                            <details class="normalized-details" data-disclosure>
                                                 <summary><span class="details-chevron" aria-hidden="true">›</span>{{ count($item['warnings']) }} warnings for {{ $item['name'] }}</summary>
                                                 <ul>@foreach ($item['warnings'] as $warning)<li>{{ $warning }}</li>@endforeach</ul>
                                             </details>

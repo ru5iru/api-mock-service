@@ -39,7 +39,9 @@ final class TemplateRenderer
 
         try {
             $output = $this->renderNode($template->root, '/', null, false);
-            $json = json_encode($output, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR);
+            $json = is_string($template->root)
+                ? (string) $output
+                : json_encode($output, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR);
         } catch (TemplateRenderException $exception) {
             throw $exception;
         } catch (JsonException $exception) {

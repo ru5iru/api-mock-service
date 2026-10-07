@@ -19,4 +19,10 @@ final class ResponseHeaderPolicyTest extends TestCase
         self::assertSame($headers, (new ResponseHeaderPolicy)->forServing($headers));
         self::assertSame(['Content-Type' => 'application/json'], (new ResponseHeaderPolicy)->forServing($headers, true));
     }
+
+    public function test_pseudo_headers_invalid_names_and_cgi_status_never_reach_the_server(): void
+    {
+        $headers = [':status' => '200', ':authority' => 'source.test', 'Bad Header' => 'value', "Bad\r\nHeader" => 'value', '' => 'value', 'Status' => '502 Bad Gateway', 'Content-Type' => 'application/json', 'X-Mock' => 'yes'];
+        self::assertSame(['Content-Type' => 'application/json', 'X-Mock' => 'yes'], (new ResponseHeaderPolicy)->forServing($headers));
+    }
 }

@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\Environment;
 use App\Models\EnvironmentVariable;
 use App\Services\Environments\EnvironmentContext;
+use App\Services\Environments\EnvironmentVariableWriter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -126,6 +127,11 @@ final class EnvironmentManager extends Component
         $this->dispatch('toast', message: 'Environment deleted.');
     }
 
+    public function updatedNewVariableKey(): void
+    {
+        $this->newVariableSecret = EnvironmentVariableWriter::sensitiveName($this->newVariableKey);
+    }
+
     public function addVariable(): void
     {
         $data = $this->validate([
@@ -136,7 +142,7 @@ final class EnvironmentManager extends Component
             'newVariableValue' => ['required', 'string', 'max:65535'],
             'newVariableSecret' => ['boolean'],
         ]);
-        $variable = $this->selected()->variables()->create([
+        $variable = app(EnvironmentVariableWriter::class)->create($this->selected(), [
             'key' => $data['newVariableKey'],
             'value' => $data['newVariableValue'],
             'is_secret' => $data['newVariableSecret'],

@@ -8,13 +8,19 @@ use App\Services\Curl\CurlParser;
 use App\Services\Curl\ParsedCurl;
 use App\Services\Curl\RequestCredentialPolicy;
 use App\Services\Curl\RequestUrl;
+use App\Services\Response\ResponseHeaderPolicy;
 use InvalidArgumentException;
 use JsonException;
 
 /** Postman data is parsed only. Scripts and exported file paths are never executed or read. */
 final readonly class PostmanMapper implements ImportMapper
 {
-    public function __construct(private CurlFormatter $formatter, private CurlParser $parser, private CurlHasher $hasher, private RequestCredentialPolicy $credentials, private RequestUrl $urls) {}
+    public function __construct(private CurlFormatter $formatter, private CurlParser $parser, private CurlHasher $hasher, private RequestCredentialPolicy $credentials, private RequestUrl $urls, private array $variableOptions = []) {}
+
+    public function withVariableOptions(array $options): self
+    {
+        return new self($this->formatter, $this->parser, $this->hasher, $this->credentials, $this->urls, $options);
+    }
 
     public function map(string $json, bool $maskSecrets = false): array
     {
@@ -32,12 +38,16 @@ final readonly class PostmanMapper implements ImportMapper
         }
         $title = $this->text($data['info']['name'] ?? 'Postman collection');
         $title = $this->label($title ?: 'Postman collection');
+        $variables = new PostmanVariableCatalog;
+        $rootVariables = $variables->declarations($data['variable'] ?? [], 'Collection');
+        $variables->observe($rootVariables, 'Collection');
+        $environmentValues = $variables->declarations($this->variableOptions['environment_file_values'] ?? [], 'Environment file');
         $items = [];
         $folders = [];
         $responses = 0;
-        $stack = [[$this->list($data['item'] ?? null, 'Collection item'), [], $data['auth'] ?? null, $data['event'] ?? []]];
+        $stack = [[$this->list($data['item'] ?? null, 'Collection item'), [], $data['auth'] ?? null, $data['event'] ?? [], $rootVariables]];
         while ($stack !== []) {
-            [$entries, $path, $auth, $events] = array_pop($stack);
+            [$entries, $path, $auth, $events, $scope] = array_pop($stack);
             foreach ($entries as $entry) {
                 if (! is_array($entry)) {
                     throw new InvalidArgumentException('Every collection item must be a request or a folder.');
@@ -50,7 +60,9 @@ final readonly class PostmanMapper implements ImportMapper
                         throw new InvalidArgumentException('A flattened folder path exceeds the 255-byte Collection name limit. Shorten folder names.');
                     }
                     $folders[] = $folderName;
-                    $stack[] = [$this->list($entry['item'], 'Folder item'), $folder, $entry['auth'] ?? $auth, $entry['event'] ?? $events];
+                    $folderScope = [...$scope, ...$variables->declarations($entry['variable'] ?? [], 'Folder '.$folderName)];
+                    $variables->observe($folderScope, $folderName);
+                    $stack[] = [$this->list($entry['item'], 'Folder item'), $folder, $entry['auth'] ?? $auth, $entry['event'] ?? $events, $folderScope];
                 } elseif (array_key_exists('request', $entry)) {
                     $request = is_string($entry['request']) ? ['url' => $entry['request'], 'method' => 'GET'] : $entry['request'];
                     if (! is_array($request)) {
@@ -58,7 +70,8 @@ final readonly class PostmanMapper implements ImportMapper
                     }
                     $warnings = [];
                     $effectiveEvents = $entry['event'] ?? $request['event'] ?? $events;
-                    $mapped = $this->request($request, $request['auth'] ?? $auth, $warnings, $maskSecrets);
+                    $variables->observe($scope, implode(' / ', $path).'/'.$name, json_encode([array_intersect_key($request, array_flip(['url', 'header', 'body'])), array_map(static fn ($example): array => is_array($example) ? array_intersect_key($example, array_flip(['body', 'header'])) : [], $this->list($entry['response'] ?? [], 'Saved responses')), $request['auth'] ?? $auth], JSON_THROW_ON_ERROR));
+                    $mapped = $this->request($request, $request['auth'] ?? $auth, $warnings, $maskSecrets, implode(' / ', $path).'/'.$name);
                     $this->scripts($effectiveEvents, $warnings);
                     $examples = [];
                     foreach ($this->list($entry['response'] ?? [], 'Saved responses') as $example) {
@@ -67,6 +80,15 @@ final readonly class PostmanMapper implements ImportMapper
                         }
                         $headers = $this->headers($example['header'] ?? []);
                         $code = $example['code'] ?? null;
+                        if (! is_int($code) || $code < 100 || $code > 599) {
+                            foreach ($headers as $header) {
+                                if (strcasecmp($header['name'], ':status') === 0 && preg_match('/^[1-5][0-9]{2}$/D', trim($header['value'])) === 1) {
+                                    $code = (int) trim($header['value']);
+                                    $warnings[] = 'Example status code read from HTTP/2 :status metadata; the pseudo-header is not imported.';
+                                    break;
+                                }
+                            }
+                        }
                         if (! is_int($code) || $code < 100 || $code > 599) {
                             $warnings[] = 'Invalid example status code; using 200.';
                             $code = 200;
@@ -94,6 +116,11 @@ final readonly class PostmanMapper implements ImportMapper
                         }
                         $headerMap = [];
                         foreach ($headers as $header) {
+                            if (! app(ResponseHeaderPolicy::class)->validName($header['name'])) {
+                                $warnings[] = 'Example header '.$header['name'].' is protocol metadata or an invalid HTTP field name; not imported.';
+
+                                continue;
+                            }
                             if ($this->credentials->sensitive($header['name'], $header['value'])) {
                                 $mapped['contains_secrets'] = true;
                                 if ($maskSecrets) {
@@ -105,7 +132,8 @@ final readonly class PostmanMapper implements ImportMapper
                             }
                             $headerMap[$header['name']] = $header['value'];
                         }
-                        $examples[] = ['status_code' => $code, 'headers' => $headerMap, 'body' => $body, 'external_label' => isset($example['name']) ? $this->label($this->text($example['name'])) : null, 'weight' => 1, 'body_mode' => 'static'];
+                        $rewritten = app(PostmanResponseVariables::class)->rewrite($body, $warnings);
+                        $examples[] = ['status_code' => $code, 'headers' => $headerMap, 'body' => $body, 'external_label' => isset($example['name']) ? $this->label($this->text($example['name'])) : null, 'weight' => 1, ...$rewritten];
                     }
                     if ($maskSecrets) {
                         $mapped['raw_curl'] = $this->credentials->maskCurl($mapped['raw_curl']);
@@ -129,16 +157,24 @@ final readonly class PostmanMapper implements ImportMapper
             }
         }
 
-        return ['type' => 'postman', 'title' => $title, 'folders' => array_values(array_unique($folders)), 'items' => $items, 'warnings' => ['Renaming an item or moving it between folders changes its correlation key: a later import creates a new endpoint instead of updating it.']];
+        $documentWarnings = ['Renaming an item or moving it between folders changes its correlation key: a later import creates a new endpoint instead of updating it.'];
+        $variableCandidates = $variables->candidates($environmentValues, $documentWarnings);
+        foreach ($variableCandidates as &$candidate) {
+            $candidate['exists_in_environment'] = array_key_exists($candidate['name'], $this->variableOptions['environment_values'] ?? []);
+        }
+        unset($candidate);
+
+        return ['variable_candidates' => $variableCandidates, 'type' => 'postman', 'title' => $title, 'folders' => array_values(array_unique($folders)), 'items' => $items, 'warnings' => $documentWarnings];
     }
 
-    private function request(array $request, mixed $auth, array &$warnings, bool $maskSecrets = false): array
+    private function request(array $request, mixed $auth, array &$warnings, bool $maskSecrets = false, string $fieldScope = ''): array
     {
         [$path, $query] = $this->url($request['url'] ?? null);
         $headers = $this->headers($request['header'] ?? []);
+        $provenance = [];
         $excludeHeaders = [];
         $excludeQuery = [];
-        $this->auth($auth, $headers, $query, $excludeHeaders, $warnings);
+        $this->auth($auth, $headers, $query, $excludeHeaders, $warnings, $provenance);
         $names = [];
         $pattern = false;
         $parameterSegments = [];
@@ -176,9 +212,26 @@ final readonly class PostmanMapper implements ImportMapper
         }
         $path = implode('/', $segments);
         $secrets = false;
+        $fieldResolver = new PostmanFieldResolver($this->variableOptions);
         foreach ($headers as &$header) {
-            if ($this->variable($header['value'])) {
-                $excludeHeaders[] = strtolower($header['name']);
+            $tokens = (new PostmanVariableCatalog)->tokens($header['value']);
+            $basic = collect($provenance)->first(fn ($entry) => $entry['field_name'] === strtolower($header['name']) && ($entry['auth_encoding'] ?? '') === 'basic');
+            if ($basic !== null) {
+                $tokens = $basic['tokens'];
+                // Resolve Basic credentials before base64 encoding, just as exclusion detection does.
+                $header['value'] = 'Basic '.base64_decode(substr($header['value'], 6));
+            }
+            if ($tokens !== []) {
+                $sourceValue = $basic !== null ? substr($header['value'], 6) : $header['value'];
+                $resolved = $fieldResolver->resolve($fieldScope, 'header', strtolower($header['name']), $sourceValue, $tokens);
+                $header['value'] = $basic !== null ? 'Basic '.base64_encode($resolved['value']) : $resolved['value'];
+                $provenance = array_values(array_filter($provenance, fn ($entry) => ! isset($entry['auth_encoding'])));
+                $provenance[] = $resolved['field'];
+                if ($resolved['field']['mode'] === 'exclude' || $resolved['field']['error']) {
+                    $excludeHeaders[] = strtolower($header['name']);
+                } else {
+                    $excludeHeaders = array_values(array_diff($excludeHeaders, [strtolower($header['name'])]));
+                }
             }
             $sensitive = $this->credentials->sensitive($header['name'], $header['value']);
             $secrets = $secrets || $sensitive;
@@ -189,8 +242,14 @@ final readonly class PostmanMapper implements ImportMapper
         unset($header);
         $pairs = [];
         foreach ($query as $parameter) {
-            if ($this->variable($parameter['value'])) {
-                $excludeQuery[] = $parameter['name'];
+            $tokens = (new PostmanVariableCatalog)->tokens($parameter['value']);
+            if ($tokens !== []) {
+                $resolved = $fieldResolver->resolve($fieldScope, 'query', $parameter['name'], $parameter['value'], $tokens);
+                $parameter['value'] = $resolved['value'];
+                $provenance[] = $resolved['field'];
+                if ($resolved['field']['mode'] === 'exclude' || $resolved['field']['error']) {
+                    $excludeQuery[] = $parameter['name'];
+                }
             }
             $sensitive = $this->credentials->sensitive($parameter['name'], $parameter['value'], true);
             $secrets = $secrets || $sensitive;
@@ -198,6 +257,18 @@ final readonly class PostmanMapper implements ImportMapper
                 $parameter['value'] = 'REPLACE_ME';
             }
             $pairs[] = rawurlencode($parameter['name']).'='.rawurlencode($parameter['value']);
+        }
+        $grouped = [];
+        foreach ($provenance as $field) {
+            $key = $field['field_type']."\0".$field['field_name'];
+            $previous = $grouped[$key] ?? null;
+            $field['tokens'] = array_values(array_unique([...($previous['tokens'] ?? []), ...$field['tokens']]));
+            $field['error'] = $previous['error'] ?? $field['error'];
+            $grouped[$key] = $field;
+        }
+        $provenance = array_values($grouped);
+        foreach ($provenance as $entry) {
+            $warnings[] = ucfirst($entry['field_type']).' '.$entry['field_name'].' variable tokens: '.implode(', ', $entry['tokens']).' ('.$entry['mode'].').';
         }
         foreach (array_unique($excludeHeaders) as $name) {
             $warnings[] = 'Header '.$name.' excluded: contains a Postman variable.';
@@ -226,7 +297,7 @@ final readonly class PostmanMapper implements ImportMapper
         $parsed = new ParsedCurl(strtoupper($this->text($request['method'] ?? 'GET')), $url, $headers, $body);
         $variant = $this->hasher->forOptions($parsed, false, false, false, array_values(array_unique($excludeQuery)), array_values(array_unique($excludeHeaders)), $pattern);
 
-        return ['method' => $parsed->method, 'path' => $path, 'raw_curl' => $this->formatter->format($parsed), 'variant' => $variant->name, 'excluded_query_params' => array_values(array_unique($excludeQuery)), 'excluded_headers' => array_values(array_unique($excludeHeaders)), 'path_pattern_enabled' => $pattern, 'contains_secrets' => $secrets];
+        return ['variable_provenance' => $provenance, 'method' => $parsed->method, 'path' => $path, 'raw_curl' => $this->formatter->format($parsed), 'variant' => $variant->name, 'excluded_query_params' => array_values(array_unique($excludeQuery)), 'excluded_headers' => array_values(array_unique($excludeHeaders)), 'path_pattern_enabled' => $pattern, 'contains_secrets' => $secrets];
     }
 
     private function url(mixed $url): array
@@ -260,7 +331,7 @@ final readonly class PostmanMapper implements ImportMapper
         return [$parts['path'] ?? '/', $query];
     }
 
-    private function auth(mixed $auth, array &$headers, array &$query, array &$excluded, array &$warnings): void
+    private function auth(mixed $auth, array &$headers, array &$query, array &$excluded, array &$warnings, array &$provenance): void
     {
         if ($auth === null) {
             return;
@@ -299,6 +370,7 @@ final readonly class PostmanMapper implements ImportMapper
                 $plain = ($values['username'] ?? '').':'.($values['password'] ?? '');
                 if ($this->variable($plain)) {
                     $excluded[] = 'authorization';
+                    $provenance[] = ['field_type' => 'header', 'field_name' => 'authorization', 'tokens' => (new PostmanVariableCatalog)->tokens($plain), 'mode' => 'exclude', 'auth_encoding' => 'basic'];
                 }
                 $value = 'Basic '.base64_encode($plain);
             }
