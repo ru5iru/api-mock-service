@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Environment;
 use App\Models\EnvironmentVariable;
+use App\Services\Environments\EnvironmentVariableWriter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,7 +20,7 @@ final class EnvironmentVariableController extends Controller
 
     public function store(Request $request, Environment $environment): JsonResponse
     {
-        $variable = $environment->variables()->create($this->validated($request, $environment));
+        $variable = app(EnvironmentVariableWriter::class)->create($environment, $this->validated($request, $environment));
 
         return response()->json($this->resource($variable), 201);
     }

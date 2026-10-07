@@ -9,6 +9,7 @@ use App\Models\Revision;
 use App\Services\Config\ConfigExporter;
 use App\Services\Config\ConfigImporter;
 use App\Services\Config\ImportMode;
+use App\Services\Environments\EnvironmentContext;
 use App\Services\Imports\MappedImportService;
 use App\Services\Imports\PostmanMapper;
 use App\Services\Revisions\RevisionManager;
@@ -53,6 +54,16 @@ final class ConfigTransfer extends Component
 
     public bool $maskImportedSecrets = false;
 
+    public ?TemporaryUploadedFile $environmentFile = null;
+
+    public string $variableMode = 'exclude';
+
+    public string $variableEnvironmentId = '';
+
+    public array $variableFieldOverrides = [];
+
+    public array $variableSecretChoices = [];
+
     public bool $replaceResponses = false;
 
     public bool $acknowledgeWarnings = false;
@@ -86,6 +97,51 @@ final class ConfigTransfer extends Component
         $this->format = $format;
         $this->removeFile();
         $this->maskImportedSecrets = false;
+        $this->environmentFile = null;
+        $this->variableMode = 'exclude';
+        $this->variableFieldOverrides = [];
+    }
+
+    public function updatedEnvironmentFile(): void
+    {
+        $this->clearPreview();
+    }
+
+    public function updatedVariableMode(): void
+    {
+        $this->refreshVariablePreview();
+    }
+
+    public function updatedVariableEnvironmentId(): void
+    {
+        $this->refreshVariablePreview();
+    }
+
+    public function updatedVariableFieldOverrides(): void
+    {
+        $this->refreshVariablePreview();
+    }
+
+    private function refreshVariablePreview(): void
+    {
+        if ($this->configFile && $this->plan !== []) {
+            $this->clearPreview();
+            $this->preview(app(ConfigImporter::class));
+        }
+    }
+
+    public function createEnvironmentVariables(): void
+    {
+        $this->validate(['variableEnvironmentId' => ['required', 'exists:environments,id']]);
+        try {
+            $result = app(MappedImportService::class)->createVariables((string) ($this->plan['token'] ?? ''), (string) ($this->plan['digest'] ?? ''), Environment::findOrFail($this->variableEnvironmentId), $this->variableSecretChoices);
+        } catch (InvalidArgumentException $exception) {
+            $this->addError('variables', $exception->getMessage());
+
+            return;
+        }
+        $this->dispatch('toast', message: $result['created'].' variables created; '.$result['skipped'].' existing variables kept.');
+        $this->preview(app(ConfigImporter::class));
     }
 
     public function maskSecrets(): void
@@ -150,6 +206,9 @@ final class ConfigTransfer extends Component
     public function removeFile(): void
     {
         $this->configFile = null;
+        $this->environmentFile = null;
+        $this->variableFieldOverrides = [];
+        $this->variableSecretChoices = [];
         $this->clearPreview();
         $this->resetValidation('configFile');
     }
@@ -184,6 +243,11 @@ final class ConfigTransfer extends Component
             'mode' => ['required', 'in:create-only,upsert,clone'],
             'format' => ['required', 'in:native,postman'],
             'replaceResponses' => ['boolean'],
+            'variableMode' => ['in:exclude,resolve'],
+            'variableEnvironmentId' => ['nullable', 'exists:environments,id'],
+            'environmentFile' => ['nullable', 'file', 'max:'.(int) ceil(config('mock.portable_config.max_bytes', 2097152) / 1024)],
+            'variableFieldOverrides.*' => ['in:default,exclude,resolve'],
+            'variableSecretChoices.*' => ['boolean'],
         ]);
 
         if (strtolower((string) $this->configFile?->getClientOriginalExtension()) !== 'json') {
@@ -199,9 +263,28 @@ final class ConfigTransfer extends Component
             return;
         }
 
+        $environmentValues = [];
+        if ($this->format === 'postman' && $this->environmentFile) {
+            try {
+                $environmentDocument = json_decode(file_get_contents($this->environmentFile->getRealPath()), true, 64, JSON_THROW_ON_ERROR);
+                if (! is_array($environmentDocument['values'] ?? null) || ! array_is_list($environmentDocument['values'])) {
+                    throw new InvalidArgumentException('Environment file must contain a values array.');
+                }
+                $environmentValues = $environmentDocument['values'];
+            } catch (JsonException|InvalidArgumentException $exception) {
+                $this->addError('environmentFile', $exception->getMessage());
+
+                return;
+            }
+        }
+        $variableOptions = ['mode' => $this->variableMode, 'field_overrides' => $this->variableFieldOverrides, 'environment_file_values' => $environmentValues, 'environment_values' => $this->variableEnvironmentId !== '' ? app(EnvironmentContext::class)->variables(Environment::findOrFail($this->variableEnvironmentId)) : []];
         $this->plan = ($this->format === 'postman'
-            ? app(MappedImportService::class)->preview(app(PostmanMapper::class), $json, ImportMode::from($this->mode), $this->maskImportedSecrets)
+            ? app(MappedImportService::class)->preview(app(PostmanMapper::class)->withVariableOptions($variableOptions), $json, ImportMode::from($this->mode), $this->maskImportedSecrets)
             : $importer->preview($json, ImportMode::from($this->mode), $this->replaceResponses))->toArray();
+        foreach ($this->plan['metadata']['variable_candidates'] ?? [] as $candidate) {
+            $id = hash('sha256', $candidate['name']);
+            $this->variableSecretChoices[$id] ??= $candidate['is_secret'];
+        }
         $this->summary = [];
         $this->importUndone = false;
         $this->acknowledgeWarnings = false;

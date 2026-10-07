@@ -34,6 +34,11 @@ final class MockCurlInvocationTest extends TestCase
         $this->assertCopiedCurlMatches('GET', '/v{{version}}/users', [], '');
     }
 
+    public function test_form_post_copied_curl_serves_legacy_http2_examples_without_pseudo_headers(): void
+    {
+        $this->assertCopiedCurlMatches('POST', '/data/cv/send-cv-otp', [['key' => 'Content-Type', 'value' => 'application/x-www-form-urlencoded; charset=UTF-8'], ['key' => 'Cookie', 'value' => 'session=fixture']], 'lang=en&session_id=fixture&contact_number=encoded%3D');
+    }
+
     private function assertCopiedCurlMatches(string $method, string $path, array $headers, string $body): void
     {
         $json = json_encode([
@@ -55,6 +60,10 @@ final class MockCurlInvocationTest extends TestCase
         self::assertSame([], $plan->errors);
         $imports->apply($plan->token, $plan->digest);
         $endpoint = MockEndpoint::query()->sole();
+        // Already-imported header maps must also be safe without requiring a
+        // destructive re-import or a configuration migration.
+        $saved = $endpoint->responses()->sole();
+        $saved->update(['headers' => [...$saved->headers, ':status' => '200', 'Status' => '502 Bad Gateway']]);
         $wire = $this->sendCopiedCurl(app(CurlParser::class)->parse($endpoint->raw_curl));
         self::assertSame($method, $wire['method']);
         self::assertSame($body, base64_decode($wire['body']));
@@ -70,6 +79,8 @@ final class MockCurlInvocationTest extends TestCase
         self::assertFalse($reply->headers->has('Content-Encoding'));
         self::assertFalse($reply->headers->has('Content-Length'));
         self::assertFalse($reply->headers->has('Connection'));
+        self::assertFalse($reply->headers->has(':status'));
+        self::assertFalse($reply->headers->has('Status'));
     }
 
     private function sendCopiedCurl(ParsedCurl $request): array

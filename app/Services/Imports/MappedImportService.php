@@ -3,12 +3,14 @@
 namespace App\Services\Imports;
 
 use App\Models\Collection;
+use App\Models\Environment;
 use App\Models\MockEndpoint;
 use App\Services\Config\ImportMode;
 use App\Services\Config\ImportPlan;
 use App\Services\Config\ImportSummary;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\CurlParser;
+use App\Services\Environments\EnvironmentVariableWriter;
 use App\Services\Revisions\RevisionManager;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -46,6 +48,9 @@ final readonly class MappedImportService
                 $document = $cached['document'];
                 $mode = $cached['mode'];
                 $plan = $this->analyze($document, $mode, $token, $digest);
+                if ($plan->errors !== []) {
+                    throw new InvalidArgumentException(implode(' ', $plan->errors));
+                }
                 $created = $updated = $responseCreated = $responseUpdated = $responseDeleted = $snapshots = 0;
                 $batch = (string) Str::uuid();
                 foreach ($document['folders'] as $folder) {
@@ -73,13 +78,13 @@ final readonly class MappedImportService
                         'excluded_query_params' => $item['excluded_query_params'], 'excluded_headers' => $item['excluded_headers'],
                         'path_pattern_enabled' => $item['path_pattern_enabled'],
                         'selection_mode' => 'weighted', 'sequence_on_exhaust' => null,
-                        'external_source' => ['type' => $document['type'], 'correlation_key' => $item['correlation_key'], 'spec_title' => $document['title'], 'imported_at' => now()->utc()->toIso8601String()],
+                        'external_source' => ['type' => $document['type'], 'correlation_key' => $item['correlation_key'], 'spec_title' => $document['title'], 'imported_at' => now()->utc()->toIso8601String(), 'variable_provenance' => $item['variable_provenance'] ?? []],
                     ])->save();
                     $before === null ? $created++ : $updated++;
                     foreach ($item['responses'] as $position => $response) {
                         // Imported examples are static, equally weighted, with no inferred callback/fault intent.
                         $attributes = [...$response, 'delay_ms' => 0, 'sequence_order' => null, 'is_default' => false,
-                            'template' => null, 'editor_view' => 'json', 'seed_mode' => 'random', 'seed' => null, 'locale' => 'en',
+                            'template' => $response['template'] ?? null, 'editor_view' => 'json', 'seed_mode' => 'random', 'seed' => null, 'locale' => 'en',
                             'fault_enabled' => false, 'fault_type' => 'delay', 'fault_delay_ms_min' => 0, 'fault_delay_ms_max' => null, 'fault_probability' => 100,
                             'callback_enabled' => false, 'callback_url' => null, 'callback_headers' => null, 'callback_body' => null,
                             'callback_signing_enabled' => false, 'callback_signing_secret' => null];
@@ -110,8 +115,36 @@ final readonly class MappedImportService
         });
     }
 
+    public function createVariables(string $token, string $digest, Environment $environment, array $secretChoices = []): array
+    {
+        $cached = Cache::get('mapped-import:'.$token);
+        if (! is_array($cached) || ! hash_equals($cached['digest'], $digest)) {
+            throw new InvalidArgumentException('Preview expired. Preview the collection again.');
+        }
+
+        return DB::transaction(function () use ($cached, $environment, $secretChoices): array {
+            $environment = Environment::query()->lockForUpdate()->findOrFail($environment->id);
+            $created = $skipped = 0;
+            foreach ($cached['document']['variable_candidates'] ?? [] as $candidate) {
+                if ($environment->variables()->where('key', $candidate['name'])->exists()) {
+                    $skipped++;
+
+                    continue;
+                }
+                $secret = $secretChoices[hash('sha256', $candidate['name'])] ?? $candidate['is_secret'];
+                app(EnvironmentVariableWriter::class)->create($environment, [
+                    'key' => $candidate['name'], 'value' => $candidate['value'] ?? '', 'is_secret' => $secret,
+                ]);
+                $created++;
+            }
+
+            return compact('created', 'skipped');
+        }, 3);
+    }
+
     private function analyze(array $document, ImportMode $mode, string $token, string $digest): ImportPlan
     {
+        $errors = [];
         $counts = ['creates' => 0, 'updates' => 0, 'conflicts' => 0, 'revision_snapshots' => 0];
         $items = [];
         $seen = [];
@@ -124,6 +157,11 @@ final readonly class MappedImportService
             $duplicate = isset($seen[$item['correlation_key']]);
             $action = $mode === ImportMode::Clone ? 'create' : ($duplicate ? 'skip' : ($existing ? ($mode === ImportMode::CreateOnly ? 'skip' : 'update') : 'create'));
             $warnings = $item['warnings'];
+            foreach ($item['variable_provenance'] ?? [] as $field) {
+                if ($action !== 'skip' && ($field['error'] ?? null)) {
+                    $errors[] = $field['error'];
+                }
+            }
             if ($duplicate && $mode !== ImportMode::Clone) {
                 $warnings[] = 'Duplicate correlation key in this file; only the first request is imported.';
             }
@@ -133,6 +171,7 @@ final readonly class MappedImportService
             $items[] = [
                 'uuid' => $existing?->uuid ?? '', 'name' => $item['name'], 'method' => $item['method'], 'path' => $item['path'],
                 'variant' => $item['variant'], 'collection' => $item['collection'], 'response_count' => count($item['responses']),
+                'variable_fields' => $item['variable_provenance'] ?? [],
                 'action' => $action, 'warnings' => $warnings,
                 'message' => match ($action) {
                     'update' => 'Replace the matched endpoint request and saved response pool.', 'skip' => 'Correlation key already present; no changes.', default => 'Create endpoint and saved examples.'
@@ -149,7 +188,8 @@ final readonly class MappedImportService
             $secrets = $secrets || $item['contains_secrets'];
         }
 
-        return new ImportPlan($token, $digest, $mode, true, $counts, $items, [], $document['warnings'], [
+        return new ImportPlan($token, $digest, $mode, true, $counts, $items, array_values(array_unique($errors)), $document['warnings'], [
+            'variable_candidates' => array_map(static fn (array $candidate): array => [...$candidate, 'value' => $candidate['is_secret'] ? null : $candidate['value']], $document['variable_candidates'] ?? []),
             'format' => $document['type'], 'title' => $document['title'], 'request_count' => count($items),
             'folder_count' => count($document['folders']), 'warning_count' => $warningCount, 'contains_secrets' => $secrets,
         ]);

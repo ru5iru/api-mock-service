@@ -66,6 +66,8 @@ final class FakerMethodCatalog
             'internet.url' => ['formatter' => 'url'],
             'phone.number' => ['formatter' => 'phoneNumber'],
             'company.name' => ['formatter' => 'company'],
+            'date.now' => [],
+            'date.epochS' => [],
             'date.recent' => [
                 'sampleArgs' => [['days' => 1]],
                 'argsHint' => ['days' => ['type' => 'integer', 'min' => 1, 'max' => 3650, 'default' => 1]],
@@ -312,6 +314,8 @@ final class FakerMethodCatalog
         $options = isset($args[0]) && is_array($args[0]) && ! array_is_list($args[0]) ? $args[0] : [];
 
         return match ($id) {
+            'date.now' => new DateTimeImmutable('now', new \DateTimeZone('UTC')),
+            'date.epochS' => time(),
             'number.int' => $faker->numberBetween(
                 (int) ($options['min'] ?? ($args[0] ?? 0)),
                 (int) ($options['max'] ?? ($args[1] ?? 9999)),

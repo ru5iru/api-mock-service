@@ -265,7 +265,7 @@
                             @foreach ($headerAnalysis as $header)
                                 <div class="{{ $header['excluded_reason'] ? 'excluded' : '' }}">
                                     <code>@if($header['excluded_reason'])<del>{{ $header['name'] }}</del>@else{{ $header['name'] }}@endif</code>
-                                    <span>{{ $header['excluded_reason'] ?: 'included in signature' }}@if($header['coarse_excluded'] && in_array($header['normalized_name'], $excludedHeaderNames, true)) · individual exclusion retained (redundant)@endif</span>
+                                    <span>{{ $header['excluded_reason'] ?: 'included in signature' }} @if($header['excluded_reason'] && $header['variable_tokens'] !== [])<small>{{ implode(', ', $header['variable_tokens']) }}</small>@endif@if($header['coarse_excluded'] && in_array($header['normalized_name'], $excludedHeaderNames, true)) · individual exclusion retained (redundant)@endif</span>
                                     <label class="toggle-row field-exclusion-toggle {{ $header['coarse_excluded'] ? 'overridden' : '' }}">
                                         <span>Exclude</span><input type="checkbox" wire:model.live="excludedHeaderNames" value="{{ $header['normalized_name'] }}" aria-label="Exclude header {{ $header['name'] }}" @disabled($header['coarse_excluded'])>
                                     </label>
@@ -282,7 +282,7 @@
                         <div class="parsed-policy-list">
                             @foreach ($queryParameters as $parameter)
                                 <div class="{{ $parameter['excluded'] ? 'excluded' : '' }}">
-                                    <code>@if($parameter['excluded'])<del>{{ $parameter['key'] }}</del>@else{{ $parameter['key'] }}@endif</code><span>{{ Str::limit($parameter['display_value'], 80) }}</span>
+                                    <code>@if($parameter['excluded'])<del>{{ $parameter['key'] }}</del>@else{{ $parameter['key'] }}@endif</code><span>{{ Str::limit($parameter['display_value'], 80) }} @if($parameter['excluded'] && $parameter['variable_tokens'] !== [])<small>{{ implode(', ', $parameter['variable_tokens']) }}</small>@endif</span>
                                     <label class="toggle-row field-exclusion-toggle"><span>Exclude</span><input type="checkbox" wire:model.live="excludedQueryParams" value="{{ $parameter['key'] }}" aria-label="Exclude query {{ $parameter['key'] }}"></label>
                                 </div>
                             @endforeach

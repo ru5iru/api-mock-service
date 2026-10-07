@@ -567,6 +567,23 @@ final class ConfigValidator
                 if (! $valid) {
                     $this->errors[] = "$.endpoints[{$i}].external_source must contain type, correlation_key, spec_title and imported_at strings.";
                 }
+                if (isset($source['variable_provenance'])) {
+                    $provenance = $source['variable_provenance'];
+                    if (! is_array($provenance) || ! array_is_list($provenance) || count($provenance) > 500) {
+                        $this->errors[] = "$.endpoints[{$i}].external_source.variable_provenance must be a bounded list.";
+                    } else {
+                        foreach ($provenance as $field) {
+                            if (! is_array($field) || ! in_array($field['field_type'] ?? null, ['header', 'query'], true)
+                                || ! is_string($field['field_name'] ?? null) || strlen($field['field_name']) > 65535
+                                || ! in_array($field['mode'] ?? null, ['exclude', 'resolve'], true)
+                                || ! is_array($field['tokens'] ?? null) || ! array_is_list($field['tokens'])
+                                || count($field['tokens']) > 500
+                                || collect($field['tokens'])->contains(fn ($token) => ! is_string($token) || strlen($token) > 65535)) {
+                                $this->errors[] = "$.endpoints[{$i}].external_source.variable_provenance has an invalid field/token annotation.";
+                            }
+                        }
+                    }
+                }
             }
             if (! is_array($endpoint['responses'] ?? null)) {
                 continue;

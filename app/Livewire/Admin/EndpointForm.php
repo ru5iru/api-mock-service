@@ -34,6 +34,8 @@ curl --request POST 'https://api.example.test/v1/items?limit=10' \
   --data '{"name":"Example"}'
 CURL;
 
+    private ?array $importVariableProvenance = null;
+
     public ?int $endpointId = null;
 
     public string $name = '';
@@ -680,6 +682,7 @@ CURL;
             }
 
             return [
+                'variable_tokens' => $this->variableTokens('header', $name),
                 'normalized_name' => $name,
                 'coarse_excluded' => $coarseExcluded,
                 'name' => $header['name'],
@@ -692,6 +695,13 @@ CURL;
     }
 
     /** @return list<array{key: string, value: string, display_value: string, sensitive: bool}> */
+    private function variableTokens(string $type, string $name): array
+    {
+        $this->importVariableProvenance ??= ($this->endpointId ? MockEndpoint::find($this->endpointId)?->external_source['variable_provenance'] ?? [] : []);
+
+        return collect($this->importVariableProvenance)->where('field_type', $type)->where('field_name', $name)->pluck('tokens')->flatten()->unique()->values()->all();
+    }
+
     private function queryParameters(ParsedCurl $parsed): array
     {
         $query = (string) (parse_url($parsed->url, PHP_URL_QUERY) ?? '');
@@ -706,6 +716,7 @@ CURL;
             $sensitive = app(RequestCredentialPolicy::class)->sensitive($decodedKey, $decodedValue, true);
 
             return [
+                'variable_tokens' => $this->variableTokens('query', $decodedKey),
                 'key' => $decodedKey,
                 'excluded' => in_array($decodedKey, $this->excludedQueryParams, true),
                 'value' => $decodedValue,

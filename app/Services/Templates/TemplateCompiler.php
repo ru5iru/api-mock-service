@@ -39,8 +39,8 @@ final class TemplateCompiler
             return new TemplateValidationResult(null, $this->issues);
         }
 
-        if (! is_array($root) && ! $root instanceof stdClass) {
-            $this->issue('error', 'INVALID_JSON', '/', 'The template root must be an object, array, or $repeat directive.');
+        if (! is_array($root) && ! $root instanceof stdClass && ! is_string($root)) {
+            $this->issue('error', 'INVALID_JSON', '/', 'The template root must be an object, array, $repeat directive, or a JSON string for a text body.');
         } else {
             $this->walk($root, '/', 0, false, false);
         }

@@ -148,6 +148,26 @@ final class PostmanImportTest extends TestCase
         self::assertStringNotContainsString('different', $endpoint->normalized_curl);
     }
 
+    public function test_http2_example_metadata_supplies_missing_status_without_becoming_response_headers(): void
+    {
+        $json = $this->document([$this->item(extra: ['response' => [
+            ['header' => [['key' => ':status', 'value' => '422'], ['key' => ':authority', 'value' => 'source.test'], ['key' => 'Bad Header', 'value' => 'ignored'], ['key' => 'Content-Type', 'value' => 'application/json']], 'body' => '{"ok":false}'],
+            ['code' => 201, 'header' => [['key' => ':status', 'value' => '500']], 'body' => 'created'],
+            ['header' => [['key' => ':status', 'value' => 'invalid']], 'body' => 'fallback'],
+        ]])]);
+        $mapped = app(PostmanMapper::class)->map($json);
+        self::assertSame([422, 201, 200], array_column($mapped['items'][0]['responses'], 'status_code'));
+        self::assertSame(['Content-Type' => 'application/json'], $mapped['items'][0]['responses'][0]['headers']);
+        self::assertSame([], $mapped['items'][0]['responses'][1]['headers']);
+        self::assertStringContainsString('status code read from HTTP/2 :status', implode(' ', $mapped['items'][0]['warnings']));
+        self::assertStringContainsString('Bad Header', implode(' ', $mapped['items'][0]['warnings']));
+        $this->import($json);
+        self::assertSame([422, 201, 200], MockEndpoint::query()->sole()->responses->pluck('status_code')->all());
+        foreach (MockEndpoint::query()->sole()->responses as $response) {
+            self::assertArrayNotHasKey(':status', $response->headers);
+        }
+    }
+
     public function test_create_skip_update_batch_undo_and_clone_preserve_runtime_state(): void
     {
         $original = $this->document([$this->item(extra: ['response' => [['name' => 'Old', 'code' => 200, 'body' => 'old']]])]);

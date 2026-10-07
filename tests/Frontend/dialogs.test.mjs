@@ -20,7 +20,7 @@ test('every application confirmation uses the shared dialog rather than a browse
         }
     }
     const sites = ['response-manager', 'environment-manager', 'revision-history', 'config-transfer', 'endpoint-index'];
-    assert.equal(sites.reduce((count, site) => count + (read(`resources/views/livewire/admin/${site}.blade.php`).match(/data-confirm="/g) ?? []).length, 0), 8);
+    assert.equal(sites.reduce((count, site) => count + (read(`resources/views/livewire/admin/${site}.blade.php`).match(/data-confirm="/g) ?? []).length, 0), 9);
     assert.match(read('resources/views/layouts/dashboard.blade.php'), /await window\.MockDeck\.ask/);
 });
 
