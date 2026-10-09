@@ -57,6 +57,8 @@ Tertiary defaults to minimum 40px and 10px horizontal padding. Text defaults to 
 
 **States:** normal hover adds `--shadow-md`; active enabled `.button` translates down 1px and uses `--shadow-sm`. Primary starts with `--shadow-sm`. Focus-visible is the global 2px `--focus-ring` outline, offset 3px. Disabled `.button`: `--disabled-bg`, `--disabled-fg`, `--border`, no transform/shadow, not-allowed cursor; hover is excluded. Disabled row/text commands use `--disabled-fg`, not-allowed cursor. Loading uses `wire:loading.attr="disabled"` and an explicit target; it has the same disabled appearance, not a separate color.
 
+**Clipboard commands:** the dashboard shell's delegated `[data-copy-curl]` handler uses the secondary/small Button recipe and native disabled state while copying, then the existing Copied/Copy failed labels and toast feedback. Endpoint rows supply `data-copy-endpoint="{{ $endpoint->id }}"` and an empty `data-copy-curl`; the handler calls that row component's `copyMockCurl` action before writing the clipboard. Resolve secrets at this explicit action boundary, never in row attributes. Static `data-copy-curl` payloads remain supported by the same handler. A null action result leaves the clipboard unchanged and uses the server's specific danger toast. No separate button or loading style is introduced.
+
 **Examples (all variants and size modifiers):**
 
 ```blade
@@ -82,6 +84,8 @@ Tertiary defaults to minimum 40px and 10px horizontal padding. Text defaults to 
 **Classes/tokens:** every native select has `ui-select`. The standard variant has 48px minimum height, 10px 40px 10px 12px padding, 1px `--border-strong`, `--radius-md` (6px), `--surface` background and `--text`, 13px type / `--line-height-base`. `ui-select-dense` gives Locale/Seed, schema and list-count controls 44px minimum and8px block padding. `ui-select-filter` gives filters40px minimum and7px block padding; `ui-select-bulk` gives desktop bulk actions34px minimum and5px block padding. Both compact variants are44px minimum at <=767px. Filter/bulk labels use600 weight. All variants use appearance:none and **the same** `--select-chevron` image,16px at right12px center; right padding40px reserves its space. Native option colors inherit `--text`/`--surface`; the OS still owns the opened native menu.
 
 **Chevron anatomy:** `resources/views/components/chevron.blade.php`, `<x-chevron />`, renders `span.control-chevron[aria-hidden=true]`. Exactly16x16px with fixed16px flex basis and the same `--select-chevron` token used by native selects. It rotates180deg when its direct trigger has aria-expanded=true, using `--motion-fast`. Environment, Faker, user and mobile navigation triggers reuse this component; do not use font glyphs such as ⌄ for menu arrows. Theme/overflow/argument triggers retain their labelled icon affordances. Header environment/user/theme triggers have40px minimum; Faker44px; mobile navigation44px. Trigger hover uses `--accent-border`/`--control-hover`; open uses `--accent`/`--surface-2`. Theme uses its documented accent-link text.
+
+Menu summary styles target direct children (`.mobile-nav > summary`, `.user-menu > summary`) so a nested Environment switcher retains its own flex row, padding and centered arrow. Do not style every descendant summary of a menu; verify the nested switcher at <=1000px as well as the desktop header.
 
 
 Custom panel perimeter is always `details[data-menu] > :not(summary)`: 1px `--border-strong`, `--radius-lg`, `--surface-raised`, `--shadow-lg`. Environment: 220px minimum, 8px padding, 4px gaps, 40px options. Theme: 150px minimum, 8px padding, 4px gaps, 36px options. User: 210px minimum, 10px padding, 3px gaps, 40px options. Overflow: 150px minimum, 7px padding. Faker: desired width 480px, maximum height 420px; arguments: desired width 360px, 12px padding. Width is clamped to viewport minus 32px; actual height shrinks to available space above/below its anchor.
@@ -262,9 +266,9 @@ The raw curl `.curl-editor` is 184-460px, internally scrollable; `resizeEditor()
 
 **Purpose:** in-flow optional detail; unlike a menu, opening shifts content below it and never floats over it.
 
-**Anatomy:** the single `details[data-disclosure] > summary > .details-chevron + label` pattern. `normalized-details` is compact technical detail; `history-disclosure` is a richer heading/caption layout. Inline owners: endpoint/response editor. Nested schema disclosure uses the same native details behavior with `.schema-nested`.
+**Anatomy:** the single `details[data-disclosure] > summary > x-disclosure-chevron + label` pattern. `resources/views/components/disclosure-chevron.blade.php` renders an aria-hidden, non-focusable SVG with `.details-chevron`; use `<x-disclosure-chevron />` for every leading disclosure arrow. `normalized-details` is compact technical detail; `history-disclosure` is a richer heading/caption layout. Nested schema disclosure uses the same native details behavior with `.schema-nested`. Dropdown arrows continue to use `<x-chevron />` from Dropdowns/Selects.
 
-**Classes/tokens:** normalized: top margin 12px; summary minimum 40px, 8px 0 padding, transparent background, `--text-muted`, 12px/600. History summary: minimum 48px, 8px gap. Chevron is inline-block, margin-right 7px, 16px/500, rotates 90deg when open; `--motion-base`. There is no extra frame on the summary. Content uses its own table/code styles.
+**Classes/tokens:** normalized: top margin 12px; summary minimum 40px, 8px 0 padding, transparent background, `--text-muted`, 12px/600. History summary: minimum 48px. All disclosure summaries use flex/inline-flex with align-items:center. Normalized, history, nested Builder and import summaries use `--space-2` (8px) gap; compact `.canonical-popover` and `.disclosure-button` use `--space-1` (4px). The SVG is exactly 16x16px with fixed 16px flex basis, zero margin and centered transform origin; its centered right-pointing path uses stroke:currentColor, matching the label in both themes and danger disclosures. Chevron rotates 90deg when its own details opens or disclosure button gains is-open, using `--motion-base`. Summary styles target direct children so outer disclosures never restyle nested summaries. There is no extra frame on the summary. Content uses its own table/code styles.
 
 **States:** default closed; hover normalized summary text `--text`; focus global outline. Open chevron rotates and content enters over `--motion-base`. A capturing `toggle` listener in `dashboard.blade.php` synchronizes `summary[aria-expanded]`; initialization does the same. Disabled/loading variants do not exist: disable the individual contained action, not the disclosure. Use `wire:ignore.self` and a stable `wire:key` when Livewire changes inside an operator-opened disclosure.
 
@@ -272,16 +276,18 @@ The raw curl `.curl-editor` is 184-460px, internally scrollable; `resizeEditor()
 
 ```blade
 <details class="normalized-details" data-disclosure wire:ignore.self wire:key="matching-header-details">
-    <summary><span class="details-chevron" aria-hidden="true">›</span> Header matching details</summary>
+    <summary><x-disclosure-chevron /> Header matching details</summary>
     <div class="parsed-policy-list"><div><code>Authorization</code><span>excluded authentication</span></div></div>
 </details>
 <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="response-conditions-{{ $response->id }}">
-    <summary><span class="details-chevron" aria-hidden="true">›</span><strong>Conditions</strong></summary>
+    <summary><x-disclosure-chevron /><strong>Conditions</strong></summary>
     <button class="button button-tertiary button-small" type="button" wire:click="addRule({{ $response->id }})">Add condition</button>
 </details>
 ```
 
 **Do/Don't:** collapse the full matching-header list by default; don't repeat every exclusion in Signature and Matching. Keep Signature to five exclusions plus a count; don't hide the full list permanently. Use data-menu for floating commands; don't add absolute positioning to a disclosure. Callback configuration belongs in the Callback tab and opens from a compact response row; don't embed it inside the primary response form. Reuse `livewire/admin/partials/callback-settings.blade.php` for Delivery, Retry policy and Signing. Save callback updates only callback fields; the global save also persists response drafts held across tab and response switches.
+
+Use the shared SVG and parent gap; don't use a font-glyph arrow, whitespace or per-icon margin for alignment. Keep the icon nonshrinking when labels wrap; don't change its size between closed/open states. Test nested disclosure arrows independently; opening a parent must not rotate a closed child's arrow.
 
 ## Cards and panels
 
@@ -327,7 +333,7 @@ Keep compact response summaries on one line with secondary metadata under Detail
         <span class="endpoint-header-count">2 headers</span>
         <span class="endpoint-body-size" title="Request body: 1,048,576 bytes">Body 1,048,576 B</span>
         <details class="canonical-popover" data-stop-row-navigation data-disclosure data-menu>
-            <summary aria-expanded="false" aria-controls="canonical-endpoint-{{ $endpoint->id }}"><span class="details-chevron" aria-hidden="true">›</span> Canonical request</summary>
+            <summary aria-expanded="false" aria-controls="canonical-endpoint-{{ $endpoint->id }}"><x-disclosure-chevron /> Canonical request</summary>
             <pre id="canonical-endpoint-{{ $endpoint->id }}" data-panel-height="300">{{ $endpoint->normalized_curl }}</pre>
         </details>
     </div>

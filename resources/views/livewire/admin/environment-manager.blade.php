@@ -42,7 +42,7 @@
             @error('renameEnvironment') <p class="field-error">{{ $message }}</p> @enderror
 
             <details class="normalized-details danger-zone" data-disclosure>
-                <summary><span class="details-chevron" aria-hidden="true">›</span> Delete environment</summary>
+                <summary><x-disclosure-chevron /> Delete environment</summary>
                 <p>Deleting the active or default environment requires a replacement. Endpoints are not deleted.</p>
                 <div class="inline-edit-row">
                     <label class="field">

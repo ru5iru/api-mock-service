@@ -194,7 +194,7 @@
 
     @if ($type === 'object')
         <details class="schema-nested" data-disclosure open>
-            <summary><span class="details-chevron" aria-hidden="true">›</span>Object fields</summary>
+            <summary><x-disclosure-chevron />Object fields</summary>
             <div class="schema-children">
                 @foreach (($row['children'] ?? []) as $childIndex => $childRow)
                     @include('livewire.admin.partials.schema-row', [

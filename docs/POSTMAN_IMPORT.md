@@ -64,6 +64,8 @@ Valid saved response headers remain available in configuration for review. At se
 
 Use the dashboard's **Copy mock curl** to test the imported signature. It preserves literal body bytes and suppresses curl's implicit form Content-Type when no header was imported. Commented/invalid JSON remains raw text, including its comments. A request name is only a label: the request URL path defines matching. If multiple items have the same signature, normal priority/ID precedence selects one endpoint; rename alone does not distinguish them. Items with no saved examples need a response added before they can answer.
 
+Copy resolves user-variable placeholders in headers/query values from the currently active MockDeck Environment, including URL-encoded placeholders. This happens on click, so later variable edits and Environment switches are reflected without re-importing. Missing keys produce a copy error naming the key. Exclude-mode fields stay excluded; Resolve-mode fields already imported as literal values remain those saved literals. Request bodies and literal path segments are not rewritten by Copy, preserving their exact matching behavior. The clipboard command includes any resolved secrets.
+
 The original item request always defines matching. If an example's `originalRequest` headers/body differ, the preview warns that the example may be stale. Its URL does not override the item URL. Examples with no original request are accepted. Requests with zero examples create zero responses and show the existing no-response warning; no placeholder is fabricated. The imported example name is visible in the response row's **Details** disclosure.
 
 ## Modes, correlation and undo

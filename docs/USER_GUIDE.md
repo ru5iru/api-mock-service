@@ -324,6 +324,8 @@ The response also contains `X-MockDeck-Template-Error: 1`. Logs record the error
 
 Select **Copy mock curl** from an endpoint row. MockDeck replaces the source origin with `APP_URL` and preserves method, path, query, meaningful headers, and body.
 
+Postman-style `{{name}}` placeholders in query values and headers use the **active Environment's current saved values when you click Copy**. Encoded query placeholders such as `%7B%7Bcid_login_id_stg%7D%7D` are decoded for lookup, then the resulting value is URL-encoded correctly. Bearer tokens and Basic credentials also resolve. Missing keys block copying with a notification naming the key; create it under Environments and retry. Secret values are returned only for that explicit copy action, rather than embedded in every endpoint row. The copied command contains the resolved credentials, so handle it accordingly. Copying does not modify saved requests, signatures, import exclusions or request bodies; literal captured request bodies remain literal.
+
 The copied command uses `--data-raw` for literal body text, suppresses curl's automatic form Content-Type when the saved request has none, and disables URL globbing for literal braces/brackets. A GET request with a body keeps an explicit GET method. These transport controls ensure the command sends the request that was signed rather than introducing a different header, method, or local-file read.
 
 ```bash

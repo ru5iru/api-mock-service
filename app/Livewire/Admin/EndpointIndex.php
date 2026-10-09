@@ -8,7 +8,9 @@ use App\Models\Tag;
 use App\Services\Config\ConfigExporter;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\MockCurlBuilder;
+use App\Services\Curl\MockCurlEnvironmentResolver;
 use App\Services\Revisions\RevisionManager;
+use App\Services\Templates\TemplateRenderException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -196,6 +198,20 @@ final class EndpointIndex extends Component
             'mockdeck-export-'.now()->utc()->format('Ymd').'.json',
             ['Content-Type' => 'application/vnd.mockdeck.config+json; charset=UTF-8'],
         );
+    }
+
+    public function copyMockCurl(int $endpointId): ?string
+    {
+        $endpoint = MockEndpoint::query()->findOrFail($endpointId);
+        try {
+            $request = app(CurlParser::class)->parse($endpoint->raw_curl);
+
+            return app(MockCurlBuilder::class)->build(app(MockCurlEnvironmentResolver::class)->resolve($request));
+        } catch (TemplateRenderException|InvalidArgumentException $exception) {
+            $this->dispatch('toast', message: 'Cannot copy mock curl: '.$exception->getMessage().' Check variables in the active Environment.', tone: 'danger');
+
+            return null;
+        }
     }
 
     public function render(): View

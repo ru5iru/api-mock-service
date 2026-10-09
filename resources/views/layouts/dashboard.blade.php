@@ -209,9 +209,18 @@
             button.disabled = true;
 
             try {
-                await copyText(button.dataset.copyCurl);
-                button.textContent = 'Copied';
-                window.MockDeck.toast('Mock curl copied to the clipboard.');
+                let value = button.dataset.copyCurl;
+                if (button.dataset.copyEndpoint) {
+                    const root = button.closest('[wire\\:id]');
+                    value = await window.Livewire.find(root.getAttribute('wire:id')).copyMockCurl(Number(button.dataset.copyEndpoint));
+                }
+                if (value === null) {
+                    button.textContent = 'Copy failed';
+                } else {
+                    await copyText(value);
+                    button.textContent = 'Copied';
+                    window.MockDeck.toast('Mock curl copied to the clipboard.');
+                }
             } catch (error) {
                 button.textContent = 'Copy failed';
                 window.MockDeck.toast('The mock curl could not be copied.', 'danger');

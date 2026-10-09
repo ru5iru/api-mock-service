@@ -51,6 +51,12 @@ try {
         for (const width of [1440, 1024, 767, 390]) {
             await page.setViewportSize({ width, height: 1000 });
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), `${theme}/${width}: page overflow`);
+            const misaligned = await page.locator('.details-chevron').evaluateAll(icons => icons.filter(icon => icon.getClientRects().length).filter(icon => {
+                const box = icon.getBoundingClientRect(), trigger = icon.parentElement, parent = trigger.getBoundingClientRect(), style = getComputedStyle(trigger);
+                const center = (parent.top + parent.bottom + parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) + parseFloat(style.borderTopWidth) - parseFloat(style.borderBottomWidth)) / 2;
+                return icon.tagName.toLowerCase() !== 'svg' || Math.abs(box.width - 16) > 1 || Math.abs(box.height - 16) > 1 || Math.abs((box.top + box.bottom) / 2 - center) > 1;
+            }).map(icon => icon.parentElement.textContent.trim()));
+            assert.deepEqual(misaligned, [], `${theme}/${width}: Postman preview chevrons must align with labels`);
             await page.screenshot({ path: resolve(screenshots, `postman-variables-${theme}-${width}.png`), fullPage: true });
         }
         await page.setViewportSize({ width: 1440, height: 1500 });

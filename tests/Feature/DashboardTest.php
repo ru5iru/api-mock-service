@@ -345,14 +345,16 @@ final class DashboardTest extends TestCase
     public function test_endpoint_list_offers_a_mock_host_curl_copy_button(): void
     {
         config(['app.url' => 'http://localhost:18473']);
-        MockEndpoint::factory()->create([
+        $endpoint = MockEndpoint::factory()->create([
             'name' => 'Copyable endpoint',
             'raw_curl' => "curl 'https://api.example.test/v1/items?limit=10'",
         ]);
 
         Livewire::test(EndpointIndex::class)
             ->assertSee('Copy mock curl')
-            ->assertSee("curl 'http://localhost:18473/v1/items?limit=10'");
+            ->assertSee('data-copy-endpoint="'.$endpoint->id.'"', false)
+            ->call('copyMockCurl', $endpoint->id)
+            ->assertReturned("curl 'http://localhost:18473/v1/items?limit=10'");
     }
 
     public function test_endpoint_list_survives_an_invalid_legacy_curl(): void

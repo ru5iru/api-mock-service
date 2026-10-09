@@ -16,7 +16,7 @@ const errors = [], results = [];
 async function inspect(page, label) {
     // A Livewire morph can remove JS-authored attributes from an unchanged summary.
     await page.evaluate(() => document.querySelectorAll('details[data-disclosure] > summary, details[data-menu] > summary').forEach(el => el.removeAttribute('aria-expanded')));
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(220);
     const result = await page.evaluate(() => {
         const failures = [], counts = {};
         const visible = el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
@@ -75,6 +75,35 @@ async function inspect(page, label) {
             check(el.hasAttribute('data-menu') || el.hasAttribute('data-disclosure'), el, 'Details bypasses shared controller');
             check(summary?.getAttribute('aria-expanded') === String(el.open), el, 'Disclosure expanded state drifts');
             if (el.hasAttribute('data-menu')) check(summary?.hasAttribute('aria-haspopup'), el, 'Menu lacks popup semantics');
+        }
+        for (const icon of document.querySelectorAll('.details-chevron, .control-chevron')) {
+            if (!visible(icon)) continue;
+            counts.chevrons = (counts.chevrons || 0) + 1;
+            const trigger = icon.parentElement, style = getComputedStyle(icon), parentStyle = getComputedStyle(trigger);
+            const box = icon.getBoundingClientRect(), parent = trigger.getBoundingClientRect();
+            const contentTop = parent.top + parseFloat(parentStyle.borderTopWidth) + parseFloat(parentStyle.paddingTop);
+            const contentBottom = parent.bottom - parseFloat(parentStyle.borderBottomWidth) - parseFloat(parentStyle.paddingBottom);
+            check(Math.abs(box.width - 16) < 1 && Math.abs(box.height - 16) < 1 && style.flexShrink === '0', icon, 'Chevron size or shrink drifts');
+            check(Math.abs((box.top + box.bottom) / 2 - (contentTop + contentBottom) / 2) < 1, icon, 'Chevron is not centered beside its label');
+            check(icon.getAttribute('aria-hidden') === 'true', icon, 'Decorative chevron is announced');
+            if (!icon.classList.contains('details-chevron')) continue;
+            check(icon.tagName.toLowerCase() === 'svg' && icon.getAttribute('focusable') === 'false', icon, 'Disclosure bypasses shared SVG');
+            check(style.marginRight === '0px' && ['4px', '8px'].includes(parentStyle.columnGap), icon, 'Disclosure label spacing drifts');
+            check(style.stroke === parentStyle.color, icon, 'Disclosure chevron color differs from its label');
+            // Opening an outer disclosure must never rotate a closed child's arrow.
+            const transition = icon.style.transition;
+            icon.style.transition = 'none';
+            const details = trigger.tagName === 'SUMMARY' ? trigger.parentElement : null;
+            const open = details?.open, buttonOpen = trigger.classList.contains('is-open');
+            for (const expanded of [false, true]) {
+                if (details) details.open = expanded;
+                else trigger.classList.toggle('is-open', expanded);
+                const matrix = new DOMMatrix(getComputedStyle(icon).transform);
+                check(Math.abs(matrix.a - (expanded ? 0 : 1)) < .01 && Math.abs(matrix.b - (expanded ? 1 : 0)) < .01, icon, 'Disclosure arrow direction drifts');
+            }
+            if (details) details.open = open;
+            else trigger.classList.toggle('is-open', buttonOpen);
+            icon.style.transition = transition;
         }
         for (const el of document.querySelectorAll('.segmented-control')) if (visible(el)) {
             counts.segments = (counts.segments || 0) + 1;
@@ -221,7 +250,7 @@ try {
                     await page.getByRole('checkbox', { name: 'Select all endpoints on this page', exact: true }).check();
                     await page.waitForSelector('.selection-bar');
                     await inspect(page, `${theme}-${width}-bulk-actions`);
-                    await page.locator('.bulk-tag-picker > summary').click();
+                    await page.locator('.selection-bar .bulk-tag-picker > summary').click();
                     await inspect(page, `${theme}-${width}-bulk-tags`);
                     await page.keyboard.press('Escape');
                     if ([1440, 390].includes(width)) {
