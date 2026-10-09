@@ -19,5 +19,6 @@
 !/storage/logs/.gitignore
 /vendor
 /tests/Browser/screenshots/
+/docker/nginx/certs/
 Thumbs.db
 .DS_Store

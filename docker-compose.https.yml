@@ -1,0 +1,8 @@
+# Optional HTTP + HTTPS on the existing APP_PORT; internal listeners stay private.
+services:
+  nginx:
+    volumes:
+      - ./docker/nginx/same-port.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/http-internal.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/https.conf:/etc/nginx/conf.d/https.conf:ro
+      - ./docker/nginx/certs:/etc/nginx/certs:ro
