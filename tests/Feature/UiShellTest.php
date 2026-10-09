@@ -38,6 +38,15 @@ final class UiShellTest extends TestCase
             ->assertSee('Response templating')
             ->assertSee('$repeat')
             ->assertSee('Import and export')
+            ->assertSee('First-time service setup')
+            ->assertSee('HTTP and HTTPS on one port')
+            ->assertSee('Connection and certificate troubleshooting')
+            ->assertSee('mkdir -p docker/nginx/certs')
+            ->assertSee('certutil -user -addstore Root')
+            ->assertSee('$env:USERPROFILE', false)
+            ->assertSee('NET::ERR_CERT_AUTHORITY_INVALID')
+            ->assertSee('http://localhost:18473')
+            ->assertSee('https://localhost:18473')
             ->assertSee('New endpoint');
     }
 

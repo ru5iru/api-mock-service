@@ -4,7 +4,7 @@ This guide covers every currently implemented MockDeck feature and the normal op
 
 ## 1. Start and sign in
 
-MockDeck is designed to run through Docker Compose. From the repository root:
+MockDeck runs through Docker Compose; PHP, Composer and PostgreSQL are included in its containers. On Windows, enable Docker Desktop integration for WSL. For a new installation only, from the repository root:
 
 ```bash
 cp .env.example .env
@@ -14,11 +14,14 @@ printf 'APP_KEY=base64:%s\n' "$(openssl rand -base64 32)"
 Copy the generated key into `.env`, replace the database and dashboard password placeholders, then run:
 
 ```bash
-make up
-make health
+docker compose config --quiet
+docker compose up -d --build --wait
+curl -fsS http://localhost:18473/up
 ```
 
-Open `http://localhost:18473/dashboard`. The dashboard uses the username and password configured by:
+Database migrations run automatically. For HTTP only, leave `COMPOSE_FILE` commented out. To enable **HTTP and HTTPS on the same port**, follow [Local HTTP and HTTPS](HTTPS.md) before startup: generate `docker/nginx/certs/localhost.pem` and `localhost-key.pem`, enable the override, and trust the issuing CA in each client OS. That guide includes WSL/Ubuntu and Windows PowerShell commands, Windows browser trust for a WSL-generated CA, and troubleshooting for missing files, Nginx restart loops, refused connections and certificate warnings.
+
+Open `http://localhost:18473/dashboard` (or `https://localhost:18473/dashboard` when enabled). The dashboard uses the username and password configured by:
 
 ```dotenv
 MOCK_DASHBOARD_AUTH_ENABLED=true
@@ -450,6 +453,8 @@ The dashboard uses the following protected template endpoints and organization A
 They require dashboard access and are intended for the built-in editor, not as unauthenticated public APIs.
 
 ## 18. Operations and validation
+
+For local startup or TLS problems, use [HTTP/HTTPS setup and troubleshooting](HTTPS.md#troubleshoot-connection-and-certificate-failures). A refused connection or Nginx certificate-load failure occurs before mock matching; Chrome/curl trust failures require the issuing CA in the client trust store. Certificate-only fixes need Nginx validation/recreation, not an application image rebuild.
 
 ```bash
 make up                 # build, start, and wait for services

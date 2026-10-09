@@ -1,6 +1,24 @@
 # Validation guide
 
+## Local HTTP/HTTPS connectivity
+
+Complete [certificate generation and client trust](HTTPS.md) before enabling the HTTPS Compose override. Compose configuration validation does not verify certificate files or prove a running listener is reachable.
+
+```bash
+docker compose config --quiet
+docker compose ps -a
+curl -fsS http://localhost:18473/up
+curl -fsS https://localhost:18473/up
+MOCKDECK_SMOKE_ORIGIN=http://localhost:18473 python3 scripts/smoke_http_https.py
+```
+
+Both schemes use the same published port when the override is enabled. For a client without system CA trust, use `--cacert /path/to/rootCA.pem` with curl and `MOCKDECK_SMOKE_CA=/path/to/rootCA.pem` with the Python smoke script. That script checks concurrent mixed-protocol health calls, dotfile denial and scheme-correct dashboard assets. Also test a configured mock with each scheme; scheme changes do not alter its signature.
+
+If Nginx restarts or neither scheme connects, inspect `docker compose logs --tail=80 nginx`. A missing certificate stops both listeners; fix the file/mount, run `nginx -t`, and recreate Nginx. For browser authority warnings, trust the issuing CA in the browser's OS. See the [troubleshooting table](HTTPS.md#troubleshoot-connection-and-certificate-failures) for exact commands.
+
 This guide is the release checklist for the fixed MockDeck service. Run it from the repository root.
+
+For documentation UI checks with Playwright available, run `MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/documentation-smoke.mjs` against an accessible dashboard. It verifies the setup sections, disclosure behavior and command wrapping at desktop/mobile sizes in both themes.
 
 ## Prerequisites
 

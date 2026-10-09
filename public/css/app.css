@@ -866,7 +866,8 @@ details[data-menu] > .faker-picker-panel { overflow: hidden; }
 .definition-list dt { font-weight: 700; }
 kbd { min-width: 30px; padding: 4px 7px; border: 1px solid var(--border-strong); border-radius: 5px; display: inline-block; color: var(--text); background: var(--surface-2); box-shadow: 0 1px 0 var(--border-strong); font: 600 12px var(--font-code); text-align: center; }
 .docs-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr); gap: 24px; }
-.docs-card { padding: var(--space-4); }
+.docs-card { min-width: 0; padding: var(--space-4); overflow-wrap: anywhere; }
+.docs-card pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .docs-card h2 { margin: 0 0 var(--space-4); font-size: var(--font-size-md); }
 .docs-card h3 { margin: var(--space-5) 0 var(--space-2); font-size: var(--font-size-base); }
 .docs-card p, .docs-card li { max-width: 78ch; }
@@ -900,7 +901,7 @@ kbd { min-width: 30px; padding: 4px 7px; border: 1px solid var(--border-strong);
     .summary-grid div:nth-child(4) { border-left: 0; border-top: 1px solid var(--border); }
     .summary-grid div:nth-child(n+5) { border-top: 1px solid var(--border); }
     .import-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .docs-grid { grid-template-columns: 1fr; }
+    .docs-grid { grid-template-columns: minmax(0, 1fr); }
     .docs-wide { grid-column: auto; }
     .schema-row-main { grid-template-columns: auto minmax(120px, 1fr) minmax(130px, 1fr); }
     .schema-config { grid-column: 2 / -1; }

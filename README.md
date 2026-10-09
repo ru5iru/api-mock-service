@@ -47,7 +47,9 @@ The complete operator reference is [docs/USER_GUIDE.md](docs/USER_GUIDE.md). The
 
 ## Secure first start
 
-Requirements: Docker Engine, Docker Compose v2, `make`, and `openssl`.
+Requirements: Docker Engine/Desktop with Docker Compose v2 and OpenSSL. On Windows, enable Docker Desktop integration for WSL. `make` is optional; PHP, Composer and PostgreSQL run in containers. Optional HTTPS also requires mkcert.
+
+For a new installation only (keep an existing `.env` when updating):
 
 ```bash
 cp .env.example .env
@@ -63,12 +65,17 @@ MOCK_DASHBOARD_USERNAME=admin
 MOCK_DASHBOARD_PASSWORD=a-unique-dashboard-password
 ```
 
-Start the service:
+For **HTTP only**, leave `COMPOSE_FILE` commented out and use `APP_URL=http://localhost:18473`. For **HTTP + HTTPS on the same port**, first complete certificate generation and trust setup in [docs/HTTPS.md](docs/HTTPS.md), then enable its Compose override. Missing certificates stop Nginx and therefore both protocols.
+
+Build and start the service:
 
 ```bash
-make up
-make health
+docker compose config --quiet
+docker compose up -d --build --wait
+curl -fsS http://localhost:18473/up
 ```
+
+Database migrations run automatically at startup. `make up` / `make health` are equivalent shortcuts when make is installed.
 
 Open <http://localhost:18473/dashboard> and use the configured dashboard credentials.
 

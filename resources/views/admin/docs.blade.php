@@ -1,5 +1,5 @@
 <x-layouts.dashboard title="Documentation">
-    <x-page-header title="Documentation" description="Set up exact-request mocks, dynamic response templates, configuration transfers, and request-log troubleshooting.">
+    <x-page-header title="Documentation" description="Start the service, configure HTTP/HTTPS, build mocks, and troubleshoot requests.">
         <x-slot:actions>
             <a class="button button-primary" href="{{ route('dashboard.endpoints.create') }}" wire:navigate>New endpoint</a>
         </x-slot:actions>
@@ -9,6 +9,9 @@
         <nav class="card docs-card docs-wide" aria-labelledby="docs-contents">
             <h2 id="docs-contents">Contents</h2>
             <ol class="docs-toc">
+                <li><a href="#service-startup">First-time service setup</a></li>
+                <li><a href="#local-https">HTTP and HTTPS on one port</a></li>
+                <li><a href="#connection-troubleshooting">Connection and certificate troubleshooting</a></li>
                 <li><a href="#getting-started">Create an endpoint</a></li>
                 <li><a href="#endpoint-registry">Manage endpoints</a></li>
                 <li><a href="#environments">Collections, tags, and environments</a></li>
@@ -31,6 +34,85 @@
                 <li><a href="#shortcuts">Keyboard shortcuts</a></li>
             </ol>
         </nav>
+
+        <section id="service-startup" class="card docs-card docs-wide">
+            <h2>First-time service setup</h2>
+            <p>Install Docker Engine/Desktop with Compose v2 and OpenSSL. On Windows, enable Docker Desktop integration for WSL. PHP, Composer and PostgreSQL run in containers; make is optional. Run Bash commands from the repository root in WSL/Linux, and PowerShell commands in Windows PowerShell.</p>
+            <p>For a new installation only, create the environment file and generate a unique application key. Keep the existing environment file and secrets when updating.</p>
+            <div class="code-block-wrap docs-example template-preview"><pre><code>cp .env.example .env
+openssl rand -base64 32</code></pre></div>
+            <p>In <code>.env</code>, set <code>APP_KEY=base64:YOUR_GENERATED_VALUE</code>, a unique <code>DB_PASSWORD</code>, and your <code>MOCK_DASHBOARD_USERNAME</code> / <code>MOCK_DASHBOARD_PASSWORD</code>. For HTTP only, leave <code>COMPOSE_FILE</code> commented out and use <code>APP_URL=http://localhost:18473</code>. For both protocols, complete the certificate steps below before startup.</p>
+            <div class="code-block-wrap docs-example template-preview"><pre><code>docker compose config --quiet
+docker compose up -d --build --wait
+docker compose ps -a
+curl -fsS http://localhost:18473/up</code></pre></div>
+            <p>Database migrations run automatically at startup. Sign in at <code>http://localhost:18473/dashboard</code> with your configured dashboard credentials, then create/import an endpoint and add at least one response. Compose config validation does not check certificate files; verify connectivity after startup.</p>
+        </section>
+
+        <section id="local-https" class="card docs-card docs-wide">
+            <h2>HTTP and HTTPS on one port</h2>
+            <p>With the HTTPS override enabled, both <code>http://localhost:18473</code> and <code>https://localhost:18473</code> serve the same application without redirects. Scheme, host and port do not change mock signatures. Certificates are generated locally, mounted read-only, and never supplied with MockDeck.</p>
+            <h3>Generate in WSL/Ubuntu</h3>
+            <div class="code-block-wrap docs-example template-preview"><pre><code>sudo apt update
+sudo apt install mkcert libnss3-tools
+mkcert -install
+mkdir -p docker/nginx/certs
+mkcert -cert-file docker/nginx/certs/localhost.pem -key-file docker/nginx/certs/localhost-key.pem localhost 127.0.0.1 ::1
+ls -l docker/nginx/certs</code></pre></div>
+            <p>Both <code>localhost.pem</code> and <code>localhost-key.pem</code> must exist. Use forward slashes in Bash paths. Run mkcert as the same Linux user each time: root and a normal user use different CA directories.</p>
+            <details class="normalized-details" data-disclosure>
+                <summary><x-disclosure-chevron /> Alternative: generate in Windows PowerShell</summary>
+                <p>Follow the <a href="https://github.com/FiloSottile/mkcert#installation">mkcert installation instructions</a> for Windows and run these commands in the repository folder. This trusts the Windows-generated CA on Windows; WSL clients need that same CA separately.</p>
+                <div class="code-block-wrap docs-example template-preview"><pre><code>New-Item -ItemType Directory -Force docker/nginx/certs
+mkcert -install
+mkcert -cert-file docker/nginx/certs/localhost.pem -key-file docker/nginx/certs/localhost-key.pem localhost 127.0.0.1 ::1</code></pre></div>
+            </details>
+            <h3>Trust a WSL-generated CA in Windows Chrome</h3>
+            <p>Installing a CA in WSL does not trust it in Windows. In WSL, as the user that generated the certificate, replace <code>YOUR_WINDOWS_USER</code> with your Windows profile folder name:</p>
+            <div class="code-block-wrap docs-example template-preview"><pre><code>cp "$(mkcert -CAROOT)/rootCA.pem" /mnt/c/Users/YOUR_WINDOWS_USER/Desktop/mockdeck-rootCA.pem</code></pre></div>
+            <p>Then run in Windows PowerShell as the user running the browser:</p>
+            <div class="code-block-wrap docs-example template-preview"><pre><code>certutil -user -addstore Root "$env:USERPROFILE\Desktop\mockdeck-rootCA.pem"</code></pre></div>
+            <p>Close all Chrome windows and reopen Chrome. Import only your own public <code>rootCA.pem</code>; never copy/share <code>rootCA-key.pem</code>. Trust the CA that issued the server certificate, not a newly generated unrelated CA. Updating browser trust needs no application rebuild or Nginx restart.</p>
+            <h3>Enable and start</h3>
+            <p>Add/update these settings in your existing <code>.env</code>, preserving its secrets:</p>
+            <div class="code-block-wrap docs-example template-preview"><pre><code>APP_PORT=18473
+APP_URL=https://localhost:18473
+COMPOSE_FILE=docker-compose.yml:docker-compose.https.yml</code></pre></div>
+            <p>The colon separator is for WSL/Linux/macOS. Native Windows Compose uses <code>COMPOSE_PATH_SEPARATOR=;</code> and a semicolon-separated <code>COMPOSE_FILE</code>, or explicit <code>-f</code> arguments. Remove the obsolete <code>APP_HTTPS_PORT</code>; the earlier 18474 port is no longer published. APP_URL chooses the origin for copied mock curls; either scheme works, and custom APP_PORT / APP_URL ports must agree.</p>
+            <div class="code-block-wrap docs-example template-preview"><pre><code>docker compose config --quiet
+docker compose up -d --build --wait
+curl -fsS http://localhost:18473/up
+curl -fsS https://localhost:18473/up</code></pre></div>
+            <p>If the HTTPS client does not trust the issuing CA, use <code>curl --cacert /path/to/rootCA.pem https://localhost:18473/up</code>. Locate the CA with <code>mkcert -CAROOT</code> on the generating OS/user. WSL, Windows, containers and other machines have separate trust stores. Do not force Secure-only session cookies if HTTP dashboard login is also required.</p>
+            <details class="normalized-details" data-disclosure>
+                <summary><x-disclosure-chevron /> Existing installation and HTTP-only fallback</summary>
+                <p>Certificate-only changes need no image rebuild. With app running, validate the mount/configuration and recreate only Nginx:</p>
+                <div class="code-block-wrap docs-example template-preview"><pre><code>docker compose run --rm --no-deps nginx sh -c 'ls -l /etc/nginx/certs &amp;&amp; nginx -t'
+docker compose up -d --force-recreate nginx</code></pre></div>
+                <p>If APP_URL or application environment settings changed, recreate app and callback-worker first, then Nginx. To return to HTTP only, comment/remove COMPOSE_FILE, use APP_URL=http://localhost:18473, and recreate the affected services with the base configuration. See the repository guide <code>docs/HTTPS.md</code> for full setup and diagnostics. This certificate setup is for localhost development; externally exposed hosts need certificates for their real DNS names.</p>
+            </details>
+        </section>
+
+        <section id="connection-troubleshooting" class="card docs-card docs-wide">
+            <h2>Connection and certificate troubleshooting</h2>
+            <dl class="definition-list">
+                <div><dt>mkcert not found</dt><dd>Install it in the OS/shell where you run it. Installing in WSL does not install a Windows executable.</dd></div>
+                <div><dt>Failed to save certificate</dt><dd>Create docker/nginx/certs from the repository root, then generate both files. Backslashes in Bash can create dockernginxcerts instead; use mkdir -p docker/nginx/certs. Remove an accidental empty directory with rmdir dockernginxcerts.</dd></div>
+                <div><dt>Nginx restarting: cannot load certificate</dt><dd>Missing localhost.pem or localhost-key.pem prevents Nginx from starting, so both protocols fail. Inspect local and mounted files, generate missing certificates, validate with nginx -t, and recreate Nginx. No app rebuild is needed.</dd></div>
+                <div><dt>curl error 7: Failed to connect</dt><dd>Nothing is reachable at that address/port. Inspect Nginx status, published port and logs. This occurs before TLS or mock matching.</dd></div>
+                <div><dt>NET::ERR_CERT_AUTHORITY_INVALID / curl error 60</dt><dd>TLS is reachable but the client does not trust the issuing CA. Follow the Windows/WSL trust steps or supply --cacert. Do not disable verification for normal use.</dd></div>
+                <div><dt>Read-only default.conf startup message</dt><dd>The image's IPv6 helper cannot modify the deliberately read-only config. That informational message alone is not a fatal error; inspect the following error rather than making the mount writable.</dd></div>
+                <div><dt>No published port during restart</dt><dd>Resolve the Nginx startup error first, then check APP_PORT and that COMPOSE_FILE includes both the base and HTTPS configuration.</dd></div>
+            </dl>
+            <div class="code-block-wrap docs-example template-preview"><pre><code>docker compose ps -a
+docker compose port nginx 80
+docker compose logs --tail=80 nginx
+ls -l docker/nginx/certs
+docker compose run --rm --no-deps nginx sh -c 'ls -l /etc/nginx/certs &amp;&amp; nginx -t'
+grep -E '^(APP_PORT|APP_URL|COMPOSE_FILE|COMPOSE_PATH_SEPARATOR)=' .env
+curl -v http://127.0.0.1:18473/up</code></pre></div>
+            <p>Share status/log output and these non-secret settings when asking for help, never the full .env or private keys. For a running dual-protocol service, <code>MOCKDECK_SMOKE_ORIGIN=http://localhost:18473 python3 scripts/smoke_http_https.py</code> verifies both protocols; add <code>MOCKDECK_SMOKE_CA=/path/to/rootCA.pem</code> if Python needs explicit CA trust.</p>
+        </section>
 
         <section id="getting-started" class="card docs-card docs-wide">
             <h2>Create an endpoint</h2>

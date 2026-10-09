@@ -13,6 +13,7 @@ test('README links every maintained operator and implementation guide', () => {
         'docs/VALIDATION.md',
         'docs/ARCHITECTURE.md',
         'docs/UI_GUIDE.md',
+        'docs/HTTPS.md',
     ]) {
         assert.ok(readme.includes(`](${path})`), `${path} is linked from README`);
     }
@@ -46,6 +47,9 @@ test('in-app documentation exposes the complete workflow sections', () => {
 
     for (const id of [
         'getting-started',
+        'service-startup',
+        'local-https',
+        'connection-troubleshooting',
         'endpoint-registry',
         'environments',
         'request-matching',
@@ -67,4 +71,24 @@ test('in-app documentation exposes the complete workflow sections', () => {
         assert.match(page, new RegExp(`id="${id}"`), `${id} section exists`);
         assert.match(page, new RegExp(`href="#${id}"`), `${id} is linked from contents`);
     }
+});
+
+test('Markdown and in-app setup explain same-port TLS and separate Windows/WSL trust', () => {
+    for (const path of ['docs/HTTPS.md', 'resources/views/admin/docs.blade.php']) {
+        const guide = read(path);
+        for (const command of [
+            'mkdir -p docker/nginx/certs',
+            'mkcert -cert-file docker/nginx/certs/localhost.pem -key-file docker/nginx/certs/localhost-key.pem localhost 127.0.0.1 ::1',
+            'certutil -user -addstore Root',
+            'COMPOSE_FILE=docker-compose.yml:docker-compose.https.yml',
+            'docker compose up -d --build --wait',
+            'docker compose port nginx 80',
+            'nginx -t',
+            'NET::ERR_CERT_AUTHORITY_INVALID',
+            'rootCA-key.pem',
+        ]) assert.ok(guide.includes(command), `${path}: ${command}`);
+        assert.ok(guide.includes('http://localhost:18473'));
+        assert.ok(guide.includes('https://localhost:18473'));
+    }
+    assert.ok(read('docs/USER_GUIDE.md').includes('](HTTPS.md)'));
 });
