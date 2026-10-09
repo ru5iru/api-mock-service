@@ -164,7 +164,7 @@
                             <span class="endpoint-header-count" title="{{ number_format($stats['headers']) }} request headers">{{ number_format($stats['headers']) }} {{ Str::plural('header', $stats['headers']) }}</span>
                             <span class="endpoint-body-size" title="Request body: {{ number_format($stats['body_bytes']) }} bytes">Body {{ number_format($stats['body_bytes']) }} B</span>
                             <details class="canonical-popover" data-stop-row-navigation data-disclosure data-menu>
-                                <summary aria-expanded="false" aria-controls="canonical-endpoint-{{ $endpoint->id }}"><span class="details-chevron" aria-hidden="true">›</span> Canonical request</summary>
+                                <summary aria-expanded="false" aria-controls="canonical-endpoint-{{ $endpoint->id }}"><x-disclosure-chevron /> Canonical request</summary>
                                 <pre id="canonical-endpoint-{{ $endpoint->id }}" data-panel-height="300">{{ $endpoint->normalized_curl }}</pre>
                             </details>
                         </div>
@@ -197,7 +197,7 @@
                     <div class="endpoint-actions" data-stop-row-navigation>
                         @if ($mockCurls[$endpoint->id] !== null)
                             <button class="button button-secondary button-small" type="button"
-                                    data-copy-curl="{{ $mockCurls[$endpoint->id] }}"
+                                    data-copy-curl data-copy-endpoint="{{ $endpoint->id }}"
                                     aria-label="Copy mock curl for {{ $endpoint->displayName() }}">
                                 <span aria-hidden="true">⧉</span> Copy mock curl
                             </button>

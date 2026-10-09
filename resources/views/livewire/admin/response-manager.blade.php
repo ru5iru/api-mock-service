@@ -81,7 +81,7 @@
                     </details>
                 </div>
                 <details class="history-disclosure response-row-details" data-disclosure wire:ignore.self wire:key="response-details-{{ $response->id }}">
-                    <summary><span class="details-chevron" aria-hidden="true">›</span><strong>Details</strong></summary>
+                    <summary><x-disclosure-chevron /><strong>Details</strong></summary>
                     <div class="response-row-detail-content">
                         @if ($response->external_label !== null)<p class="field-help">Imported example: <strong>{{ $response->external_label }}</strong></p>@endif
                         <code class="response-body-summary">{{ ($response->body_mode ?? 'static') === 'template' ? 'JSON response template' : (Str::limit(preg_replace('/\s+/', ' ', $response->body ?? ''), 82) ?: 'Empty body') }}</code>
@@ -96,7 +96,7 @@
                     <div class="selection-response-details">
                         <label class="toggle-inline"><x-radio name="fallback-response" value="{{ $response->id }}" wire:click="setFallback({{ $response->id }})" :checked="$fallbackResponseId === $response->id" aria-label="Use response {{ $response->id }} as default fallback" /><span>Default / fallback</span></label>
                         <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="response-conditions-{{ $response->id }}">
-                            <summary><span class="details-chevron" aria-hidden="true">›</span><strong>Conditions</strong></summary>
+                            <summary><x-disclosure-chevron /><strong>Conditions</strong></summary>
                             @if ($fallbackResponseId === $response->id)<p class="field-help">Fallback is selected only when no other response matches; its conditions are not evaluated.</p>@endif
                             @foreach ($responseRules[$response->id] ?? [] as $ruleIndex => $condition)
                                 <div class="rule-condition-row" wire:key="condition-{{ $response->id }}-{{ $ruleIndex }}">
@@ -117,7 +117,7 @@
                     </div>
                 @endif
                 <details class="history-disclosure response-history" data-disclosure>
-                    <summary><span class="details-chevron" aria-hidden="true">›</span><span><strong>History</strong><small>Compare or restore response versions.</small></span></summary>
+                    <summary><x-disclosure-chevron /><span><strong>History</strong><small>Compare or restore response versions.</small></span></summary>
                     <livewire:admin.revision-history entity-type="response" :entity-id="$response->id" :key="'response-history-'.$response->id" />
                 </details>
 
@@ -366,7 +366,7 @@
 
 
         <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="response-fault-{{ $editingId ?? 'new' }}">
-            <summary><span class="details-chevron" aria-hidden="true">›</span><strong>Fault injection</strong>@if ($faultEnabled)<x-badge variant="warning">Enabled</x-badge>@endif</summary>
+            <summary><x-disclosure-chevron /><strong>Fault injection</strong>@if ($faultEnabled)<x-badge variant="warning">Enabled</x-badge>@endif</summary>
             <label class="toggle-inline"><input type="checkbox" wire:model.live="faultEnabled"><span>Enable fault injection</span></label>
             <p class="field-help">Applied after response selection. <x-help-tip title="Primary response faults" label="Faulted calls still count as matches. Probability is rolled for each selected response. Delay adds to the normal response delay; an empty maximum uses a fixed delay. Template previews remain normal." /></p>
             <div class="field-row two">

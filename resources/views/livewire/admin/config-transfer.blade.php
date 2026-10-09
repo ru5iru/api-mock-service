@@ -76,7 +76,7 @@
 
             @if ($redactSecrets)
                 <button class="text-button disclosure-button {{ $showRedactionPreview ? 'is-open' : '' }}" type="button" wire:click="$toggle('showRedactionPreview')" aria-expanded="{{ $showRedactionPreview ? 'true' : 'false' }}" aria-controls="redaction-preview">
-                    <span class="details-chevron" aria-hidden="true">›</span> Preview redactions
+                    <x-disclosure-chevron /> Preview redactions
                 </button>
                 @if ($showRedactionPreview)
                     <div id="redaction-preview" class="redaction-preview" aria-live="polite">
@@ -153,7 +153,7 @@
 
                 @if ($format === 'postman')
                     <details class="normalized-details" data-disclosure>
-                        <summary><span class="details-chevron" aria-hidden="true">›</span>Also import a Postman Environment file</summary>
+                        <summary><x-disclosure-chevron />Also import a Postman Environment file</summary>
                         <div class="field">
                             <label for="postman-environment-file">Environment (optional)</label>
                             <label class="file-dropzone {{ $environmentFile ? 'has-file' : '' }}" data-dropzone for="postman-environment-file">
@@ -247,7 +247,7 @@
                     <p class="info-note">Exclude ignores the field. Resolve matches today's Environment value literally; a later value change can break matching. Request bodies remain literal.</p>
                     @if($candidates !== [])
                         <details class="normalized-details" data-disclosure wire:ignore.self wire:key="postman-variable-candidates" open>
-                            <summary><span class="details-chevron" aria-hidden="true">›</span>Review Environment variable candidates</summary>
+                            <summary><x-disclosure-chevron />Review Environment variable candidates</summary>
                             <div class="table-scroll"><table class="log-table">
                                 <thead><tr><th>Name</th><th>Candidate value</th><th>Source</th><th>Secret</th></tr></thead>
                                 <tbody>@foreach($candidates as $candidate)
@@ -310,7 +310,7 @@
 
             @if ($plan['items'] !== [])
                 <details class="import-items" data-disclosure open>
-                    <summary><span class="details-chevron" aria-hidden="true">›</span>Review {{ count($plan['items']) }} {{ Str::plural('item', count($plan['items'])) }}</summary>
+                    <summary><x-disclosure-chevron />Review {{ count($plan['items']) }} {{ Str::plural('item', count($plan['items'])) }}</summary>
                     <div class="table-scroll">
                         <table class="log-table import-table">
                             <thead><tr><th scope="col">Endpoint</th><th scope="col">Action</th><th scope="col">Signature</th><th scope="col">Reason</th></tr></thead>
@@ -327,7 +327,7 @@
                                     </tr>
                                     @if(! empty($item['variable_fields']))
                                         <tr><td colspan="4"><details class="normalized-details" data-disclosure wire:ignore.self wire:key="postman-variable-fields-{{ $loop->index }}">
-                                            <summary><span class="details-chevron" aria-hidden="true">›</span>Variable fields · {{ count($item['variable_fields']) }}</summary>
+                                            <summary><x-disclosure-chevron />Variable fields · {{ count($item['variable_fields']) }}</summary>
                                             @foreach($item['variable_fields'] as $field)
                                                 <div class="field">
                                                     <label for="variable-field-{{ $field['id'] }}">{{ ucfirst($field['field_type']) }} {{ $field['field_name'] }} · {{ implode(', ', $field['tokens']) }}</label>
@@ -342,7 +342,7 @@
                                     @if (($item['warnings'] ?? []) !== [])
                                         <tr><td colspan="4">
                                             <details class="normalized-details" data-disclosure>
-                                                <summary><span class="details-chevron" aria-hidden="true">›</span>{{ count($item['warnings']) }} warnings for {{ $item['name'] }}</summary>
+                                                <summary><x-disclosure-chevron />{{ count($item['warnings']) }} warnings for {{ $item['name'] }}</summary>
                                                 <ul>@foreach ($item['warnings'] as $warning)<li>{{ $warning }}</li>@endforeach</ul>
                                             </details>
                                         </td></tr>

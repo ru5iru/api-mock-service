@@ -130,7 +130,7 @@
                 </div>
 
                 <details class="normalized-details environment-overrides" data-disclosure>
-                    <summary><span class="details-chevron" aria-hidden="true">›</span> Environment availability</summary>
+                    <summary><x-disclosure-chevron /> Environment availability</summary>
                     <div class="table-scroll">
                         <table class="header-table">
                             <thead><tr><th scope="col">Environment</th><th scope="col">Behavior</th></tr></thead>
@@ -260,7 +260,7 @@
 
                     @if ($headerAnalysis !== [])
                         <details class="normalized-details" data-disclosure wire:ignore.self wire:key="matching-header-details">
-                            <summary><span class="details-chevron" aria-hidden="true">›</span> Header matching details ({{ count($headerAnalysis) }})</summary>
+                            <summary><x-disclosure-chevron /> Header matching details ({{ count($headerAnalysis) }})</summary>
                         <div class="parsed-policy-list">
                             @foreach ($headerAnalysis as $header)
                                 <div class="{{ $header['excluded_reason'] ? 'excluded' : '' }}">
@@ -350,12 +350,12 @@
                     @endif
 
                     <details class="normalized-details" data-disclosure open>
-                        <summary><span class="details-chevron" aria-hidden="true">›</span> Canonical request</summary>
+                        <summary><x-disclosure-chevron /> Canonical request</summary>
                         <pre>{{ $displayCanonical }}</pre>
                     </details>
 
                     <details class="normalized-details" data-disclosure>
-                        <summary><span class="details-chevron" aria-hidden="true">›</span> Parsed headers ({{ count($headerAnalysis) }})</summary>
+                        <summary><x-disclosure-chevron /> Parsed headers ({{ count($headerAnalysis) }})</summary>
                         <div class="header-table-wrap">
                             <table class="header-table">
                                 <thead><tr><th scope="col">Header</th><th scope="col">Value</th></tr></thead>
@@ -380,7 +380,7 @@
                     </details>
 
                     <details class="normalized-details" data-disclosure>
-                        <summary><span class="details-chevron" aria-hidden="true">›</span> Parsed body ({{ strlen($preview['parsed']->body) }} B)</summary>
+                        <summary><x-disclosure-chevron /> Parsed body ({{ strlen($preview['parsed']->body) }} B)</summary>
                         <pre>{{ $prettyBody !== '' ? $prettyBody : '— empty —' }}</pre>
                         <p class="details-note">JSON keys are sorted recursively during canonicalization; array order is preserved.</p>
                     </details>

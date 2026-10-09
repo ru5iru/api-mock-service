@@ -79,7 +79,7 @@
                     @if ($callbackPreview !== '') <pre class="code-block">{{ $callbackPreview }}</pre> @endif
                 </div>
                 <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="callback-retry-{{ $editingId }}">
-                <summary><span class="details-chevron" aria-hidden="true">›</span><strong>Retry policy</strong></summary>
+                <summary><x-disclosure-chevron /><strong>Retry policy</strong></summary>
                 <div class="field-row three">
                     <div class="field"><label for="callback-delay">Delay min (ms)</label><input id="callback-delay" type="number" min="0" max="30000" wire:model="callbackDelayMs">@error('callbackDelayMs') <p class="field-error">{{ $message }}</p> @enderror</div>
                     <div class="field"><label for="callback-delay-max">Delay max (ms) <span>optional</span></label><input id="callback-delay-max" type="number" min="0" max="30000" wire:model="callbackDelayMaxMs">@error('callbackDelayMaxMs') <p class="field-error">{{ $message }}</p> @enderror</div>
@@ -91,7 +91,7 @@
                 </div>
                 </details>
                 <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="callback-signing-{{ $editingId }}">
-                <summary><span class="details-chevron" aria-hidden="true">›</span><strong>Signing</strong></summary>
+                <summary><x-disclosure-chevron /><strong>Signing</strong></summary>
                 <div class="field-row two">
                     <div class="field">
                         <label class="toggle-inline"><input type="checkbox" wire:model.live="callbackSigningEnabled"><span>Sign requests</span></label>
