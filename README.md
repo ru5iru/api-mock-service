@@ -72,6 +72,8 @@ make health
 
 Open <http://localhost:18473/dashboard> and use the configured dashboard credentials.
 
+For optional local HTTPS alongside HTTP on the **same port**, follow [docs/HTTPS.md](docs/HTTPS.md). Both `http://localhost:18473` and `https://localhost:18473` work when the HTTPS override is enabled. Generate a local certificate first.
+
 The production container refuses known placeholder application, database, and dashboard secrets. Only nginx is published, on `127.0.0.1:18473` by default; PHP-FPM and PostgreSQL stay on the internal Compose network.
 
 To change the host port, keep `APP_PORT` and `APP_URL` aligned:
