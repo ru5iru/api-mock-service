@@ -296,3 +296,22 @@ Against the same dedicated fixture database/server, run `MOCKDECK_BROWSER_FIXTUR
 Run the full PHP suite, design-token validator, frontend tests, and both-theme layout smoke. `tests/Browser/wave2-smoke.mjs` exercises exclusion toggles, path chips, synthetic previews, fault controls and responsive action bounds with an isolated fixture database. Never use browser fixture scripts against an operator database.
 
 PHP coverage includes migration safety for unchanged canonical bytes/hashes/versions, field exclusions and wildcard segment boundaries, literal priority, shared path context, format 1.4/legacy defaults, revision/runtime-state separation, token/session auth separation, real counters/predicates, bounded-history uncertainty and resets, and measurable/broken-body faults. Timeout is checked as a bounded plan; it is not claimed to provide a real TCP reset or indefinite socket hang.
+
+## Make and GitHub CI
+
+`make` is the supported convenience interface; its container targets call Docker Compose. Direct Compose commands remain useful for one-off diagnostics and work on machines without Make. Both honor `.env`'s `COMPOSE_FILE`, so `make up` starts the same-port HTTPS setup when that override is enabled. Failed startup now includes Nginx logs as well as app/database logs.
+
+```bash
+make up
+make health                         # defaults to HTTP on port 18473
+make health APP_URL=https://localhost:18473
+make https-check                    # checks both schemes on the same port
+# With a CA not installed in the client's trust store:
+MOCKDECK_SMOKE_CA=/path/to/rootCA.pem make https-check
+# With Playwright installed and the dashboard accessible:
+MOCKDECK_BASE_URL=http://localhost:18473 make browser-test
+```
+
+For a custom port, pass `APP_URL` to `make health` and `make https-check`; Make does not load `.env` into its own variables. `browser-test` runs the layout and documentation scripts in both themes. These browser and live-connectivity checks are separate from `make validate`, since they require a running dashboard and HTTPS certificates respectively.
+
+`.github/workflows/ci.yml` runs two jobs: host PHP/Node tests plus browser checks against disposable SQLite, and the complete `make validate` container workflow followed by plain HTTP and dual HTTP/HTTPS smoke checks. CI generates a temporary localhost certificate and explicitly trusts it for the smoke client; it never uses the developer's certificates or disables TLS verification. Browser screenshots and the server log are retained for seven days. Container diagnostics run even after failure, and disposable volumes are removed at the end.

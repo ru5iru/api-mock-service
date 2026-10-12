@@ -14,7 +14,7 @@ if (!base) throw new Error('Set MOCKDECK_BASE_URL to a running MockDeck dashboar
 const screenshotDir = resolve(process.env.MOCKDECK_SCREENSHOT_DIR ?? 'tests/Browser/screenshots');
 await mkdir(screenshotDir, { recursive: true });
 
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, ...(process.env.MOCKDECK_CHROMIUM_PATH ? { executablePath: process.env.MOCKDECK_CHROMIUM_PATH } : {}) });
 try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     for (const theme of ['light', 'dark']) {

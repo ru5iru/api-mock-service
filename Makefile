@@ -1,4 +1,4 @@
-.PHONY: up down build validation-image logs shell test test-unit test-feature frontend-test design-validate lint format composer-validate compose-config validate health
+.PHONY: up down build validation-image logs shell test test-unit test-feature frontend-test design-validate lint format composer-validate compose-config validate health https-check browser-test
 
 TEST_ENV = -e APP_ENV=testing -e APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= -e DB_CONNECTION=sqlite -e DB_DATABASE=:memory: -e CACHE_STORE=array -e SESSION_DRIVER=array -e MOCK_DASHBOARD_AUTH_ENABLED=false -e MOCK_LOG_STDOUT=false -e MOCK_LOG_FILE=false -e RUN_MIGRATIONS=false
 APP_URL ?= http://localhost:18473
@@ -6,7 +6,7 @@ APP_URL ?= http://localhost:18473
 up:
 	@docker compose up -d --build --wait || { \
 		docker compose ps -a; \
-		docker compose logs --tail=80 app db; \
+		docker compose logs --tail=80 app db nginx; \
 		exit 1; \
 	}
 
@@ -52,7 +52,7 @@ compose-config:
 validate: compose-config design-validate frontend-test validation-image composer-validate lint test
 
 health:
-	@if curl --fail --silent --show-error --retry 5 --retry-delay 2 "$(APP_URL)/up"; then \
+	@if curl --fail --silent --show-error --retry 5 --retry-delay 2 --retry-connrefused "$(APP_URL)/up"; then \
 		printf '\nMockDeck is healthy.\n'; \
 	else \
 		status=$$?; \
@@ -65,3 +65,12 @@ health:
 
 shell:
 	docker compose exec app sh
+
+# Requires a running dual-protocol service and a trusted certificate.
+https-check:
+	MOCKDECK_SMOKE_ORIGIN="$(APP_URL)" python3 scripts/smoke_http_https.py
+
+# Requires Playwright and an accessible dashboard (both themes are tested).
+browser-test:
+	node tests/Browser/layout-smoke.mjs
+	node tests/Browser/documentation-smoke.mjs
