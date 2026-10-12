@@ -6,18 +6,19 @@ Run Bash commands from the repository root in WSL/Linux. Run PowerShell commands
 
 ## First-time startup
 
-Requirements: Docker Engine/Desktop with Compose v2, OpenSSL, and mkcert for optional local HTTPS. On Windows, enable Docker Desktop integration for your WSL distribution. PHP, Composer and PostgreSQL run in containers; separate host installations are not needed. `make` is optional for startup.
+Follow [the setup guide](SETUP.md) for prerequisites and `make setup`. Keep existing credentials when updating. Make is the main entry point in Bash/WSL; direct commands below remain available for native Windows and diagnostics.
 
-For a **new installation only**:
+For HTTP only: `make setup`, `make up`, `make health`. For both protocols, install mkcert first, then:
 
 ```bash
-cp .env.example .env
-openssl rand -base64 32
+make setup
+make https-setup
+make up
+make health
+make https-check
 ```
 
-Put the generated value in `.env` as `APP_KEY=base64:YOUR_GENERATED_VALUE`. Set unique `DB_PASSWORD` and `MOCK_DASHBOARD_PASSWORD` values and choose `MOCK_DASHBOARD_USERNAME`. Keep existing secrets when updating an installation; do not overwrite its `.env`.
-
-For HTTP only, leave `COMPOSE_FILE` commented out, set `APP_PORT=18473` and `APP_URL=http://localhost:18473`, then use the startup commands below. For both protocols, generate certificates and enable the override **before** startup.
+The certificate helper preserves an existing pair and requires manual repair of an incomplete pair. It does not install mkcert or automatically trust a WSL CA in Windows. Read the trust instructions below before opening HTTPS in Windows Chrome. `make https-enable` selects existing certificates; `make http-enable` selects HTTP only. Run `make up` after either change.
 
 ## Generate certificates: choose one route
 

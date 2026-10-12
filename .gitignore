@@ -22,3 +22,6 @@
 /docker/nginx/certs/
 Thumbs.db
 .DS_Store
+
+# Python setup helper/test bytecode
+__pycache__/

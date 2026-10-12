@@ -4,22 +4,16 @@ This guide covers every currently implemented MockDeck feature and the normal op
 
 ## 1. Start and sign in
 
-MockDeck runs through Docker Compose; PHP, Composer and PostgreSQL are included in its containers. On Windows, enable Docker Desktop integration for WSL. For a new installation only, from the repository root:
+Follow the [first-time setup guide](SETUP.md) from the repository root in Bash/WSL. Docker Compose v2, Make, Python 3 and curl are required; PHP, Composer and PostgreSQL run in containers.
 
 ```bash
-cp .env.example .env
-printf 'APP_KEY=base64:%s\n' "$(openssl rand -base64 32)"
+make setup
+# Read the generated dashboard credentials in .env.
+make up
+make health
 ```
 
-Copy the generated key into `.env`, replace the database and dashboard password placeholders, then run:
-
-```bash
-docker compose config --quiet
-docker compose up -d --build --wait
-curl -fsS http://localhost:18473/up
-```
-
-Database migrations run automatically. For HTTP only, leave `COMPOSE_FILE` commented out. To enable **HTTP and HTTPS on the same port**, follow [Local HTTP and HTTPS](HTTPS.md) before startup: generate `docker/nginx/certs/localhost.pem` and `localhost-key.pem`, enable the override, and trust the issuing CA in each client OS. That guide includes WSL/Ubuntu and Windows PowerShell commands, Windows browser trust for a WSL-generated CA, and troubleshooting for missing files, Nginx restart loops, refused connections and certificate warnings.
+Setup preserves configured credentials; do not replace an existing `.env` during updates. Migrations run automatically. For HTTP + HTTPS on the same port, install mkcert, run `make https-setup`, then `make up` and `make https-check`. Follow [Local HTTP and HTTPS](HTTPS.md) for Windows/WSL certificate trust. `make help` lists daily commands.
 
 Open `http://localhost:18473/dashboard` (or `https://localhost:18473/dashboard` when enabled). The dashboard uses the username and password configured by:
 

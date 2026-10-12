@@ -23,33 +23,23 @@ For documentation UI checks with Playwright available, run `MOCKDECK_BASE_URL=ht
 ## Prerequisites
 
 - Docker Engine with Docker Compose v2
-- `make`
+- GNU Make, Python 3, and Node.js 22 (with npm)
 - `curl` for the health and smoke checks
-- `openssl` for generating local secrets
+- mkcert for optional local HTTPS
 
 The Docker workflow is the canonical path. It pins the runtime through the project image and does not require host PHP or Composer.
 
 ## One-time environment setup
 
-```bash
-cp .env.example .env
-```
-
-Generate an application key and choose non-placeholder database/dashboard passwords:
+Follow [SETUP.md](SETUP.md), then run:
 
 ```bash
-printf 'APP_KEY=base64:%s\n' "$(openssl rand -base64 32)"
+make setup
+make up
+make health
 ```
 
-Copy the printed value into `.env`, then set:
-
-```dotenv
-DB_PASSWORD=a-unique-local-database-password
-MOCK_DASHBOARD_USERNAME=admin
-MOCK_DASHBOARD_PASSWORD=a-unique-dashboard-password
-```
-
-The production container intentionally refuses to start with the placeholders from `.env.example`.
+Setup creates a missing `.env`, generates missing placeholder credentials, and preserves configured secrets. Read the dashboard username/password from `.env` to sign in. Install mkcert and follow [HTTPS.md](HTTPS.md) before running `make https-setup` if dual HTTP/HTTPS is required.
 
 ## Complete automated validation
 
@@ -59,7 +49,7 @@ make validate
 
 `make validate` runs, in order:
 
-1. `docker compose config --quiet`
+1. `docker compose config --quiet` and setup-helper regression tests
 2. design-token literal and light/dark contrast validation
 3. frontend Node tests for theme, preferences, layouts, template editor, and icons
 4. a cached rebuild of the app image so validation always uses the current files
@@ -303,7 +293,7 @@ PHP coverage includes migration safety for unchanged canonical bytes/hashes/vers
 
 ```bash
 make up
-make health                         # defaults to HTTP on port 18473
+make health                         # uses APP_URL from .env
 make health APP_URL=https://localhost:18473
 make https-check                    # checks both schemes on the same port
 # With a CA not installed in the client's trust store:
@@ -312,6 +302,6 @@ MOCKDECK_SMOKE_CA=/path/to/rootCA.pem make https-check
 MOCKDECK_BASE_URL=http://localhost:18473 make browser-test
 ```
 
-For a custom port, pass `APP_URL` to `make health` and `make https-check`; Make does not load `.env` into its own variables. `browser-test` runs the layout and documentation scripts in both themes. These browser and live-connectivity checks are separate from `make validate`, since they require a running dashboard and HTTPS certificates respectively.
+For a temporary origin override, pass `APP_URL` to `make health` and `make https-check`. Health and protocol smoke targets read `APP_URL` from `.env` unless explicitly overridden. `browser-test` runs the layout and documentation scripts in both themes. These browser and live-connectivity checks are separate from `make validate`, since they require a running dashboard and HTTPS certificates respectively.
 
 `.github/workflows/ci.yml` runs two jobs: host PHP/Node tests plus browser checks against disposable SQLite, and the complete `make validate` container workflow followed by plain HTTP and dual HTTP/HTTPS smoke checks. CI generates a temporary localhost certificate and explicitly trusts it for the smoke client; it never uses the developer's certificates or disables TLS verification. Browser screenshots and the server log are retained for seven days. Container diagnostics run even after failure, and disposable volumes are removed at the end.

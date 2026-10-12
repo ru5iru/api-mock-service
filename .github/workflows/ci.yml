@@ -44,7 +44,7 @@ jobs:
         run: python3 scripts/validate_design_tokens.py
 
       - name: Test frontend components
-        run: make frontend-test
+        run: make frontend-test setup-test
 
       - name: Run tests
         run: php artisan test
@@ -61,8 +61,7 @@ jobs:
 
       - name: Install browser tooling
         run: |
-          npm install --no-save --package-lock=false playwright@1.62.1
-          npx playwright install --with-deps chromium
+          make browser-install
 
       - name: Check dashboard layouts and documentation in both themes
         env:

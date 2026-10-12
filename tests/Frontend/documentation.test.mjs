@@ -92,3 +92,13 @@ test('Markdown and in-app setup explain same-port TLS and separate Windows/WSL t
     }
     assert.ok(read('docs/USER_GUIDE.md').includes('](HTTPS.md)'));
 });
+
+
+test('first-time setup follows the same Make flow in Markdown and dashboard help', () => {
+    for (const path of ['README.md', 'docs/SETUP.md', 'docs/USER_GUIDE.md', 'resources/views/admin/docs.blade.php']) {
+        const guide = read(path);
+        for (const command of ['make setup', 'make up', 'make health', 'make https-setup']) {
+            assert.ok(guide.includes(command), `${path}: ${command}`);
+        }
+    }
+});

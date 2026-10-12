@@ -47,50 +47,20 @@ The complete operator reference is [docs/USER_GUIDE.md](docs/USER_GUIDE.md). The
 
 ## Secure first start
 
-Requirements: Docker Engine/Desktop with Docker Compose v2 and OpenSSL. On Windows, enable Docker Desktop integration for WSL. `make` is optional; PHP, Composer and PostgreSQL run in containers. Optional HTTPS also requires mkcert.
-
-For a new installation only (keep an existing `.env` when updating):
+Start from the repository root in Bash (Linux/macOS/WSL) with Docker Compose v2, GNU Make, Python 3 and curl installed. On Windows, enable Docker Desktop's WSL integration. PHP, Composer and PostgreSQL run in containers.
 
 ```bash
-cp .env.example .env
-printf 'APP_KEY=base64:%s\n' "$(openssl rand -base64 32)"
+make setup
+# Open .env and note the generated dashboard username/password.
+make up
+make health
 ```
 
-Copy the generated key into `.env`, then replace these placeholders:
+Open <http://localhost:18473/dashboard> and sign in using `.env` credentials. `make setup` creates a missing `.env` and replaces placeholder secrets; it preserves existing configured credentials. Migrations run automatically on startup. Run `make` to see the command menu.
 
-```dotenv
-APP_KEY=base64:generated-value
-DB_PASSWORD=a-unique-local-database-password
-MOCK_DASHBOARD_USERNAME=admin
-MOCK_DASHBOARD_PASSWORD=a-unique-dashboard-password
-```
+For optional **HTTP + HTTPS on the same port**, install mkcert, run `make https-setup`, then `make up`, `make health`, and `make https-check`. A WSL-generated CA must also be trusted in Windows before using Windows Chrome.
 
-For **HTTP only**, leave `COMPOSE_FILE` commented out and use `APP_URL=http://localhost:18473`. For **HTTP + HTTPS on the same port**, first complete certificate generation and trust setup in [docs/HTTPS.md](docs/HTTPS.md), then enable its Compose override. Missing certificates stop Nginx and therefore both protocols.
-
-Build and start the service:
-
-```bash
-docker compose config --quiet
-docker compose up -d --build --wait
-curl -fsS http://localhost:18473/up
-```
-
-Database migrations run automatically at startup. `make up` / `make health` are equivalent shortcuts when make is installed.
-
-Open <http://localhost:18473/dashboard> and use the configured dashboard credentials.
-
-For optional local HTTPS alongside HTTP on the **same port**, follow [docs/HTTPS.md](docs/HTTPS.md). Both `http://localhost:18473` and `https://localhost:18473` work when the HTTPS override is enabled. Generate a local certificate first.
-
-The production container refuses known placeholder application, database, and dashboard secrets. Only nginx is published, on `127.0.0.1:18473` by default; PHP-FPM and PostgreSQL stay on the internal Compose network.
-
-To change the host port, keep `APP_PORT` and `APP_URL` aligned:
-
-```dotenv
-APP_PORT=19483
-APP_URL=http://localhost:19483
-```
-
-For a deliberately unauthenticated local-only dashboard, set `MOCK_DASHBOARD_AUTH_ENABLED=false`. Do not use that setting on an exposed host.
+Follow the complete ordered [setup guide](docs/SETUP.md) for prerequisites, custom ports, certificates, updates, daily commands and validation. [HTTPS details](docs/HTTPS.md) explain Windows/WSL trust and troubleshooting. Only Nginx is published, on loopback port 18473 by default.
 
 ## Configure and invoke a mock
 

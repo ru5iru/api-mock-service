@@ -37,24 +37,33 @@
 
         <section id="service-startup" class="card docs-card docs-wide">
             <h2>First-time service setup</h2>
-            <p>Install Docker Engine/Desktop with Compose v2 and OpenSSL. On Windows, enable Docker Desktop integration for WSL. PHP, Composer and PostgreSQL run in containers; make is optional. Run Bash commands from the repository root in WSL/Linux, and PowerShell commands in Windows PowerShell.</p>
-            <p>For a new installation only, create the environment file and generate a unique application key. Keep the existing environment file and secrets when updating.</p>
-            <div class="code-block-wrap docs-example template-preview"><pre><code>cp .env.example .env
-openssl rand -base64 32</code></pre></div>
-            <p>In <code>.env</code>, set <code>APP_KEY=base64:YOUR_GENERATED_VALUE</code>, a unique <code>DB_PASSWORD</code>, and your <code>MOCK_DASHBOARD_USERNAME</code> / <code>MOCK_DASHBOARD_PASSWORD</code>. For HTTP only, leave <code>COMPOSE_FILE</code> commented out and use <code>APP_URL=http://localhost:18473</code>. For both protocols, complete the certificate steps below before startup.</p>
+            <p>Install Docker Engine/Desktop with Compose v2, Make, Python 3 and curl. On Windows, enable Docker Desktop integration for WSL. PHP, Composer and PostgreSQL run in containers. Run Make commands from the repository root in Bash/WSL; Windows certificate-trust commands below run in PowerShell.</p>
+            <div class="code-block-wrap docs-example template-preview"><pre><code>make setup
+# Read the generated dashboard credentials in .env.
+make up
+make health
+make status</code></pre></div>
+            <p>Setup creates a missing <code>.env</code> and generates missing placeholder secrets, preserving configured credentials and settings. Read <code>MOCK_DASHBOARD_USERNAME</code> and <code>MOCK_DASHBOARD_PASSWORD</code> in that file to sign in. Keep existing secrets when updating. Migrations run automatically. Open <code>http://localhost:18473/dashboard</code>, create/import an endpoint and add a response before calling it.</p>
+            <p>For a custom port, edit both <code>APP_PORT</code> and <code>APP_URL</code> before startup. Health checks use the configured origin. Run <code>make help</code> for the command menu. Use <code>make up</code> after source changes, <code>make restart</code> after environment changes, <code>make logs</code> to inspect failures, and <code>make down</code> to stop while retaining data.</p>
+            <p>For release checks, install Node.js 22 and run <code>make validate</code>. Run <code>make browser-install</code>, then <code>MOCKDECK_BASE_URL=http://localhost:18473 make browser-test</code> against an accessible test dashboard. These checks cover both themes; they require dashboard access.</p>
+            <p>Direct Compose remains available for advanced diagnostics; the startup equivalent is:</p>
             <div class="code-block-wrap docs-example template-preview"><pre><code>docker compose config --quiet
-docker compose up -d --build --wait
-docker compose ps -a
-curl -fsS http://localhost:18473/up</code></pre></div>
-            <p>Database migrations run automatically at startup. Sign in at <code>http://localhost:18473/dashboard</code> with your configured dashboard credentials, then create/import an endpoint and add at least one response. Compose config validation does not check certificate files; verify connectivity after startup.</p>
+docker compose up -d --build --wait</code></pre></div>
         </section>
 
         <section id="local-https" class="card docs-card docs-wide">
             <h2>HTTP and HTTPS on one port</h2>
             <p>With the HTTPS override enabled, both <code>http://localhost:18473</code> and <code>https://localhost:18473</code> serve the same application without redirects. Scheme, host and port do not change mock signatures. Certificates are generated locally, mounted read-only, and never supplied with MockDeck.</p>
+            <p>After <code>make setup</code>, install mkcert, then run the following in Bash/WSL:</p>
+            <div class="code-block-wrap docs-example template-preview"><pre><code>make https-setup
+make up
+make health
+make https-check</code></pre></div>
+            <p>The helper installs the local CA, generates certificates only when both files are absent, and enables the override. Existing pairs are preserved; incomplete pairs require repair. It does not install mkcert or trust a WSL CA in Windows. Use <code>make https-enable</code> for existing certificates, or <code>make http-enable</code> for HTTP only, then <code>make up</code> to apply.</p>
             <h3>Generate in WSL/Ubuntu</h3>
             <div class="code-block-wrap docs-example template-preview"><pre><code>sudo apt update
 sudo apt install mkcert libnss3-tools
+# Manual certificate-generation alternative:
 mkcert -install
 mkdir -p docker/nginx/certs
 mkcert -cert-file docker/nginx/certs/localhost.pem -key-file docker/nginx/certs/localhost-key.pem localhost 127.0.0.1 ::1
@@ -86,7 +95,7 @@ curl -fsS https://localhost:18473/up</code></pre></div>
             <p>If the HTTPS client does not trust the issuing CA, use <code>curl --cacert /path/to/rootCA.pem https://localhost:18473/up</code>. Locate the CA with <code>mkcert -CAROOT</code> on the generating OS/user. WSL, Windows, containers and other machines have separate trust stores. Do not force Secure-only session cookies if HTTP dashboard login is also required.</p>
             <details class="normalized-details" data-disclosure>
                 <summary><x-disclosure-chevron /> Existing installation and HTTP-only fallback</summary>
-                <p>Certificate-only changes need no image rebuild. With app running, validate the mount/configuration and recreate only Nginx:</p>
+                <p>Certificate-only changes need no image rebuild. Use <code>make nginx-reload</code> with the app running to validate and recreate Nginx. With app running, validate the mount/configuration and recreate only Nginx:</p>
                 <div class="code-block-wrap docs-example template-preview"><pre><code>docker compose run --rm --no-deps nginx sh -c 'ls -l /etc/nginx/certs &amp;&amp; nginx -t'
 docker compose up -d --force-recreate nginx</code></pre></div>
                 <p>If APP_URL or application environment settings changed, recreate app and callback-worker first, then Nginx. To return to HTTP only, comment/remove COMPOSE_FILE, use APP_URL=http://localhost:18473, and recreate the affected services with the base configuration. See the repository guide <code>docs/HTTPS.md</code> for full setup and diagnostics. This certificate setup is for localhost development; externally exposed hosts need certificates for their real DNS names.</p>
