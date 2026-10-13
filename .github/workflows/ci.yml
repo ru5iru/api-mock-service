@@ -99,6 +99,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
+      # Do not inherit a developer's HTTPS selection from .env.example.
+      # The TLS step overrides COMPOSE_FILE only after generating its certificate.
+      COMPOSE_FILE: docker-compose.yml
+      COMPOSE_PATH_SEPARATOR: ':'
+      APP_PORT: '18473'
+      APP_URL: http://localhost:18473
       MOCK_DASHBOARD_AUTH_ENABLED: 'false'
     steps:
       - name: Check out repository
@@ -117,6 +123,21 @@ jobs:
 
       - name: Validate through the supported Make workflow
         run: make validate
+
+      - name: Verify the plain HTTP Compose selection
+        run: |
+          docker compose config --format json > "$RUNNER_TEMP/http-compose.json"
+          python3 - "$RUNNER_TEMP/http-compose.json" <<'PYCODE'
+          import json, sys
+          with open(sys.argv[1]) as source:
+              nginx = json.load(source)['services']['nginx']
+          targets = {volume['target'] for volume in nginx['volumes']}
+          forbidden = {'/etc/nginx/nginx.conf', '/etc/nginx/conf.d/https.conf', '/etc/nginx/certs'}
+          assert not targets & forbidden, 'Plain HTTP CI unexpectedly selected HTTPS mounts'
+          assert len(nginx['ports']) == 1, 'Expected one published port'
+          port = nginx['ports'][0]
+          assert str(port['published']) == '18473' and port['target'] == 80, 'Unexpected HTTP binding'
+          PYCODE
 
       - name: Start and check plain HTTP
         run: |
