@@ -309,3 +309,7 @@ For a temporary origin override, pass `APP_URL` to `make health` and `make https
 ### CI starts in HTTP mode before enabling HTTPS
 
 The container job explicitly sets `COMPOSE_FILE=docker-compose.yml`, `APP_PORT=18473`, and the HTTP `APP_URL` for its initial startup, and checks that the rendered Nginx configuration has no HTTPS mounts. This prevents a locally modified `.env.example` from enabling HTTPS in CI before its temporary certificates exist. The later HTTPS step overrides `COMPOSE_FILE` only after generating the certificate pair. If logs report `cannot load certificate /etc/nginx/certs/localhost.pem` during the plain-HTTP step, inspect the selected Compose files and Nginx mounts; increasing curl retries cannot fix missing certificates.
+
+### Action runtimes and runner versions
+
+CI pins both jobs to `ubuntu-24.04` so the moving `ubuntu-latest` label cannot silently change the operating system. Checkout, Node setup and artifact upload use their Node-24-based `v6` actions. `node-version: '22'` still selects Node.js 22 for application/frontend commands; an action's internal Node runtime is a separate setting. Treat future runner/action migrations as explicit updates and run the container/browser checks before adopting them.
