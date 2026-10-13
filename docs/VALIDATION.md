@@ -1,37 +1,45 @@
 # Validation guide
 
+## Local HTTP/HTTPS connectivity
+
+Complete [certificate generation and client trust](HTTPS.md) before enabling the HTTPS Compose override. Compose configuration validation does not verify certificate files or prove a running listener is reachable.
+
+```bash
+docker compose config --quiet
+docker compose ps -a
+curl -fsS http://localhost:18473/up
+curl -fsS https://localhost:18473/up
+MOCKDECK_SMOKE_ORIGIN=http://localhost:18473 python3 scripts/smoke_http_https.py
+```
+
+Both schemes use the same published port when the override is enabled. For a client without system CA trust, use `--cacert /path/to/rootCA.pem` with curl and `MOCKDECK_SMOKE_CA=/path/to/rootCA.pem` with the Python smoke script. That script checks concurrent mixed-protocol health calls, dotfile denial and scheme-correct dashboard assets. Also test a configured mock with each scheme; scheme changes do not alter its signature.
+
+If Nginx restarts or neither scheme connects, inspect `docker compose logs --tail=80 nginx`. A missing certificate stops both listeners; fix the file/mount, run `nginx -t`, and recreate Nginx. For browser authority warnings, trust the issuing CA in the browser's OS. See the [troubleshooting table](HTTPS.md#troubleshoot-connection-and-certificate-failures) for exact commands.
+
 This guide is the release checklist for the fixed MockDeck service. Run it from the repository root.
+
+For documentation UI checks with Playwright available, run `MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/documentation-smoke.mjs` against an accessible dashboard. It verifies the setup sections, disclosure behavior and command wrapping at desktop/mobile sizes in both themes.
 
 ## Prerequisites
 
 - Docker Engine with Docker Compose v2
-- `make`
+- GNU Make, Python 3, and Node.js 22 (with npm)
 - `curl` for the health and smoke checks
-- `openssl` for generating local secrets
+- mkcert for optional local HTTPS
 
 The Docker workflow is the canonical path. It pins the runtime through the project image and does not require host PHP or Composer.
 
 ## One-time environment setup
 
-```bash
-cp .env.example .env
-```
-
-Generate an application key and choose non-placeholder database/dashboard passwords:
+Follow [SETUP.md](SETUP.md), then run:
 
 ```bash
-printf 'APP_KEY=base64:%s\n' "$(openssl rand -base64 32)"
+make setup
+make up
+make health
 ```
 
-Copy the printed value into `.env`, then set:
-
-```dotenv
-DB_PASSWORD=a-unique-local-database-password
-MOCK_DASHBOARD_USERNAME=admin
-MOCK_DASHBOARD_PASSWORD=a-unique-dashboard-password
-```
-
-The production container intentionally refuses to start with the placeholders from `.env.example`.
+Setup creates a missing `.env`, generates missing placeholder credentials, and preserves configured secrets. Read the dashboard username/password from `.env` to sign in. Install mkcert and follow [HTTPS.md](HTTPS.md) before running `make https-setup` if dual HTTP/HTTPS is required.
 
 ## Complete automated validation
 
@@ -41,7 +49,7 @@ make validate
 
 `make validate` runs, in order:
 
-1. `docker compose config --quiet`
+1. `docker compose config --quiet` and setup-helper regression tests
 2. design-token literal and light/dark contrast validation
 3. frontend Node tests for theme, preferences, layouts, template editor, and icons
 4. a cached rebuild of the app image so validation always uses the current files
@@ -278,3 +286,26 @@ Against the same dedicated fixture database/server, run `MOCKDECK_BROWSER_FIXTUR
 Run the full PHP suite, design-token validator, frontend tests, and both-theme layout smoke. `tests/Browser/wave2-smoke.mjs` exercises exclusion toggles, path chips, synthetic previews, fault controls and responsive action bounds with an isolated fixture database. Never use browser fixture scripts against an operator database.
 
 PHP coverage includes migration safety for unchanged canonical bytes/hashes/versions, field exclusions and wildcard segment boundaries, literal priority, shared path context, format 1.4/legacy defaults, revision/runtime-state separation, token/session auth separation, real counters/predicates, bounded-history uncertainty and resets, and measurable/broken-body faults. Timeout is checked as a bounded plan; it is not claimed to provide a real TCP reset or indefinite socket hang.
+
+## Make and GitHub CI
+
+`make` is the supported convenience interface; its container targets call Docker Compose. Direct Compose commands remain useful for one-off diagnostics and work on machines without Make. Both honor `.env`'s `COMPOSE_FILE`, so `make up` starts the same-port HTTPS setup when that override is enabled. Failed startup now includes Nginx logs as well as app/database logs.
+
+```bash
+make up
+make health                         # uses APP_URL from .env
+make health APP_URL=https://localhost:18473
+make https-check                    # checks both schemes on the same port
+# With a CA not installed in the client's trust store:
+MOCKDECK_SMOKE_CA=/path/to/rootCA.pem make https-check
+# With Playwright installed and the dashboard accessible:
+MOCKDECK_BASE_URL=http://localhost:18473 make browser-test
+```
+
+For a temporary origin override, pass `APP_URL` to `make health` and `make https-check`. Health and protocol smoke targets read `APP_URL` from `.env` unless explicitly overridden. `browser-test` runs the layout and documentation scripts in both themes. These browser and live-connectivity checks are separate from `make validate`, since they require a running dashboard and HTTPS certificates respectively.
+
+`.github/workflows/ci.yml` runs two jobs: host PHP/Node tests plus browser checks against disposable SQLite, and the complete `make validate` container workflow followed by plain HTTP and dual HTTP/HTTPS smoke checks. CI generates a temporary localhost certificate and explicitly trusts it for the smoke client; it never uses the developer's certificates or disables TLS verification. Browser screenshots and the server log are retained for seven days. Container diagnostics run even after failure, and disposable volumes are removed at the end.
+
+### CI starts in HTTP mode before enabling HTTPS
+
+The container job explicitly sets `COMPOSE_FILE=docker-compose.yml`, `APP_PORT=18473`, and the HTTP `APP_URL` for its initial startup, and checks that the rendered Nginx configuration has no HTTPS mounts. This prevents a locally modified `.env.example` from enabling HTTPS in CI before its temporary certificates exist. The later HTTPS step overrides `COMPOSE_FILE` only after generating the certificate pair. If logs report `cannot load certificate /etc/nginx/certs/localhost.pem` during the plain-HTTP step, inspect the selected Compose files and Nginx mounts; increasing curl retries cannot fix missing certificates.

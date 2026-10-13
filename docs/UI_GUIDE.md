@@ -315,6 +315,11 @@ Selection preview is a plain `.selection-preview` section within selection setti
 
 Keep compact response summaries on one line with secondary metadata under Details; don't restore a multi-line body/metadata stack by default. Keep Callback Retry policy and Signing collapsed using `details[data-disclosure]`; don't remove their controls from the mounted form or change delivery semantics to reduce space.
 
+### Documentation cards
+
+The in-app reference uses `.docs-grid > .card.docs-card`, with `.docs-wide` for full-width sections. `.docs-card` has `min-width: 0`, `--space-4` padding and `overflow-wrap: anywhere`; its `pre` blocks use `white-space: pre-wrap` and `overflow-wrap: anywhere`. At the existing single-column breakpoint, `.docs-grid` uses `minmax(0, 1fr)` so commands and technical terms cannot widen the page. Command examples compose the existing `.code-block-wrap.docs-example.template-preview` surface; secondary setup routes use the standard Disclosures recipe. Both themes share this geometry. Do wrap complete commands without changing their copied text; don't introduce a second page scrollbar or truncate setup commands.
+
+
 ### Endpoint registry rows
 
 **Purpose:** compare request composition and endpoint state across the registry without counts shifting neighbouring controls.

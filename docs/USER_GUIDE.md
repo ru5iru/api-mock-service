@@ -4,21 +4,18 @@ This guide covers every currently implemented MockDeck feature and the normal op
 
 ## 1. Start and sign in
 
-MockDeck is designed to run through Docker Compose. From the repository root:
+Follow the [first-time setup guide](SETUP.md) from the repository root in Bash/WSL. Docker Compose v2, Make, Python 3 and curl are required; PHP, Composer and PostgreSQL run in containers.
 
 ```bash
-cp .env.example .env
-printf 'APP_KEY=base64:%s\n' "$(openssl rand -base64 32)"
-```
-
-Copy the generated key into `.env`, replace the database and dashboard password placeholders, then run:
-
-```bash
+make setup
+# Read the generated dashboard credentials in .env.
 make up
 make health
 ```
 
-Open `http://localhost:18473/dashboard`. The dashboard uses the username and password configured by:
+Setup preserves configured credentials; do not replace an existing `.env` during updates. Migrations run automatically. For HTTP + HTTPS on the same port, install mkcert, run `make https-setup`, then `make up` and `make https-check`. Follow [Local HTTP and HTTPS](HTTPS.md) for Windows/WSL certificate trust. `make help` lists daily commands.
+
+Open `http://localhost:18473/dashboard` (or `https://localhost:18473/dashboard` when enabled). The dashboard uses the username and password configured by:
 
 ```dotenv
 MOCK_DASHBOARD_AUTH_ENABLED=true
@@ -450,6 +447,8 @@ The dashboard uses the following protected template endpoints and organization A
 They require dashboard access and are intended for the built-in editor, not as unauthenticated public APIs.
 
 ## 18. Operations and validation
+
+For local startup or TLS problems, use [HTTP/HTTPS setup and troubleshooting](HTTPS.md#troubleshoot-connection-and-certificate-failures). A refused connection or Nginx certificate-load failure occurs before mock matching; Chrome/curl trust failures require the issuing CA in the client trust store. Certificate-only fixes need Nginx validation/recreation, not an application image rebuild.
 
 ```bash
 make up                 # build, start, and wait for services

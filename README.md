@@ -47,43 +47,20 @@ The complete operator reference is [docs/USER_GUIDE.md](docs/USER_GUIDE.md). The
 
 ## Secure first start
 
-Requirements: Docker Engine, Docker Compose v2, `make`, and `openssl`.
+Start from the repository root in Bash (Linux/macOS/WSL) with Docker Compose v2, GNU Make, Python 3 and curl installed. On Windows, enable Docker Desktop's WSL integration. PHP, Composer and PostgreSQL run in containers.
 
 ```bash
-cp .env.example .env
-printf 'APP_KEY=base64:%s\n' "$(openssl rand -base64 32)"
-```
-
-Copy the generated key into `.env`, then replace these placeholders:
-
-```dotenv
-APP_KEY=base64:generated-value
-DB_PASSWORD=a-unique-local-database-password
-MOCK_DASHBOARD_USERNAME=admin
-MOCK_DASHBOARD_PASSWORD=a-unique-dashboard-password
-```
-
-Start the service:
-
-```bash
+make setup
+# Open .env and note the generated dashboard username/password.
 make up
 make health
 ```
 
-Open <http://localhost:18473/dashboard> and use the configured dashboard credentials.
+Open <http://localhost:18473/dashboard> and sign in using `.env` credentials. `make setup` creates a missing `.env` and replaces placeholder secrets; it preserves existing configured credentials. Migrations run automatically on startup. Run `make` to see the command menu.
 
-For optional local HTTPS alongside HTTP on the **same port**, follow [docs/HTTPS.md](docs/HTTPS.md). Both `http://localhost:18473` and `https://localhost:18473` work when the HTTPS override is enabled. Generate a local certificate first.
+For optional **HTTP + HTTPS on the same port**, install mkcert, run `make https-setup`, then `make up`, `make health`, and `make https-check`. A WSL-generated CA must also be trusted in Windows before using Windows Chrome.
 
-The production container refuses known placeholder application, database, and dashboard secrets. Only nginx is published, on `127.0.0.1:18473` by default; PHP-FPM and PostgreSQL stay on the internal Compose network.
-
-To change the host port, keep `APP_PORT` and `APP_URL` aligned:
-
-```dotenv
-APP_PORT=19483
-APP_URL=http://localhost:19483
-```
-
-For a deliberately unauthenticated local-only dashboard, set `MOCK_DASHBOARD_AUTH_ENABLED=false`. Do not use that setting on an exposed host.
+Follow the complete ordered [setup guide](docs/SETUP.md) for prerequisites, custom ports, certificates, updates, daily commands and validation. [HTTPS details](docs/HTTPS.md) explain Windows/WSL trust and troubleshooting. Only Nginx is published, on loopback port 18473 by default.
 
 ## Configure and invoke a mock
 
