@@ -347,3 +347,7 @@ The [Verification API](docs/VERIFICATION_API.md) authenticates with a separate h
 Native format **1.4** contains both tracks' configuration fields. Runtime counters/digests and token hashes are excluded; old configurations preserve their previous behavior.
 
 - [Postman Collection v2.1 import](docs/POSTMAN_IMPORT.md) — flattened folders, variable exclusions, examples and correlation-based updates.
+
+## License
+
+MockDeck is licensed under the [MIT License](LICENSE). Third-party dependencies retain their respective licenses.
