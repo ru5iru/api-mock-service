@@ -9,11 +9,10 @@ use App\Services\Config\ConfigExporter;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\MockCurlBuilder;
 use App\Services\Curl\MockCurlEnvironmentResolver;
-use App\Services\Revisions\RevisionManager;
+use App\Services\Mutations\EndpointMutationService;
 use App\Services\Templates\TemplateRenderException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -108,31 +107,14 @@ final class EndpointIndex extends Component
     {
         $endpoint = MockEndpoint::query()->findOrFail($endpointId);
         $name = $endpoint->displayName();
-        $endpoint->delete();
+        app(EndpointMutationService::class)->delete($endpointId);
         $this->selected = array_values(array_diff($this->selected, [$endpointId]));
         $this->dispatch('toast', message: $name.' and its responses were deleted.');
     }
 
     public function duplicate(int $endpointId): void
     {
-        $source = MockEndpoint::query()->with(['responses.rules', 'tags', 'environmentOverrides'])->findOrFail($endpointId);
-
-        DB::transaction(function () use ($source): void {
-            $copy = $source->replicate(['uuid']);
-            $copy->name = 'Copy of '.$source->displayName();
-            $copy->enabled = false;
-            $copy->save();
-
-            foreach ($source->responses as $response) {
-                $newResponse = $copy->responses()->save($response->replicate(['uuid']));
-                $newResponse->rules()->createMany($response->rules->map(fn ($rule) => $rule->only(['field_type', 'field_name', 'operator', 'value', 'priority']))->all());
-            }
-            $copy->tags()->sync($source->tags->modelKeys());
-            $copy->environmentOverrides()->sync($source->environmentOverrides->mapWithKeys(
-                static fn ($environment): array => [$environment->id => ['enabled' => (bool) $environment->pivot->enabled]],
-            )->all());
-        });
-
+        app(EndpointMutationService::class)->duplicate($endpointId);
         $this->dispatch('toast', message: 'A disabled copy was created. Edit its request before enabling it.');
     }
 
@@ -176,7 +158,7 @@ final class EndpointIndex extends Component
     public function bulkDelete(): void
     {
         $ids = $this->selectedIds();
-        MockEndpoint::query()->whereKey($ids)->delete();
+        app(EndpointMutationService::class)->deleteMany($ids);
         $this->selected = [];
         $this->dispatch('toast', message: count($ids).' '.str('endpoint')->plural(count($ids)).' and their responses were deleted.');
     }
@@ -285,13 +267,6 @@ final class EndpointIndex extends Component
      */
     private function reviseEndpoints(array $ids, callable $change): void
     {
-        DB::transaction(function () use ($ids, $change): void {
-            $revisions = app(RevisionManager::class);
-            foreach (MockEndpoint::query()->whereKey($ids)->lockForUpdate()->get() as $endpoint) {
-                $before = $revisions->snapshot($endpoint);
-                $change($endpoint);
-                $revisions->recordIfChanged($endpoint, $before);
-            }
-        }, 3);
+        app(EndpointMutationService::class)->reviseMany($ids, $change);
     }
 }

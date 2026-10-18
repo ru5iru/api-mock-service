@@ -314,6 +314,7 @@ Documentation map:
 
 - [User guide](docs/USER_GUIDE.md) — every implemented feature and operator workflow
 - [Configuration import/export](docs/CONFIG_IMPORT_EXPORT.md) — format, conflict, security, HTTP, and CLI contract
+- [MCP foundations](docs/MCP.md) — shared mutation services and independent agent credentials; transport/tools are not enabled yet
 - [Verification API](docs/VERIFICATION_API.md) — CI token authentication, counts, assertions and runtime resets
 - [Validation guide](docs/VALIDATION.md) — automated checks and manual smoke scenarios
 - [Architecture guide](docs/ARCHITECTURE.md) — matching, templates, persistence, and extension boundaries

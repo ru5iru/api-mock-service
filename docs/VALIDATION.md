@@ -313,3 +313,10 @@ The container job explicitly sets `COMPOSE_FILE=docker-compose.yml`, `APP_PORT=1
 ### Action runtimes and runner versions
 
 CI pins both jobs to `ubuntu-24.04` so the moving `ubuntu-latest` label cannot silently change the operating system. Checkout, Node setup and artifact upload use their Node-24-based `v6` actions. `node-version: '22'` still selects Node.js 22 for application/frontend commands; an action's internal Node runtime is a separate setting. Treat future runner/action migrations as explicit updates and run the container/browser checks before adopting them.
+
+
+## MCP Phase 1 regression checks
+
+The full PHPUnit suite automatically includes `MutationCharacterizationTest`, `SharedMutationServiceTest`, `McpCredentialTest`, `McpCredentialCommandTest` and `McpAuditContractTest`. Both CI jobs already run this suite (`php artisan test` on the host and `make validate` in the container job). Tests use temporary databases and create no production MCP routes. The same checks cover unchanged Wave 2 verification authentication, dashboard draft/revision behavior, atomic service transactions, hash-only/revoked credentials, fixed permission/error contracts and redacted audit metadata.
+
+Apply both `2026_10_18_*` migrations with normal startup before using credential CLI commands. Follow [docs/MCP.md](MCP.md) for commands and permissions. Phase 1 requires no MCP transport/client smoke test because it provides no transport or tool handlers. A Docker-less environment cannot certify the image/build portion of `make validate`; report that limitation separately from native PHP/frontend results.

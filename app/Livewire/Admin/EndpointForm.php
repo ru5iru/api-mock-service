@@ -9,14 +9,14 @@ use App\Models\Tag;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\ParsedCurl;
-use App\Services\Curl\RequestCredentialPolicy;
-use App\Services\Matching\FieldMatchingConfiguration;
 use App\Services\Matching\PathPattern;
+use App\Services\Mutations\EndpointConfigurationValidator;
+use App\Services\Mutations\EndpointInput;
+use App\Services\Mutations\EndpointMutationService;
+use App\Services\Mutations\EndpointRequestService;
 use App\Services\Response\SelectionConfigurationValidator;
-use App\Services\Revisions\RevisionManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -27,12 +27,7 @@ use Livewire\Component;
 
 final class EndpointForm extends Component
 {
-    private const EXAMPLE_CURL = <<<'CURL'
-curl --request POST 'https://api.example.test/v1/items?limit=10' \
-  --header 'Content-Type: application/json' \
-  --header 'Authorization: Bearer replace-me' \
-  --data '{"name":"Example"}'
-CURL;
+    private const EXAMPLE_CURL = EndpointRequestService::EXAMPLE_CURL;
 
     private ?array $importVariableProvenance = null;
 
@@ -92,19 +87,8 @@ CURL;
 
     public function renameEndpoint(string $value): void
     {
-        $name = trim($value);
-        Validator::make(['name' => $name], ['name' => ['nullable', 'string', 'max:255']])->validate();
-        $this->name = $name;
+        $this->name = app(EndpointMutationService::class)->rename($this->endpointId, $value);
         $this->resetValidation('name');
-        if ($this->endpointId !== null) {
-            DB::transaction(function () use ($name): void {
-                $endpoint = MockEndpoint::query()->lockForUpdate()->findOrFail($this->endpointId);
-                $revisions = app(RevisionManager::class);
-                $before = $revisions->snapshot($endpoint);
-                $endpoint->update(['name' => $name === '' ? null : $name]);
-                $revisions->recordIfChanged($endpoint, $before);
-            });
-        }
     }
 
     #[Locked]
@@ -161,17 +145,7 @@ CURL;
 
     public function requestMetadataReady(): bool
     {
-        return Validator::make([
-            'name' => $this->name, 'priority' => $this->priority,
-            'collectionId' => $this->collectionId, 'tagIds' => $this->tagIds,
-            'environmentOverrides' => $this->environmentOverrides,
-        ], [
-            'name' => ['nullable', 'string', 'max:255'],
-            'priority' => ['required', 'integer', 'between:-1000,1000'],
-            'collectionId' => ['nullable', 'integer', 'exists:collections,id'],
-            'tagIds' => ['array'], 'tagIds.*' => ['integer', 'distinct', 'exists:tags,id'],
-            'environmentOverrides.*' => ['nullable', 'in:,0,1'],
-        ])->passes() && Environment::query()->whereKey(array_keys($this->environmentOverrides))->count() === count($this->environmentOverrides);
+        return app(EndpointConfigurationValidator::class)->metadataReady($this->mutationInput());
     }
 
     public function saveAll(CurlParser $parser, CurlHasher $hasher): mixed
@@ -399,11 +373,7 @@ CURL;
 
     private function fieldMatching(?string $url = null): array
     {
-        return app(FieldMatchingConfiguration::class)->validate([
-            'excluded_query_params' => $this->excludedQueryParams,
-            'excluded_headers' => $this->excludedHeaderNames,
-            'path_pattern_enabled' => $this->pathPatternEnabled,
-        ], $url);
+        return app(EndpointRequestService::class)->fieldMatching($this->mutationInput(), $url);
     }
 
     public function touchSection(string $section): void
@@ -462,117 +432,21 @@ CURL;
     public function maskSecrets(): void
     {
         $this->touchSection('request');
-        $this->rawCurl = app(RequestCredentialPolicy::class)->maskCurl($this->rawCurl);
+        $this->rawCurl = app(EndpointRequestService::class)->maskSecrets($this->rawCurl);
     }
 
     public function save(CurlParser $parser, CurlHasher $hasher): mixed
     {
         $this->submitAttempted = true;
-
-        $this->validate([
-            'name' => ['nullable', 'string', 'max:255'],
-            'enabled' => ['boolean'],
-            'priority' => ['required', 'integer', 'between:-1000,1000'],
-            'rawCurl' => ['required', 'string', 'max:1048576'],
-            'excludeCookies' => ['boolean'],
-            'excludeAuth' => ['boolean'],
-            'excludeHeaders' => ['boolean'],
-            'pathPatternEnabled' => ['boolean'],
-            'excludedQueryParams' => ['array', 'max:100'],
-            'excludedHeaderNames' => ['array', 'max:100'],
-            'collectionId' => ['nullable', 'integer', 'exists:collections,id'],
-            'tagIds' => ['array'],
-            'tagIds.*' => ['integer', 'distinct', 'exists:tags,id'],
-            'environmentOverrides' => ['array'],
-            'environmentOverrides.*' => ['nullable', 'in:,0,1'],
-        ]);
-
-        $overrideIds = array_values(array_unique(array_map('intval', array_keys($this->environmentOverrides))));
-        if (Environment::query()->whereKey($overrideIds)->count() !== count($overrideIds)) {
-            $this->addError('environmentOverrides', 'Every override must reference an existing environment.');
-
-            return null;
-        }
-
-        if (trim($this->rawCurl) === trim(self::EXAMPLE_CURL)) {
-            $this->addError('rawCurl', 'This is the sample curl. Replace its URL and values with the request you want to mock.');
-
-            return null;
-        }
-
-        try {
-            $parsed = $parser->parse($this->rawCurl);
-            $matching = $this->fieldMatching($parsed->url);
-            $variant = $hasher->forOptions(
-                $parsed,
-                $this->excludeHeaders ? false : $this->excludeCookies,
-                $this->excludeHeaders ? false : $this->excludeAuth,
-                $this->excludeHeaders,
-                $matching['excluded_query_params'],
-                $matching['excluded_headers'],
-                $matching['path_pattern_enabled'],
-            );
-        } catch (ValidationException $exception) {
-            foreach ($exception->errors() as $field => $messages) {
-                $target = str_starts_with($field, 'excluded_query_params') ? 'excludedQueryParams'
-                    : (str_starts_with($field, 'excluded_headers') ? 'excludedHeaderNames' : 'pathPatternEnabled');
-                $this->addError($target, $messages[0]);
-            }
-
-            return null;
-        } catch (InvalidArgumentException $exception) {
-            $this->addError('rawCurl', $exception->getMessage());
-
-            return null;
-        }
-
-        $duplicate = MockEndpoint::query()
-            ->where('curl_hash', $variant->hash)
-            ->when($this->endpointId !== null, fn ($query) => $query->where('id', '!=', $this->endpointId))
-            ->orderBy('id')
-            ->first();
-
-        if ($duplicate !== null) {
-            $this->addError('rawCurl', 'This signature is already used by '.$duplicate->displayName().'. Open that endpoint or change the matching request.');
-
-            return null;
-        }
-
-        $endpoint = $this->endpointId === null
-            ? new MockEndpoint
-            : MockEndpoint::query()->findOrFail($this->endpointId);
         $created = $this->endpointId === null;
-        $displayName = trim($this->name) ?: $this->deriveName($parsed);
-        $revisions = app(RevisionManager::class);
-        $before = $created ? null : $revisions->snapshot($endpoint);
+        $this->resetValidation();
+        try {
+            $endpoint = app(EndpointMutationService::class)->save($this->mutationInput(), $this->endpointId);
+        } catch (ValidationException $exception) {
+            $this->setErrorBag($exception->errors());
 
-        DB::transaction(function () use ($endpoint, $displayName, $parsed, $variant, $matching, $revisions, $before): void {
-            $endpoint->fill([
-                'collection_id' => $this->collectionId === '' ? null : (int) $this->collectionId,
-                'name' => $displayName,
-                'enabled' => $this->enabled,
-                'priority' => $this->priority,
-                'method' => $parsed->method,
-                'raw_curl' => $this->rawCurl,
-                'normalized_curl' => $variant->normalized,
-                'curl_hash' => $variant->hash,
-                'signature_version' => $variant->name === 'V6' ? 6 : ($endpoint->exists && $endpoint->signature_version !== 6 ? $endpoint->signature_version : 2),
-                ...$matching,
-                'exclude_cookies' => $this->excludeHeaders ? false : $this->excludeCookies,
-                'exclude_auth' => $this->excludeHeaders ? false : $this->excludeAuth,
-                'exclude_headers' => $this->excludeHeaders,
-            ])->save();
-            $endpoint->tags()->sync(array_map('intval', $this->tagIds));
-            $overrides = collect($this->environmentOverrides)
-                ->filter(static fn (string $enabled): bool => $enabled !== '')
-                ->mapWithKeys(static fn (string $enabled, int|string $environmentId): array => [
-                    (int) $environmentId => ['enabled' => $enabled === '1'],
-                ])->all();
-            $endpoint->environmentOverrides()->sync($overrides);
-            if ($before !== null) {
-                $revisions->recordIfChanged($endpoint, $before);
-            }
-        }, 3);
+            return null;
+        }
 
         session()->flash(
             'status',
@@ -601,18 +475,8 @@ CURL;
 
         if (trim($this->rawCurl) !== '') {
             try {
-                $parsed = $parser->parse($this->rawCurl);
+                ['parsed' => $parsed, 'variant' => $variant] = app(EndpointRequestService::class)->prepare($this->mutationInput());
                 $pathSegments = explode('/', (string) (parse_url($parsed->url, PHP_URL_PATH) ?: '/'));
-                $matching = $this->fieldMatching($parsed->url);
-                $variant = $hasher->forOptions(
-                    $parsed,
-                    $this->excludeHeaders ? false : $this->excludeCookies,
-                    $this->excludeHeaders ? false : $this->excludeAuth,
-                    $this->excludeHeaders,
-                    $matching['excluded_query_params'],
-                    $matching['excluded_headers'],
-                    $matching['path_pattern_enabled'],
-                );
                 $preview = compact('parsed', 'variant');
                 $duplicate = MockEndpoint::query()
                     ->where('curl_hash', $variant->hash)
@@ -649,139 +513,59 @@ CURL;
 
     private function deriveName(ParsedCurl $parsed): string
     {
-        $parts = parse_url($parsed->url) ?: [];
-        $target = (string) ($parts['path'] ?? '/');
-
-        return strtoupper($parsed->method).' '.$target;
+        return app(EndpointRequestService::class)->deriveName($parsed);
     }
 
     /** @return list<array{name: string, value: string, display_value: string, sensitive: bool, excluded_reason: ?string}> */
     private function analyzeHeaders(ParsedCurl $parsed): array
     {
-        $transport = array_map('strtolower', config('mock.transport_header_names', []));
-        $auth = array_map('strtolower', config('mock.auth_header_names', []));
-
-        return array_map(function (array $header) use ($transport, $auth): array {
-            $name = strtolower(trim($header['name']));
-            $isSensitive = app(RequestCredentialPolicy::class)->sensitive($name, $header['value']);
-            $reason = null;
-
-            if (in_array($name, $transport, true)) {
-                $reason = 'ignored: volatile transport header';
-            } elseif ($this->excludeHeaders) {
-                $reason = 'ignored: all headers excluded';
-            } elseif ($this->excludeCookies && $name === 'cookie') {
-                $reason = 'ignored: cookie policy';
-            } elseif ($this->excludeAuth && in_array($name, $auth, true)) {
-                $reason = 'ignored: authentication policy';
-            }
-
-            $coarseExcluded = $reason !== null;
-            if ($reason === null && in_array($name, $this->excludedHeaderNames, true)) {
-                $reason = 'ignored: individual exclusion';
-            }
-
-            return [
-                'variable_tokens' => $this->variableTokens('header', $name),
-                'normalized_name' => $name,
-                'coarse_excluded' => $coarseExcluded,
-                'name' => $header['name'],
-                'value' => $header['value'],
-                'display_value' => $isSensitive ? '••••••••' : $header['value'],
-                'sensitive' => $isSensitive,
-                'excluded_reason' => $reason,
-            ];
-        }, $parsed->headers);
+        return app(EndpointRequestService::class)->analyzeHeaders($this->mutationInput(), $parsed, $this->variableProvenance());
     }
 
     /** @return list<array{key: string, value: string, display_value: string, sensitive: bool}> */
-    private function variableTokens(string $type, string $name): array
+    private function variableProvenance(): array
     {
-        $this->importVariableProvenance ??= ($this->endpointId ? MockEndpoint::find($this->endpointId)?->external_source['variable_provenance'] ?? [] : []);
-
-        return collect($this->importVariableProvenance)->where('field_type', $type)->where('field_name', $name)->pluck('tokens')->flatten()->unique()->values()->all();
+        return $this->importVariableProvenance ??= ($this->endpointId ? MockEndpoint::find($this->endpointId)?->external_source['variable_provenance'] ?? [] : []);
     }
 
     private function queryParameters(ParsedCurl $parsed): array
     {
-        $query = (string) (parse_url($parsed->url, PHP_URL_QUERY) ?? '');
-        if ($query === '') {
-            return [];
-        }
-
-        return array_map(function (string $parameter): array {
-            [$key, $value] = array_pad(explode('=', $parameter, 2), 2, '');
-            $decodedKey = urldecode($key);
-            $decodedValue = urldecode($value);
-            $sensitive = app(RequestCredentialPolicy::class)->sensitive($decodedKey, $decodedValue, true);
-
-            return [
-                'variable_tokens' => $this->variableTokens('query', $decodedKey),
-                'key' => $decodedKey,
-                'excluded' => in_array($decodedKey, $this->excludedQueryParams, true),
-                'value' => $decodedValue,
-                'display_value' => $sensitive ? '••••••••' : $decodedValue,
-                'sensitive' => $sensitive,
-            ];
-        }, explode('&', $query));
+        return app(EndpointRequestService::class)->queryParameters($this->mutationInput(), $parsed, $this->variableProvenance());
     }
 
     /** @param list<array{name: string, value: string, display_value: string, sensitive: bool, excluded_reason: ?string}> $headers */
     private function maskCanonical(string $canonical, array $headers): string
     {
-        foreach ($headers as $header) {
-            if ($header['sensitive']) {
-                $canonical = (string) preg_replace(
-                    '/^'.preg_quote(strtolower($header['name']), '/').':.*$/mi',
-                    strtolower($header['name']).':••••••••',
-                    $canonical,
-                );
-            }
-        }
-
-        foreach (config('mock.portable_config.sensitive_query_keys', []) as $key) {
-            $canonical = (string) preg_replace(
-                '/([?&]'.preg_quote(rawurlencode((string) $key), '/').'=)[^&\s]+/i',
-                '$1REDACTED',
-                $canonical,
-            );
-        }
-
-        return $canonical;
+        return app(EndpointRequestService::class)->maskCanonical($canonical, $headers);
     }
 
     private function prettyBody(string $body): string
     {
-        $decoded = json_decode($body, true);
-
-        return json_last_error() === JSON_ERROR_NONE
-            ? (string) json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
-            : $body;
+        return app(EndpointRequestService::class)->prettyBody($body);
     }
 
     /** @return list<string> */
     private function curlWarnings(): array
     {
-        $warnings = [];
-        $checks = [
-            '/(?:^|\s)(?:-L|--location)(?:\s|$)/' => 'Redirect flags are ignored; only the pasted request URL is signed.',
-            '/(?:^|\s)(?:-G|--get)(?:\s|$)/' => 'GET mode moves data fields into the query string before signing.',
-            '/(?:^|\s)(?:-u|--user)(?:\s|$)/' => 'Basic-auth credentials are converted into an Authorization header.',
-            '/(?:^|\s)(?:-b|--cookie)(?:\s|$)/' => 'Inline cookies are converted into a Cookie header.',
-            '/(?:^|\s)(?:-F|--form)(?:\s|$)/' => 'Multipart forms are unsupported because generated boundaries are unstable.',
-            '/--data-binary\s+@/' => 'File-backed request bodies are unsupported; paste the file contents inline.',
-        ];
+        return app(EndpointRequestService::class)->curlWarnings($this->rawCurl);
+    }
 
-        foreach ($checks as $pattern => $message) {
-            if (preg_match($pattern, $this->rawCurl) === 1) {
-                $warnings[] = $message;
-            }
-        }
-
-        if (preg_match_all('/(?:^|\R)\s*curl(?:\.exe)?\b/i', $this->rawCurl) > 1) {
-            $warnings[] = 'Multiple curl commands were detected. Paste one request at a time.';
-        }
-
-        return $warnings;
+    private function mutationInput(): EndpointInput
+    {
+        return new EndpointInput(
+            name: $this->name,
+            enabled: $this->enabled,
+            priority: $this->priority,
+            rawCurl: $this->rawCurl,
+            excludeCookies: $this->excludeCookies,
+            excludeAuth: $this->excludeAuth,
+            excludeHeaders: $this->excludeHeaders,
+            excludedQueryParams: $this->excludedQueryParams,
+            excludedHeaderNames: $this->excludedHeaderNames,
+            pathPatternEnabled: $this->pathPatternEnabled,
+            collectionId: $this->collectionId,
+            tagIds: $this->tagIds,
+            environmentOverrides: $this->environmentOverrides,
+        );
     }
 }
