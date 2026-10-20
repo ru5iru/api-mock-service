@@ -6,7 +6,6 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
-import uuid
 
 
 def command(*args):
@@ -29,32 +28,37 @@ def main():
         raise SystemExit('Expected exactly one shared app/Nginx network.')
     network = networks.pop()
     old_ip = app['NetworkSettings']['Networks'][network]['IPAddress']
-    holder = 'mockdeck-ci-ip-holder-' + uuid.uuid4().hex[:10]
-    try:
-        # Reserve the previous address so Docker cannot hide the bug by reusing it.
-        command('docker', 'network', 'disconnect', network, app_id)
-        command('docker', 'run', '-d', '--name', holder, '--network', network, '--ip', old_ip,
-                '--entrypoint', 'sh', app['Config']['Image'], '-c', 'sleep 180')
-        command('docker', 'compose', 'up', '-d', '--no-deps', '--force-recreate', '--wait', 'app')
-        replacement = inspect(command('docker', 'compose', 'ps', '-q', 'app'))
-        new_ip = replacement['NetworkSettings']['Networks'][network]['IPAddress']
-        assert new_ip != old_ip, 'The test must exercise a changed upstream IP.'
-        assert command('docker', 'compose', 'ps', '-q', 'nginx') == nginx_id, 'Nginx was unexpectedly recreated.'
-        origin = os.environ.get('APP_URL', 'http://localhost:18473').rstrip('/')
-        last_error = None
-        for _ in range(30):
-            try:
-                with urllib.request.urlopen(origin + '/up', timeout=3) as response:
-                    assert response.status == 200
-                assert inspect(nginx_id)['State']['StartedAt'] == nginx['State']['StartedAt'], 'Nginx restarted.'
-                print(f'Nginx recovered after app IP changed {old_ip} -> {new_ip}, without restarting Nginx.')
-                return
-            except (urllib.error.URLError, TimeoutError) as error:
-                last_error = error
-                time.sleep(1)
-        raise AssertionError(f'Nginx did not recover from the upstream IP change: {last_error}')
-    finally:
-        subprocess.run(['docker', 'rm', '-f', holder], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    origin = os.environ.get('APP_URL', 'http://localhost:18473').rstrip('/')
+    # Warm Nginx's original upstream before introducing the second address.
+    with urllib.request.urlopen(origin + '/up', timeout=3) as response:
+        assert response.status == 200, 'The original instance must be healthy.'
+    # Both containers exist concurrently, so Docker must allocate a different IP.
+    # Automatic allocation works on ordinary Compose networks without custom IPAM.
+    command('docker', 'compose', 'up', '-d', '--no-deps', '--no-recreate',
+            '--scale', 'app=2', '--wait', 'app')
+    app_ids = command('docker', 'compose', 'ps', '-q', 'app').splitlines()
+    replacements = [container for container in app_ids if container != app_id]
+    assert app_id in app_ids and len(replacements) == 1, 'Expected the original app and exactly one healthy replacement.'
+    replacement_id = replacements[0]
+    replacement = inspect(replacement_id)
+    new_ip = replacement['NetworkSettings']['Networks'][network]['IPAddress']
+    assert new_ip and new_ip != old_ip, 'The test must exercise a changed upstream IP.'
+    # Remove only after Compose has confirmed that the replacement is healthy.
+    command('docker', 'rm', '-f', app_id)
+    assert command('docker', 'compose', 'ps', '-q', 'app') == replacement_id, 'Expected only the replacement app.'
+    assert command('docker', 'compose', 'ps', '-q', 'nginx') == nginx_id, 'Nginx was unexpectedly recreated.'
+    last_error = None
+    for _ in range(30):
+        try:
+            with urllib.request.urlopen(origin + '/up', timeout=3) as response:
+                assert response.status == 200
+            assert inspect(nginx_id)['State']['StartedAt'] == nginx['State']['StartedAt'], 'Nginx restarted.'
+            print(f'Nginx recovered after app IP changed {old_ip} -> {new_ip}, without restarting Nginx.')
+            return
+        except (urllib.error.URLError, TimeoutError) as error:
+            last_error = error
+            time.sleep(1)
+    raise AssertionError(f'Nginx did not recover from the upstream IP change: {last_error}')
 
 
 if __name__ == '__main__':

@@ -334,10 +334,12 @@ make nginx-reload
 make health
 ```
 
-The container CI job runs `scripts/smoke_upstream_recreation.py` on its disposable instance. It holds the old app IP, recreates app with a different IP, and requires `/up` recovery without recreating or restarting Nginx. This deliberately disrupts app networking and refuses to run unless `CI=true`; never run it on an operator instance.
+The container CI job runs `scripts/smoke_upstream_recreation.py` on its disposable instance. It warms the original upstream, starts a second healthy app replica with automatic address allocation, removes the original, and requires `/up` recovery without recreating or restarting Nginx. Concurrently existing app containers guarantee distinct addresses without static IPs or custom subnet/IPAM configuration; the replacement remains the sole app afterward. This deliberately disrupts app networking and refuses to run unless `CI=true`; never run it on an operator instance.
 
 ## MCP Phase 2 isolation
 
 The full PHPUnit suite includes `TestRunOwnershipTest`, `TestRunRoutingTest`, `TestRunCompatibilityTest`, and `ConcurrentRunRoutingTest`. The concurrency test uses real TCP requests, eight PHP server workers and 24 simultaneous clients: two isolated runs plus ordinary traffic, each with identical request shapes. Both routing mechanisms share the same load. CI repeats it against PostgreSQL in its own disposable `mockdeck_run_isolation_test` database; this is additional to the default SQLite run. See `docs/MCP.md` for the guarded PostgreSQL mode and reserved-path migration preflight. No MCP server or external agent service is needed.
 
 Run-context tests use explicit incoming HTTP and HTTPS origins (including port 18473) rather than assuming the developer's `APP_URL` is `http://localhost`. Both response and callback assertions require the original request origin/query to survive while the run-routing prefix is removed. Changing local `APP_URL` must not change these test expectations or force application request URLs back to HTTP.
+
+The setup test suite mocks the smoke-test orchestration to check the CI-only guard, automatic allocation, health-before-removal order, DNS recovery retries and unchanged Nginx identity/start time. The actual Docker DNS/network regression still runs in the container CI job.
