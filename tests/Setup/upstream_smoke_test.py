@@ -30,6 +30,8 @@ class UpstreamSmokeTest(unittest.TestCase):
         def command(*args):
             commands.append(args)
             events.append(args)
+            if args == ('docker', 'compose', 'exec', '-T', 'nginx', 'nginx', '-T'):
+                return (Path(__file__).resolve().parents[2] / 'docker/nginx/app-locations.conf').read_text()
             if args == ('docker', 'compose', 'ps', '-q', 'app'):
                 return next(app_queries)
             if args == ('docker', 'compose', 'ps', '-q', 'nginx'):
@@ -82,3 +84,17 @@ class UpstreamSmokeTest(unittest.TestCase):
 
     def test_nginx_restart_cannot_hide_the_regression(self):
         self.exercise(changed_nginx=True)
+
+
+    def test_rejects_old_upstream_config_before_disrupting_any_container(self):
+        with patch.dict(smoke.os.environ, {'CI': 'true'}), patch.object(smoke, 'command', return_value='fastcgi_pass app:9000;') as command:
+            with self.assertRaisesRegex(AssertionError, 'Updating the smoke script alone is insufficient'):
+                smoke.main()
+            command.assert_called_once_with('docker', 'compose', 'exec', '-T', 'nginx', 'nginx', '-T')
+
+    def test_rejects_missing_connection_timeout_and_mixed_static_upstreams(self):
+        config = (Path(__file__).resolve().parents[2] / 'docker/nginx/app-locations.conf').read_text()
+        with self.assertRaisesRegex(AssertionError, 'connection-timeout'):
+            smoke.check_upstream_configuration(config.replace('fastcgi_connect_timeout 2s;', ''))
+        with self.assertRaisesRegex(AssertionError, 'startup-resolved'):
+            smoke.check_upstream_configuration(config + '\nfastcgi_pass app:9000;\n')

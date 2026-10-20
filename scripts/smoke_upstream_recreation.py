@@ -2,6 +2,7 @@
 """CI-only disruptive regression: app changes IP while the Nginx container stays running."""
 import json
 import os
+import re
 import subprocess
 import time
 import urllib.error
@@ -16,9 +17,25 @@ def inspect(container):
     return json.loads(command('docker', 'inspect', container))[0]
 
 
+def check_upstream_configuration(configuration):
+    required = [
+        r'^\s*resolver\s+127\.0\.0\.11\b[^;]*\bvalid=5s\b[^;]*;',
+        r'^\s*set\s+\$mockdeck_fastcgi\s+app:9000\s*;',
+        r'^\s*fastcgi_pass\s+\$mockdeck_fastcgi\s*;',
+        r'^\s*fastcgi_connect_timeout\s+2s\s*;',
+    ]
+    if any(re.search(pattern, configuration, re.MULTILINE) is None for pattern in required):
+        raise AssertionError('Nginx is missing the required dynamic FastCGI DNS/connection-timeout configuration. '
+                             'Apply docker/nginx/app-locations.conf from the fix, run make nginx-reload, and retry. '
+                             'Updating the smoke script alone is insufficient.')
+    if re.search(r'^\s*fastcgi_pass\s+app:9000\s*;', configuration, re.MULTILINE):
+        raise AssertionError('Nginx still has a startup-resolved fastcgi_pass app:9000; apply the shared snippet and recreate Nginx.')
+
+
 def main():
     if os.environ.get('CI') != 'true':
         raise SystemExit('This disruptive smoke test requires a disposable CI instance (CI=true).')
+    check_upstream_configuration(command('docker', 'compose', 'exec', '-T', 'nginx', 'nginx', '-T'))
     app_id = command('docker', 'compose', 'ps', '-q', 'app')
     nginx_id = command('docker', 'compose', 'ps', '-q', 'nginx')
     app = inspect(app_id)
@@ -58,6 +75,7 @@ def main():
         except (urllib.error.URLError, TimeoutError) as error:
             last_error = error
             time.sleep(1)
+    print(command('docker', 'compose', 'logs', '--no-color', '--tail=60', 'nginx', 'app'))
     raise AssertionError(f'Nginx did not recover from the upstream IP change: {last_error}')
 
 
