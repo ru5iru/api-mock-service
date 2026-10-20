@@ -12,6 +12,7 @@ use App\Services\Curl\CurlHasher;
 use App\Services\Curl\CurlParser;
 use App\Services\Environments\EnvironmentVariableWriter;
 use App\Services\Revisions\RevisionManager;
+use App\Services\TestRuns\RunRouting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -67,6 +68,7 @@ final readonly class MappedImportService
                     $oldResponses = $endpoint->exists ? $endpoint->responses()->get() : collect();
                     $before = $endpoint->exists ? [...$this->revisions->snapshot($endpoint), 'import_response_pool' => $oldResponses->map(fn ($response) => $this->revisions->snapshot($response))->all()] : null;
                     $parsed = $this->parser->parse($item['raw_curl']);
+                    RunRouting::validateConfiguration($parsed);
                     $variant = $this->hasher->forOptions($parsed, false, false, false, $item['excluded_query_params'], $item['excluded_headers'], $item['path_pattern_enabled']);
                     $collection = Collection::query()->firstOrCreate(['name' => $item['collection']]);
                     $endpoint->fill([
@@ -157,6 +159,11 @@ final readonly class MappedImportService
             $duplicate = isset($seen[$item['correlation_key']]);
             $action = $mode === ImportMode::Clone ? 'create' : ($duplicate ? 'skip' : ($existing ? ($mode === ImportMode::CreateOnly ? 'skip' : 'update') : 'create'));
             $warnings = $item['warnings'];
+            try {
+                RunRouting::validateConfiguration($this->parser->parse($item['raw_curl']));
+            } catch (InvalidArgumentException $exception) {
+                $errors[] = $exception->getMessage();
+            }
             foreach ($item['variable_provenance'] ?? [] as $field) {
                 if ($action !== 'skip' && ($field['error'] ?? null)) {
                     $errors[] = $field['error'];

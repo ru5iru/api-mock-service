@@ -8,6 +8,7 @@ use App\Services\Curl\HashVariant;
 use App\Services\Curl\ParsedCurl;
 use App\Services\Curl\RequestCredentialPolicy;
 use App\Services\Matching\FieldMatchingConfiguration;
+use App\Services\TestRuns\RunRouting;
 
 final class EndpointRequestService
 {
@@ -22,6 +23,7 @@ CURL;
     public function prepare(EndpointInput $input): array
     {
         $parsed = app(CurlParser::class)->parse($input->rawCurl);
+        RunRouting::validateConfiguration($parsed);
         $matching = $this->fieldMatching($input, $parsed->url);
         $variant = app(CurlHasher::class)->forOptions($parsed,
             $input->excludeHeaders ? false : $input->excludeCookies,

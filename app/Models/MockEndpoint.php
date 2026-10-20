@@ -17,6 +17,7 @@ final class MockEndpoint extends Model
     use HasFactory;
 
     protected $fillable = [
+        'test_run_id',
         'external_source',
         'uuid',
         'selection_mode',
@@ -40,6 +41,7 @@ final class MockEndpoint extends Model
 
     protected static function booted(): void
     {
+        self::addGlobalScope('ordinary', fn ($query) => $query->whereNull('mock_endpoints.test_run_id'));
         self::creating(function (MockEndpoint $endpoint): void {
             $endpoint->uuid ??= (string) Str::uuid7();
         });
@@ -70,7 +72,8 @@ final class MockEndpoint extends Model
     /** @return HasMany<MockResponse, $this> */
     public function responses(): HasMany
     {
-        return $this->hasMany(MockResponse::class)->orderBy('id');
+        return $this->hasMany(MockResponse::class)
+            ->when($this->test_run_id !== null, fn ($query) => $query->withoutGlobalScope('ordinary'))->orderBy('id');
     }
 
     /** @return BelongsTo<Collection, $this> */
@@ -104,6 +107,11 @@ final class MockEndpoint extends Model
     {
         return $this->hasMany(Revision::class, 'entity_id')
             ->where('entity_type', 'endpoint');
+    }
+
+    public function testRun(): BelongsTo
+    {
+        return $this->belongsTo(TestRun::class);
     }
 
     public function callStates(): HasMany

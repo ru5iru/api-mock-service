@@ -320,3 +320,22 @@ CI pins both jobs to `ubuntu-24.04` so the moving `ubuntu-latest` label cannot s
 The full PHPUnit suite automatically includes `MutationCharacterizationTest`, `SharedMutationServiceTest`, `McpCredentialTest`, `McpCredentialCommandTest` and `McpAuditContractTest`. Both CI jobs already run this suite (`php artisan test` on the host and `make validate` in the container job). Tests use temporary databases and create no production MCP routes. The same checks cover unchanged Wave 2 verification authentication, dashboard draft/revision behavior, atomic service transactions, hash-only/revoked credentials, fixed permission/error contracts and redacted audit metadata.
 
 Apply both `2026_10_18_*` migrations with normal startup before using credential CLI commands. Follow [docs/MCP.md](MCP.md) for commands and permissions. Phase 1 requires no MCP transport/client smoke test because it provides no transport or tool handlers. A Docker-less environment cannot certify the image/build portion of `make validate`; report that limitation separately from native PHP/frontend results.
+
+## App recreation and stale Nginx upstream addresses
+
+Nginx resolves the Compose `app` hostname through Docker DNS (`127.0.0.11`) using a variable FastCGI destination, with a five-second cache. Rebuilding/recreating the app can change its IP; an old literal `fastcgi_pass app:9000` configuration resolved only when Nginx started and could keep connecting to the previous address. The shared snippet covers plain HTTP and the same-port HTTP/HTTPS setup.
+
+Nginx's Compose healthcheck requests `/up` through Nginx, PHP-FPM and Laravel, instead of treating a running Nginx process as proof of application reachability. A restart/recreation can still cause a brief unavailable window; this is recovery, not a zero-downtime guarantee.
+
+For an existing installation that still has the old configuration loaded:
+
+```bash
+make nginx-reload
+make health
+```
+
+The container CI job runs `scripts/smoke_upstream_recreation.py` on its disposable instance. It holds the old app IP, recreates app with a different IP, and requires `/up` recovery without recreating or restarting Nginx. This deliberately disrupts app networking and refuses to run unless `CI=true`; never run it on an operator instance.
+
+## MCP Phase 2 isolation
+
+The full PHPUnit suite includes `TestRunOwnershipTest`, `TestRunRoutingTest`, `TestRunCompatibilityTest`, and `ConcurrentRunRoutingTest`. The concurrency test uses real TCP requests, eight PHP server workers and 24 simultaneous clients: two isolated runs plus ordinary traffic, each with identical request shapes. Both routing mechanisms share the same load. CI repeats it against PostgreSQL in its own disposable `mockdeck_run_isolation_test` database; this is additional to the default SQLite run. See `docs/MCP.md` for the guarded PostgreSQL mode and reserved-path migration preflight. No MCP server or external agent service is needed.

@@ -113,3 +113,13 @@ test('MCP foundations are documented as preparation without an enabled transport
     assert.ok(read('docs/USER_GUIDE.md').includes('](MCP.md#credential-lifecycle-cli)'));
     assert.ok(guide.includes('no MCP endpoint'));
 });
+
+
+test('isolated run help documents both routes and the ordinary traffic boundary', () => {
+    for (const path of ['docs/MCP.md', 'resources/views/admin/docs.blade.php']) {
+        const guide = read(path);
+        for (const term of ['X-MockDeck-Test-Run', '/_mockdeck/run/', '/mcp', 'ordinary']) {
+            assert.ok(guide.includes(term), `${path}: missing ${term}`);
+        }
+    }
+});

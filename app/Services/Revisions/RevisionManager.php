@@ -108,6 +108,9 @@ final readonly class RevisionManager
         ?string $importBatchId = null,
         ?string $note = null,
     ): ?Revision {
+        if ($this->runOwned($entity)) {
+            return null;
+        }
         $entity->refresh();
         if ($entity instanceof MockEndpoint) {
             $entity->load(['tags', 'environmentOverrides']);
@@ -128,6 +131,9 @@ final readonly class RevisionManager
         ?string $importBatchId = null,
         ?string $note = null,
     ): Revision {
+        if ($this->runOwned($entity)) {
+            throw new \LogicException('Test-run mocks are runtime data and cannot have configuration revisions.');
+        }
         if (! in_array($source, ['manual_edit', 'import', 'rollback'], true)) {
             throw new InvalidArgumentException('Unsupported revision source.');
         }
@@ -262,6 +268,12 @@ final readonly class RevisionManager
                     : $field.' '.$change['type'],
             };
         })->implode(', ');
+    }
+
+    private function runOwned(Model $entity): bool
+    {
+        return ($entity instanceof MockEndpoint && $entity->test_run_id !== null)
+            || ($entity instanceof MockResponse && $entity->endpoint?->test_run_id !== null);
     }
 
     private function entityType(Model $entity): string

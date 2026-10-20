@@ -1,6 +1,6 @@
 # MockDeck MCP foundations
 
-Phase 1 prepares shared mutation services and independent credentials. It adds no MCP endpoint, transport, tool handlers or test-run routing. The dashboard and mock-serving behavior stay unchanged. Later phases extend this document.
+Phase 1 prepares shared mutation services and independent credentials. It adds no MCP endpoint, transport, tool handlers or test-run routing. The dashboard and ordinary mock-serving behavior stay unchanged. Phase 2 now adds internal test-run ownership and isolated HTTP routing; there is still no MCP endpoint or tool transport.
 
 ## Behavior baseline
 
@@ -108,3 +108,38 @@ Only authentication/permission middleware uses these codes in Phase 1, and that 
 ## Compatibility verification
 
 The one-time issuance wrapper also rejects cloning, serialization and debug disclosure of its bearer. Migration rollback/reapply tests compare existing endpoints, responses, verification tokens and runtime counters byte-for-byte. Eleven standard/custom error cases were additionally compared against the pre-extraction components and matched exactly; they are retained in characterization coverage. The full existing application suite remains the broader behavior baseline. These checks prepare infrastructure only: no agent connection is available in Phase 1.
+
+## Phase 2: test-run ownership
+
+`test_runs` binds an unguessable UUID `public_id` to its owning MCP credential and a fixed environment. The internal numeric ID is never a routing identifier. `TestRunService::create` requires write permission; finishing without deletion requires write, while finishing with deletion requires cleanup. Ownership is checked before finishing; another credential cannot finish a run. Revocation remains immediate. No MCP transport or management HTTP API is introduced.
+
+Run-owned endpoints have `test_run_id`; ordinary endpoints retain NULL. Default endpoint/response queries, dashboard bindings, imports and portable exports only see ordinary configuration. Internal runtime code must explicitly opt into a run scope. Run configuration cannot create Version History records. No portable format or revision schema changes are made.
+
+Call-state uniqueness uses two partial unique indexes: `(endpoint_id, environment_id)` for NULL run IDs and `(endpoint_id, environment_id, test_run_id)` otherwise. A plain nullable composite unique constraint would allow duplicate ordinary state rows in PostgreSQL and SQLite; preserving first-call concurrency requires the NULL-specific index. Environment deletion is restricted while a run references it. Rollback removes ephemeral run mocks/state before restoring the previous schema.
+
+The upgrade preflight rejects existing endpoint paths under `/_mockdeck` or `/mcp` (including encoded spellings), or a configured `X-MockDeck-Test-Run` header. It reports the offending endpoint ID before adding tables/columns; rename that configuration using the previous version and retry. These namespaces become reserved; they are not silently reassigned.
+
+## Routing isolated HTTP requests
+
+Phase 2 enables routing only; Phase 3 will add the tools that create and manage runs. A caller holding an active run's public UUID can use either mechanism:
+
+```bash
+# Use when the application can attach a header. The URL stays unchanged.
+curl http://localhost:18473/users/42 -H 'X-MockDeck-Test-Run: <public UUID>'
+
+# Use when only the application's API base URL can be changed.
+curl http://localhost:18473/_mockdeck/run/<public UUID>/users/42
+```
+
+Both mechanisms invoke `ResolveTestRun` before the same `EndpointMatcher`, using an explicit `RequestScope`. Header routing removes `X-MockDeck-Test-Run` before matching/context capture. Prefix routing removes only `/_mockdeck/run/<public UUID>`; method, remaining raw path/encoding, query, body and other headers are retained. Routing metadata is never hashed and does not bump signature versions. Matching algorithms, precedence, response selection modes and fault behavior are unchanged. The instance-wide active environment is never switched: eligibility, response templates, callback scheduling/delivery, logs and call counters use the run's bound environment explicitly.
+
+Isolation is a two-way wall: run traffic considers only its own run's endpoints, and ordinary traffic considers only NULL-run endpoints. A miss never falls back to ordinary mocks or another run. Identical signatures can coexist across these scopes. Invalid/unknown/finished runs or runs owned by revoked credentials return 404 with `test_run_unavailable`. Conflicting header/prefix IDs return 400; providing the same ID through both is allowed. A run UUID is a routing capability, not a management credential: keep it private. Requests do not require the MCP bearer token, so applications that can only change a base URL remain supported. Running requests already admitted before finish/revocation may complete; later requests and queued callback jobs fail closed.
+
+`/_mockdeck` and all descendants, plus `/mcp` and descendants, are application-owned namespaces. `/mcp` deliberately returns 404 until transport is implemented; it cannot fall through to configured mocks. Nginx forwards these paths normally to Laravel; no duplicate matcher or proxy rewrite is involved. Existing 10 MiB Nginx body and 60-second FastCGI timeout limits remain unchanged. The `/api/v1/verify/*` API remains ordinary-only, including reset-all: an old verification token cannot inspect or reset run state. Routing reads the live request and run row, independently of request-log retention.
+
+
+## Isolation regression coverage
+
+`ConcurrentRunRoutingTest` launches eight PHP HTTP server workers and 24 barrier-synchronized TCP clients. Two runs and ordinary traffic all use the same POST path/query/JSON body and strict retained headers. Header and prefix mechanisms are mixed within each run. The test asserts each scope gets only its own responses, every sequence position 0–7 exactly once, and separate counts/digests. It runs in the normal full PHPUnit suite using a disposable SQLite file, plus the container CI job against the dedicated disposable PostgreSQL database `mockdeck_run_isolation_test`. The PostgreSQL mode refuses any other database name and requires `MOCKDECK_RUN_CONCURRENCY_POSTGRES=true`; never point it at a working instance.
+
+`TestRunRoutingTest`, `TestRunOwnershipTest` and `TestRunCompatibilityTest` cover fail-closed routing, bound template/callback environments, global-setting preservation, dashboard hiding, old verification-token/reset isolation, nullable-state uniqueness, ownership, migration safety/collision handling, revision refusal and byte-identical ordinary export output. Existing Phase 1 characterization and serving tests remain mandatory. No new UI component is introduced in Phase 2.

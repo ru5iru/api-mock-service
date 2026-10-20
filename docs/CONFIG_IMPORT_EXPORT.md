@@ -213,3 +213,8 @@ Postman variable provenance is optional metadata within native 1.5 `external_sou
 ### MCP security and audit state
 
 Phase 1's `mcp_credentials` and `mcp_invocations` are instance-local security/operational state. They are never included in configuration export/import, endpoint cloning or revision snapshots/restores. Their addition does not change the native format version (still 1.5). Provision new credentials locally after moving configuration; existing Wave 2 verification tokens remain a separate auth domain. See [MCP foundations](MCP.md).
+
+
+## Ephemeral test-run exclusion
+
+MCP Phase 2 leaves native format **1.5** unchanged. Run-owned endpoints/responses (`test_run_id` non-NULL), test runs and all call state are runtime data; native export excludes them even when explicitly selected by UUID. Native imports only create/update ordinary configuration, never run ownership. Run mocks cannot enter configuration revisions. `/_mockdeck` and `/mcp` are reserved routing namespaces and cannot be imported as operator endpoint paths.

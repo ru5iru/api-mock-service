@@ -76,7 +76,7 @@ final class VerificationController extends Controller
         $environment = $this->environment($request);
         // A single atomic UPDATE serializes with selection's row updates and never
         // creates state rows for untouched endpoints or changes configuration.
-        $updated = DB::transaction(fn (): int => EndpointCallState::query()->where('environment_id', $environment->id)->update($this->clearedState()), 5);
+        $updated = DB::transaction(fn (): int => EndpointCallState::query()->whereNull('test_run_id')->where('environment_id', $environment->id)->update($this->clearedState()), 5);
 
         return response()->json(['reset' => true, 'environment' => $environment->name, 'state_rows_reset' => $updated]);
     }
@@ -90,7 +90,7 @@ final class VerificationController extends Controller
 
     private function state(MockEndpoint $endpoint, Environment $environment)
     {
-        return EndpointCallState::query()->where('endpoint_id', $endpoint->id)->where('environment_id', $environment->id);
+        return EndpointCallState::query()->whereNull('test_run_id')->where('endpoint_id', $endpoint->id)->where('environment_id', $environment->id);
     }
 
     private function clearedState(): array

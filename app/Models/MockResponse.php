@@ -55,6 +55,7 @@ final class MockResponse extends Model
 
     protected static function booted(): void
     {
+        self::addGlobalScope('ordinary', fn ($query) => $query->whereHas('endpoint', fn ($endpoint) => $endpoint->whereNull('mock_endpoints.test_run_id')));
         self::creating(function (MockResponse $response): void {
             $response->uuid ??= (string) Str::uuid7();
         });
@@ -95,7 +96,7 @@ final class MockResponse extends Model
     /** @return BelongsTo<MockEndpoint, $this> */
     public function endpoint(): BelongsTo
     {
-        return $this->belongsTo(MockEndpoint::class, 'mock_endpoint_id');
+        return $this->belongsTo(MockEndpoint::class, 'mock_endpoint_id')->withoutGlobalScope('ordinary');
     }
 
     /** @return HasMany<Revision, $this> */
