@@ -27,7 +27,7 @@ final readonly class TestRunService
 
     public function finish(McpCredential $owner, string $publicId, bool $deleteMocks = false): TestRun
     {
-        $this->credentials->authorize($owner, $deleteMocks ? McpPermission::Cleanup : McpPermission::Write);
+        $this->credentials->authorize($owner, McpPermission::Cleanup);
 
         return DB::transaction(function () use ($owner, $publicId, $deleteMocks): TestRun {
             $run = TestRun::query()->where('credential_id', $owner->id)->where('public_id', $publicId)->lockForUpdate()->firstOrFail();

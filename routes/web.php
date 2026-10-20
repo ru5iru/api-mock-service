@@ -16,6 +16,8 @@ use App\Http\Controllers\Api\ResponseTemplateController;
 use App\Http\Controllers\Api\RevisionController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Auth\DashboardSessionController;
+use App\Models\Revision;
+use App\Models\TestRun;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('dashboard')->name('dashboard.')->group(function (): void {
@@ -34,6 +36,12 @@ Route::prefix('dashboard')
         Route::view('/logs', 'admin.logs')->name('logs.index');
         Route::view('/requests', 'admin.logs')->name('requests.index');
         Route::view('/callbacks', 'admin.logs')->name('callbacks.index');
+        Route::get('/test-runs/{publicId}/history', function (string $publicId) {
+            $run = TestRun::where('public_id', $publicId)->firstOrFail();
+            $entityIds = Revision::where('test_run_id', $run->id)->where('entity_type', 'endpoint')->distinct()->pluck('entity_id');
+
+            return view('admin.run-history', compact('run', 'entityIds'));
+        })->name('test-runs.history');
         Route::view('/docs', 'admin.docs')->name('docs');
         Route::view('/config', 'admin.config')->name('config.index');
         Route::view('/environments', 'admin.environments')->name('environments.index');

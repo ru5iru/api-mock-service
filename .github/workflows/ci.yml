@@ -124,6 +124,9 @@ jobs:
       - name: Validate through the supported Make workflow
         run: make validate
 
+      - name: Prove MCP works without external networking
+        run: make mcp-offline-test
+
       - name: Verify the plain HTTP Compose selection
         run: |
           docker compose config --format json > "$RUNNER_TEMP/http-compose.json"
@@ -155,6 +158,14 @@ jobs:
             -e MOCKDECK_RUN_CONCURRENCY_POSTGRES=true -e CACHE_STORE=array -e SESSION_DRIVER=array \
             -e MOCK_DASHBOARD_AUTH_ENABLED=false -e MOCK_LOG_STDOUT=false -e MOCK_LOG_FILE=false \
             app php artisan test --filter=ConcurrentRunRoutingTest
+
+      - name: Prove concurrent MCP mutations on PostgreSQL
+        run: |
+          docker compose run --rm -e APP_ENV=testing -e RUN_MIGRATIONS=false \
+            -e DB_CONNECTION=pgsql -e DB_DATABASE=mockdeck_run_isolation_test \
+            -e MOCKDECK_MCP_CONCURRENCY_POSTGRES=true -e CACHE_STORE=array -e SESSION_DRIVER=array \
+            -e MOCK_DASHBOARD_AUTH_ENABLED=false -e MOCK_LOG_STDOUT=false -e MOCK_LOG_FILE=false \
+            app php artisan test --filter=ConcurrentMcpMutationTest
 
       - name: Generate temporary localhost certificate
         run: |

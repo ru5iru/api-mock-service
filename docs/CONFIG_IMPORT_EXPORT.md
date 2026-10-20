@@ -217,4 +217,4 @@ Phase 1's `mcp_credentials` and `mcp_invocations` are instance-local security/op
 
 ## Ephemeral test-run exclusion
 
-MCP Phase 2 leaves native format **1.5** unchanged. Run-owned endpoints/responses (`test_run_id` non-NULL), test runs and all call state are runtime data; native export excludes them even when explicitly selected by UUID. Native imports only create/update ordinary configuration, never run ownership. Run mocks cannot enter configuration revisions. `/_mockdeck` and `/mcp` are reserved routing namespaces and cannot be imported as operator endpoint paths.
+MCP Phase 2 leaves native format **1.5** unchanged. Run-owned endpoints/responses (`test_run_id` non-NULL), test runs and all call state are runtime data; native export excludes them even when explicitly selected by UUID. Native imports only create/update ordinary configuration, never run ownership. MCP Phase 3 explicitly records redacted run-scoped revisions for agent writes; those revisions remain excluded from portable configuration. `/_mockdeck` and `/mcp` are reserved routing namespaces and cannot be imported as operator endpoint paths.

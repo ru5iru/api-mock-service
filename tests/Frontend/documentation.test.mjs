@@ -104,14 +104,14 @@ test('first-time setup follows the same Make flow in Markdown and dashboard help
 });
 
 
-test('MCP foundations are documented as preparation without an enabled transport', () => {
+test('MCP server documentation covers active transport and credential lifecycle', () => {
     assert.ok(read('README.md').includes('](docs/MCP.md)'));
     const guide = read('docs/MCP.md');
     for (const command of ['mockdeck:mcp-credential:generate', 'mockdeck:mcp-credential:list', 'mockdeck:mcp-credential:revoke']) {
         assert.ok(guide.includes(command), command);
     }
     assert.ok(read('docs/USER_GUIDE.md').includes('](MCP.md#credential-lifecycle-cli)'));
-    assert.ok(guide.includes('no MCP endpoint'));
+    for (const term of ['Streamable HTTP', '14 P0 tools', 'INCONCLUSIVE_EVIDENCE', 'MCP_TOOLS.json', 'Troubleshooting']) assert.ok(guide.includes(term), term);
 });
 
 

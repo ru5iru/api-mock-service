@@ -4,6 +4,7 @@ namespace App\Services\Mutations;
 
 use App\Models\Environment;
 use App\Models\MockEndpoint;
+use App\Models\TestRun;
 use App\Services\Curl\HashVariant;
 use App\Services\Curl\ParsedCurl;
 use Illuminate\Support\Facades\Validator;
@@ -13,7 +14,7 @@ use InvalidArgumentException;
 final class EndpointConfigurationValidator
 {
     /** @return array{parsed: ParsedCurl, variant: HashVariant, matching: array} */
-    public function validate(EndpointInput $input, ?int $endpointId = null): array
+    public function validate(EndpointInput $input, ?int $endpointId = null, ?TestRun $run = null, bool $checkDuplicates = true): array
     {
         Validator::make($input->values(), [
             'name' => ['nullable', 'string', 'max:255'],
@@ -57,13 +58,13 @@ final class EndpointConfigurationValidator
             throw ValidationException::withMessages(['rawCurl' => $exception->getMessage()]);
         }
 
-        $duplicate = MockEndpoint::query()
+        $duplicate = MockEndpoint::query()->withoutGlobalScope('ordinary')->where('test_run_id', $run?->id)
             ->where('curl_hash', $variant->hash)
             ->when($endpointId !== null, fn ($query) => $query->where('id', '!=', $endpointId))
             ->orderBy('id')
             ->first();
 
-        if ($duplicate !== null) {
+        if ($checkDuplicates && $duplicate !== null) {
             throw ValidationException::withMessages(['rawCurl' => 'This signature is already used by '.$duplicate->displayName().'. Open that endpoint or change the matching request.']);
         }
 

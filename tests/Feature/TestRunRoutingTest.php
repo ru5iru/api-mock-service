@@ -126,7 +126,8 @@ final class TestRunRoutingTest extends TestCase
     {
         foreach (['/mcp', '/mcp/tools', '/_mockdeck', '/_mockdeck/unknown'] as $path) {
             $this->endpoint(null, 'must not serve', 'curl http://localhost'.$path);
-            $this->get($path)->assertNotFound()->assertDontSee('must not serve');
+            $response = $this->get($path);
+            $response->assertStatus($path === '/mcp' ? 401 : 404)->assertDontSee('must not serve');
         }
         $this->expectException(ValidationException::class);
         app(EndpointMutationService::class)->save(new EndpointInput(rawCurl: 'curl http://localhost/mcp'));

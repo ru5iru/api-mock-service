@@ -8,6 +8,8 @@ use App\Models\MockEndpoint;
 use App\Models\MockResponse;
 use App\Models\Revision;
 use App\Models\Tag;
+use App\Models\TestRun;
+use App\Services\Mcp\McpOutput;
 use App\Services\Response\FaultConfigurationValidator;
 use App\Services\Response\SelectionConfigurationValidator;
 use Illuminate\Database\Eloquent\Model;
@@ -130,8 +132,9 @@ final readonly class RevisionManager
         string $source = 'manual_edit',
         ?string $importBatchId = null,
         ?string $note = null,
+        ?TestRun $run = null,
     ): Revision {
-        if ($this->runOwned($entity)) {
+        if ($this->runOwned($entity) && ($run === null || ($entity instanceof MockEndpoint ? $entity->test_run_id : $entity->endpoint->test_run_id) !== $run->id)) {
             throw new \LogicException('Test-run mocks are runtime data and cannot have configuration revisions.');
         }
         if (! in_array($source, ['manual_edit', 'import', 'rollback'], true)) {
@@ -145,10 +148,11 @@ final readonly class RevisionManager
             ->max('version_number') + 1;
 
         return Revision::query()->create([
+            'test_run_id' => $run?->id,
             'entity_type' => $type,
             'entity_id' => $entity->getKey(),
             'version_number' => $version,
-            'snapshot' => $this->normalize($snapshot),
+            'snapshot' => $this->normalize($run === null ? $snapshot : app(McpOutput::class)->safe($snapshot, $run)),
             'source' => $source,
             'import_batch_id' => $importBatchId,
             'note' => $note,
@@ -170,11 +174,16 @@ final readonly class RevisionManager
     /** @return array<string, mixed> */
     public function diffCurrent(Revision $revision): array
     {
-        $entity = $this->findEntity($revision->entity_type, $revision->entity_id);
+        $entity = $revision->test_run_id === null ? $this->findEntity($revision->entity_type, $revision->entity_id)
+            : MockEndpoint::withoutGlobalScope('ordinary')->where('test_run_id', $revision->test_run_id)->findOrFail($revision->entity_id);
         $current = $this->snapshot($entity);
         if ($entity instanceof MockEndpoint && array_key_exists('import_response_pool', $revision->snapshot)) {
             $current['import_response_pool'] = $entity->responses()->get()->map(fn ($response) => $this->snapshot($response))->all();
             $current = $this->normalize($current);
+        }
+
+        if ($revision->test_run_id !== null) {
+            $current = app(McpOutput::class)->safe($current, TestRun::findOrFail($revision->test_run_id));
         }
 
         return $this->diffPayload(
@@ -186,6 +195,10 @@ final readonly class RevisionManager
 
     public function restore(Revision $revision): Revision
     {
+        if ($revision->test_run_id !== null) {
+            throw new InvalidArgumentException('Run history is read-only. Use update_mock with its expected version.');
+        }
+
         return DB::transaction(function () use ($revision): Revision {
             $entity = $this->applySnapshot($revision->entity_type, $revision->snapshot);
             $this->validateSelection($entity instanceof MockEndpoint ? $entity : $entity->endpoint);

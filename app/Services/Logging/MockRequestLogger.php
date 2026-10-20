@@ -2,6 +2,7 @@
 
 namespace App\Services\Logging;
 
+use App\Services\Mcp\McpUnmatchedEvidence;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -16,6 +17,10 @@ final class MockRequestLogger
         try {
             $level = ($context['match_tier'] ?? null) === 'fallback' || isset($context['context_warning']) ? 'warning' : 'info';
             Log::channel('mock_requests')->log($level, 'mock_request', $context);
+            $run = request()->attributes->get('mockdeck.scope')?->run;
+            if ($run !== null && ! ($context['matched'] ?? true)) {
+                app(McpUnmatchedEvidence::class)->capture(request(), $run, $context['request_id']);
+            }
         } catch (Throwable $exception) {
             error_log('MockDeck request logging failed: '.$exception::class);
         }

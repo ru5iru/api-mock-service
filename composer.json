@@ -10,6 +10,7 @@
         "ext-json": "*",
         "fakerphp/faker": "^1.24",
         "laravel/framework": "^13.17",
+        "laravel/mcp": "^1.0",
         "livewire/livewire": "^4.0"
     },
     "require-dev": {

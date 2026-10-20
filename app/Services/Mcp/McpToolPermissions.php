@@ -11,6 +11,7 @@ final class McpToolPermissions
         'start_test_run' => 'write',
         'create_mock' => 'write',
         'update_mock' => 'write',
+        'list_test_runs' => 'read',
         'list_mocks' => 'read',
         'get_mock' => 'read',
         'validate_mock' => 'read',

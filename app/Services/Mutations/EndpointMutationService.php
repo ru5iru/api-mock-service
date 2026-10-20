@@ -3,19 +3,20 @@
 namespace App\Services\Mutations;
 
 use App\Models\MockEndpoint;
+use App\Models\TestRun;
 use App\Services\Revisions\RevisionManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 final class EndpointMutationService
 {
-    public function save(EndpointInput $input, ?int $endpointId = null): MockEndpoint
+    public function save(EndpointInput $input, ?int $endpointId = null, ?TestRun $run = null): MockEndpoint
     {
-        ['parsed' => $parsed, 'variant' => $variant, 'matching' => $matching] = app(EndpointConfigurationValidator::class)->validate($input, $endpointId);
+        ['parsed' => $parsed, 'variant' => $variant, 'matching' => $matching] = app(EndpointConfigurationValidator::class)->validate($input, $endpointId, $run);
 
         $endpoint = $endpointId === null
-            ? new MockEndpoint
-            : MockEndpoint::query()->findOrFail($endpointId);
+            ? new MockEndpoint(['test_run_id' => $run?->id])
+            : MockEndpoint::query()->withoutGlobalScope('ordinary')->where('test_run_id', $run?->id)->findOrFail($endpointId);
         $created = $endpointId === null;
         $displayName = trim($input->name) ?: app(EndpointRequestService::class)->deriveName($parsed);
         $revisions = app(RevisionManager::class);

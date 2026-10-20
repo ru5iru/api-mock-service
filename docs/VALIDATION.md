@@ -346,3 +346,13 @@ The setup test suite mocks the smoke-test orchestration to check the CI-only gua
 
 
 The upstream smoke test requires the **Nginx configuration fix as well as the Python script**. Before removing any app container it checks `nginx -T` for Docker DNS resolution through the variable FastCGI destination and the two-second connect timeout; stale `fastcgi_pass app:9000` configurations fail immediately with application instructions. The connect timeout bounds attempts to dead IPs; `fastcgi_read_timeout 60s` remains unchanged for valid application responses. A failed recovery prints recent app/Nginx logs. After copying the shared snippet into an existing instance, run `make nginx-reload` before `make health`; changing the file on disk alone does not reload the running Nginx configuration.
+
+## MCP Phase 3 protocol and tools
+
+The full suite now includes `McpTransportTest`, `McpReadToolsTest`, `McpWorkflowTest`, `McpHistoryTest`, `McpSecurityBoundaryTest`, `McpIdempotencyTest`, `ConcurrentMcpMutationTest` and `McpClientIntegrationTest`. They run in both existing CI suite jobs. The real official PHP MCP client exercises HTTP and HTTPS with a locally generated certificate and explicit CA verification, not a fake HTTP facade. It also executes `scripts/mcp_example.php`. Concurrent clients prove one cached create and one winning update at a shared version; Phase 2’s concurrent run/ordinary traffic test remains mandatory.
+
+`make mcp-test` selects the MCP checks. `make mcp-offline-test` starts the client integration test in a container with `--network none` (loopback only), disposable SQLite and no external services. The container CI job runs this explicitly. Missing Docker/network namespace capability must be reported as blocked, not inferred from ordinary loopback tests. The test-only TLS terminator proves client trust and protocol connectivity; production same-port Nginx TLS/DNS recovery remains covered by the existing container checks.
+
+[docs/MCP.md](MCP.md) documents schemas, tested client/auth, the complete example workflow, evidence limits and troubleshooting. `mockdeck:mcp-schemas --check` is covered by `McpSchemaReferenceTest`. Never point disposable concurrency tests at a working database.
+
+Container CI additionally runs `ConcurrentMcpMutationTest` with `MOCKDECK_MCP_CONCURRENCY_POSTGRES=true`, using the same dedicated `mockdeck_run_isolation_test` database after the routing test. It refuses other PostgreSQL database names. This exercises actual row locks rather than relying only on SQLite’s writer reservation.

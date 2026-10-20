@@ -4,6 +4,7 @@ namespace App\Services\Mutations;
 
 use App\Models\MockEndpoint;
 use App\Models\MockResponse;
+use App\Models\TestRun;
 use App\Services\Response\SelectionConfigurationValidator;
 use App\Services\Revisions\RevisionManager;
 use Illuminate\Support\Facades\DB;
@@ -12,12 +13,12 @@ use Illuminate\Validation\ValidationException;
 
 final class ResponseMutationService
 {
-    public function save(int $endpointId, ResponseInput $input, ?int $responseId = null): MockResponse
+    public function save(int $endpointId, ResponseInput $input, ?int $responseId = null, ?TestRun $run = null): MockResponse
     {
         $attributes = app(ResponseConfigurationValidator::class)->validate($input);
 
-        return DB::transaction(function () use ($attributes, $endpointId, $responseId): MockResponse {
-            $endpoint = MockEndpoint::query()->lockForUpdate()->findOrFail($endpointId);
+        return DB::transaction(function () use ($attributes, $endpointId, $responseId, $run): MockResponse {
+            $endpoint = MockEndpoint::query()->withoutGlobalScope('ordinary')->where('test_run_id', $run?->id)->lockForUpdate()->findOrFail($endpointId);
             $pool = $endpoint->responses()->with('rules')->get();
             $selectionRows = $pool->map(fn ($item) => array_merge($item->toArray(), ['response_rules' => $item->rules->toArray()]))->all();
             if ($responseId === null) {
@@ -61,10 +62,10 @@ final class ResponseMutationService
         });
     }
 
-    public function delete(int $endpointId, int $responseId): void
+    public function delete(int $endpointId, int $responseId, ?TestRun $run = null): void
     {
-        DB::transaction(function () use ($endpointId, $responseId): void {
-            $endpoint = MockEndpoint::query()->lockForUpdate()->findOrFail($endpointId);
+        DB::transaction(function () use ($endpointId, $responseId, $run): void {
+            $endpoint = MockEndpoint::query()->withoutGlobalScope('ordinary')->where('test_run_id', $run?->id)->lockForUpdate()->findOrFail($endpointId);
             $response = $endpoint->responses()->findOrFail($responseId);
             if ($endpoint->selection_mode === 'rule' && $response->is_default) {
                 throw ValidationException::withMessages([

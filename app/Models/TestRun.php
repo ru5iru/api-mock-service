@@ -30,7 +30,7 @@ final class TestRun extends Model
 
     protected function casts(): array
     {
-        return ['created_at' => 'immutable_datetime', 'finished_at' => 'immutable_datetime'];
+        return ['final_summary' => 'array', 'created_at' => 'immutable_datetime', 'finished_at' => 'immutable_datetime'];
     }
 
     public function credential(): BelongsTo
