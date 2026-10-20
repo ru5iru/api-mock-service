@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class TestRunRoutingTest extends TestCase
@@ -86,7 +87,13 @@ final class TestRunRoutingTest extends TestCase
         $this->get(RunRouting::PREFIX.$run->public_id.'/shared?x=a%2Fb&y=c')->assertNotFound();
     }
 
-    public function test_environment_binding_and_request_context_do_not_mutate_global_environment(): void
+    public static function requestOrigins(): array
+    {
+        return [['http://localhost'], ['https://localhost:18473']];
+    }
+
+    #[DataProvider('requestOrigins')]
+    public function test_environment_binding_and_request_context_do_not_mutate_global_environment(string $origin): void
     {
         $active = app(EnvironmentContext::class)->active();
         $active->variables()->create(['key' => 'KEY', 'value' => 'global', 'is_secret' => false]);
@@ -95,8 +102,8 @@ final class TestRunRoutingTest extends TestCase
         $run = $this->createRun($bound);
         $endpoint = $this->endpoint($run, 'unused');
         $endpoint->responses()->first()->update(['body_mode' => 'template', 'template' => '{"env":"{{env.KEY}}","url":"{{$request.url}}"}']);
-        $response = $this->get(RunRouting::PREFIX.$run->public_id.'/shared?x=a%2Fb&y=c');
-        $response->assertOk()->assertJsonPath('env', 'run')->assertJsonPath('url', 'http://localhost/shared?x=a%2Fb&y=c');
+        $response = $this->get($origin.RunRouting::PREFIX.$run->public_id.'/shared?x=a%2Fb&y=c');
+        $response->assertOk()->assertJsonPath('env', 'run')->assertJsonPath('url', $origin.'/shared?x=a%2Fb&y=c');
         self::assertSame($active->id, app(EnvironmentContext::class)->active()->id);
         self::assertSame((string) $active->id, DB::table('app_settings')->where('key', 'active_environment_id')->value('value'));
         self::assertSame($bound->id, EndpointCallState::query()->sole()->environment_id);
@@ -158,7 +165,8 @@ final class TestRunRoutingTest extends TestCase
         $this->get('/')->assertNotFound();
     }
 
-    public function test_callback_job_uses_run_environment_and_stripped_request_context(): void
+    #[DataProvider('requestOrigins')]
+    public function test_callback_job_uses_run_environment_and_stripped_request_context(string $origin): void
     {
         Queue::fake();
         Http::fake(['receiver.test/*' => Http::response('ok')]);
@@ -170,7 +178,7 @@ final class TestRunRoutingTest extends TestCase
             'callback_enabled' => true, 'callback_url' => 'https://receiver.test/hook',
             'callback_body' => '{"value":"{{env.KEY}}","url":"{{$request.url}}"}',
         ]);
-        $this->get(RunRouting::PREFIX.$run->public_id.'/shared?x=a%2Fb&y=c')->assertOk();
+        $this->get($origin.RunRouting::PREFIX.$run->public_id.'/shared?x=a%2Fb&y=c')->assertOk();
         Queue::assertPushed(DeliverCallback::class, function ($job) use ($bound): bool {
             self::assertSame($bound->id, $job->environmentId);
             $job->handle(app(CallbackDelivery::class));
@@ -178,7 +186,7 @@ final class TestRunRoutingTest extends TestCase
             return true;
         });
         Http::assertSent(fn ($request) => json_decode($request->body(), true) === [
-            'value' => 'bound value', 'url' => 'http://localhost/shared?x=a%2Fb&y=c',
+            'value' => 'bound value', 'url' => $origin.'/shared?x=a%2Fb&y=c',
         ]);
     }
 
