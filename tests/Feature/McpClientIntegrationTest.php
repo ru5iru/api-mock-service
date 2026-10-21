@@ -49,7 +49,7 @@ final class McpClientIntegrationTest extends TestCase
             $this->ready('https://localhost:'.$tlsPort.'/up', $tls);
             foreach (['http://127.0.0.1:'.$port, 'https://localhost:'.$tlsPort] as $origin) {
                 $client = Client::web($origin.'/mcp')->withToken($token)->withProtocolVersion(ProtocolVersion::V2025_11_25);
-                self::assertCount(14, $client->tools());
+                self::assertCount(15, $client->tools());
                 self::assertSame('2025-11-25', $client->initializeResult()->protocolVersion);
                 $invoke = function (string $name, array $args) use ($client): array {
                     $result = $client->callTool($name, $args);
@@ -68,6 +68,31 @@ final class McpClientIntegrationTest extends TestCase
                 $failed = $client->callTool('assert_calls', [...$target, 'expect_count' => 9, 'comparator' => 'equals']);
                 self::assertTrue($failed->isError);
                 self::assertSame('ASSERTION_FAILED', $failed->structuredContent['error']['code']);
+                $sequence = $invoke('create_mock', [...$run, 'idempotency_key' => 'sequence-client', 'configuration' => [
+                    'request' => ['url' => 'http://localhost/sequence-client'], 'matching' => ['exclude_headers' => true],
+                    'selection_mode' => 'sequence', 'sequence_on_exhaust' => 'repeat_last',
+                    'responses' => [['status' => 503, 'sequence_order' => 0], ['status' => 503, 'sequence_order' => 1], ['status' => 200, 'sequence_order' => 2]],
+                ]]);
+                $selectionTarget = [...$run, 'mock_id' => $sequence['mock_id']];
+                foreach ([503, 503, 200] as $index => $status) {
+                    $peek = $invoke('peek_next_response', $selectionTarget);
+                    self::assertSame(($index + 1).' of 3', $peek['position_label']);
+                    self::assertSame($status, $peek['response']['status']);
+                    $served = $index % 2 === 0
+                        ? Http::withHeaders($sequence['invocation']['header']['headers'])->get($origin.'/sequence-client')
+                        : Http::get($origin.parse_url($sequence['invocation']['path_prefix']['url'], PHP_URL_PATH));
+                    self::assertSame($status, $served->status());
+                }
+                $changes = ['endpoint' => ['selection_mode' => 'rule'], 'responses' => [
+                    'remove' => [$sequence['responses'][0]['id'], $sequence['responses'][1]['id']],
+                    'update' => [['id' => $sequence['responses'][2]['id'], 'is_default' => true]],
+                    'add' => [['status' => 201, 'rule_conditions' => [['field_type' => 'header', 'field_name' => 'X-Mode', 'operator' => 'equals', 'value' => 'yes', 'priority' => 0]]]],
+                ]];
+                self::assertTrue($invoke('validate_mock', [...$selectionTarget, 'changes' => $changes])['valid']);
+                self::assertSame('rule', $invoke('update_mock', [...$selectionTarget, 'expected_version' => 1, 'changes' => $changes])['selection_mode']);
+                self::assertSame(201, Http::withHeaders([...$sequence['invocation']['header']['headers'], 'X-Mode' => 'yes'])->get($origin.'/sequence-client')->status());
+                self::assertSame(200, Http::withHeaders($sequence['invocation']['header']['headers'])->get($origin.'/sequence-client')->status());
+                self::assertFalse($invoke('peek_next_response', $selectionTarget)['applicable']);
                 self::assertSame('finished', $invoke('finish_test_run', [...$run, 'cleanup' => 'delete_mocks'])['status']);
                 $client->disconnect();
             }
@@ -76,7 +101,7 @@ final class McpClientIntegrationTest extends TestCase
             self::assertSame(2, json_decode($example->getOutput(), true, flags: JSON_THROW_ON_ERROR)['total_match_count']);
             self::assertStringNotContainsString($token, $example->getOutput());
             $modern = Client::web('http://127.0.0.1:'.$port.'/mcp')->withToken($token)->withProtocolVersion(ProtocolVersion::V2026_07_28);
-            self::assertCount(14, $modern->tools());
+            self::assertCount(15, $modern->tools());
             self::assertNotNull($modern->discoverResult());
         } finally {
             $tls?->stop();

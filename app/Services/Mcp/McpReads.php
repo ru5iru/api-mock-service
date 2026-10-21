@@ -6,11 +6,13 @@ use App\Models\EndpointCallState;
 use App\Models\McpCredential;
 use App\Models\McpUnmatchedRequest;
 use App\Models\MockEndpoint;
+use App\Models\MockResponse;
 use App\Models\TestRun;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\ParsedCurl;
 use App\Services\Mutations\EndpointConfigurationValidator;
-use App\Services\Mutations\ResponseConfigurationValidator;
+use App\Services\Mutations\ResponsePoolMutationService;
+use App\Services\Response\ResponseSelectionService;
 
 final class McpReads
 {
@@ -40,13 +42,11 @@ final class McpReads
             return ['runs' => TestRun::query()->where('credential_id', $owner->id)->when(isset($args['status']), fn ($q) => $q->where('status', $args['status']))->orderByDesc('id')->paginate($args['per_page'] ?? 20, ['public_id', 'label', 'status', 'created_at'], 'page', $args['page'] ?? 1)->toArray()];
         }
         if ($tool === 'validate_mock') {
-            $config = $args['configuration'];
             $existing = isset($args['mock_id']) ? $this->mock($run, $args['mock_id']) : null;
+            $config = isset($args['changes']) ? app(McpMockConfiguration::class)->changes($args['changes'], $existing) : $args['configuration'];
             $input = app(McpMockConfiguration::class)->endpoint(collect($config)->except('responses')->all(), $existing);
             app(EndpointConfigurationValidator::class)->validate($input, $existing?->id, $run, $run !== null);
-            foreach ($config['responses'] ?? [] as $response) {
-                app(ResponseConfigurationValidator::class)->validate(app(McpMockConfiguration::class)->response($response));
-            }
+            app(ResponsePoolMutationService::class)->validate(app(McpMockConfiguration::class)->pool($config, $existing));
 
             return ['valid' => true, 'errors' => [], 'warnings' => app(McpMockConfiguration::class)->warnings($input)];
         }
@@ -89,6 +89,7 @@ final class McpReads
         return match ($tool) {
             'get_mock' => $this->configuration($endpoint),
             'get_mock_url' => app(McpMockUrls::class)->forMock($run, $endpoint, $args['preferred'] ?? 'header'),
+            'peek_next_response' => $this->peek($run, $endpoint),
             'get_calls' => $this->calls($run, $endpoint, $args['limit'] ?? 20),
         };
     }
@@ -100,14 +101,40 @@ final class McpReads
 
     public function configuration(MockEndpoint $endpoint): array
     {
-        return ['mock_id' => $endpoint->uuid, 'name' => $endpoint->displayName(), 'enabled' => $endpoint->enabled, 'priority' => $endpoint->priority,
+        return ['mock_id' => $endpoint->uuid, 'name' => $endpoint->displayName(), 'enabled' => $endpoint->enabled, 'priority' => $endpoint->priority, 'selection_mode' => $endpoint->selection_mode, 'sequence_on_exhaust' => $endpoint->sequence_on_exhaust,
             'curl' => $endpoint->raw_curl, 'matching' => $endpoint->only(['exclude_cookies', 'exclude_auth', 'exclude_headers', 'excluded_query_params', 'excluded_headers', 'path_pattern_enabled']),
             'collection_id' => $endpoint->collection_id, 'tags' => $endpoint->tags->modelKeys(), 'version' => $this->version($endpoint),
             'revision_reference' => $endpoint->revisions()->latest('version_number')->value('id'),
-            'responses' => $endpoint->responses()->limit(50)->get()->map(fn ($response) => ['id' => $response->uuid, 'status' => $response->status_code, 'headers' => $response->headers,
-                'body' => $response->body_mode === 'template' ? $response->template : $response->body, 'body_mode' => $response->body_mode, 'weight' => $response->weight, 'delay_ms' => $response->delay_ms, 'locale' => $response->locale, 'seed' => $response->seed, 'seed_mode' => $response->seed_mode])->all(),
+            'responses' => $endpoint->responses()->with('rules')->limit(50)->get()->map(fn ($response) => $this->responseConfiguration($response))->all(),
             'history_url' => url('/dashboard/test-runs/'.$endpoint->testRun->public_id.'/history'),
             'limits' => ['max_responses' => 50, 'text_output_bytes' => 4096, 'redacted' => true]];
+    }
+
+    private function responseConfiguration(MockResponse $response): array
+    {
+        return ['id' => $response->uuid, 'status' => $response->status_code, 'headers' => $response->headers,
+            'body' => $response->body_mode === 'template' ? $response->template : $response->body, 'body_mode' => $response->body_mode, 'weight' => $response->weight,
+            'delay_ms' => $response->delay_ms, 'locale' => $response->locale, 'seed' => $response->seed, 'seed_mode' => $response->seed_mode,
+            'sequence_order' => $response->sequence_order, 'is_default' => $response->is_default,
+            'rule_conditions' => $response->rules->map(fn ($rule) => $rule->only(['field_type', 'field_name', 'operator', 'value', 'priority']))->all()];
+    }
+
+    private function peek(TestRun $run, MockEndpoint $endpoint): array
+    {
+        $count = $endpoint->responses()->count();
+        if ($endpoint->selection_mode !== 'sequence') {
+            return ['applicable' => false, 'selection_mode' => $endpoint->selection_mode, 'sequence_position' => null,
+                'response_count' => $count, 'next_position' => null, 'position_label' => null, 'reason' => 'not_applicable', 'response' => null];
+        }
+        // The serving engine's preview reads existing run/environment state only.
+        // Never call select(): it creates state, captures evidence and consumes a step.
+        $result = app(ResponseSelectionService::class)->preview($endpoint, $run->environment);
+        $next = $result->response === null ? null : $result->response->sequence_order + 1;
+
+        return ['applicable' => true, 'selection_mode' => 'sequence',
+            'sequence_position' => $result->sequencePosition ?? ($this->state($run, $endpoint)?->sequence_position ?? 0),
+            'response_count' => $count, 'next_position' => $next, 'position_label' => $next === null ? null : "$next of $count", 'reason' => $result->reason,
+            'response' => $result->response === null ? null : $this->responseConfiguration($result->response)];
     }
 
     public function state(TestRun $run, MockEndpoint $endpoint): ?EndpointCallState

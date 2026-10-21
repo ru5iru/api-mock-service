@@ -38,6 +38,6 @@ final class McpReadToolsTest extends TestCase
         self::assertSame(4, McpInvocation::query()->count());
         $other = app(McpCredentialService::class)->generate('other', ['read'])->credential;
         self::assertSame('RUN_NOT_FOUND', app(McpDispatcher::class)->call('get_mock', $args, $other)['error']['code']);
-        $this->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'], ['Authorization' => 'Bearer '.$issued->reveal()])->assertOk()->assertJsonCount(14, 'result.tools');
+        $this->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'], ['Authorization' => 'Bearer '.$issued->reveal()])->assertOk()->assertJsonCount(15, 'result.tools');
     }
 }

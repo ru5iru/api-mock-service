@@ -1,6 +1,6 @@
 # MockDeck MCP
 
-Phase 3 exposes a local Streamable HTTP server at **`/mcp`** with all 14 P0 tools. It builds on Phase 1’s shared services/independent credentials and Phase 2’s two-way request isolation. No external MCP hosting, identity service or agent service is required by MockDeck. Ordinary dashboard requests and verification tokens retain their existing behavior.
+Phase 3 exposes a local Streamable HTTP server at **`/mcp`** with 15 tools: the original 14 P0 tools plus `peek_next_response`. It builds on Phase 1’s shared services/independent credentials and Phase 2’s two-way request isolation. No external MCP hosting, identity service or agent service is required by MockDeck. Ordinary dashboard requests and verification tokens retain their existing behavior.
 
 ## Behavior baseline
 
@@ -47,12 +47,12 @@ Each credential stores `name`, unique SHA-256 `token_hash`, `can_read`, `can_wri
 | Category / tool | Required permission |
 |---|---|
 | `start_test_run`, `create_mock`, `update_mock` | `write` |
-| `list_test_runs`, `list_mocks`, `get_mock`, `validate_mock`, `get_mock_url`, `explain_match` | `read` |
+| `list_test_runs`, `list_mocks`, `get_mock`, `validate_mock`, `get_mock_url`, `peek_next_response`, `explain_match` | `read` |
 | `get_unmatched_requests`, `get_calls`, `assert_calls` | `verify` |
 | `reset_test_run` | `cleanup` |
 | `finish_test_run`, including its delete option | `cleanup` |
 
-Permissions do not imply each other. To complete the full create/inspect/assert/cleanup workflow, grant all four. Finishing closes a run even without deletion, so it also requires `cleanup`. No extra `write` permission is required for runtime reset/cleanup; ownership checks remain mandatory for every tool. Discovery/initialization requires a valid credential; discovery lists all tools; execution enforces the grants independently. `McpToolPermissions::REQUIRED` is a tested, fail-closed contract; unknown tools do not get a default permission. All 14 tools below are callable.
+Permissions do not imply each other. To complete the full create/inspect/assert/cleanup workflow, grant all four. Finishing closes a run even without deletion, so it also requires `cleanup`. No extra `write` permission is required for runtime reset/cleanup; ownership checks remain mandatory for every tool. Discovery/initialization requires a valid credential; discovery lists all tools; execution enforces the grants independently. `McpToolPermissions::REQUIRED` is a tested, fail-closed contract; unknown tools do not get a default permission. All 15 tools below are callable.
 
 ### Rate-limiting convention
 
@@ -166,7 +166,7 @@ MCP reads are restricted to the credential’s own runs, including finished runs
 
 `start_test_run` requires write and binds an existing Environment by name, defaulting to the active Environment without switching it. `create_mock` accepts `configuration.curl` or `configuration.request`, 1–50 responses and a required idempotency key. It validates and creates everything in one transaction; duplicate canonical signatures within the run return CONFLICT naming the existing mock. Different runs may reuse the same shape.
 
-`update_mock` takes explicit endpoint patches and response add/update/remove lists. Its required `expected_version` is the existing endpoint revision `version_number`; the owning run and endpoint are locked before comparison. All response-only changes advance that same version. No-op patches preserve it. Mutations use the shared dashboard DTOs/validators; Weighted selection is P0’s only creation mode.
+`update_mock` takes explicit endpoint patches and response add/update/remove lists. Its required `expected_version` is the existing endpoint revision `version_number`; the owning run and endpoint are locked before comparison. All response-only changes advance that same version. No-op patches preserve it. Mutations use the shared dashboard DTOs/validators and support Weighted, Sequence and Rule-based selection. Omitting selection fields on creation keeps the original Weighted defaults; omitted update fields preserve the existing mode and settings.
 
 `assert_calls` delegates to the same predicate validation and evidence evaluator as the verification API. Definite failure returns ASSERTION_FAILED; insufficient evidence returns INCONCLUSIVE_EVIDENCE with count bounds and missing-call counts. Neither changes runtime state.
 
@@ -208,6 +208,7 @@ Every success is `{ "ok": true, "data": {...}, "correlation_id": "UUID" }`. Fail
 | `validate_mock` | `{"configuration":{"curl":"curl http://localhost/cart","responses":[{"status":200,"body":"ok"}]}}` | `valid`, `errors`, `warnings`; invalid proposals return structured VALIDATION_ERROR without saving |
 | `update_mock` | `{"run_id":"RUN","mock_id":"MOCK","expected_version":1,"changes":{"endpoint":{"name":"Cart","priority":5},"responses":{"update":[{"id":"RESPONSE","status":201}],"add":[{"body":"new"}],"remove":[]}}}` | updated configuration/version/revision, matcher summary, invocation instructions |
 | `get_mock_url` | `{"run_id":"RUN","mock_id":"MOCK","preferred":"path-prefix"}` | `header.url`, required `header.headers`, `header.curl`, `path_prefix.url` / `curl`, origin note |
+| `peek_next_response` | `{"run_id":"RUN","mock_id":"MOCK"}` | Sequence: redacted configured `response`, zero-based `sequence_position`, one-based `next_position` / `position_label`, `response_count`, `reason`; other modes: `applicable: false` |
 | `explain_match` | `{"run_id":"RUN","curl":"curl http://localhost/cart?x=wrong"}` or `{"run_id":"RUN","log_entry_id":"LOG_UUID"}` | `selected`, bounded ranked `candidates`, per-field differences/exclusions without values, candidate-window completeness |
 | `get_unmatched_requests` | `{"run_id":"RUN","page":1,"per_page":20}` | retained stable IDs/time/completeness/request metadata, `window` capacity/TTL/truncation limits |
 | `get_calls` | `{"run_id":"RUN","mock_id":"MOCK","limit":20}` | exact `total_match_count`, `last_matched_at`, sequence position if applicable, `recent_calls`, evidence `window` |
@@ -217,11 +218,57 @@ Every success is `{ "ok": true, "data": {...}, "correlation_id": "UUID" }`. Fail
 
 `configuration` accepts `name`, `enabled`, `priority`, `curl` **or** `request`, `matching`, existing `collection_id`, existing tag IDs in `tags`, and `responses`. A structured request has `method`, `url`, header-name/value object and text `body`. Hosts are interchangeable for matching. `matching` uses the existing `exclude_cookies`, `exclude_auth` (default true), `exclude_headers`, `excluded_query_params`, `excluded_headers`, `path_pattern_enabled` fields. Wildcards retain the existing `{name}` whole-segment syntax. MCP tools do not execute curl commands.
 
-Each response accepts `status`, header-name/value object, `body`, `body_mode` (`static`/`template`), `weight` (default 1), fixed `delay_ms`, `locale`, `seed_mode` (`random`/`fixed`/`request`) and optional integer `seed`. In Template mode `body` is the existing MockDeck template source; the same compiler, context resolver and introspected Faker method catalog validate it. Fault/callback/sequence/rule editing is outside the P0 schema. Existing serving behavior and configuration of those features are preserved by partial updates.
+Each response accepts `status`, header-name/value object, `body`, `body_mode` (`static`/`template`), `weight` (default 1), fixed `delay_ms`, `locale`, `seed_mode` (`random`/`fixed`/`request`) and optional integer `seed`. In Template mode `body` is the existing MockDeck template source; the same compiler, context resolver and introspected Faker method catalog validate it. Sequence/rule fields are described below. Fault/callback editing remains outside the MCP schema. Existing serving behavior and configuration of those features are preserved by partial updates.
 
 `changes.endpoint` is a patch; `changes.responses` has `add`, `update` (each with a response UUID), `remove` (UUID list). Unknown fields, cross-mock response IDs and repeated response operations are rejected. Empty endpoint fields are not implicitly overwritten. Updates and reset/delete revisions share `revisions.version_number`; there is no second concurrency counter. A cached create may be replayed for 24 hours even after finish: it returns the original redacted result and never resurrects mocks or reopens routing. A new create in a finished run returns RUN_FINISHED.
 
 Predicates are the existing verification/rule grammar: `field_type` is `header`, `query` or `body_json_path`; `operator` is `equals`, `contains`, `regex` or `exists`. Non-exists operators require a string `value`; regex uses PHP delimiters such as `/pattern/i`. Comparators are exactly `equals`, `at_least`, `at_most`. Unfiltered assertions always use the exact counter. Filtered assertions use existing three-valued evidence evaluation: provable bounds can establish a result; otherwise the tool returns INCONCLUSIVE_EVIDENCE with the count outside the retained window, never a false exact zero.
+
+## Sequence and rule-based response selection
+
+The additive selection fields call Wave 1's existing `SelectionConfigurationValidator` and serving strategies. `create_mock`, `update_mock` and `validate_mock` use the same final-pool validation through `ResponsePoolMutationService`; no second selection algorithm or condition grammar exists. Existing credentials, run isolation, counters and the native portable format are unchanged.
+
+| Location | Field | Values and behavior |
+| --- | --- | --- |
+| `configuration` / `changes.endpoint` | `selection_mode` | `weighted` (creation default), `sequence`, `rule`. Omitted on update preserves the current mode. |
+| Same endpoint object | `sequence_on_exhaust` | Sequence only: `repeat_last` (default), `loop`, `not_found`. |
+| Response object | `sequence_order` | Sequence only: zero-based unique consecutive positions `0..N-1`. New sequence responses default to their final input-list index; existing positions are preserved when omitted. Explicitly close gaps when removing/reordering. |
+| Response object | `rule_conditions` | Rule only: up to 32 existing condition objects, each with `field_type`, `field_name`, `operator`, optional `value`, and required non-negative integer `priority`. Persisted in the existing `response_rules` relation. |
+| Response object | `is_default` | Rule only: exactly one final response must be `true`; new responses default to false, existing flags are preserved when omitted. |
+
+Conditions use `header`, `query`, `body_json_path` and `equals`, `contains`, `regex`, `exists` verbatim. Non-exists operators require a string value; Exists permits omitted/null value. All conditions on a response must match. Existing priority, then weight/UUID tie-breaking chooses among matching responses; otherwise the single default serves. The signature must still match first: exclude a varying header/query field from signature matching when using it to choose among rules. Sensitive condition values are redacted using the same credential policy as other results/history.
+
+Only explicitly supplied mode-specific fields are rejected outside their mode, including an empty `rule_conditions` or false `is_default` in Weighted mode. Inactive stored fields are managed internally. Validation errors use the existing structured `VALIDATION_ERROR` envelope, including the original “exactly one Default / fallback response” message. Validation and writes inspect the **final** pool, so replacing the fallback or swapping sequence positions succeeds in one transaction. Invalid edits leave configuration, version and runtime counters untouched; selection edits never reset the run's cursor. Use `reset_test_run` when the next scenario should start at position zero.
+
+Create a sequence (`tools/call` arguments):
+
+```json
+{"run_id":"RUN","idempotency_key":"retry-sequence","configuration":{"request":{"url":"http://ignored.invalid/retry"},"selection_mode":"sequence","sequence_on_exhaust":"repeat_last","responses":[{"status":503,"sequence_order":0},{"status":503,"sequence_order":1},{"status":200,"sequence_order":2}]}}
+```
+
+Create rule selection with a varying header excluded from the signature:
+
+```json
+{"run_id":"RUN","idempotency_key":"header-rule","configuration":{"request":{"url":"http://ignored.invalid/rule"},"matching":{"excluded_headers":["x-mode"]},"selection_mode":"rule","responses":[{"status":201,"rule_conditions":[{"field_type":"header","field_name":"X-Mode","operator":"equals","value":"yes","priority":0}]},{"status":200,"is_default":true}]}}
+```
+
+Dry-run an update with `validate_mock` using the **same** `changes` object as `update_mock`, plus owned `run_id` and `mock_id`. Provide exactly one of `configuration` or `changes`. A `configuration.responses` list is a complete proposed pool (existing members can carry their UUID `id`); an omitted list preserves the existing pool. A `changes.responses` patch preserves omitted members and settings, and accepts the usual add/update/remove operations. Validation does not save, record revisions or create call-state rows.
+
+```json
+{"run_id":"RUN","mock_id":"MOCK","changes":{"responses":{"update":[{"id":"OLD_DEFAULT","is_default":false},{"id":"NEW_DEFAULT","is_default":true}]}}}
+```
+
+### Peek without consuming a sequence
+
+`peek_next_response` requires only `read` and owned `run_id` / `mock_id`. It delegates to `ResponseSelectionService::preview()` with the run's bound environment. It never calls the consuming selector and never inserts or updates `endpoint_call_state`: an unused sequence stays without a state row. Auditing still records the MCP invocation, as for other read tools.
+
+For Sequence it returns `applicable: true`, the zero-based stored cursor, the redacted configured response, and a one-based upcoming position such as `"2 of 3"`. The configured template source is returned without rendering; no random selection, callbacks, delays or fault injection execute. Exhaustion uses the existing Repeat last / Loop / Not found strategy. Repeat last reports the final response; Loop reports the wrapped position. Not found returns `response: null`, `position_label: null`, `reason: "sequence_exhausted"`. The raw cursor remains unbounded as in serving. The result is a snapshot at read time; a concurrent HTTP request may consume the response before a later call.
+
+Weighted and Rule modes return `applicable: false`, `reason: "not_applicable"` and null response/cursor/position, never an estimated selection. Finished runs may still be inspected, though their routing remains closed. A dedicated regression test compares serialized raw call-state rows before/after repeated peeks, observes SQL to prohibit writes to that table and checks no lazy row is created. The official PHP MCP client exercises sequence creation, peeking, serving and rule updates over both HTTP and verified HTTPS.
+
+### Verified prerequisite CI
+
+Before this extension, [Phase 3 CI run 39436157601](https://github.com/ru5iru/api-mock-service/actions/runs/39436157601), commit `ea50049096430cee53ca29b055a81bc3c4bdfa50`, completed successfully. Its `test` and `containers` jobs passed, including full Make validation, offline MCP, concurrent run routing on PostgreSQL and concurrent MCP mutations. This is an observed GitHub result, not an inference from workflow configuration. The new tests run under the existing full PHPUnit job and the generated-schema drift check.
 
 ## Tested local client and complete workflow
 

@@ -28,7 +28,7 @@ final class McpAuditRedactor
             return '[TRUNCATED]';
         }
         if (is_array($value)) {
-            $label = $value['name'] ?? $value['key'] ?? null;
+            $label = $value['name'] ?? $value['key'] ?? $value['field_name'] ?? null;
             $sensitiveEntry = is_string($label) && $this->sensitive($label);
             $result = [];
             foreach ($value as $name => $item) {
