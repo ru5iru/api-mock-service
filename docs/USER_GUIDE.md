@@ -2,6 +2,8 @@
 
 This guide covers every currently implemented MockDeck feature and the normal operator workflow. It describes the application as shipped; planned features are listed separately under [Current limitations](#current-limitations).
 
+MockDeck's application code is source-available under the [PolyForm Strict License 1.0.0](../LICENSE). Review [licensing and third-party notices](LICENSING.md) before use; commercial use, modification and redistribution require separate permission unless independently authorized. Previously released MIT versions and third-party packages/fonts retain their existing licenses.
+
 ## 1. Start and sign in
 
 Follow the [first-time setup guide](SETUP.md) from the repository root in Bash/WSL. Docker Compose v2, Make, Python 3 and curl are required; PHP, Composer and PostgreSQL run in containers.

@@ -33,6 +33,7 @@
                 <li><a href="#preferences-accessibility">Theme and accessibility</a></li>
                 <li><a href="#serving-errors">Serving behavior</a></li>
                 <li><a href="#shortcuts">Keyboard shortcuts</a></li>
+                <li><a href="#licensing">License and third-party notices</a></li>
             </ol>
         </nav>
 
@@ -437,6 +438,11 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <div><dt><kbd>?</kbd></dt><dd>Open shortcut help</dd></div>
                 <div><dt><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>Enter</kbd></dt><dd>Save the endpoint form</dd></div>
             </dl>
+        </section>
+        <section id="licensing" class="card docs-card docs-wide">
+            <h2>License and third-party notices</h2>
+            <p>MockDeck's application code is source-available under the PolyForm Strict License 1.0.0, copyright © 2026 <a href="https://github.com/ru5iru">Rusiru Rathmina</a>. It permits the noncommercial purposes described in the license and does not grant permission to modify or redistribute the application. Commercial use requires separate permission from the copyright holder.</p>
+            <p>Third-party packages and fonts retain their own licenses. Previously released MIT versions retain their MIT rights. Read <code>LICENSE</code> and <code>docs/LICENSING.md</code> in the distribution for the full terms, historical release boundary and third-party notices.</p>
         </section>
     </div>
 </x-layouts.dashboard>
