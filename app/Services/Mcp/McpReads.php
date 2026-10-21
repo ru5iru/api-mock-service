@@ -12,6 +12,7 @@ use App\Services\Curl\CurlParser;
 use App\Services\Curl\ParsedCurl;
 use App\Services\Mutations\EndpointConfigurationValidator;
 use App\Services\Mutations\ResponsePoolMutationService;
+use App\Services\Response\FaultConfigurationValidator;
 use App\Services\Response\ResponseSelectionService;
 
 final class McpReads
@@ -116,6 +117,7 @@ final class McpReads
             'body' => $response->body_mode === 'template' ? $response->template : $response->body, 'body_mode' => $response->body_mode, 'weight' => $response->weight,
             'delay_ms' => $response->delay_ms, 'locale' => $response->locale, 'seed' => $response->seed, 'seed_mode' => $response->seed_mode,
             'sequence_order' => $response->sequence_order, 'is_default' => $response->is_default,
+            ...app(FaultConfigurationValidator::class)->attributes($response->getAttributes()),
             'rule_conditions' => $response->rules->map(fn ($rule) => $rule->only(['field_type', 'field_name', 'operator', 'value', 'priority']))->all()];
     }
 

@@ -68,6 +68,19 @@ final class McpClientIntegrationTest extends TestCase
                 $failed = $client->callTool('assert_calls', [...$target, 'expect_count' => 9, 'comparator' => 'equals']);
                 self::assertTrue($failed->isError);
                 self::assertSame('ASSERTION_FAILED', $failed->structuredContent['error']['code']);
+                $faultChanges = ['responses' => ['update' => [['id' => $mock['responses'][0]['id'], 'fault_enabled' => true, 'fault_type' => 'delay',
+                    'fault_delay_ms_min' => 25, 'fault_delay_ms_max' => 25, 'fault_probability' => 100]]]];
+                self::assertTrue($invoke('validate_mock', [...$target, 'changes' => $faultChanges])['valid']);
+                $faulted = $invoke('update_mock', [...$target, 'expected_version' => 1, 'changes' => $faultChanges]);
+                self::assertTrue($faulted['responses'][0]['fault_enabled']);
+                self::assertSame('delay', $faulted['responses'][0]['fault_type']);
+                $started = hrtime(true);
+                Http::withHeaders($mock['invocation']['header']['headers'])->get($origin.'/client')->throw();
+                self::assertGreaterThanOrEqual(24, (hrtime(true) - $started) / 1_000_000);
+                self::assertSame(3, $invoke('get_calls', $target)['total_match_count']);
+                $unsupported = $client->callTool('validate_mock', [...$target, 'changes' => ['responses' => ['update' => [['id' => $mock['responses'][0]['id'], 'fault_type' => 'connection_reset']]]]]);
+                self::assertTrue($unsupported->isError);
+                self::assertSame('VALIDATION_ERROR', $unsupported->structuredContent['error']['code']);
                 $sequence = $invoke('create_mock', [...$run, 'idempotency_key' => 'sequence-client', 'configuration' => [
                     'request' => ['url' => 'http://localhost/sequence-client'], 'matching' => ['exclude_headers' => true],
                     'selection_mode' => 'sequence', 'sequence_on_exhaust' => 'repeat_last',

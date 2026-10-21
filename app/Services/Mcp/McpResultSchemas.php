@@ -2,6 +2,8 @@
 
 namespace App\Services\Mcp;
 
+use App\Services\Response\FaultConfigurationValidator;
+
 /** Output contracts are shared with discovery and the checked-in JSON reference. */
 final class McpResultSchemas
 {
@@ -14,7 +16,9 @@ final class McpResultSchemas
         $array = fn (array $items) => ['type' => 'array', 'items' => $items];
         $nullable = fn (string $type) => ['type' => [$type, 'null']];
         $generic = ['type' => 'object'];
-        $response = $object(['id' => $string, 'status' => $int, 'headers' => ['type' => ['object', 'array', 'null']], 'body' => $string, 'body_mode' => $string, 'weight' => $int, 'delay_ms' => $int, 'locale' => $string, 'seed' => $nullable('integer'), 'seed_mode' => $string, 'sequence_order' => $nullable('integer'), 'is_default' => $bool, 'rule_conditions' => $array($generic)]);
+        $response = $object(['id' => $string, 'status' => $int, 'headers' => ['type' => ['object', 'array', 'null']], 'body' => $string, 'body_mode' => $string, 'weight' => $int, 'delay_ms' => $int, 'locale' => $string, 'seed' => $nullable('integer'), 'seed_mode' => $string, 'sequence_order' => $nullable('integer'), 'is_default' => $bool, 'rule_conditions' => $array($generic),
+            'fault_enabled' => $bool, 'fault_type' => ['type' => 'string', 'enum' => FaultConfigurationValidator::TYPES],
+            'fault_delay_ms_min' => $int, 'fault_delay_ms_max' => $nullable('integer'), 'fault_probability' => $int]);
         $configuration = ['mock_id' => $string, 'name' => $string, 'enabled' => $bool, 'priority' => $int, 'selection_mode' => $string, 'sequence_on_exhaust' => $nullable('string'), 'curl' => $string, 'matching' => $generic, 'collection_id' => $nullable('integer'), 'tags' => $array($int), 'version' => $int, 'revision_reference' => $nullable('integer'), 'responses' => $array($response), 'history_url' => $string, 'limits' => $generic];
         $urls = ['preferred' => $string, 'header' => $object(['url' => $string, 'headers' => $generic, 'curl' => $string]), 'path_prefix' => $object(['url' => $string, 'curl' => $string]), 'origin_note' => $string];
         $assertion = ['passed' => $bool, 'actual_count' => $nullable('integer'), 'message' => $string, 'verdict' => $string, 'scope' => $string, 'count_bounds' => $object(['minimum' => $int, 'maximum' => $int]), 'window' => $generic];

@@ -2,6 +2,7 @@
 
 namespace App\Services\Mcp;
 
+use App\Services\Response\FaultConfigurationValidator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -19,7 +20,12 @@ final class McpToolRegistry
         $headers = ['type' => 'object', 'additionalProperties' => $string(4096), 'maxProperties' => 64];
         $conditionFields = ['field_type' => $enum(['header', 'query', 'body_json_path']), 'field_name' => $string(), 'operator' => $enum(['equals', 'contains', 'regex', 'exists']), 'value' => $string(4096)];
         $ruleCondition = $object([...$conditionFields, 'value' => ['type' => ['string', 'null'], 'maxLength' => 4096], 'priority' => $integer(0, 2147483647)], ['field_type', 'field_name', 'operator', 'priority']);
-        $responseFields = ['status' => $integer(100, 599), 'headers' => $headers, 'body' => $string(65536), 'body_mode' => $enum(['static', 'template']), 'locale' => $string(32), 'seed_mode' => $enum(['random', 'fixed', 'request']), 'seed' => $integer(-2147483648, 2147483647), 'delay_ms' => $integer(0, 30000), 'weight' => $integer(1, 1000000), 'sequence_order' => $integer(0, 49), 'rule_conditions' => $array($ruleCondition, 32), 'is_default' => ['type' => 'boolean']];
+        $faultFields = ['fault_enabled' => ['type' => 'boolean'],
+            'fault_type' => [...$enum(FaultConfigurationValidator::TYPES), 'description' => 'Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported.'],
+            'fault_delay_ms_min' => $integer(0, FaultConfigurationValidator::MAX_DELAY_MS),
+            'fault_delay_ms_max' => ['type' => ['integer', 'null'], 'minimum' => 0, 'maximum' => FaultConfigurationValidator::MAX_DELAY_MS],
+            'fault_probability' => $integer(0, 100)];
+        $responseFields = ['status' => $integer(100, 599), 'headers' => $headers, 'body' => $string(65536), 'body_mode' => $enum(['static', 'template']), 'locale' => $string(32), 'seed_mode' => $enum(['random', 'fixed', 'request']), 'seed' => $integer(-2147483648, 2147483647), 'delay_ms' => $integer(0, 30000), 'weight' => $integer(1, 1000000), 'sequence_order' => $integer(0, 49), 'rule_conditions' => $array($ruleCondition, 32), 'is_default' => ['type' => 'boolean'], ...$faultFields];
         $response = $object($responseFields);
         $endpoint = ['selection_mode' => $enum(['weighted', 'sequence', 'rule']), 'sequence_on_exhaust' => $enum(['repeat_last', 'loop', 'not_found']), 'name' => $string(), 'enabled' => ['type' => 'boolean'], 'priority' => $integer(-1000, 1000), 'curl' => $string(131072),
             'request' => $object(['method' => $enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']), 'url' => $string(8192), 'headers' => $headers, 'body' => $string(65536)], ['url']),

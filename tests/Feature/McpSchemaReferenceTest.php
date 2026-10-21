@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Services\Mcp\McpToolPermissions;
 use App\Services\Mcp\McpToolRegistry;
+use App\Services\Response\FaultConfigurationValidator;
 use Tests\TestCase;
 
 final class McpSchemaReferenceTest extends TestCase
@@ -52,5 +53,33 @@ final class McpSchemaReferenceTest extends TestCase
         }
         self::assertSame($update['changes'], $validate['changes']);
         self::assertSame(['field_type', 'field_name', 'operator', 'priority'], $response['rule_conditions']['items']['required']);
+    }
+
+    public function test_fault_fields_extend_the_shared_response_schema_with_only_shipped_types_and_bounds(): void
+    {
+        $tools = app(McpToolRegistry::class)->all();
+        $create = (array) $tools['create_mock']['inputSchema']['properties'];
+        $validate = (array) $tools['validate_mock']['inputSchema']['properties'];
+        $update = (array) $tools['update_mock']['inputSchema']['properties'];
+        $createdResponse = (array) ((array) $create['configuration']['properties'])['responses']['items']['properties'];
+        $proposalResponse = (array) ((array) $validate['configuration']['properties'])['responses']['items']['properties'];
+        $patch = (array) ((array) $update['changes']['properties'])['responses']['properties'];
+        foreach (array_keys(FaultConfigurationValidator::defaults()) as $field) {
+            self::assertSame($createdResponse[$field], $proposalResponse[$field]);
+            self::assertSame($createdResponse[$field], ((array) $patch['add']['items']['properties'])[$field]);
+            self::assertSame($createdResponse[$field], ((array) $patch['update']['items']['properties'])[$field]);
+        }
+        self::assertSame(FaultConfigurationValidator::TYPES, $createdResponse['fault_type']['enum']);
+        self::assertNotContains('connection_reset', $createdResponse['fault_type']['enum']);
+        self::assertSame(FaultConfigurationValidator::MAX_DELAY_MS, $createdResponse['fault_delay_ms_min']['maximum']);
+        self::assertSame(['integer', 'null'], $createdResponse['fault_delay_ms_max']['type']);
+        foreach (['create_mock', 'update_mock', 'get_mock'] as $tool) {
+            $data = (array) ((array) $tools[$tool]['outputSchema']['properties'])['data']['properties'];
+            $response = (array) $data['responses']['items']['properties'];
+            self::assertSame(FaultConfigurationValidator::TYPES, $response['fault_type']['enum']);
+            foreach (array_keys(FaultConfigurationValidator::defaults()) as $field) {
+                self::assertArrayHasKey($field, $response);
+            }
+        }
     }
 }

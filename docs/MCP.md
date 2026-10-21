@@ -218,11 +218,43 @@ Every success is `{ "ok": true, "data": {...}, "correlation_id": "UUID" }`. Fail
 
 `configuration` accepts `name`, `enabled`, `priority`, `curl` **or** `request`, `matching`, existing `collection_id`, existing tag IDs in `tags`, and `responses`. A structured request has `method`, `url`, header-name/value object and text `body`. Hosts are interchangeable for matching. `matching` uses the existing `exclude_cookies`, `exclude_auth` (default true), `exclude_headers`, `excluded_query_params`, `excluded_headers`, `path_pattern_enabled` fields. Wildcards retain the existing `{name}` whole-segment syntax. MCP tools do not execute curl commands.
 
-Each response accepts `status`, header-name/value object, `body`, `body_mode` (`static`/`template`), `weight` (default 1), fixed `delay_ms`, `locale`, `seed_mode` (`random`/`fixed`/`request`) and optional integer `seed`. In Template mode `body` is the existing MockDeck template source; the same compiler, context resolver and introspected Faker method catalog validate it. Sequence/rule fields are described below. Fault/callback editing remains outside the MCP schema. Existing serving behavior and configuration of those features are preserved by partial updates.
+Each response accepts `status`, header-name/value object, `body`, `body_mode` (`static`/`template`), `weight` (default 1), fixed `delay_ms`, `locale`, `seed_mode` (`random`/`fixed`/`request`) and optional integer `seed`. In Template mode `body` is the existing MockDeck template source; the same compiler, context resolver and introspected Faker method catalog validate it. Sequence/rule and primary fault fields are described below. Callback editing remains outside the MCP schema. Existing serving behavior and configuration of those features are preserved by partial updates.
 
 `changes.endpoint` is a patch; `changes.responses` has `add`, `update` (each with a response UUID), `remove` (UUID list). Unknown fields, cross-mock response IDs and repeated response operations are rejected. Empty endpoint fields are not implicitly overwritten. Updates and reset/delete revisions share `revisions.version_number`; there is no second concurrency counter. A cached create may be replayed for 24 hours even after finish: it returns the original redacted result and never resurrects mocks or reopens routing. A new create in a finished run returns RUN_FINISHED.
 
 Predicates are the existing verification/rule grammar: `field_type` is `header`, `query` or `body_json_path`; `operator` is `equals`, `contains`, `regex` or `exists`. Non-exists operators require a string `value`; regex uses PHP delimiters such as `/pattern/i`. Comparators are exactly `equals`, `at_least`, `at_most`. Unfiltered assertions always use the exact counter. Filtered assertions use existing three-valued evidence evaluation: provable bounds can establish a result; otherwise the tool returns INCONCLUSIVE_EVIDENCE with the count outside the retained window, never a false exact zero.
+
+## Primary response fault configuration
+
+MCP exposes Wave 2's existing primary-response fault engine through the same response objects extended for selection modes. The fields work in `create_mock.configuration.responses`, `update_mock.changes.responses.add/update` and either proposal form of `validate_mock`. Existing write/read permissions, run ownership, atomic validation, optimistic versions and idempotency remain unchanged; no new tools, tables, fault types or serving logic are added.
+
+| Response field | Accepted input | New-response default |
+| --- | --- | --- |
+| `fault_enabled` | Boolean | `false` |
+| `fault_type` | `delay`, `malformed_body`, `truncated_body`, `timeout` only | `delay` |
+| `fault_delay_ms_min` | Integer, 0–120000 milliseconds | `0` |
+| `fault_delay_ms_max` | Integer, 0–120000 and at least the minimum, or `null` for a fixed delay equal to the minimum | `null` |
+| `fault_probability` | Integer percentage, 0–100; 0 never applies, 100 always applies | `100` |
+
+Delay bounds apply to Delay and Timeout and use the existing fixed-or-range behavior. `timeout` is a **bounded long-delay approximation**, not an indefinite connection hang; supply positive bounds for the desired delay and account for client/proxy timeouts. `connection_reset` was not shipped and is rejected with the normal structured `VALIDATION_ERROR`, even if `fault_enabled` is false. It is never silently ignored or substituted. The discovery enum and delay limit are sourced from `FaultConfigurationValidator::TYPES` / `MAX_DELAY_MS`, and all dry runs/writes ultimately use that existing validator through `ResponseConfigurationValidator`.
+
+Malformed body requires a JSON/XML Content-Type (including supported `+json`/`+xml` variants); incompatible formats return the existing validation message. Truncated body cuts the configured/rendered body to half its byte length. These effects preserve the declared Content-Type and run after template rendering. Faults compose with Weighted, Sequence and Rule-based selection: a faulted call still increments the run's exact match counter and enters its retained evidence; the request log retains `fault_applied` and `fault_delay_ms` markers. This is separate from the ordinary `delay_ms` field. `get_mock`, create/update results and `peek_next_response` report the configured fault fields; peeking never applies a fault or sleeps.
+
+Omitting all fault fields on creation retains the existing non-faulty defaults. Omitting them on update preserves any existing fault configuration, including disabled flags and nullable bounds; send `fault_enabled: false` explicitly to disable a configured fault. An explicit null maximum clears a range back to a fixed delay. Ordinary dashboard-configured faults, native format 1.5 and portable/revision semantics are unchanged.
+
+Create a delayed response (`tools/call` arguments):
+
+```json
+{"run_id":"RUN","idempotency_key":"delay-fixture","configuration":{"request":{"url":"http://ignored.invalid/slow"},"responses":[{"status":200,"body":"{\"ok\":true}","fault_enabled":true,"fault_type":"delay","fault_delay_ms_min":100,"fault_delay_ms_max":250,"fault_probability":100}]}}
+```
+
+Dry-run an update using `validate_mock`, then send the same `changes` to `update_mock` with the current `expected_version`:
+
+```json
+{"run_id":"RUN","mock_id":"MOCK","changes":{"responses":{"update":[{"id":"RESPONSE","fault_enabled":true,"fault_type":"delay","fault_delay_ms_min":100,"fault_delay_ms_max":null,"fault_probability":100}]}}}
+```
+
+Fault-specific feature tests cover measured delay and call/log evidence, all shipped types, unsupported-type and range/content-type validation parity, omitted-field compatibility, nullable partial patches, composition with sequence/rules, and faults configured through Livewire. Schema-drift tests cover the shared enum/bounds on all input variants and configuration readback. The official PHP MCP client exercises fault updates and structured rejection over HTTP and verified HTTPS; these tests run in the existing full PHPUnit CI jobs without a new workflow.
 
 ## Sequence and rule-based response selection
 

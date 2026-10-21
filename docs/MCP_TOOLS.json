@@ -484,6 +484,37 @@
                                     },
                                     "is_default": {
                                         "type": "boolean"
+                                    },
+                                    "fault_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "fault_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "delay",
+                                            "malformed_body",
+                                            "truncated_body",
+                                            "timeout"
+                                        ],
+                                        "description": "Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported."
+                                    },
+                                    "fault_delay_ms_min": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 120000
+                                    },
+                                    "fault_delay_ms_max": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0,
+                                        "maximum": 120000
+                                    },
+                                    "fault_probability": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 100
                                     }
                                 },
                                 "required": [],
@@ -621,6 +652,30 @@
                                         "items": {
                                             "type": "object"
                                         }
+                                    },
+                                    "fault_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "fault_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "delay",
+                                            "malformed_body",
+                                            "truncated_body",
+                                            "timeout"
+                                        ]
+                                    },
+                                    "fault_delay_ms_min": {
+                                        "type": "integer"
+                                    },
+                                    "fault_delay_ms_max": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "fault_probability": {
+                                        "type": "integer"
                                     }
                                 },
                                 "required": []
@@ -994,6 +1049,30 @@
                                         "items": {
                                             "type": "object"
                                         }
+                                    },
+                                    "fault_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "fault_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "delay",
+                                            "malformed_body",
+                                            "truncated_body",
+                                            "timeout"
+                                        ]
+                                    },
+                                    "fault_delay_ms_min": {
+                                        "type": "integer"
+                                    },
+                                    "fault_delay_ms_max": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "fault_probability": {
+                                        "type": "integer"
                                     }
                                 },
                                 "required": []
@@ -1310,6 +1389,37 @@
                                     },
                                     "is_default": {
                                         "type": "boolean"
+                                    },
+                                    "fault_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "fault_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "delay",
+                                            "malformed_body",
+                                            "truncated_body",
+                                            "timeout"
+                                        ],
+                                        "description": "Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported."
+                                    },
+                                    "fault_delay_ms_min": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 120000
+                                    },
+                                    "fault_delay_ms_max": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0,
+                                        "maximum": 120000
+                                    },
+                                    "fault_probability": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 100
                                     }
                                 },
                                 "required": [],
@@ -1569,6 +1679,37 @@
                                             },
                                             "is_default": {
                                                 "type": "boolean"
+                                            },
+                                            "fault_enabled": {
+                                                "type": "boolean"
+                                            },
+                                            "fault_type": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "delay",
+                                                    "malformed_body",
+                                                    "truncated_body",
+                                                    "timeout"
+                                                ],
+                                                "description": "Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported."
+                                            },
+                                            "fault_delay_ms_min": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_delay_ms_max": {
+                                                "type": [
+                                                    "integer",
+                                                    "null"
+                                                ],
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_probability": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 100
                                             }
                                         },
                                         "required": [],
@@ -1694,6 +1835,37 @@
                                             },
                                             "is_default": {
                                                 "type": "boolean"
+                                            },
+                                            "fault_enabled": {
+                                                "type": "boolean"
+                                            },
+                                            "fault_type": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "delay",
+                                                    "malformed_body",
+                                                    "truncated_body",
+                                                    "timeout"
+                                                ],
+                                                "description": "Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported."
+                                            },
+                                            "fault_delay_ms_min": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_delay_ms_max": {
+                                                "type": [
+                                                    "integer",
+                                                    "null"
+                                                ],
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_probability": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 100
                                             }
                                         },
                                         "required": [
@@ -2065,6 +2237,37 @@
                                             },
                                             "is_default": {
                                                 "type": "boolean"
+                                            },
+                                            "fault_enabled": {
+                                                "type": "boolean"
+                                            },
+                                            "fault_type": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "delay",
+                                                    "malformed_body",
+                                                    "truncated_body",
+                                                    "timeout"
+                                                ],
+                                                "description": "Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported."
+                                            },
+                                            "fault_delay_ms_min": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_delay_ms_max": {
+                                                "type": [
+                                                    "integer",
+                                                    "null"
+                                                ],
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_probability": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 100
                                             }
                                         },
                                         "required": [],
@@ -2190,6 +2393,37 @@
                                             },
                                             "is_default": {
                                                 "type": "boolean"
+                                            },
+                                            "fault_enabled": {
+                                                "type": "boolean"
+                                            },
+                                            "fault_type": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "delay",
+                                                    "malformed_body",
+                                                    "truncated_body",
+                                                    "timeout"
+                                                ],
+                                                "description": "Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported."
+                                            },
+                                            "fault_delay_ms_min": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_delay_ms_max": {
+                                                "type": [
+                                                    "integer",
+                                                    "null"
+                                                ],
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_probability": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 100
                                             }
                                         },
                                         "required": [
@@ -2339,6 +2573,30 @@
                                         "items": {
                                             "type": "object"
                                         }
+                                    },
+                                    "fault_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "fault_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "delay",
+                                            "malformed_body",
+                                            "truncated_body",
+                                            "timeout"
+                                        ]
+                                    },
+                                    "fault_delay_ms_min": {
+                                        "type": "integer"
+                                    },
+                                    "fault_delay_ms_max": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "fault_probability": {
+                                        "type": "integer"
                                     }
                                 },
                                 "required": []
@@ -2685,6 +2943,30 @@
                                     "items": {
                                         "type": "object"
                                     }
+                                },
+                                "fault_enabled": {
+                                    "type": "boolean"
+                                },
+                                "fault_type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "delay",
+                                        "malformed_body",
+                                        "truncated_body",
+                                        "timeout"
+                                    ]
+                                },
+                                "fault_delay_ms_min": {
+                                    "type": "integer"
+                                },
+                                "fault_delay_ms_max": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                },
+                                "fault_probability": {
+                                    "type": "integer"
                                 }
                             },
                             "required": []

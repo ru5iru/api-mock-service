@@ -21,7 +21,8 @@ final class McpMockConfiguration
 {
     public const ENDPOINT = ['name', 'enabled', 'priority', 'curl', 'request', 'matching', 'collection_id', 'tags', 'selection_mode', 'sequence_on_exhaust'];
 
-    public const RESPONSE = ['id', 'status', 'headers', 'body', 'body_mode', 'locale', 'seed_mode', 'seed', 'delay_ms', 'weight', 'sequence_order', 'rule_conditions', 'is_default'];
+    public const RESPONSE = ['id', 'status', 'headers', 'body', 'body_mode', 'locale', 'seed_mode', 'seed', 'delay_ms', 'weight', 'sequence_order', 'rule_conditions', 'is_default',
+        'fault_enabled', 'fault_type', 'fault_delay_ms_min', 'fault_delay_ms_max', 'fault_probability'];
 
     /** Project an explicit patch into a final pool, without saving or changing runtime state. */
     public function changes(array $changes, MockEndpoint $current): array
@@ -161,7 +162,9 @@ final class McpMockConfiguration
             }
         }
         $map = ['status' => 'statusCode', 'body' => 'body', 'body_mode' => 'bodyMode', 'seed_mode' => 'seedMode',
-            'seed' => 'seed', 'locale' => 'locale', 'weight' => 'weight', 'delay_ms' => 'delayMs'];
+            'seed' => 'seed', 'locale' => 'locale', 'weight' => 'weight', 'delay_ms' => 'delayMs',
+            'fault_enabled' => 'faultEnabled', 'fault_type' => 'faultType', 'fault_delay_ms_min' => 'faultDelayMsMin',
+            'fault_delay_ms_max' => 'faultDelayMsMax', 'fault_probability' => 'faultProbability'];
         foreach ($map as $key => $field) {
             if (array_key_exists($key, $data)) {
                 $values[$field] = $data[$key];
