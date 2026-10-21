@@ -4,7 +4,7 @@
     "type": "project",
     "description": "A self-hosted, exact-request mock API service with a Livewire dashboard.",
     "keywords": ["laravel", "mock-api", "testing", "livewire"],
-    "license": "MIT",
+    "license": "proprietary",
     "require": {
         "php": "^8.3",
         "ext-json": "*",
