@@ -313,3 +313,46 @@ The container job explicitly sets `COMPOSE_FILE=docker-compose.yml`, `APP_PORT=1
 ### Action runtimes and runner versions
 
 CI pins both jobs to `ubuntu-24.04` so the moving `ubuntu-latest` label cannot silently change the operating system. Checkout, Node setup and artifact upload use their Node-24-based `v6` actions. `node-version: '22'` still selects Node.js 22 for application/frontend commands; an action's internal Node runtime is a separate setting. Treat future runner/action migrations as explicit updates and run the container/browser checks before adopting them.
+
+
+## MCP Phase 1 regression checks
+
+The full PHPUnit suite automatically includes `MutationCharacterizationTest`, `SharedMutationServiceTest`, `McpCredentialTest`, `McpCredentialCommandTest` and `McpAuditContractTest`. Both CI jobs already run this suite (`php artisan test` on the host and `make validate` in the container job). Tests use temporary databases and create no production MCP routes. The same checks cover unchanged Wave 2 verification authentication, dashboard draft/revision behavior, atomic service transactions, hash-only/revoked credentials, fixed permission/error contracts and redacted audit metadata.
+
+Apply both `2026_10_18_*` migrations with normal startup before using credential CLI commands. Follow [docs/MCP.md](MCP.md) for commands and permissions. Phase 1 requires no MCP transport/client smoke test because it provides no transport or tool handlers. A Docker-less environment cannot certify the image/build portion of `make validate`; report that limitation separately from native PHP/frontend results.
+
+## App recreation and stale Nginx upstream addresses
+
+Nginx resolves the Compose `app` hostname through Docker DNS (`127.0.0.11`) using a variable FastCGI destination, with a five-second cache. Rebuilding/recreating the app can change its IP; an old literal `fastcgi_pass app:9000` configuration resolved only when Nginx started and could keep connecting to the previous address. The shared snippet covers plain HTTP and the same-port HTTP/HTTPS setup.
+
+Nginx's Compose healthcheck requests `/up` through Nginx, PHP-FPM and Laravel, instead of treating a running Nginx process as proof of application reachability. A restart/recreation can still cause a brief unavailable window; this is recovery, not a zero-downtime guarantee.
+
+For an existing installation that still has the old configuration loaded:
+
+```bash
+make nginx-reload
+make health
+```
+
+The container CI job runs `scripts/smoke_upstream_recreation.py` on its disposable instance. It warms the original upstream, starts a second healthy app replica with automatic address allocation, removes the original, and requires `/up` recovery without recreating or restarting Nginx. Concurrently existing app containers guarantee distinct addresses without static IPs or custom subnet/IPAM configuration; the replacement remains the sole app afterward. This deliberately disrupts app networking and refuses to run unless `CI=true`; never run it on an operator instance.
+
+## MCP Phase 2 isolation
+
+The full PHPUnit suite includes `TestRunOwnershipTest`, `TestRunRoutingTest`, `TestRunCompatibilityTest`, and `ConcurrentRunRoutingTest`. The concurrency test uses real TCP requests, eight PHP server workers and 24 simultaneous clients: two isolated runs plus ordinary traffic, each with identical request shapes. Both routing mechanisms share the same load. CI repeats it against PostgreSQL in its own disposable `mockdeck_run_isolation_test` database; this is additional to the default SQLite run. See `docs/MCP.md` for the guarded PostgreSQL mode and reserved-path migration preflight. No MCP server or external agent service is needed.
+
+Run-context tests use explicit incoming HTTP and HTTPS origins (including port 18473) rather than assuming the developer's `APP_URL` is `http://localhost`. Both response and callback assertions require the original request origin/query to survive while the run-routing prefix is removed. Changing local `APP_URL` must not change these test expectations or force application request URLs back to HTTP.
+
+The setup test suite mocks the smoke-test orchestration to check the CI-only guard, automatic allocation, health-before-removal order, DNS recovery retries and unchanged Nginx identity/start time. The actual Docker DNS/network regression still runs in the container CI job.
+
+
+The upstream smoke test requires the **Nginx configuration fix as well as the Python script**. Before removing any app container it checks `nginx -T` for Docker DNS resolution through the variable FastCGI destination and the two-second connect timeout; stale `fastcgi_pass app:9000` configurations fail immediately with application instructions. The connect timeout bounds attempts to dead IPs; `fastcgi_read_timeout 60s` remains unchanged for valid application responses. A failed recovery prints recent app/Nginx logs. After copying the shared snippet into an existing instance, run `make nginx-reload` before `make health`; changing the file on disk alone does not reload the running Nginx configuration.
+
+## MCP Phase 3 protocol and tools
+
+The full suite now includes `McpTransportTest`, `McpReadToolsTest`, `McpWorkflowTest`, `McpHistoryTest`, `McpSecurityBoundaryTest`, `McpIdempotencyTest`, `ConcurrentMcpMutationTest` and `McpClientIntegrationTest`. They run in both existing CI suite jobs. The real official PHP MCP client exercises HTTP and HTTPS with a locally generated certificate and explicit CA verification, not a fake HTTP facade. It also executes `scripts/mcp_example.php`. Concurrent clients prove one cached create and one winning update at a shared version; Phase 2’s concurrent run/ordinary traffic test remains mandatory.
+
+`make mcp-test` selects the MCP checks. `make mcp-offline-test` starts the client integration test in a container with `--network none` (loopback only), disposable SQLite and no external services. The container CI job runs this explicitly. Missing Docker/network namespace capability must be reported as blocked, not inferred from ordinary loopback tests. The test-only TLS terminator proves client trust and protocol connectivity; production same-port Nginx TLS/DNS recovery remains covered by the existing container checks.
+
+[docs/MCP.md](MCP.md) documents schemas, tested client/auth, the complete example workflow, evidence limits and troubleshooting. `mockdeck:mcp-schemas --check` is covered by `McpSchemaReferenceTest`. Never point disposable concurrency tests at a working database.
+
+Container CI additionally runs `ConcurrentMcpMutationTest` with `MOCKDECK_MCP_CONCURRENCY_POSTGRES=true`, using the same dedicated `mockdeck_run_isolation_test` database after the routing test. It refuses other PostgreSQL database names. This exercises actual row locks rather than relying only on SQLite’s writer reservation.

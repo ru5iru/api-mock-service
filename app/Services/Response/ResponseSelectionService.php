@@ -24,6 +24,7 @@ final class ResponseSelectionService
             // Inserting before reading serializes SQLite writers too. ON CONFLICT
             // handles simultaneous first calls without aborting PostgreSQL transactions.
             DB::table('endpoint_call_state')->insertOrIgnore([
+                'test_run_id' => $endpoint->test_run_id,
                 'endpoint_id' => $endpoint->id,
                 'environment_id' => $environment->id,
                 'sequence_position' => 0,
@@ -70,7 +71,7 @@ final class ResponseSelectionService
 
     private function state(MockEndpoint $endpoint, Environment $environment)
     {
-        return EndpointCallState::query()->where('endpoint_id', $endpoint->id)->where('environment_id', $environment->id);
+        return EndpointCallState::query()->where('endpoint_id', $endpoint->id)->where('environment_id', $environment->id)->where('test_run_id', $endpoint->test_run_id);
     }
 
     private function strategy(MockEndpoint $endpoint): SelectionStrategyInterface

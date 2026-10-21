@@ -9,6 +9,7 @@ return [
     // Client/proxy-generated transport metadata is unstable and therefore is
     // never part of a saved or incoming request signature.
     'transport_header_names' => [
+        'x-mockdeck-test-run',
         'host',
         'content-length',
         'transfer-encoding',

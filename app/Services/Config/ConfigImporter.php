@@ -17,6 +17,7 @@ use App\Services\Matching\PatternPathMatcher;
 use App\Services\Response\FaultConfigurationValidator;
 use App\Services\Response\SelectionConfigurationValidator;
 use App\Services\Revisions\RevisionManager;
+use App\Services\TestRuns\RunRouting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -141,6 +142,7 @@ final readonly class ConfigImporter
 
             try {
                 $parsed = $this->parser->parse((string) $source['request']['curl']);
+                RunRouting::validateConfiguration($parsed);
                 $variant = $this->hasher->forOptions(
                     $parsed,
                     (bool) $matching['exclude_cookies'],
@@ -553,6 +555,7 @@ final readonly class ConfigImporter
         foreach ($document->endpoints() as $source) {
             $matching = $source['request']['matching'];
             $parsed = $this->parser->parse((string) $source['request']['curl']);
+            RunRouting::validateConfiguration($parsed);
             $variant = $this->hasher->forOptions(
                 $parsed,
                 (bool) $matching['exclude_cookies'],

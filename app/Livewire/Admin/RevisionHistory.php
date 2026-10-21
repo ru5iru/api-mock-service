@@ -5,15 +5,22 @@ namespace App\Livewire\Admin;
 use App\Models\MockEndpoint;
 use App\Models\MockResponse;
 use App\Models\Revision;
+use App\Models\TestRun;
 use App\Services\Revisions\RevisionManager;
 use Illuminate\Contracts\View\View;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 final class RevisionHistory extends Component
 {
+    #[Locked]
     public string $entityType;
 
+    #[Locked]
     public int $entityId;
+
+    #[Locked]
+    public ?int $runId = null;
 
     /** @var list<int> */
     public array $selectedRevisionIds = [];
@@ -21,12 +28,17 @@ final class RevisionHistory extends Component
     /** @var array<string, mixed> */
     public array $diff = [];
 
-    public function mount(string $entityType, int $entityId): void
+    public function mount(string $entityType, int $entityId, ?int $runId = null): void
     {
         abort_unless(in_array($entityType, ['endpoint', 'response'], true), 404);
         $this->entityType = $entityType;
         $this->entityId = $entityId;
-        $this->entity();
+        $this->runId = $runId;
+        if ($runId === null) {
+            $this->entity();
+        } else {
+            abort_unless($entityType === 'endpoint' && TestRun::find($runId) !== null, 404);
+        }
     }
 
     public function toggleRevision(int $revisionId, RevisionManager $revisions): void
@@ -42,7 +54,8 @@ final class RevisionHistory extends Component
         $this->selectedRevisionIds[] = $revision->id;
         $this->selectedRevisionIds = array_slice($this->selectedRevisionIds, -2);
         if (count($this->selectedRevisionIds) === 2) {
-            $selected = Revision::query()->whereKey($this->selectedRevisionIds)->orderBy('version_number')->get();
+            $selected = Revision::query()->where('test_run_id', $this->runId)->where('entity_type', $this->entityType)->where('entity_id', $this->entityId)->whereKey($this->selectedRevisionIds)->orderBy('version_number')->get();
+            abort_unless($selected->count() === 2, 404);
             $this->diff = $revisions->diff($selected->firstOrFail(), $selected->last());
         }
     }
@@ -56,6 +69,7 @@ final class RevisionHistory extends Component
 
     public function restore(int $revisionId, RevisionManager $revisions): void
     {
+        abort_if($this->runId !== null, 403, 'Run history is read-only.');
         $revision = $this->revision($revisionId);
         $created = $revisions->restore($revision);
         $this->selectedRevisionIds = [];
@@ -75,11 +89,12 @@ final class RevisionHistory extends Component
         $items = Revision::query()
             ->where('entity_type', $this->entityType)
             ->where('entity_id', $this->entityId)
+            ->where('test_run_id', $this->runId)
             ->latest('version_number')
             ->get()
             ->each(fn (Revision $revision) => $revision->setAttribute('display_summary', $revisions->summary($revision)));
 
-        return view('livewire.admin.revision-history', ['revisions' => $items]);
+        return view('livewire.admin.revision-history', ['revisions' => $items, 'hasCurrent' => $this->runId === null || MockEndpoint::withoutGlobalScope('ordinary')->where('test_run_id', $this->runId)->whereKey($this->entityId)->exists()]);
     }
 
     private function revision(int $revisionId): Revision
@@ -87,6 +102,7 @@ final class RevisionHistory extends Component
         return Revision::query()
             ->where('entity_type', $this->entityType)
             ->where('entity_id', $this->entityId)
+            ->where('test_run_id', $this->runId)
             ->findOrFail($revisionId);
     }
 

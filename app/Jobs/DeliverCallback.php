@@ -33,8 +33,12 @@ final class DeliverCallback implements ShouldBeEncrypted, ShouldQueue
     public function handle(CallbackDelivery $delivery): void
     {
         try {
-            $response = MockResponse::query()->find($this->responseId);
+            $response = MockResponse::query()->withoutGlobalScope('ordinary')->with('endpoint.testRun.credential')->find($this->responseId);
             if ($response === null) {
+                return;
+            }
+            $run = $response->endpoint?->testRun;
+            if ($run !== null && ($run->status !== 'active' || $run->credential === null || $run->credential->revoked_at !== null)) {
                 return;
             }
             $resend = $this->resendAttemptId !== null

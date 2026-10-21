@@ -7,6 +7,7 @@ use App\Services\Curl\CurlHasher;
 use App\Services\Curl\HashVariant;
 use App\Services\Curl\ParsedCurl;
 use App\Services\Environments\EnvironmentContext;
+use App\Services\TestRuns\RequestScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -21,7 +22,7 @@ final readonly class ExactHashMatcher implements RequestMatcher
         private EnvironmentContext $environments,
     ) {}
 
-    public function match(ParsedCurl $request): ?EndpointMatch
+    public function match(ParsedCurl $request, ?RequestScope $scope = null): ?EndpointMatch
     {
         $variants = $this->hasher->variants($request);
         $hashes = array_values(array_unique(array_map(
@@ -29,7 +30,7 @@ final readonly class ExactHashMatcher implements RequestMatcher
             $variants,
         )));
 
-        $candidates = $this->eligibleQuery()
+        $candidates = $this->eligibleQuery($scope)
             ->where('enabled', true)
             ->whereIn('curl_hash', $hashes)
             ->get();
@@ -44,7 +45,7 @@ final readonly class ExactHashMatcher implements RequestMatcher
             $variants,
         )));
 
-        $candidates = $this->eligibleQuery()
+        $candidates = $this->eligibleQuery($scope)
             ->where('enabled', true)
             ->where('method', strtoupper($request->method))
             ->whereIn('normalized_curl', $normalizedCandidates)
@@ -73,11 +74,12 @@ final readonly class ExactHashMatcher implements RequestMatcher
         return null;
     }
 
-    private function eligibleQuery(): Builder
+    private function eligibleQuery(?RequestScope $scope): Builder
     {
-        $environmentId = $this->environments->active()->id;
+        $scope ??= RequestScope::ordinary();
+        $environmentId = $scope->environment->id;
 
-        return MockEndpoint::query()
+        return $scope->constrain(MockEndpoint::query())
             ->where('enabled', true)
             ->where(function ($query) use ($environmentId): void {
                 $query->whereDoesntHave('environmentOverrides', fn ($override) => $override->whereKey($environmentId))

@@ -1,0 +1,2572 @@
+[
+    {
+        "name": "start_test_run",
+        "description": "Create an isolated run owned by this credential, bound to an Environment name (defaults to the active environment without changing it). Returns instructions for both header and prefix routing.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "environment": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "preferred": {
+                    "type": "string",
+                    "enum": [
+                        "header",
+                        "path-prefix"
+                    ]
+                }
+            },
+            "required": [
+                "label"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "run_id": {
+                            "type": "string"
+                        },
+                        "owner_id": {
+                            "type": "integer"
+                        },
+                        "label": {
+                            "type": "string"
+                        },
+                        "status": {
+                            "type": "string"
+                        },
+                        "environment": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": []
+                        },
+                        "preferred": {
+                            "type": "string"
+                        },
+                        "routing": {
+                            "type": "object"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "list_test_runs",
+        "description": "Recover your own active or finished runs after a client restart. Does not expose another credential or ordinary dashboard mocks.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "active",
+                        "finished"
+                    ]
+                },
+                "page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000
+                },
+                "per_page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50
+                }
+            },
+            "required": [],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "runs": {
+                            "type": "object",
+                            "properties": {
+                                "data": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "public_id": {
+                                                "type": "string"
+                                            },
+                                            "label": {
+                                                "type": "string"
+                                            },
+                                            "status": {
+                                                "type": "string"
+                                            },
+                                            "created_at": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": []
+                                    }
+                                },
+                                "current_page": {
+                                    "type": "integer"
+                                },
+                                "per_page": {
+                                    "type": "integer"
+                                },
+                                "total": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": []
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "create_mock",
+        "description": "Atomically create one run-owned request and 1\u201350 equally weighted-by-default responses. Provide curl OR structured request. Idempotency key required; same-run canonical duplicates return CONFLICT with the existing ID. No scripts execute.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "configuration": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "maxLength": 255
+                        },
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "priority": {
+                            "type": "integer",
+                            "minimum": -1000,
+                            "maximum": 1000
+                        },
+                        "curl": {
+                            "type": "string",
+                            "maxLength": 131072
+                        },
+                        "request": {
+                            "type": "object",
+                            "properties": {
+                                "method": {
+                                    "type": "string",
+                                    "enum": [
+                                        "GET",
+                                        "POST",
+                                        "PUT",
+                                        "PATCH",
+                                        "DELETE",
+                                        "HEAD",
+                                        "OPTIONS"
+                                    ]
+                                },
+                                "url": {
+                                    "type": "string",
+                                    "maxLength": 8192
+                                },
+                                "headers": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string",
+                                        "maxLength": 4096
+                                    },
+                                    "maxProperties": 64
+                                },
+                                "body": {
+                                    "type": "string",
+                                    "maxLength": 65536
+                                }
+                            },
+                            "required": [
+                                "url"
+                            ],
+                            "additionalProperties": false
+                        },
+                        "matching": {
+                            "type": "object",
+                            "properties": {
+                                "exclude_cookies": {
+                                    "type": "boolean"
+                                },
+                                "exclude_auth": {
+                                    "type": "boolean"
+                                },
+                                "exclude_headers": {
+                                    "type": "boolean"
+                                },
+                                "excluded_query_params": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "maxItems": 100,
+                                    "minItems": 0
+                                },
+                                "excluded_headers": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "maxItems": 100,
+                                    "minItems": 0
+                                },
+                                "path_pattern_enabled": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [],
+                            "additionalProperties": false
+                        },
+                        "collection_id": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 2147483647
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2147483647
+                            },
+                            "maxItems": 50,
+                            "minItems": 0
+                        },
+                        "responses": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "status": {
+                                        "type": "integer",
+                                        "minimum": 100,
+                                        "maximum": 599
+                                    },
+                                    "headers": {
+                                        "type": "object",
+                                        "additionalProperties": {
+                                            "type": "string",
+                                            "maxLength": 4096
+                                        },
+                                        "maxProperties": 64
+                                    },
+                                    "body": {
+                                        "type": "string",
+                                        "maxLength": 65536
+                                    },
+                                    "body_mode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "static",
+                                            "template"
+                                        ]
+                                    },
+                                    "locale": {
+                                        "type": "string",
+                                        "maxLength": 32
+                                    },
+                                    "seed_mode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "random",
+                                            "fixed",
+                                            "request"
+                                        ]
+                                    },
+                                    "seed": {
+                                        "type": "integer",
+                                        "minimum": -2147483648,
+                                        "maximum": 2147483647
+                                    },
+                                    "delay_ms": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 30000
+                                    },
+                                    "weight": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 1000000
+                                    }
+                                },
+                                "required": [],
+                                "additionalProperties": false
+                            },
+                            "maxItems": 50,
+                            "minItems": 1
+                        }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                },
+                "idempotency_key": {
+                    "type": "string",
+                    "maxLength": 128
+                }
+            },
+            "required": [
+                "run_id",
+                "configuration",
+                "idempotency_key"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "mock_id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "priority": {
+                            "type": "integer"
+                        },
+                        "curl": {
+                            "type": "string"
+                        },
+                        "matching": {
+                            "type": "object"
+                        },
+                        "collection_id": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
+                        },
+                        "version": {
+                            "type": "integer"
+                        },
+                        "revision_reference": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "responses": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "status": {
+                                        "type": "integer"
+                                    },
+                                    "headers": {
+                                        "type": [
+                                            "object",
+                                            "array",
+                                            "null"
+                                        ]
+                                    },
+                                    "body": {
+                                        "type": "string"
+                                    },
+                                    "body_mode": {
+                                        "type": "string"
+                                    },
+                                    "weight": {
+                                        "type": "integer"
+                                    },
+                                    "delay_ms": {
+                                        "type": "integer"
+                                    },
+                                    "locale": {
+                                        "type": "string"
+                                    },
+                                    "seed": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "seed_mode": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": []
+                            }
+                        },
+                        "history_url": {
+                            "type": "string"
+                        },
+                        "limits": {
+                            "type": "object"
+                        },
+                        "invocation": {
+                            "type": "object",
+                            "properties": {
+                                "preferred": {
+                                    "type": "string"
+                                },
+                                "header": {
+                                    "type": "object",
+                                    "properties": {
+                                        "url": {
+                                            "type": "string"
+                                        },
+                                        "headers": {
+                                            "type": "object"
+                                        },
+                                        "curl": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": []
+                                },
+                                "path_prefix": {
+                                    "type": "object",
+                                    "properties": {
+                                        "url": {
+                                            "type": "string"
+                                        },
+                                        "curl": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": []
+                                },
+                                "origin_note": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": []
+                        },
+                        "matcher_summary": {
+                            "type": "object"
+                        },
+                        "warnings": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "list_mocks",
+        "description": "Paginate mocks in your own run only. Optional name, method and path filters. Ordinary dashboard mocks are outside P0 access.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "method": {
+                    "type": "string",
+                    "maxLength": 16
+                },
+                "path": {
+                    "type": "string",
+                    "maxLength": 1024
+                },
+                "page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000
+                },
+                "per_page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50
+                }
+            },
+            "required": [
+                "run_id"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "mock_id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "method": {
+                                        "type": "string"
+                                    },
+                                    "path": {
+                                        "type": "string"
+                                    },
+                                    "enabled": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": []
+                            }
+                        },
+                        "page": {
+                            "type": "integer"
+                        },
+                        "per_page": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "get_mock",
+        "description": "Read full run mock configuration, response summaries and current configuration version. Secrets are redacted and text is bounded; never echo redactions back as updates.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "mock_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "run_id",
+                "mock_id"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "mock_id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "priority": {
+                            "type": "integer"
+                        },
+                        "curl": {
+                            "type": "string"
+                        },
+                        "matching": {
+                            "type": "object"
+                        },
+                        "collection_id": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
+                        },
+                        "version": {
+                            "type": "integer"
+                        },
+                        "revision_reference": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "responses": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "status": {
+                                        "type": "integer"
+                                    },
+                                    "headers": {
+                                        "type": [
+                                            "object",
+                                            "array",
+                                            "null"
+                                        ]
+                                    },
+                                    "body": {
+                                        "type": "string"
+                                    },
+                                    "body_mode": {
+                                        "type": "string"
+                                    },
+                                    "weight": {
+                                        "type": "integer"
+                                    },
+                                    "delay_ms": {
+                                        "type": "integer"
+                                    },
+                                    "locale": {
+                                        "type": "string"
+                                    },
+                                    "seed": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "seed_mode": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": []
+                            }
+                        },
+                        "history_url": {
+                            "type": "string"
+                        },
+                        "limits": {
+                            "type": "object"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "validate_mock",
+        "description": "Validate proposed configuration without saving or advancing runtime state. Optional owned run/mock reference compares with an existing configuration. Uses the same dashboard validators.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "mock_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "configuration": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "maxLength": 255
+                        },
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "priority": {
+                            "type": "integer",
+                            "minimum": -1000,
+                            "maximum": 1000
+                        },
+                        "curl": {
+                            "type": "string",
+                            "maxLength": 131072
+                        },
+                        "request": {
+                            "type": "object",
+                            "properties": {
+                                "method": {
+                                    "type": "string",
+                                    "enum": [
+                                        "GET",
+                                        "POST",
+                                        "PUT",
+                                        "PATCH",
+                                        "DELETE",
+                                        "HEAD",
+                                        "OPTIONS"
+                                    ]
+                                },
+                                "url": {
+                                    "type": "string",
+                                    "maxLength": 8192
+                                },
+                                "headers": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string",
+                                        "maxLength": 4096
+                                    },
+                                    "maxProperties": 64
+                                },
+                                "body": {
+                                    "type": "string",
+                                    "maxLength": 65536
+                                }
+                            },
+                            "required": [
+                                "url"
+                            ],
+                            "additionalProperties": false
+                        },
+                        "matching": {
+                            "type": "object",
+                            "properties": {
+                                "exclude_cookies": {
+                                    "type": "boolean"
+                                },
+                                "exclude_auth": {
+                                    "type": "boolean"
+                                },
+                                "exclude_headers": {
+                                    "type": "boolean"
+                                },
+                                "excluded_query_params": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "maxItems": 100,
+                                    "minItems": 0
+                                },
+                                "excluded_headers": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "maxItems": 100,
+                                    "minItems": 0
+                                },
+                                "path_pattern_enabled": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [],
+                            "additionalProperties": false
+                        },
+                        "collection_id": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 2147483647
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2147483647
+                            },
+                            "maxItems": 50,
+                            "minItems": 0
+                        },
+                        "responses": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "status": {
+                                        "type": "integer",
+                                        "minimum": 100,
+                                        "maximum": 599
+                                    },
+                                    "headers": {
+                                        "type": "object",
+                                        "additionalProperties": {
+                                            "type": "string",
+                                            "maxLength": 4096
+                                        },
+                                        "maxProperties": 64
+                                    },
+                                    "body": {
+                                        "type": "string",
+                                        "maxLength": 65536
+                                    },
+                                    "body_mode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "static",
+                                            "template"
+                                        ]
+                                    },
+                                    "locale": {
+                                        "type": "string",
+                                        "maxLength": 32
+                                    },
+                                    "seed_mode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "random",
+                                            "fixed",
+                                            "request"
+                                        ]
+                                    },
+                                    "seed": {
+                                        "type": "integer",
+                                        "minimum": -2147483648,
+                                        "maximum": 2147483647
+                                    },
+                                    "delay_ms": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 30000
+                                    },
+                                    "weight": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 1000000
+                                    }
+                                },
+                                "required": [],
+                                "additionalProperties": false
+                            },
+                            "maxItems": 50,
+                            "minItems": 1
+                        }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                }
+            },
+            "required": [
+                "configuration"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "valid": {
+                            "type": "boolean"
+                        },
+                        "errors": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        "warnings": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "update_mock",
+        "description": "Patch endpoint fields and add/update/remove individual responses atomically. Omitted fields are preserved. Supply the version returned by get_mock; stale versions return CONFLICT. Responses remain Weighted in P0.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "mock_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "expected_version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                },
+                "changes": {
+                    "type": "object",
+                    "properties": {
+                        "endpoint": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "maxLength": 255
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "priority": {
+                                    "type": "integer",
+                                    "minimum": -1000,
+                                    "maximum": 1000
+                                },
+                                "curl": {
+                                    "type": "string",
+                                    "maxLength": 131072
+                                },
+                                "request": {
+                                    "type": "object",
+                                    "properties": {
+                                        "method": {
+                                            "type": "string",
+                                            "enum": [
+                                                "GET",
+                                                "POST",
+                                                "PUT",
+                                                "PATCH",
+                                                "DELETE",
+                                                "HEAD",
+                                                "OPTIONS"
+                                            ]
+                                        },
+                                        "url": {
+                                            "type": "string",
+                                            "maxLength": 8192
+                                        },
+                                        "headers": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "string",
+                                                "maxLength": 4096
+                                            },
+                                            "maxProperties": 64
+                                        },
+                                        "body": {
+                                            "type": "string",
+                                            "maxLength": 65536
+                                        }
+                                    },
+                                    "required": [
+                                        "url"
+                                    ],
+                                    "additionalProperties": false
+                                },
+                                "matching": {
+                                    "type": "object",
+                                    "properties": {
+                                        "exclude_cookies": {
+                                            "type": "boolean"
+                                        },
+                                        "exclude_auth": {
+                                            "type": "boolean"
+                                        },
+                                        "exclude_headers": {
+                                            "type": "boolean"
+                                        },
+                                        "excluded_query_params": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "maxLength": 255
+                                            },
+                                            "maxItems": 100,
+                                            "minItems": 0
+                                        },
+                                        "excluded_headers": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "maxLength": 255
+                                            },
+                                            "maxItems": 100,
+                                            "minItems": 0
+                                        },
+                                        "path_pattern_enabled": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [],
+                                    "additionalProperties": false
+                                },
+                                "collection_id": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 2147483647
+                                },
+                                "tags": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 2147483647
+                                    },
+                                    "maxItems": 50,
+                                    "minItems": 0
+                                }
+                            },
+                            "required": [],
+                            "additionalProperties": false
+                        },
+                        "responses": {
+                            "type": "object",
+                            "properties": {
+                                "add": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "status": {
+                                                "type": "integer",
+                                                "minimum": 100,
+                                                "maximum": 599
+                                            },
+                                            "headers": {
+                                                "type": "object",
+                                                "additionalProperties": {
+                                                    "type": "string",
+                                                    "maxLength": 4096
+                                                },
+                                                "maxProperties": 64
+                                            },
+                                            "body": {
+                                                "type": "string",
+                                                "maxLength": 65536
+                                            },
+                                            "body_mode": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "static",
+                                                    "template"
+                                                ]
+                                            },
+                                            "locale": {
+                                                "type": "string",
+                                                "maxLength": 32
+                                            },
+                                            "seed_mode": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "random",
+                                                    "fixed",
+                                                    "request"
+                                                ]
+                                            },
+                                            "seed": {
+                                                "type": "integer",
+                                                "minimum": -2147483648,
+                                                "maximum": 2147483647
+                                            },
+                                            "delay_ms": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 30000
+                                            },
+                                            "weight": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 1000000
+                                            }
+                                        },
+                                        "required": [],
+                                        "additionalProperties": false
+                                    },
+                                    "maxItems": 50,
+                                    "minItems": 0
+                                },
+                                "update": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {
+                                                "type": "string",
+                                                "format": "uuid"
+                                            },
+                                            "status": {
+                                                "type": "integer",
+                                                "minimum": 100,
+                                                "maximum": 599
+                                            },
+                                            "headers": {
+                                                "type": "object",
+                                                "additionalProperties": {
+                                                    "type": "string",
+                                                    "maxLength": 4096
+                                                },
+                                                "maxProperties": 64
+                                            },
+                                            "body": {
+                                                "type": "string",
+                                                "maxLength": 65536
+                                            },
+                                            "body_mode": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "static",
+                                                    "template"
+                                                ]
+                                            },
+                                            "locale": {
+                                                "type": "string",
+                                                "maxLength": 32
+                                            },
+                                            "seed_mode": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "random",
+                                                    "fixed",
+                                                    "request"
+                                                ]
+                                            },
+                                            "seed": {
+                                                "type": "integer",
+                                                "minimum": -2147483648,
+                                                "maximum": 2147483647
+                                            },
+                                            "delay_ms": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 30000
+                                            },
+                                            "weight": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 1000000
+                                            }
+                                        },
+                                        "required": [
+                                            "id"
+                                        ],
+                                        "additionalProperties": false
+                                    },
+                                    "maxItems": 50,
+                                    "minItems": 0
+                                },
+                                "remove": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
+                                    "maxItems": 50,
+                                    "minItems": 0
+                                }
+                            },
+                            "required": [],
+                            "additionalProperties": false
+                        }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                }
+            },
+            "required": [
+                "run_id",
+                "mock_id",
+                "expected_version",
+                "changes"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "mock_id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "priority": {
+                            "type": "integer"
+                        },
+                        "curl": {
+                            "type": "string"
+                        },
+                        "matching": {
+                            "type": "object"
+                        },
+                        "collection_id": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
+                        },
+                        "version": {
+                            "type": "integer"
+                        },
+                        "revision_reference": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "responses": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "status": {
+                                        "type": "integer"
+                                    },
+                                    "headers": {
+                                        "type": [
+                                            "object",
+                                            "array",
+                                            "null"
+                                        ]
+                                    },
+                                    "body": {
+                                        "type": "string"
+                                    },
+                                    "body_mode": {
+                                        "type": "string"
+                                    },
+                                    "weight": {
+                                        "type": "integer"
+                                    },
+                                    "delay_ms": {
+                                        "type": "integer"
+                                    },
+                                    "locale": {
+                                        "type": "string"
+                                    },
+                                    "seed": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "seed_mode": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": []
+                            }
+                        },
+                        "history_url": {
+                            "type": "string"
+                        },
+                        "limits": {
+                            "type": "object"
+                        },
+                        "invocation": {
+                            "type": "object",
+                            "properties": {
+                                "preferred": {
+                                    "type": "string"
+                                },
+                                "header": {
+                                    "type": "object",
+                                    "properties": {
+                                        "url": {
+                                            "type": "string"
+                                        },
+                                        "headers": {
+                                            "type": "object"
+                                        },
+                                        "curl": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": []
+                                },
+                                "path_prefix": {
+                                    "type": "object",
+                                    "properties": {
+                                        "url": {
+                                            "type": "string"
+                                        },
+                                        "curl": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": []
+                                },
+                                "origin_note": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": []
+                        },
+                        "matcher_summary": {
+                            "type": "object"
+                        },
+                        "warnings": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": false,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "get_mock_url",
+        "description": "Return both callable routing forms and POSIX example curls. Header routing keeps the path; prefix routing needs no injected header. Replace the origin with the reachable service address from your application.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "mock_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "preferred": {
+                    "type": "string",
+                    "enum": [
+                        "header",
+                        "path-prefix"
+                    ]
+                }
+            },
+            "required": [
+                "run_id",
+                "mock_id"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "preferred": {
+                            "type": "string"
+                        },
+                        "header": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "headers": {
+                                    "type": "object"
+                                },
+                                "curl": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": []
+                        },
+                        "path_prefix": {
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "type": "string"
+                                },
+                                "curl": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": []
+                        },
+                        "origin_note": {
+                            "type": "string"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "explain_match",
+        "description": "Diagnose a curl OR retained unmatched log_entry_id using the real scoped matcher, with field comparisons and exclusions, without selecting a response, counters or callbacks. Sensitive values are never returned.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "curl": {
+                    "type": "string",
+                    "maxLength": 131072
+                },
+                "log_entry_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "run_id"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "selected": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "candidates": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "mock_id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "priority": {
+                                        "type": "integer"
+                                    },
+                                    "selected": {
+                                        "type": "boolean"
+                                    },
+                                    "enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "path_captures": {
+                                        "type": [
+                                            "object",
+                                            "array"
+                                        ]
+                                    },
+                                    "differences": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "field": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "excluded": {
+                                                    "type": "boolean"
+                                                },
+                                                "matches": {
+                                                    "type": [
+                                                        "boolean",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": []
+                                        }
+                                    },
+                                    "excluded_query_params": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "headers": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "required": []
+                            }
+                        },
+                        "candidate_window": {
+                            "type": "object"
+                        },
+                        "note": {
+                            "type": "string"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "get_unmatched_requests",
+        "description": "Read recent owned-run unmatched request IDs for explain_match. Retention is at most 20 entries and 24 hours, not complete history. Payload evidence stays encrypted server-side.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000
+                },
+                "per_page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50
+                }
+            },
+            "required": [
+                "run_id"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "created_at": {
+                                        "type": "string"
+                                    },
+                                    "complete": {
+                                        "type": "boolean"
+                                    },
+                                    "request": {
+                                        "type": "object",
+                                        "properties": {
+                                            "method": {
+                                                "type": "string"
+                                            },
+                                            "url": {
+                                                "type": "string"
+                                            },
+                                            "request_id": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": []
+                                    }
+                                },
+                                "required": []
+                            }
+                        },
+                        "page": {
+                            "type": "integer"
+                        },
+                        "total_retained": {
+                            "type": "integer"
+                        },
+                        "window": {
+                            "type": "object"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "get_calls",
+        "description": "Read exact since-reset counters and at most 20 retained call digests for one owned mock. Every result states how much evidence is absent; this does not change counters.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "mock_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 20
+                }
+            },
+            "required": [
+                "run_id",
+                "mock_id"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "total_match_count": {
+                            "type": "integer"
+                        },
+                        "last_matched_at": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "sequence_position": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "recent_calls": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        "window": {
+                            "type": "object"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "assert_calls",
+        "description": "Assert exact unfiltered counts or existing header/query/JSON predicate grammar. Returns ASSERTION_FAILED for definite failure, INCONCLUSIVE_EVIDENCE when retained evidence cannot establish the result. Always includes a CI-readable message.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "mock_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "expect_count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                },
+                "comparator": {
+                    "type": "string",
+                    "enum": [
+                        "equals",
+                        "at_least",
+                        "at_most"
+                    ]
+                },
+                "matching": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "field_type": {
+                                "type": "string",
+                                "enum": [
+                                    "header",
+                                    "query",
+                                    "body_json_path"
+                                ]
+                            },
+                            "field_name": {
+                                "type": "string",
+                                "maxLength": 255
+                            },
+                            "operator": {
+                                "type": "string",
+                                "enum": [
+                                    "equals",
+                                    "contains",
+                                    "regex",
+                                    "exists"
+                                ]
+                            },
+                            "value": {
+                                "type": "string",
+                                "maxLength": 4096
+                            }
+                        },
+                        "required": [
+                            "field_type",
+                            "field_name",
+                            "operator"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "maxItems": 32,
+                    "minItems": 0
+                }
+            },
+            "required": [
+                "run_id",
+                "mock_id",
+                "expect_count",
+                "comparator"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "passed": {
+                            "type": "boolean"
+                        },
+                        "actual_count": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "verdict": {
+                            "type": "string"
+                        },
+                        "scope": {
+                            "type": "string"
+                        },
+                        "count_bounds": {
+                            "type": "object",
+                            "properties": {
+                                "minimum": {
+                                    "type": "integer"
+                                },
+                                "maximum": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": []
+                        },
+                        "window": {
+                            "type": "object"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "reset_test_run",
+        "description": "Reset only this active owned run\u2019s counters, sequence positions and verification evidence. Preserve all mock configuration; record the reset in run history. Requires cleanup permission.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "run_id"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "run_id": {
+                            "type": "string"
+                        },
+                        "reset": {
+                            "type": "boolean"
+                        },
+                        "state_rows_reset": {
+                            "type": "integer"
+                        },
+                        "configuration_preserved": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": false,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "finish_test_run",
+        "description": "Finish your run with delete_mocks or keep_mocks. Deletion affects only this run. Repeating finish returns the original final summary and never performs additional cleanup. Requires cleanup permission.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "cleanup": {
+                    "type": "string",
+                    "enum": [
+                        "delete_mocks",
+                        "keep_mocks"
+                    ]
+                }
+            },
+            "required": [
+                "run_id",
+                "cleanup"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "run_id": {
+                            "type": "string"
+                        },
+                        "status": {
+                            "type": "string"
+                        },
+                        "cleanup": {
+                            "type": "string"
+                        },
+                        "mock_count": {
+                            "type": "integer"
+                        },
+                        "total_match_count": {
+                            "type": "integer"
+                        },
+                        "finished_at": {
+                            "type": "string"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    }
+]

@@ -1,0 +1,315 @@
+# MockDeck MCP
+
+Phase 3 exposes a local Streamable HTTP server at **`/mcp`** with all 14 P0 tools. It builds on Phase 1’s shared services/independent credentials and Phase 2’s two-way request isolation. No external MCP hosting, identity service or agent service is required by MockDeck. Ordinary dashboard requests and verification tokens retain their existing behavior.
+
+## Behavior baseline
+
+`MutationCharacterizationTest` freezes endpoint create/update/delete behavior, duplicate/sample messages, credential warnings and masking, response header/seed/callback validation, callback secret retention, toast messages, and revision pre-states before extraction. Existing draft, selection, callback, matching, template, import and verification suites remain mandatory regression coverage. CI runs all `tests/Feature` and `tests/Unit` through `php artisan test` and again in the container `make validate` job; no separate opt-in test command is needed.
+
+## Existing versioning boundary
+
+History uses per-entity `revisions.version_number` (max + 1) and pre-change snapshots; model timestamps also exist. The current editor has no general optimistic-concurrency guard. `update_mock` now compares this same endpoint history number under the run/endpoint transaction locks before changing any fields. Response-only changes advance it too. The dashboard itself still has no general optimistic-concurrency guard.
+
+## Scope
+
+The server uses official `laravel/mcp` 1.0.2, compatible with this project’s PHP 8.3 and Laravel 13; Composer locks the exact dependency graph. See [Laravel MCP](https://laravel.com/docs/13.x/mcp) and the [Streamable HTTP specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports). Existing verification bearer tokens remain scoped to `/api/v1/verify/*`. MCP credentials are separate, with no automatic upgrade of those tokens. No MCP authentication middleware is applied to ordinary serving or dashboard routes.
+
+## Shared service contract
+
+All classes below are in `App\Services\Mutations`; none accepts a Livewire component or HTTP request. `EndpointInput`, `ResponseInput` and `SelectionInput` are immutable, explicitly typed scalar/array DTOs. They describe complete form configurations, not PATCH payloads. `McpMockConfiguration` merges omitted fields from stored configuration before constructing a DTO.
+
+| Class | Extracted behavior |
+|---|---|
+| `EndpointConfigurationValidator` | Form rules, environment existence, sample/parse errors, matching configuration, duplicate signature checks, metadata readiness |
+| `EndpointRequestService` | Shared cURL parsing/canonical preparation, derived names, header/query credential analysis and variable provenance, masking, body formatting and parser warning copy |
+| `EndpointMutationService` | Create/update with tag/environment synchronization, rename, deletion, duplication and bulk revision orchestration |
+| `ResponseConfigurationValidator` | Primary header JSON/name/value rules, status/body/template/seed/locale/delay/weight rules, template issues and fault validation/error-key mapping |
+| `CallbackConfigurationValidator` | Callback field rules, header JSON, target URL, body-template validation, delays/retries/signing and preserve-secret behavior |
+| `ResponseMutationService` | Scoped create/update, selection integrity, append-to-sequence, callback-only update, deletion/fallback guard and sequence renumbering with revisions |
+| `ResponsePoolMutationService` | Selection draft validation, membership check, sequence ordering, global rule priorities, fallback and pool persistence with revisions |
+
+Livewire keeps input/draft synchronization, navigation, error presentation, previews/test-delivery actions and toasts. Admin delete controllers use the same services, retaining their existing HTTP messages. Existing matching, response selection, template compilation/rendering, callback delivery, import mapping/config apply and revision restoration services are reused unchanged. Inline collection/tag creation remains organization UI, outside endpoint/response mutation extraction. Bulk UI callbacks supply their existing changes to shared revision orchestration.
+
+Creation continues to allow response-less endpoints as the dashboard does today. Atomic `create_mock` composes endpoint/response service calls in an outer transaction and requires at least one response. Dashboard creation still permits zero responses. The authenticated tool boundary checks permission and ownership before explicit run-scoped service calls. Typed inputs are internal application contracts, not a promise to accept untrusted client-supplied secret-presence flags.
+
+`SharedMutationServiceTest` exercises these services directly without Livewire, covering non-writing validation/preview, canonical bytes, secret analysis, scoped response updates, revision pre-states, sequence renumbering and rollback on invalid pools.
+
+## Independent credential and permission model
+
+`mcp_credentials` is deliberately separate from `api_tokens`. The latter has a singleton verification CLI and a fixed verification-only bearer format; extending it would risk accidentally turning verification credentials into management credentials. No migration, middleware or command changes touch that table. Existing `mdv_` tokens keep the same verification routes/behavior and are rejected by MCP authentication; new `mdm_` credentials cannot call the verification HTTP API. MCP verification tools use its internal verification service under the MCP credential, not that existing HTTP bearer gate.
+
+Each credential stores `name`, unique SHA-256 `token_hash`, `can_read`, `can_write`, `can_verify`, `can_cleanup` booleans (all default false), `last_used_at`, `revoked_at`, and `created_at`. Plaintext is returned in a non-serializable `IssuedMcpCredential` once and is never stored in the database or model serialization. Generate at least one explicit permission. Names identify credentials for operators; use the immutable numeric ID for revocation, including when names repeat.
+
+`McpCredentialService` generates/authenticates/authorizes/revokes. Every authorization re-reads database state; revoked credentials and already-loaded stale models fail immediately on their next check, without cache/grace period. Revocation cannot cancel an already-completed operation. `AuthenticateMcpCredential` only reads bearer credentials, never dashboard sessions. It protects `/mcp`. Every handler authorizes again at their operation boundary rather than treating earlier discovery as permanent authorization.
+
+### P0 tool permissions
+
+| Category / tool | Required permission |
+|---|---|
+| `start_test_run`, `create_mock`, `update_mock` | `write` |
+| `list_test_runs`, `list_mocks`, `get_mock`, `validate_mock`, `get_mock_url`, `explain_match` | `read` |
+| `get_unmatched_requests`, `get_calls`, `assert_calls` | `verify` |
+| `reset_test_run` | `cleanup` |
+| `finish_test_run`, including its delete option | `cleanup` |
+
+Permissions do not imply each other. To complete the full create/inspect/assert/cleanup workflow, grant all four. Finishing closes a run even without deletion, so it also requires `cleanup`. No extra `write` permission is required for runtime reset/cleanup; ownership checks remain mandatory for every tool. Discovery/initialization requires a valid credential; discovery lists all tools; execution enforces the grants independently. `McpToolPermissions::REQUIRED` is a tested, fail-closed contract; unknown tools do not get a default permission. All 14 tools below are callable.
+
+### Rate-limiting convention
+
+Existing routes already use Laravel `throttle` middleware. The `/mcp` route applies, in order, `throttle:mcp-auth`, `AuthenticateMcpCredential`, then `throttle:mcp`, before parameter binding/tool execution. The first limiter bounds authentication attempts at 30 requests/minute/IP; the second bounds authenticated requests at 60/minute/credential. Limits are configured in `config/mcp.php`. Every request passes the IP guard, so agents behind the same proxy/NAT also share that guard. Configure trusted proxy handling correctly before external exposure. These named limiters do not alter ordinary mock or dashboard routes.
+
+`McpCredentialTest` checks one-time reveal/hash-only storage, stale-model revocation, 401 versus 403, session independence, verification/MCP token separation, unchanged verification schema, the complete permission map and named limiter keys/defaults.
+
+## Credential lifecycle (CLI)
+
+Apply migrations through normal `make up` deployment before issuing credentials. Then connect a client to `/mcp` with the generated bearer.
+
+Generate with explicit grants (there is no default full-access token):
+
+```bash
+make artisan ARGS="mockdeck:mcp-credential:generate ci-agent --permission=read --permission=write --permission=verify --permission=cleanup"
+make artisan ARGS="mockdeck:mcp-credential:list"
+make artisan ARGS="mockdeck:mcp-credential:revoke 1"
+```
+
+For a host-PHP deployment the same commands are `php artisan mockdeck:mcp-credential:generate ...`, `php artisan mockdeck:mcp-credential:list`, and `php artisan mockdeck:mcp-credential:revoke ID`. Generation prints the `mdm_` bearer exactly once; store it immediately in the agent's secret configuration. Listing shows ID/name/explicit grants/last-used/revoked status, never the bearer or hash. Revoke uses a numeric ID and is idempotent for an existing credential. Unknown IDs fail clearly. Revoked rows are retained as audit identities.
+
+Rotation: generate a new credential with only the required permissions, update the client's secret, then explicitly revoke the old ID. Each revocation takes effect immediately; there is no post-revocation grace period. If an old bearer is compromised, revoke it first rather than waiting for a client update. Losing a bearer requires a replacement; neither listing nor the database can recover it. These commands never modify the separate Wave 2 verification token.
+
+`McpCredentialCommandTest` covers show-once output, safe metadata listing, invalid grants, revocation and explicit rotation. The existing Make `artisan` target is reused without adding a second command interface.
+
+## Invocation audit foundation
+
+`mcp_invocations` contains `id`, `credential_id` (FK to `mcp_credentials`, deletion restricted), nullable `tool_name`, nullable `target`, nullable public UUID `run_id` (intentionally not a foreign key, so audit metadata survives cleanup), `result` (`success`/`error`), nullable `error_code`, UUID `correlation_id`, and `created_at`. Revocation preserves the actor row. Every authenticated tool call writes a row, including cached retries and rejected tool envelopes. No request payload column exists. Unauthenticated requests without an identifiable credential use separate redacted operational diagnostics rather than a fabricated audit actor.
+
+`McpAuditRedactor` reuses `RequestCredentialPolicy`'s configurable header/query detection and masking plus `EnvironmentVariableWriter::sensitiveName`. It recursively redacts named secrets, header/variable entry values, JSON-encoded metadata, credential-shaped bearer strings and sensitive query parameters; depth/string output is bounded. The `McpInvocation` target setter also applies redaction. Do not put raw request/response bodies or arbitrary free-form payloads into `target`: use compact identifiers. No heuristic can identify every unlabeled secret. Writers apply the helper before persistence, allowlist audit metadata, and must not bypass the model with unredacted query-builder inserts.
+
+Credentials and invocation history are operational/security state, excluded from native configuration export/import and revision snapshots. No export-format bump is required. New MCP runtime tables are migrated normally. `McpAuditContractTest` covers schema, no automatic writes, nested/custom secret detection, metadata bounds, enum codes and export exclusion.
+
+## Fixed error-code taxonomy
+
+`App\Services\Mcp\McpErrorCode` is the stable code vocabulary. It is distinct from MCP protocol/transport error codes; handlers expose it in structured application results.
+
+| Code | Meaning |
+|---|---|
+| `VALIDATION_ERROR` | Input/configuration failed domain validation; field-level detail may be supplied after redaction. |
+| `AUTH_ERROR` | Missing, malformed, unknown or revoked bearer credential. Authentication middleware returns HTTP 401. |
+| `FORBIDDEN` | Authenticated credential lacks the required permission. Authentication middleware returns HTTP 403. |
+| `CONFLICT` | Configuration changed since the caller's expected revision/version or another configuration conflict prevents the operation. |
+| `RUN_NOT_FOUND` | Referenced test run is not available to this caller. Other credentials’ runs are indistinguishable from missing runs. |
+| `RUN_FINISHED` | Requested operation requires an active run but the run is already finished. |
+| `ASSERTION_FAILED` | Complete available evidence demonstrates the expectation was not met. |
+| `INCONCLUSIVE_EVIDENCE` | Evidence is incomplete or cannot evaluate the requested predicate; do not report a false exact count. |
+| `IDEMPOTENCY_CONFLICT` | An idempotency key was already used with a different operation/payload. |
+| `NOT_FOUND` | An accessible endpoint/response or other target does not exist. |
+
+Authentication failure is HTTP 401; missing tool permission is a structured FORBIDDEN result with `isError`. Domain errors remain separate from JSON-RPC parse/method/parameter errors. Existing dashboard validation messages and verification API response shapes remain unchanged.
+
+## Compatibility verification
+
+The one-time issuance wrapper also rejects cloning, serialization and debug disclosure of its bearer. Migration rollback/reapply tests compare existing endpoints, responses, verification tokens and runtime counters byte-for-byte. Eleven standard/custom error cases were additionally compared against the pre-extraction components and matched exactly; they are retained in characterization coverage. The full existing application suite remains the broader behavior baseline. Phase 3 adds real protocol/client, concurrent mutation and secret-boundary tests to this baseline.
+
+## Phase 2: test-run ownership
+
+`test_runs` binds an unguessable UUID `public_id` to its owning MCP credential and a fixed environment. The internal numeric ID is never a routing identifier. `TestRunService::create` requires write permission; finishing with either cleanup option requires cleanup. Ownership is checked before finishing; another credential cannot finish a run. Revocation remains immediate. Phase 3 exposes lifecycle management through the authenticated MCP transport.
+
+Run-owned endpoints have `test_run_id`; ordinary endpoints retain NULL. Default endpoint/response queries, dashboard bindings, imports and portable exports only see ordinary configuration. Internal runtime code must explicitly opt into a run scope. Phase 3 explicitly records redacted run configuration revisions for MCP writes; automatic runtime recording remains disabled. The portable format is unchanged.
+
+Call-state uniqueness uses two partial unique indexes: `(endpoint_id, environment_id)` for NULL run IDs and `(endpoint_id, environment_id, test_run_id)` otherwise. A plain nullable composite unique constraint would allow duplicate ordinary state rows in PostgreSQL and SQLite; preserving first-call concurrency requires the NULL-specific index. Environment deletion is restricted while a run references it. Rollback removes ephemeral run mocks/state before restoring the previous schema.
+
+The upgrade preflight rejects existing endpoint paths under `/_mockdeck` or `/mcp` (including encoded spellings), or a configured `X-MockDeck-Test-Run` header. It reports the offending endpoint ID before adding tables/columns; rename that configuration using the previous version and retry. These namespaces become reserved; they are not silently reassigned.
+
+## Routing isolated HTTP requests
+
+Tools create and manage runs; application traffic uses the same Phase 2 routing layer. A caller holding an active run's public UUID can use either mechanism:
+
+```bash
+# Use when the application can attach a header. The URL stays unchanged.
+curl http://localhost:18473/users/42 -H 'X-MockDeck-Test-Run: <public UUID>'
+
+# Use when only the application's API base URL can be changed.
+curl http://localhost:18473/_mockdeck/run/<public UUID>/users/42
+```
+
+Both mechanisms invoke `ResolveTestRun` before the same `EndpointMatcher`, using an explicit `RequestScope`. Header routing removes `X-MockDeck-Test-Run` before matching/context capture. Prefix routing removes only `/_mockdeck/run/<public UUID>`; method, remaining raw path/encoding, query, body and other headers are retained. Routing metadata is never hashed and does not bump signature versions. Matching algorithms, precedence, response selection modes and fault behavior are unchanged. The instance-wide active environment is never switched: eligibility, response templates, callback scheduling/delivery, logs and call counters use the run's bound environment explicitly.
+
+Isolation is a two-way wall: run traffic considers only its own run's endpoints, and ordinary traffic considers only NULL-run endpoints. A miss never falls back to ordinary mocks or another run. Identical signatures can coexist across these scopes. Invalid/unknown/finished runs or runs owned by revoked credentials return 404 with `test_run_unavailable`. Conflicting header/prefix IDs return 400; providing the same ID through both is allowed. A run UUID is a routing capability, not a management credential: keep it private. Requests do not require the MCP bearer token, so applications that can only change a base URL remain supported. Running requests already admitted before finish/revocation may complete; later requests and queued callback jobs fail closed.
+
+`/_mockdeck` and all descendants, plus `/mcp` and descendants, are application-owned namespaces. `/mcp` authenticates before protocol handling (401 without a credential); descendants remain reserved and never fall through to mocks. Nginx forwards these paths normally to Laravel; no duplicate matcher or proxy rewrite is involved. Existing 10 MiB Nginx body and 60-second FastCGI timeout limits remain unchanged. The `/api/v1/verify/*` API remains ordinary-only, including reset-all: an old verification token cannot inspect or reset run state. Routing reads the live request and run row, independently of request-log retention.
+
+
+## Isolation regression coverage
+
+`ConcurrentRunRoutingTest` launches eight PHP HTTP server workers and 24 barrier-synchronized TCP clients. Two runs and ordinary traffic all use the same POST path/query/JSON body and strict retained headers. Header and prefix mechanisms are mixed within each run. The test asserts each scope gets only its own responses, every sequence position 0–7 exactly once, and separate counts/digests. It runs in the normal full PHPUnit suite using a disposable SQLite file, plus the container CI job against the dedicated disposable PostgreSQL database `mockdeck_run_isolation_test`. The PostgreSQL mode refuses any other database name and requires `MOCKDECK_RUN_CONCURRENCY_POSTGRES=true`; never point it at a working instance.
+
+`TestRunRoutingTest`, `TestRunOwnershipTest` and `TestRunCompatibilityTest` cover fail-closed routing, bound template/callback environments, global-setting preservation, dashboard hiding, old verification-token/reset isolation, nullable-state uniqueness, ownership, migration safety/collision handling, revision refusal and byte-identical ordinary export output. Existing Phase 1 characterization and serving tests remain mandatory. Phase 3 reuses the existing History component in a read-only run view.
+
+## Phase 3 transport
+
+The `/mcp` POST endpoint now uses official `laravel/mcp` 1.0.2, locked by Composer. Streamable HTTP JSON responses support the requested `initialize` / `tools/list` / `tools/call` flow for protocol 2025-11-25, plus the library's current stateless discovery protocol 2026-07-28. Resources and Prompts are outside this phase and are not advertised. No external service is contacted at initialization. Each HTTP request must carry a locally issued `Authorization: Bearer mdm_…`; dashboard cookies and verification `mdv_` tokens never suffice. The existing `mcp-auth` and `mcp` named throttles apply. Input is bounded to 1 MiB and browser Origin is checked. GET/DELETE return 405 because this server needs no persistent SSE/session channel. Domain tool failures use structured results plus `isError`, distinct from JSON-RPC protocol failures.
+
+### Atomic creation and idempotency foundations
+
+`mcp_idempotency_keys` retains redacted create results for 24 hours, scoped by credential, run, tool and key. Full input is canonicalized (object key order ignored, list order preserved) and hashed; different payload reuse produces `IDEMPOTENCY_CONFLICT`. The run-row lock serializes creates/updates and covers both fixture writes and cache insertion. Expired keys are removed opportunistically; the prune command is documented below. Invalid operations roll back completely. Shared endpoint/response mutation services now accept an explicit optional run; their default remains ordinary-only. The existing verification controller and MCP share `RuntimeStateReset`.
+
+Phase 3 adds optional run ownership on revisions. Explicitly authorized run mutation code can record through `RevisionManager` with the existing per-entity `version_number`; automatic runtime revision recording remains disabled. Run snapshots are redacted. Ordinary revisions and portable format 1.5 are unchanged. This deliberately supersedes Phase 2's blanket exclusion for agent configuration mutations, while exports still exclude run configuration and runtime counters never enter configuration snapshots.
+
+### P0 read contracts
+
+MCP reads are restricted to the credential’s own runs, including finished runs. `read` does not grant access to ordinary dashboard mocks. `list_test_runs` requires `read`; unmatched request and call evidence tools require `verify`. All tool results carry `ok`, `correlation_id`, and either structured `data` or `error` (stable code/message/details); failed tools also set MCP `isError`. Discovery publishes bounded input schemas and safety annotations.
+
+`get_calls` separates the exact since-reset total from the 20-entry evidence window. `explain_match` calls the actual scoped matcher without invoking selection, counters or callbacks. It accepts either curl text or a retained unmatched request UUID. The latter window is 20 requests per run, 24 hours, bodies limited to 64 KiB and headers to 64 entries/4096 bytes each. Captured evidence is encrypted using APP_KEY; truncated evidence cannot claim an exact diagnosis. Expired IDs return NOT_FOUND. Differences omit field values, and exclusions are applied before comparison. Raw arguments are never written to the invocation audit; only scoped identifiers, outcome and correlation are stored.
+
+`docs/MCP_TOOLS.json` is the discovery schema reference. All new PHP feature tests run through the existing PHPUnit suite in CI.
+
+### P0 writes and runtime history
+
+`start_test_run` requires write and binds an existing Environment by name, defaulting to the active Environment without switching it. `create_mock` accepts `configuration.curl` or `configuration.request`, 1–50 responses and a required idempotency key. It validates and creates everything in one transaction; duplicate canonical signatures within the run return CONFLICT naming the existing mock. Different runs may reuse the same shape.
+
+`update_mock` takes explicit endpoint patches and response add/update/remove lists. Its required `expected_version` is the existing endpoint revision `version_number`; the owning run and endpoint are locked before comparison. All response-only changes advance that same version. No-op patches preserve it. Mutations use the shared dashboard DTOs/validators; Weighted selection is P0’s only creation mode.
+
+`assert_calls` delegates to the same predicate validation and evidence evaluator as the verification API. Definite failure returns ASSERTION_FAILED; insufficient evidence returns INCONCLUSIVE_EVIDENCE with count bounds and missing-call counts. Neither changes runtime state.
+
+`reset_test_run` clears only owned-run counters/sequence/evidence and records configuration-preserving endpoint revisions. `finish_test_run` requires cleanup for either option, returns a persisted final summary and repeats return that summary without additional deletion. Delete records scoped endpoint revisions before deletion; other runs and ordinary mocks remain untouched. MCP explicitly opts into run revisions; automatic runtime edits still cannot create ordinary configuration history, and portable exports remain run-free.
+
+### Scoped History and tested client boundary
+
+The `history_url` returned for a mock opens `/dashboard/test-runs/{publicId}/history` behind normal Operator authentication. It reuses the Version History timeline/diff component, scoped by run, and permits comparison rather than restoration of redacted runtime snapshots. Cleanup retains those entries. No new visual pattern or token is introduced. Known secret Environment values are removed from scoped snapshots as well as tool output.
+
+`McpClientIntegrationTest` uses the actual `laravel/mcp` 1.0.2 PHP client with `withToken`, pins protocol `2025-11-25`, and exercises initialization, discovery, tools, both routing forms, assertions and cleanup over HTTP and verified HTTPS. The TLS terminator in that test is disposable test infrastructure, not the production Nginx stack. Discovery is also checked with the SDK’s `2026-07-28` protocol. This is the tested client/auth combination, not a claim of compatibility with every agent client. SDK-rejected tool envelopes are audited as errors without retaining their untrusted arguments.
+
+### Concurrent mutation and offline checks
+
+`ConcurrentMcpMutationTest` launches eight HTTP workers and barrier-synchronized official SDK clients: four identical creates execute once and two updates at the same version produce one success/one CONFLICT. `ConcurrentRunRoutingTest` separately proves two runs and ordinary traffic coexist under 24 simultaneous calls with independent sequence state.
+
+`make mcp-test` runs the MCP suite through the existing Compose test convention. `make mcp-offline-test` runs the actual HTTP/trusted-TLS client workflow in `docker run --network none`, using only container loopback and a disposable SQLite file. CI runs that check in addition to the full suite. No Python, certificate CLI, schema download, SaaS MCP host or external credential service is required by the client test: TLS certificates are generated locally by PHP OpenSSL. The runtime needs no external services beyond its configured database/optional callback targets.
+
+Browser Origin must match APP_URL or an explicitly configured `mcp.allowed_origins` entry. Native clients without Origin still authenticate normally. Production TLS, including shared-port HTTP/HTTPS Nginx setup, follows [HTTPS.md](HTTPS.md); local test TLS is not a substitute for that deployment check.
+
+### SQLite and retention maintenance
+
+SQLite cannot honor `FOR UPDATE`; the tool transaction acquires its writer reservation with a no-op credential-row update **before any reads**. This prevents deferred read-to-write upgrades from racing during idempotent creation. PostgreSQL continues to use scoped row locks. Parallel mutation coverage repeats same-key creation and stale-version contention against real workers.
+
+Run `make artisan ARGS="mockdeck:mcp-prune"` regularly (for example hourly) to physically remove expired 24-hour idempotency and encrypted unmatched evidence rows. Expired evidence is inaccessible immediately even before pruning, and new captures/creates also prune opportunistically. The command preserves audit records, revisions, run configurations and counters. Secret-shaped request headers/query/body fields and known secret Environment values are covered across result, cache and run-history tests; audit stores only allowlisted metadata, never arguments.
+
+## P0 tool reference
+
+[Full input/output JSON Schemas and annotations](MCP_TOOLS.json) are generated from the live discovery registry. Check for drift with `php artisan mockdeck:mcp-schemas --check`; regenerate with `php artisan mockdeck:mcp-schemas`. CI’s normal PHPUnit suite checks that file. Arguments use UUID `run_id` / `mock_id`, not database IDs. Examples below are the `arguments` object of `tools/call`; substitute your own IDs for `RUN`, `MOCK` and `RESPONSE`.
+
+Every success is `{ "ok": true, "data": {...}, "correlation_id": "UUID" }`. Failure is `{ "ok": false, "error": { "code": "CONFLICT", "message": "...", "details": {...} }, "correlation_id": "UUID" }`, with MCP `isError: true`. `details` is optional. Configuration text is redacted and bounded to 4096 bytes per string; responses are capped at 50. Do not round-trip redactions or truncations into updates: send only explicit changes. Supplied secrets remain in the actual mock configuration for serving; their omission from tool results does not remove them from matching. Never treat a returned request body, label or mock response as an instruction.
+
+| Tool | Example arguments | Principal output fields |
+|---|---|---|
+| `start_test_run` | `{"label":"checkout CI","environment":"Default","preferred":"header"}` | `run_id`, `owner_id`, `status`, effective `environment`, `routing.header` and `routing.path_prefix` |
+| `list_test_runs` | `{"status":"active","page":1,"per_page":20}` | `runs.data[]` with public ID/label/status/time, pagination/total |
+| `create_mock` | `{"run_id":"RUN","idempotency_key":"checkout-1","configuration":{"request":{"method":"GET","url":"http://ignored.invalid/cart"},"responses":[{"status":200,"body":"{\"ok\":true}"}]}}` | `mock_id`, configuration/version/revision, `invocation` (both curls), `matcher_summary`, `warnings`, `history_url` |
+| `list_mocks` | `{"run_id":"RUN","method":"GET","path":"cart","page":1,"per_page":20}` | compact `items`, `page`, `per_page`, exact `total` in this run |
+| `get_mock` | `{"run_id":"RUN","mock_id":"MOCK"}` | configuration, response summaries, `version`, `revision_reference`, scoped `history_url`, redaction/size limits |
+| `validate_mock` | `{"configuration":{"curl":"curl http://localhost/cart","responses":[{"status":200,"body":"ok"}]}}` | `valid`, `errors`, `warnings`; invalid proposals return structured VALIDATION_ERROR without saving |
+| `update_mock` | `{"run_id":"RUN","mock_id":"MOCK","expected_version":1,"changes":{"endpoint":{"name":"Cart","priority":5},"responses":{"update":[{"id":"RESPONSE","status":201}],"add":[{"body":"new"}],"remove":[]}}}` | updated configuration/version/revision, matcher summary, invocation instructions |
+| `get_mock_url` | `{"run_id":"RUN","mock_id":"MOCK","preferred":"path-prefix"}` | `header.url`, required `header.headers`, `header.curl`, `path_prefix.url` / `curl`, origin note |
+| `explain_match` | `{"run_id":"RUN","curl":"curl http://localhost/cart?x=wrong"}` or `{"run_id":"RUN","log_entry_id":"LOG_UUID"}` | `selected`, bounded ranked `candidates`, per-field differences/exclusions without values, candidate-window completeness |
+| `get_unmatched_requests` | `{"run_id":"RUN","page":1,"per_page":20}` | retained stable IDs/time/completeness/request metadata, `window` capacity/TTL/truncation limits |
+| `get_calls` | `{"run_id":"RUN","mock_id":"MOCK","limit":20}` | exact `total_match_count`, `last_matched_at`, sequence position if applicable, `recent_calls`, evidence `window` |
+| `assert_calls` | `{"run_id":"RUN","mock_id":"MOCK","expect_count":2,"comparator":"equals","matching":[{"field_type":"query","field_name":"cart","operator":"equals","value":"42"}]}` | `passed`, exact-or-null `actual_count`, CI-readable `message`, `verdict`, count bounds/window; failure details contain the same evidence fields |
+| `reset_test_run` | `{"run_id":"RUN"}` | `reset`, `state_rows_reset`, `configuration_preserved`; verification evidence cleared, unmatched-request window unaffected |
+| `finish_test_run` | `{"run_id":"RUN","cleanup":"delete_mocks"}` | persisted `status`, original cleanup choice, mock/count totals and finish time; a retry returns this same summary |
+
+`configuration` accepts `name`, `enabled`, `priority`, `curl` **or** `request`, `matching`, existing `collection_id`, existing tag IDs in `tags`, and `responses`. A structured request has `method`, `url`, header-name/value object and text `body`. Hosts are interchangeable for matching. `matching` uses the existing `exclude_cookies`, `exclude_auth` (default true), `exclude_headers`, `excluded_query_params`, `excluded_headers`, `path_pattern_enabled` fields. Wildcards retain the existing `{name}` whole-segment syntax. MCP tools do not execute curl commands.
+
+Each response accepts `status`, header-name/value object, `body`, `body_mode` (`static`/`template`), `weight` (default 1), fixed `delay_ms`, `locale`, `seed_mode` (`random`/`fixed`/`request`) and optional integer `seed`. In Template mode `body` is the existing MockDeck template source; the same compiler, context resolver and introspected Faker method catalog validate it. Fault/callback/sequence/rule editing is outside the P0 schema. Existing serving behavior and configuration of those features are preserved by partial updates.
+
+`changes.endpoint` is a patch; `changes.responses` has `add`, `update` (each with a response UUID), `remove` (UUID list). Unknown fields, cross-mock response IDs and repeated response operations are rejected. Empty endpoint fields are not implicitly overwritten. Updates and reset/delete revisions share `revisions.version_number`; there is no second concurrency counter. A cached create may be replayed for 24 hours even after finish: it returns the original redacted result and never resurrects mocks or reopens routing. A new create in a finished run returns RUN_FINISHED.
+
+Predicates are the existing verification/rule grammar: `field_type` is `header`, `query` or `body_json_path`; `operator` is `equals`, `contains`, `regex` or `exists`. Non-exists operators require a string `value`; regex uses PHP delimiters such as `/pattern/i`. Comparators are exactly `equals`, `at_least`, `at_most`. Unfiltered assertions always use the exact counter. Filtered assertions use existing three-valued evidence evaluation: provable bounds can establish a result; otherwise the tool returns INCONCLUSIVE_EVIDENCE with the count outside the retained window, never a false exact zero.
+
+## Tested local client and complete workflow
+
+The tested client is **official `laravel/mcp` 1.0.2 PHP WebClient + explicit bearer token**, using Streamable HTTP protocol `2025-11-25`. The integration suite also checks `2026-07-28` stateless discovery. OAuth, stdio and specific editor/cloud-agent integrations were not tested and are not claimed. Credentials are provisioned locally; no external auth service is needed.
+
+After `make setup`, `make up`, `make health`, issue a credential as shown above. The runnable example is [scripts/mcp_example.php](../scripts/mcp_example.php), exercised by the client integration test. With host PHP/dependencies available:
+
+```bash
+export MOCKDECK_MCP_URL=http://localhost:18473/mcp
+# Supply the bearer through your shell/secret manager without committing it.
+read -rsp 'MCP token: ' MOCKDECK_MCP_TOKEN; export MOCKDECK_MCP_TOKEN; echo
+php scripts/mcp_example.php
+unset MOCKDECK_MCP_TOKEN
+```
+
+Its client configuration is:
+
+```php
+$client = Laravel\Mcp\Client::web(getenv('MOCKDECK_MCP_URL'))
+    ->withToken(getenv('MOCKDECK_MCP_TOKEN'))
+    ->withProtocolVersion(Laravel\Mcp\Enums\ProtocolVersion::V2025_11_25);
+$tools = $client->tools();
+$result = $client->callTool('start_test_run', ['label' => 'local test']);
+$runId = $result->structuredContent['data']['run_id'];
+```
+
+The example starts a run, atomically creates GET `/demo`, calls it once with the required run header and once using the run path prefix, reads an exact count of **2**, asserts equals 2 and finishes with `delete_mocks` in a finally block. It prints only tool count/run ID/mock ID/count/assertion status. The generated invocation forms are:
+
+```bash
+curl http://localhost:18473/demo -H 'X-MockDeck-Test-Run: RUN_UUID'
+curl http://localhost:18473/_mockdeck/run/RUN_UUID/demo
+```
+
+For raw protocol inspection:
+
+```bash
+curl "$MOCKDECK_MCP_URL" \
+  -H "Authorization: Bearer $MOCKDECK_MCP_TOKEN" \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"local-check","version":"1"}}}'
+```
+
+Native clients send the bearer on **every** HTTP request. HTTPS uses a trusted certificate as described in [HTTPS.md](HTTPS.md); install/trust the CA in the client’s OS/container too. Do not disable certificate verification. APP_URL controls generated URLs; it does not make an unreachable address reachable.
+
+## Host and container addresses
+
+| Client/application location | Reachable MCP URL / mock origin |
+|---|---|
+| Host machine | `http://localhost:18473/mcp`, mock origin `http://localhost:18473` |
+| Same Compose network | `http://nginx:80/mcp`, mock origin `http://nginx:80`; published host port is irrelevant inside this network |
+| Another container outside that network | Join the network or use a reachable host gateway; `localhost` means that container itself |
+| HTTPS through shared-port Nginx | `https://<certificate hostname>:18473/mcp` from host; on the Compose network use a hostname/address covered by the trusted certificate on Nginx port 80 |
+| Remote/cloud agent | A deliberately reachable deployment with trusted TLS and explicit bearer; host loopback is inaccessible remotely |
+
+For the runnable example inside Compose, pass exported environment variables rather than embedding a bearer in a command:
+
+```bash
+export MOCKDECK_MCP_URL=http://nginx:80/mcp
+export MOCKDECK_MOCK_ORIGIN=http://nginx:80
+docker compose exec -e MOCKDECK_MCP_URL -e MOCKDECK_MOCK_ORIGIN -e MOCKDECK_MCP_TOKEN app php scripts/mcp_example.php
+```
+
+Returned URLs use APP_URL. Replace only the origin when necessary, preserving the request path/query and run routing metadata. In HTTPS container traffic, use a certificate SAN matching the actual reachable hostname. A locally hosted MCP server has no cloud runtime dependency; a cloud LLM/agent may still rely on its own provider/network, independently of MockDeck.
+
+## Troubleshooting
+
+| Symptom | Check |
+|---|---|
+| HTTP 401 / AUTH_ERROR | Use an unrevoked `mdm_` bearer on each request. A dashboard cookie or `mdv_` verification token is insufficient. Reissue a lost token; it cannot be retrieved. |
+| FORBIDDEN | Grant the tool’s explicit permission; read/write/verify/cleanup do not imply each other. Check trusted Origin for browser callers. |
+| HTTP 429 | Defaults are 30 requests/minute/IP and 60/minute/credential; clients sharing NAT also share the IP limit. Respect retry timing or configure limits deliberately. |
+| Ordinary “No mock configured” | Attach the run header or use the run prefix; ordinary requests never search run mocks. Check the method/path/query/body and matcher exclusions. |
+| Run request unmatched | Use get_unmatched_requests then explain_match with the retained ID, or provide curl text. No fallback to ordinary mocks exists. Credential revocation also disables its active runs. |
+| Old unmatched ID unavailable | Evidence is capped at 20 entries/24 hours, separate from dashboard log retention. Supply full curl when expired/truncated. |
+| INCONCLUSIVE_EVIDENCE | Reset before the test and assert promptly within 20 calls; use unfiltered exact counts when suitable. Sensitive/oversized retained values can also make some predicates undecidable. |
+| CONFLICT on update | Read get_mock, reconcile and retry with its current version. Never silently force an overwrite. |
+| CONFLICT on create | A matching canonical signature already exists in this run. Inspect the named mock and update it; other runs can use identical shapes. |
+| IDEMPOTENCY_CONFLICT | The key was reused with different full input. Retry identical input or choose a new key for a new operation. |
+| RUN_FINISHED | Start a new run. Finishing again is safe and returns the first summary; it does not change cleanup choice. |
+| TLS failure | Trust the local CA in the client’s actual environment and match the certificate hostname. Follow HTTPS.md; never solve this with an insecure verification bypass. |
+| Container connection refused / Nginx 502 | Use the reachable service origin; run make health and make nginx-check, inspect app/nginx logs and the existing DNS-recovery guide. This is upstream connectivity, not a signature mismatch. |
+
+Maintain `mockdeck:mcp-prune` on an hourly schedule for physical TTL cleanup. Audit and run-history retention are deliberate operational records and are not pruned by that command. Finished runs remain available to list/read/assert; routing and new mutations are closed. P0 reads deliberately exclude ordinary dashboard mocks even when the credential has read permission.
+
+Candidate explanations always include the real selected endpoint, then rank the bounded window by method/path agreement and configured priority. The winner itself is selected solely by the existing matcher, including its header-policy specificity. History and cached-create outputs use the same secret redaction as live results.
+
+Template/pool coverage also creates a V6 path-pattern mock through the structured MCP input, renders path captures plus the bound Environment and seeded UUID token, then replaces a response through add/remove while preserving omitted matching fields and the original curl. No-op patches preserve the configuration version.
+
+The [Phase 3 acceptance report](MCP_PHASE3_REPORT.md) records the exact tested client, all acceptance outcomes and environment-blocked checks.
+
+Atomic rollback is exercised with a second response containing a CRLF header value: it passes the public structural schema but fails the shared response validator after the endpoint and first response have been built. The outer transaction leaves neither partial configuration nor a retry cache entry.

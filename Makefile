@@ -1,4 +1,4 @@
-.PHONY: up down build validation-image logs shell test test-unit test-feature frontend-test design-validate lint format composer-validate compose-config validate health https-check browser-test
+.PHONY: mcp-offline-test mcp-test up down build validation-image logs shell test test-unit test-feature frontend-test design-validate lint format composer-validate compose-config validate health https-check browser-test
 
 TEST_ENV = -e APP_ENV=testing -e APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= -e DB_CONNECTION=sqlite -e DB_DATABASE=:memory: -e CACHE_STORE=array -e SESSION_DRIVER=array -e MOCK_DASHBOARD_AUTH_ENABLED=false -e MOCK_LOG_STDOUT=false -e MOCK_LOG_FILE=false -e RUN_MIGRATIONS=false
 APP_URL ?= $(shell python3 scripts/setup.py url)
@@ -22,6 +22,7 @@ help:
 	  'restart        Recreate app, worker and Nginx after environment changes' \
 	  'validate       Compose, design tokens, setup tests, frontend, image, Composer, Pint, PHPUnit' \
 	  'setup-test / test / test-unit / test-feature / frontend-test / design-validate / lint' \
+	  'mcp-test / mcp-offline-test  MCP suite / real client with external networking disabled' \
 	  'format         Apply PHP formatting to source files' \
 	  'browser-install / browser-test  Install Playwright / check both themes' \
 	  'build / shell / artisan ARGS="..."  Clean image build / shell / Artisan command' \
@@ -98,6 +99,13 @@ logs:
 
 test:
 	docker compose run --rm $(TEST_ENV) app php artisan test
+
+# Full real-client workflow with loopback only; no external network or services.
+mcp-offline-test: validation-image
+	docker run --rm --network none -e APP_ENV=testing -e APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= -e DB_CONNECTION=sqlite -e DB_DATABASE=:memory: -e CACHE_STORE=array -e SESSION_DRIVER=array -e MOCK_DASHBOARD_AUTH_ENABLED=false -e MOCK_LOG_STDOUT=false -e MOCK_LOG_FILE=false -e RUN_MIGRATIONS=false mockdeck-laravel-app:latest php artisan test --filter=McpClientIntegrationTest
+
+mcp-test:
+	docker compose run --rm $(TEST_ENV) app php artisan test --filter=Mcp
 
 test-unit:
 	docker compose run --rm $(TEST_ENV) app php artisan test --testsuite=Unit

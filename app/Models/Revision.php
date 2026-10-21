@@ -9,6 +9,7 @@ final class Revision extends Model
     public const UPDATED_AT = null;
 
     protected $fillable = [
+        'test_run_id',
         'entity_type',
         'entity_id',
         'version_number',

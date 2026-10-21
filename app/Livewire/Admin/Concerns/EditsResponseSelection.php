@@ -4,11 +4,9 @@ namespace App\Livewire\Admin\Concerns;
 
 use App\Livewire\Admin\EndpointForm;
 use App\Services\Environments\EnvironmentContext;
+use App\Services\Mutations\ResponsePoolMutationService;
+use App\Services\Mutations\SelectionInput;
 use App\Services\Response\ResponseSelectionService;
-use App\Services\Response\SelectionConfigurationValidator;
-use App\Services\Revisions\RevisionManager;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 trait EditsResponseSelection
 {
@@ -24,25 +22,7 @@ trait EditsResponseSelection
 
     private function publishSelectionValidity(): void
     {
-        $responses = $this->endpoint()->responses()->get()->map(fn ($response): array => [
-            'sequence_order' => array_search($response->id, $this->responseOrder, true),
-            'is_default' => $response->id === $this->fallbackResponseId,
-            'response_rules' => array_map(static function (array $rule): array {
-                if (is_string($rule['priority'] ?? null) && ctype_digit($rule['priority'])) {
-                    $rule['priority'] = (int) $rule['priority'];
-                }
-
-                return $rule;
-            }, $this->responseRules[$response->id] ?? []),
-        ])->all();
-        $valid = $responses !== [];
-        try {
-            app(SelectionConfigurationValidator::class)->validate([
-                'selection_mode' => $this->selectionMode, 'sequence_on_exhaust' => $this->sequenceOnExhaust,
-            ], $responses);
-        } catch (ValidationException) {
-            $valid = false;
-        }
+        $valid = app(ResponsePoolMutationService::class)->ready($this->endpointId, $this->selectionInput());
         $this->dispatch('response-selection-validity', endpointId: $this->endpointId, valid: $valid)
             ->to(EndpointForm::class);
     }
@@ -118,55 +98,7 @@ trait EditsResponseSelection
 
     public function saveSelection(): void
     {
-        DB::transaction(function (): void {
-            $endpoint = $this->endpoint()->newQuery()->lockForUpdate()->findOrFail($this->endpointId);
-            $responses = $endpoint->responses()->with('rules')->lockForUpdate()->get();
-            $actual = $responses->modelKeys();
-            $draft = array_map('intval', $this->responseOrder);
-            sort($actual);
-            $sortedDraft = $draft;
-            sort($sortedDraft);
-            if ($actual !== $sortedDraft) {
-                throw ValidationException::withMessages(['selection_mode' => 'Responses changed. Reload before saving selection.']);
-            }
-
-            $config = ['selection_mode' => $this->selectionMode,
-                'sequence_on_exhaust' => $this->selectionMode === 'sequence' ? $this->sequenceOnExhaust : null];
-            $rows = $responses->map(fn ($response): array => [
-                'id' => $response->id,
-                'sequence_order' => $this->selectionMode === 'sequence' ? array_search($response->id, $draft, true) : null,
-                'is_default' => $response->id === $this->fallbackResponseId,
-                'response_rules' => array_map(static function ($rule): array {
-                    if (! is_array($rule)) {
-                        return [];
-                    }
-                    $rule = array_intersect_key($rule, array_flip(['field_type', 'field_name', 'operator', 'value', 'priority']));
-                    if (is_string($rule['priority'] ?? null) && ctype_digit($rule['priority'])) {
-                        $rule['priority'] = (int) $rule['priority'];
-                    }
-
-                    return $rule;
-                }, array_values($this->responseRules[$response->id] ?? [])),
-            ])->all();
-            app(SelectionConfigurationValidator::class)->validate($config, $rows);
-            $revisions = app(RevisionManager::class);
-            $beforeEndpoint = $revisions->snapshot($endpoint);
-            $endpoint->update($config);
-            foreach ($rows as $row) {
-                $response = $responses->firstWhere('id', $row['id']);
-                $before = $revisions->snapshot($response);
-                $response->update(['sequence_order' => $row['sequence_order'], 'is_default' => $row['is_default']]);
-                $response->rules()->delete();
-                $response->rules()->createMany(array_map(function (array $rule): array {
-                    $rule['value'] = $rule['operator'] === 'exists' ? null : $rule['value'];
-
-                    return $rule;
-                }, $row['response_rules']));
-                $response->unsetRelation('rules');
-                $revisions->recordIfChanged($response, $before);
-            }
-            $revisions->recordIfChanged($endpoint, $beforeEndpoint);
-        }, 3);
+        app(ResponsePoolMutationService::class)->save($this->endpointId, $this->selectionInput());
         $this->loadSelection();
         $this->resetValidation();
         if (! $this->savingDrafts) {
@@ -196,5 +128,10 @@ trait EditsResponseSelection
         ]))->all()])->all();
         $this->savedSelectionFingerprint = $this->selectionFingerprint();
         $this->publishSelectionValidity();
+    }
+
+    private function selectionInput(): SelectionInput
+    {
+        return new SelectionInput($this->selectionMode, $this->sequenceOnExhaust, $this->responseOrder, $this->fallbackResponseId, $this->responseRules);
     }
 }

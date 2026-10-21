@@ -24,13 +24,17 @@
                         <button class="text-button" type="button" wire:click="toggleRevision({{ $revision->id }})">
                             {{ in_array($revision->id, $selectedRevisionIds, true) ? 'Unselect' : 'Select to compare' }}
                         </button>
+                        @if ($hasCurrent)
                         <button class="text-button" type="button" wire:click="compareWithCurrent({{ $revision->id }})">Compare with current</button>
+                        @endif
+                        @if ($runId === null)
                         <button
                             class="text-button danger-text"
                             type="button"
                             wire:click="restore({{ $revision->id }})"
                             data-confirm-title="Restore version" data-confirm="Restore version {{ $revision->version_number }}? The current live values will change, and the restored state will be saved as a new rollback revision."
                         >Restore</button>
+                        @endif
                     </div>
                 </article>
             @endforeach

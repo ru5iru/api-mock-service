@@ -6,6 +6,7 @@ use App\Models\MockEndpoint;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\ParsedCurl;
 use App\Services\Environments\EnvironmentContext;
+use App\Services\TestRuns\RequestScope;
 
 final readonly class EndpointMatcher
 {
@@ -16,13 +17,14 @@ final readonly class EndpointMatcher
         private EnvironmentContext $environments,
     ) {}
 
-    public function match(ParsedCurl $request): ?EndpointMatch
+    public function match(ParsedCurl $request, ?RequestScope $scope = null): ?EndpointMatch
     {
         // Keep the existing indexed V1–V5 lookup and fallback behavior intact.
-        $legacy = $this->exact->match($request);
+        $scope ??= RequestScope::ordinary();
+        $legacy = $this->exact->match($request, $scope);
         $matches = $legacy === null ? [] : [$legacy];
-        $environmentId = $this->environments->active()->id;
-        $candidates = MockEndpoint::query()->where('enabled', true)
+        $environmentId = $scope->environment->id;
+        $candidates = $scope->constrain(MockEndpoint::query())->where('enabled', true)
             ->where('method', strtoupper($request->method))
             ->where(function ($query) use ($environmentId): void {
                 $query->whereDoesntHave('environmentOverrides', fn ($override) => $override->whereKey($environmentId))

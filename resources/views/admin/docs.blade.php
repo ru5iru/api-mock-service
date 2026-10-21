@@ -19,6 +19,7 @@
                 <li><a href="#response-pools">Response pools</a></li>
                 <li><a href="#wave-two">Field exclusions, path parameters and faults</a></li>
                 <li><a href="#verification">CI verification</a></li>
+                <li><a href="#isolated-test-runs">Isolated test runs</a></li>
                 <li><a href="#response-templating">Response templating</a></li>
                 <li><a href="#template-language">Template language</a></li>
                 <li><a href="#builder-view">Builder view</a></li>
@@ -412,6 +413,20 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <div><dt>500</dt><dd>The endpoint has no response, a saved template failed, or an unexpected server error occurred.</dd></div>
             </dl>
             <p>A valid caller-provided <code>X-Request-ID</code> is retained; otherwise MockDeck generates a UUID. Logging failures are isolated and cannot replace a configured mock response.</p>
+        </section>
+
+        <section id="isolated-test-runs" class="card docs-card docs-wide">
+            <h2>MCP tools and isolated test runs</h2>
+            <p>Connect an agent to /mcp with a separately issued MCP bearer. Four explicit permissions control 14 tools for run lifecycle, mock configuration, match diagnosis and verification. Dashboard cookies and verification tokens cannot authorize these tools.</p>
+            <ul>
+                <li>Header routing: send <code>X-MockDeck-Test-Run: &lt;public UUID&gt;</code> with the original mock URL.</li>
+                <li>Base-URL routing: use <code>http://localhost:18473/_mockdeck/run/&lt;public UUID&gt;</code> as the API base, then append the original path/query. HTTPS works with the existing TLS setup.</li>
+                <li>Each run matches only its own mocks. A miss never falls back to ordinary mocks or another run; ordinary requests never select run mocks.</li>
+                <li>The run uses its bound environment for templates and callbacks without changing the dashboard's active environment. Counters and sequences are isolated too.</li>
+                <li>Unknown, finished or revoked-owner runs return 404. Conflicting header/prefix run IDs return 400. Keep public run UUIDs private: they grant routing access.</li>
+                <li><code>/_mockdeck</code> and <code>/mcp</code> are reserved. Run mocks/state are excluded from normal exports; MCP writes have a read-only run History view using the existing timeline. Verification API tokens remain ordinary-only.</li>
+            </ul>
+            <p>Use start_test_run → create_mock → get_calls / assert_calls → finish_test_run. Exact counters are separate from the 20-call evidence window; incomplete filtered assertions return INCONCLUSIVE_EVIDENCE. The credential lifecycle, schemas and tested local client are documented in <code>docs/MCP.md</code>. No external service or new dashboard management UI is required.</p>
         </section>
 
         <section id="shortcuts" class="card docs-card">

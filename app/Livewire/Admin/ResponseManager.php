@@ -5,25 +5,22 @@ namespace App\Livewire\Admin;
 use App\Livewire\Admin\Concerns\EditsResponseSelection;
 use App\Models\CallbackAttempt;
 use App\Models\MockEndpoint;
-use App\Services\Callbacks\CallbackDelivery;
 use App\Services\Callbacks\CallbackDispatcher;
 use App\Services\Environments\EnvironmentContext;
 use App\Services\Matching\PathPattern;
-use App\Services\Response\FaultConfigurationValidator;
-use App\Services\Response\SelectionConfigurationValidator;
-use App\Services\Revisions\RevisionManager;
+use App\Services\Mutations\CallbackConfigurationValidator;
+use App\Services\Mutations\ResponseInput;
+use App\Services\Mutations\ResponseMutationService;
+use App\Services\Mutations\ResponseValidationException;
 use App\Services\Templates\FakerMethodCatalog;
 use App\Services\Templates\ResponseTemplateEngine;
-use App\Services\Templates\TemplateCompiler;
 use App\Services\Templates\TemplateContext;
 use App\Services\Templates\TemplateRenderException;
 use App\Services\Templates\TemplateSchemaConverter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use JsonException;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -402,114 +399,17 @@ final class ResponseManager extends Component
 
     public function save(): void
     {
-        $templates = app(ResponseTemplateEngine::class);
-        $validated = $this->validate([
-            'statusCode' => ['required', 'integer', 'between:100,599'],
-            'headersJson' => ['nullable', 'string', 'max:65535'],
-            'body' => ['nullable', 'string'],
-            'bodyMode' => ['required', 'in:static,template'],
-            'template' => ['nullable', 'string', 'max:262144'],
-            'editorView' => ['required', 'in:builder,json'],
-            'seedMode' => ['required', 'in:random,fixed,request'],
-            'seed' => ['nullable', 'integer'],
-            'locale' => ['required', 'in:'.implode(',', config('mock.templates.locales', ['en']))],
-            'delayMs' => ['required', 'integer', 'min:0', 'max:'.config('mock.max_delay_ms', 30000)],
-            'weight' => ['required', 'integer', 'min:1', 'max:1000000'],
-            ...$this->callbackRules(),
-        ]);
-
+        $this->resetValidation();
         try {
-            $headers = trim($validated['headersJson']) === ''
-                ? null
-                : json_decode($validated['headersJson'], true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $exception) {
-            $this->addError('headersJson', 'Headers must be a valid JSON object: '.$exception->getMessage());
-
-            return;
-        }
-
-        if ($headers !== null && (! is_array($headers) || ! json_decode($validated['headersJson']) instanceof \stdClass)) {
-            $this->addError('headersJson', 'Headers must be a JSON object of header names and values.');
-
-            return;
-        }
-
-        foreach ($headers ?? [] as $name => $value) {
-            $validName = is_string($name)
-                && preg_match('/^[A-Za-z0-9!#$%&*+.^_`|~-]+$/', $name) === 1;
-
-            if (! $validName || ! is_scalar($value) || preg_match('/[\r\n]/', (string) $value)) {
-                $this->addError('headersJson', 'Header names and values must be single-line scalar values.');
-
-                return;
+            app(ResponseMutationService::class)->save($this->endpointId, $this->mutationInput(), $this->editingId);
+        } catch (ResponseValidationException $exception) {
+            if ($exception->templateIssues !== null) {
+                $this->templateIssues = $exception->templateIssues;
             }
-        }
-
-        if ($validated['seedMode'] === 'fixed' && $validated['seed'] === null) {
-            $this->addError('seed', 'Enter an integer seed when Fixed is selected.');
-
-            return;
-        }
-
-        if ($validated['bodyMode'] === 'template') {
-            $validation = $templates->validate((string) $validated['template'], $validated['locale']);
-            $this->templateIssues = $validation->issueArrays();
-            if ($validation->hasErrors()) {
-                $first = collect($validation->issues)->first(static fn ($issue): bool => $issue->severity === 'error');
-                $this->addError('template', $first?->message ?? 'The response template is invalid.');
-
-                return;
-            }
-        }
-
-        try {
-            $callbackAttributes = $this->validatedCallbackAttributes($validated);
-            $faultAttributes = $this->validatedFaultAttributes($headers, $validated['bodyMode']);
-        } catch (ValidationException $exception) {
             $this->setErrorBag($exception->errors());
 
             return;
         }
-
-        $attributes = [
-            'status_code' => $validated['statusCode'],
-            'headers' => $headers,
-            'body' => $validated['body'],
-            'body_mode' => $validated['bodyMode'],
-            'template' => $validated['template'],
-            'editor_view' => $validated['editorView'],
-            'seed_mode' => $validated['seedMode'],
-            'seed' => $validated['seedMode'] === 'fixed' ? $validated['seed'] : null,
-            'locale' => $validated['locale'],
-            'delay_ms' => $validated['delayMs'],
-            'weight' => $validated['weight'],
-        ];
-        $attributes = array_merge($attributes, $callbackAttributes, $faultAttributes);
-
-        DB::transaction(function () use ($attributes): void {
-            $endpoint = $this->endpoint()->newQuery()->lockForUpdate()->findOrFail($this->endpointId);
-            $pool = $endpoint->responses()->with('rules')->get();
-            $selectionRows = $pool->map(fn ($item) => array_merge($item->toArray(), ['response_rules' => $item->rules->toArray()]))->all();
-            if ($this->editingId === null) {
-                $selectionRows[] = ['sequence_order' => $endpoint->selection_mode === 'sequence' ? $pool->count() : null, 'is_default' => false, 'response_rules' => []];
-            }
-            app(SelectionConfigurationValidator::class)->validate($endpoint->toArray(), $selectionRows);
-            if ($this->editingId === null) {
-                $newAttributes = $attributes;
-                if ($endpoint->selection_mode === 'sequence') {
-                    $newAttributes['sequence_order'] = $pool->count();
-                }
-                $endpoint->responses()->create($newAttributes);
-
-                return;
-            }
-
-            $response = $this->endpoint()->responses()->findOrFail($this->editingId);
-            $revisions = app(RevisionManager::class);
-            $before = $revisions->snapshot($response);
-            $response->update($attributes);
-            $revisions->recordIfChanged($response, $before);
-        }, 3);
 
         unset($this->pendingFormDrafts[$this->editingId ?? 'new']);
         $this->dispatch('toast', message: $this->editingId === null ? 'Response added.' : 'Response updated.');
@@ -517,47 +417,9 @@ final class ResponseManager extends Component
         $this->loadSelection();
     }
 
-    private function validatedFaultAttributes(?array $headers, string $bodyMode): array
-    {
-        $fields = [
-            'fault_enabled' => 'faultEnabled',
-            'fault_type' => 'faultType',
-            'fault_delay_ms_min' => 'faultDelayMsMin',
-            'fault_delay_ms_max' => 'faultDelayMsMax',
-            'fault_probability' => 'faultProbability',
-        ];
-        $attributes = ['headers' => $headers, 'body_mode' => $bodyMode];
-        foreach ($fields as $attribute => $property) {
-            $attributes[$attribute] = $this->{$property};
-        }
-        try {
-            return app(FaultConfigurationValidator::class)->validate($attributes);
-        } catch (ValidationException $exception) {
-            $errors = [];
-            foreach ($exception->errors() as $field => $messages) {
-                $errors[$fields[$field] ?? $field] = $messages;
-            }
-            throw ValidationException::withMessages($errors);
-        }
-    }
-
     private function callbackRules(): array
     {
-        return [
-            'callbackEnabled' => ['boolean'],
-            'callbackUrl' => ['nullable', 'string', 'max:2048'],
-            'callbackMethod' => ['required', 'in:POST,PUT,PATCH,DELETE'],
-            'callbackHeadersJson' => ['nullable', 'string', 'max:65535'],
-            'callbackBody' => ['nullable', 'string', 'max:262144'],
-            'callbackDelayMs' => ['required', 'integer', 'between:0,30000'],
-            'callbackDelayMaxMs' => ['nullable', 'integer', 'between:0,30000'],
-            'callbackRetry' => ['required', 'integer', 'between:1,5'],
-            'callbackBackoffMs' => ['required', 'integer', 'between:0,30000'],
-            'callbackTimeoutMs' => ['required', 'integer', 'between:100,10000'],
-            'callbackSigningEnabled' => ['boolean'],
-            'callbackSigningSecret' => ['nullable', 'string', 'max:4096'],
-            'callbackSignatureHeader' => ['required', 'regex:/^[A-Za-z0-9!#$%&*+.^_`|~-]+$/D', 'max:128'],
-        ];
+        return app(CallbackConfigurationValidator::class)->rules();
     }
 
     private function callbackValues(): array
@@ -570,74 +432,11 @@ final class ResponseManager extends Component
         return $values;
     }
 
-    private function validatedCallbackAttributes(array $validated): array
-    {
-        try {
-            $callbackHeaders = trim((string) $validated['callbackHeadersJson']) === ''
-                ? [] : json_decode($validated['callbackHeadersJson'], true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
-            throw ValidationException::withMessages(['callbackHeadersJson' => 'Enter a valid JSON object of callback headers.']);
-        }
-        if (! is_array($callbackHeaders) || ($callbackHeaders !== [] && array_is_list($callbackHeaders))) {
-            throw ValidationException::withMessages(['callbackHeadersJson' => 'Callback headers must be a JSON object.']);
-        }
-        foreach ($callbackHeaders as $name => $value) {
-            if (! is_string($name) || preg_match('/^[A-Za-z0-9!#$%&*+.^_`|~-]+$/D', $name) !== 1
-                || ! is_string($value) || preg_match('/[\r\n]/', $value) === 1) {
-                throw ValidationException::withMessages(['callbackHeadersJson' => 'Callback headers require single-line string names and values.']);
-            }
-        }
-
-        if ($validated['callbackEnabled']) {
-            if (! is_string($validated['callbackUrl']) || $validated['callbackUrl'] === '') {
-                throw ValidationException::withMessages(['callbackUrl' => 'Enter a callback URL before enabling callbacks.']);
-            }
-            $sampleUrl = preg_replace('/\{\{[^{}]+\}\}|\$request\.[A-Za-z0-9_.-]+/', 'example.test', $validated['callbackUrl']);
-            try {
-                app(CallbackDelivery::class)->validateUrl($sampleUrl);
-            } catch (\InvalidArgumentException) {
-                throw ValidationException::withMessages(['callbackUrl' => 'Enter a well-formed HTTP(S) callback URL.']);
-            }
-            $validation = app(TemplateCompiler::class)->compile((string) ($validated['callbackBody'] ?: '{}'), $validated['locale'], true);
-            if ($validation->hasErrors()) {
-                throw ValidationException::withMessages(['callbackBody' => $validation->issues[0]->message]);
-            }
-        }
-        if ($validated['callbackDelayMaxMs'] !== null && $validated['callbackDelayMaxMs'] < $validated['callbackDelayMs']) {
-            throw ValidationException::withMessages(['callbackDelayMaxMs' => 'Maximum delay cannot be less than minimum delay.']);
-        }
-        $newSigningSecret = (string) ($validated['callbackSigningSecret'] ?? '');
-        if ($validated['callbackSigningEnabled'] && $newSigningSecret === '' && ! ($validated['callbackSecretSet'] ?? $this->callbackSecretSet)) {
-            throw ValidationException::withMessages(['callbackSigningSecret' => 'Enter a signing secret before enabling signatures.']);
-        }
-
-        $attributes = [
-            'callback_enabled' => $validated['callbackEnabled'],
-            'callback_url' => $validated['callbackUrl'],
-            'callback_method' => $validated['callbackMethod'],
-            'callback_headers' => $callbackHeaders,
-            'callback_body' => $validated['callbackBody'],
-            'callback_delay_ms' => $validated['callbackDelayMs'],
-            'callback_delay_max_ms' => $validated['callbackDelayMaxMs'],
-            'callback_retry' => $validated['callbackRetry'],
-            'callback_backoff_ms' => $validated['callbackBackoffMs'],
-            'callback_timeout_ms' => $validated['callbackTimeoutMs'],
-            'callback_signing_enabled' => $validated['callbackSigningEnabled'],
-            'callback_signature_header' => $validated['callbackSignatureHeader'],
-        ];
-        if ($newSigningSecret !== '') {
-            $attributes['callback_signing_secret'] = $newSigningSecret;
-        }
-
-        return $attributes;
-    }
-
     public function callbackSettingsValid(?array $state = null): bool
     {
         try {
             $values = $state ?? $this->callbackValues();
-            $validated = Validator::make($values, $this->callbackRules())->validate();
-            $this->validatedCallbackAttributes([...$validated, 'locale' => $values['locale'], 'callbackSecretSet' => $state['callbackSecretSet'] ?? $this->callbackSecretSet]);
+            app(CallbackConfigurationValidator::class)->validate($values, $state['callbackSecretSet'] ?? $this->callbackSecretSet);
 
             return true;
         } catch (ValidationException) {
@@ -661,16 +460,8 @@ final class ResponseManager extends Component
         if ($this->editingId === null) {
             return;
         }
-        $validated = $this->validate($this->callbackRules());
-        $response = $this->endpoint()->responses()->findOrFail($this->editingId);
-        $attributes = $this->validatedCallbackAttributes([...$validated, 'locale' => $response->locale ?? 'en']);
-        DB::transaction(function () use ($attributes): void {
-            $response = $this->endpoint()->responses()->lockForUpdate()->findOrFail($this->editingId);
-            $revisions = app(RevisionManager::class);
-            $before = $revisions->snapshot($response);
-            $response->update($attributes);
-            $revisions->recordIfChanged($response, $before);
-        });
+        $this->resetValidation();
+        app(ResponseMutationService::class)->saveCallback($this->endpointId, $this->editingId, $this->callbackValues(), $this->callbackSecretSet);
         $this->callbackSecretSet = $this->callbackSigningSecret !== '' || $this->callbackSecretSet;
         $this->callbackSigningSecret = '';
         foreach (self::FORM_FIELDS as $field) {
@@ -686,24 +477,7 @@ final class ResponseManager extends Component
 
     public function delete(int $responseId): void
     {
-        DB::transaction(function () use ($responseId): void {
-            $endpoint = $this->endpoint()->newQuery()->lockForUpdate()->findOrFail($this->endpointId);
-            $response = $endpoint->responses()->findOrFail($responseId);
-            if ($endpoint->selection_mode === 'rule' && $response->is_default) {
-                throw ValidationException::withMessages([
-                    'selection_mode' => 'Deleting the fallback would leave rule mode invalid. Select and save another fallback first.',
-                ]);
-            }
-            $response->delete();
-            if ($endpoint->selection_mode === 'sequence') {
-                $revisions = app(RevisionManager::class);
-                foreach ($endpoint->responses()->reorder()->orderBy('sequence_order')->orderBy('id')->get() as $position => $item) {
-                    $before = $revisions->snapshot($item);
-                    $item->update(['sequence_order' => $position]);
-                    $revisions->recordIfChanged($item, $before);
-                }
-            }
-        }, 3);
+        app(ResponseMutationService::class)->delete($this->endpointId, $responseId);
         unset($this->pendingFormDrafts[$responseId]);
         if ($this->editingId === $responseId) {
             $this->resetForm();
@@ -1157,5 +931,41 @@ JSON;
         $this->previewOutput = '';
         $this->previewBytes = 0;
         $this->previewRenderMs = 0;
+    }
+
+    private function mutationInput(): ResponseInput
+    {
+        return new ResponseInput(
+            statusCode: $this->statusCode,
+            headersJson: $this->headersJson,
+            body: $this->body,
+            bodyMode: $this->bodyMode,
+            template: $this->template,
+            editorView: $this->editorView,
+            seedMode: $this->seedMode,
+            seed: $this->seed,
+            locale: $this->locale,
+            delayMs: $this->delayMs,
+            weight: $this->weight,
+            faultEnabled: $this->faultEnabled,
+            faultType: $this->faultType,
+            faultDelayMsMin: $this->faultDelayMsMin,
+            faultDelayMsMax: $this->faultDelayMsMax,
+            faultProbability: $this->faultProbability,
+            callbackEnabled: $this->callbackEnabled,
+            callbackUrl: $this->callbackUrl,
+            callbackMethod: $this->callbackMethod,
+            callbackHeadersJson: $this->callbackHeadersJson,
+            callbackBody: $this->callbackBody,
+            callbackDelayMs: $this->callbackDelayMs,
+            callbackDelayMaxMs: $this->callbackDelayMaxMs,
+            callbackRetry: $this->callbackRetry,
+            callbackBackoffMs: $this->callbackBackoffMs,
+            callbackTimeoutMs: $this->callbackTimeoutMs,
+            callbackSigningEnabled: $this->callbackSigningEnabled,
+            callbackSigningSecret: $this->callbackSigningSecret,
+            callbackSignatureHeader: $this->callbackSignatureHeader,
+            callbackSecretSet: $this->callbackSecretSet,
+        );
     }
 }

@@ -11,7 +11,7 @@ final class EndpointCallState extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['endpoint_id', 'environment_id', 'sequence_position', 'total_match_count', 'last_matched_at', 'recent_call_digests'];
+    protected $fillable = ['test_run_id', 'endpoint_id', 'environment_id', 'sequence_position', 'total_match_count', 'last_matched_at', 'recent_call_digests'];
 
     protected function casts(): array
     {

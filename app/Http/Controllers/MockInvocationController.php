@@ -17,6 +17,7 @@ use App\Services\Response\ResponseSelectionService;
 use App\Services\Templates\ResponseTemplateEngine;
 use App\Services\Templates\TemplateContext;
 use App\Services\Templates\TemplateRenderException;
+use App\Services\TestRuns\RequestScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -69,7 +70,8 @@ final class MockInvocationController extends Controller
         try {
             $captured = $this->requestFactory->fromRequest($request);
             $effectiveUrl = $captured->url;
-            $match = $this->matcher->match($captured);
+            $scope = $request->attributes->get('mockdeck.scope') ?? RequestScope::ordinary();
+            $match = $this->matcher->match($captured, $scope);
 
             if ($match === null) {
                 $statusCode = 404;
@@ -88,7 +90,7 @@ final class MockInvocationController extends Controller
             // Wave 2 integration: match/capture -> select/count -> decide fault ->
             // render with shared context -> apply output fault -> send/log.
             $request->attributes->set('mockdeck.path_parameters', $match->pathParameters);
-            $environment = $this->environments->active();
+            $environment = $scope->environment;
             $selection = $this->selector->select($match->endpoint, $request, $environment);
             $this->selectionReason = $selection->reason;
             $selected = $selection->response;
@@ -166,7 +168,7 @@ final class MockInvocationController extends Controller
             $this->writeLog($request, $effectiveUrl, $requestId, $startedAt, $match, $selected->id, $statusCode, $delayMs, null, $templated, $renderMs);
 
             try {
-                $this->callbacks->afterResponse($selected, $request, $requestId, $this->environments->active()->id);
+                $this->callbacks->afterResponse($selected, $request, $requestId, $environment->id);
             } catch (Throwable $exception) {
                 // Callback scheduling must not alter the already-built primary response.
                 error_log('MockDeck callback scheduling failed: '.$exception::class);
@@ -270,8 +272,9 @@ final class MockInvocationController extends Controller
             'status_code' => $statusCode,
             'delay_ms' => $delayMs,
             'duration_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
-            'environment' => $this->environments->active()->name,
-            'environment_id' => $this->environments->active()->id,
+            'environment' => ($request->attributes->get('mockdeck.scope')?->environment ?? $this->environments->active())->name,
+            'environment_id' => ($request->attributes->get('mockdeck.scope')?->environment ?? $this->environments->active())->id,
+            'test_run_id' => $request->attributes->get('mockdeck.scope')?->run?->public_id,
         ];
 
         if ($this->faultApplied && $this->faultPlan !== null) {

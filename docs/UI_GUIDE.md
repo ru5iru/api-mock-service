@@ -885,3 +885,7 @@ Fault injection in `response-manager.blade.php` uses `details.history-disclosure
 ### Postman variable review composition
 
 The import preview composes the existing `.selection-preview`, `.organization-grid`, `.field`, native `.ui-select`, `.log-table` inside `.table-scroll`, and `.normalized-details[data-disclosure]` recipes. Stateful preview disclosures use `wire:ignore.self` and stable keys to preserve the operator’s open state through preview updates. The optional Environment upload uses `.file-dropzone`; candidates use `.toggle-row` for Secret. Variable creation is primary with the shared `data-confirm` dialog and explicit loading target. Matching field overrides use `.ui-select-dense` inside each request disclosure. No new visual component or CSS variant is introduced. Sensitive candidate values are masked; literal token names are plain annotations, not secret values.
+
+### MCP run History reuse
+
+`resources/views/admin/run-history.blade.php` composes the existing dashboard layout, Page Header, normalized disclosure with the shared chevron, and Version History timeline/diff component. It introduces no new token or visual pattern. The component receives a locked run scope, filters every revision lookup to that scope, and hides restoration for redacted runtime snapshots. Deleted mocks keep comparison between retained versions; comparison with current is available while the mock exists. Ordinary editor History behavior remains unchanged.

@@ -102,3 +102,24 @@ test('first-time setup follows the same Make flow in Markdown and dashboard help
         }
     }
 });
+
+
+test('MCP server documentation covers active transport and credential lifecycle', () => {
+    assert.ok(read('README.md').includes('](docs/MCP.md)'));
+    const guide = read('docs/MCP.md');
+    for (const command of ['mockdeck:mcp-credential:generate', 'mockdeck:mcp-credential:list', 'mockdeck:mcp-credential:revoke']) {
+        assert.ok(guide.includes(command), command);
+    }
+    assert.ok(read('docs/USER_GUIDE.md').includes('](MCP.md#credential-lifecycle-cli)'));
+    for (const term of ['Streamable HTTP', '14 P0 tools', 'INCONCLUSIVE_EVIDENCE', 'MCP_TOOLS.json', 'Troubleshooting']) assert.ok(guide.includes(term), term);
+});
+
+
+test('isolated run help documents both routes and the ordinary traffic boundary', () => {
+    for (const path of ['docs/MCP.md', 'resources/views/admin/docs.blade.php']) {
+        const guide = read(path);
+        for (const term of ['X-MockDeck-Test-Run', '/_mockdeck/run/', '/mcp', 'ordinary']) {
+            assert.ok(guide.includes(term), `${path}: missing ${term}`);
+        }
+    }
+});

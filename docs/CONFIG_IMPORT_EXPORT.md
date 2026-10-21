@@ -208,3 +208,13 @@ Wave 3 adds nullable endpoint `external_source`: an object containing `type`, `c
 The Import panel now offers Native / Postman with the shared segmented control. Native import/export behavior and warning acknowledgement stay unchanged. Postman Collection v2.1 import has correlation-based Create only / Update matching / Clone modes, flattened folders, saved examples, and informational per-request warnings. See [Postman import](POSTMAN_IMPORT.md). Postman export and OpenAPI are not included. Runtime state and verification digests remain excluded.
 
 Postman variable provenance is optional metadata within native 1.5 `external_source.variable_provenance`: each entry retains `field_type`, `field_name`, original `tokens`, and the chosen `mode` (exclude/resolve). It contains token names only, never Environment values, and is carried by snapshots and portable exports. Resolved request literals are normal request configuration and remain subject to credential redaction. Variable candidates and their values are temporary import-preview state; actual Environment variables use existing encrypted storage and are not silently included as secret export values. Saved-response rewrites use existing `body_mode`/`template` fields; JSON-string-root templates represent text output. No new migration or native version is required for this refinement.
+
+
+### MCP security and audit state
+
+Phase 1's `mcp_credentials` and `mcp_invocations` are instance-local security/operational state. They are never included in configuration export/import, endpoint cloning or revision snapshots/restores. Their addition does not change the native format version (still 1.5). Provision new credentials locally after moving configuration; existing Wave 2 verification tokens remain a separate auth domain. See [MCP foundations](MCP.md).
+
+
+## Ephemeral test-run exclusion
+
+MCP Phase 2 leaves native format **1.5** unchanged. Run-owned endpoints/responses (`test_run_id` non-NULL), test runs and all call state are runtime data; native export excludes them even when explicitly selected by UUID. Native imports only create/update ordinary configuration, never run ownership. MCP Phase 3 explicitly records redacted run-scoped revisions for agent writes; those revisions remain excluded from portable configuration. `/_mockdeck` and `/mcp` are reserved routing namespaces and cannot be imported as operator endpoint paths.
