@@ -2827,6 +2827,179 @@
         }
     },
     {
+        "name": "preview_template",
+        "description": "Render a sample from a raw template OR an owned mock_id + response_id in Template mode. Always read permission only. Uses the run-bound Environment, dashboard validation/Faker catalog and synthetic request/path samples. Seed is an integer or random (default); referenced locale defaults to its response. Never saves preview/configuration/call state, audit rows or credential timestamps. Secret environment previews stay hidden.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "mock_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "response_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "template": {
+                    "type": "string",
+                    "maxLength": 262144
+                },
+                "locale": {
+                    "type": "string",
+                    "enum": [
+                        "en",
+                        "en_US",
+                        "en_GB",
+                        "fr_FR",
+                        "de_DE",
+                        "es_ES",
+                        "it_IT",
+                        "ja_JP"
+                    ]
+                },
+                "seed": {
+                    "type": [
+                        "integer",
+                        "string"
+                    ],
+                    "minimum": -2147483648,
+                    "maximum": 2147483647,
+                    "maxLength": 6
+                }
+            },
+            "required": [
+                "run_id"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "output": {
+                            "type": [
+                                "object",
+                                "array",
+                                "string",
+                                "integer",
+                                "number",
+                                "boolean",
+                                "null"
+                            ]
+                        },
+                        "bytes": {
+                            "type": "integer"
+                        },
+                        "render_ms": {
+                            "type": "number"
+                        },
+                        "synthetic_context": {
+                            "type": "boolean"
+                        },
+                        "sample_notice": {
+                            "type": "string"
+                        },
+                        "issues": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "severity": {
+                                        "type": "string"
+                                    },
+                                    "code": {
+                                        "type": "string"
+                                    },
+                                    "path": {
+                                        "type": "string"
+                                    },
+                                    "line": {
+                                        "type": "integer"
+                                    },
+                                    "col": {
+                                        "type": "integer"
+                                    },
+                                    "message": {
+                                        "type": "string"
+                                    },
+                                    "suggestion": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "severity",
+                                    "code",
+                                    "path",
+                                    "line",
+                                    "col",
+                                    "message",
+                                    "suggestion"
+                                ]
+                            }
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
         "name": "peek_next_response",
         "description": "Read the next configured Sequence response and current run/environment cursor without consuming it or creating call state. Honors Repeat last, Loop and Not found. Other modes explicitly return not applicable; templates and callbacks are not executed.",
         "inputSchema": {

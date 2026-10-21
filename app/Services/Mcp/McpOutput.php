@@ -11,6 +11,9 @@ final class McpOutput
         $data = app(McpAuditRedactor::class)->redact($data);
         $secrets = $run?->environment->variables()->where('is_secret', true)->get()->pluck('value')->filter(fn ($value) => is_string($value) && $value !== '')->all() ?? [];
         $clean = function ($value) use (&$clean, $secrets) {
+            if ($value instanceof \stdClass) {
+                return (object) array_map($clean, get_object_vars($value));
+            }
             if (is_array($value)) {
                 return array_map($clean, $value);
             }

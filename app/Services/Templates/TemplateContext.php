@@ -13,6 +13,8 @@ final readonly class TemplateContext
 {
     public const MAX_BODY_BYTES = 65536;
 
+    public const PREVIEW_NOTICE = 'Request-context values in this preview are synthetic samples, not captured live traffic.';
+
     public function __construct(private EnvironmentContext $environments) {}
 
     /** @return array<string, mixed> */
@@ -62,12 +64,12 @@ final readonly class TemplateContext
     }
 
     /** @return array<string, mixed> */
-    public function preview(string $template, ?MockEndpoint $endpoint = null): array
+    public function preview(string $template, ?MockEndpoint $endpoint = null, ?Environment $environment = null): array
     {
         $context = ['env' => [], 'request' => $this->synthetic(endpoint: $endpoint)];
         $references = $this->environmentKeys($template);
         if ($references !== []) {
-            $environment = $this->environments->active();
+            $environment ??= $this->environments->active();
             $secretKeys = $environment->variables()->where('is_secret', true)->pluck('key')->all();
             if (array_intersect($references, $secretKeys) !== []) {
                 throw new TemplateRenderException('Preview hidden: the template references a secret environment variable.', '/', '', 'SECRET_PREVIEW_HIDDEN');

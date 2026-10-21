@@ -1,6 +1,6 @@
 # MockDeck MCP
 
-Phase 3 exposes a local Streamable HTTP server at **`/mcp`** with 15 tools: the original 14 P0 tools plus `peek_next_response`. It builds on Phase 1’s shared services/independent credentials and Phase 2’s two-way request isolation. No external MCP hosting, identity service or agent service is required by MockDeck. Ordinary dashboard requests and verification tokens retain their existing behavior.
+Phase 3 exposes a local Streamable HTTP server at **`/mcp`** with 16 tools: the original 14 P0 tools plus `peek_next_response` and `preview_template`. It builds on Phase 1’s shared services/independent credentials and Phase 2’s two-way request isolation. No external MCP hosting, identity service or agent service is required by MockDeck. Ordinary dashboard requests and verification tokens retain their existing behavior.
 
 ## Behavior baseline
 
@@ -47,12 +47,12 @@ Each credential stores `name`, unique SHA-256 `token_hash`, `can_read`, `can_wri
 | Category / tool | Required permission |
 |---|---|
 | `start_test_run`, `create_mock`, `update_mock` | `write` |
-| `list_test_runs`, `list_mocks`, `get_mock`, `validate_mock`, `get_mock_url`, `peek_next_response`, `explain_match` | `read` |
+| `list_test_runs`, `list_mocks`, `get_mock`, `validate_mock`, `get_mock_url`, `preview_template`, `peek_next_response`, `explain_match` | `read` |
 | `get_unmatched_requests`, `get_calls`, `assert_calls` | `verify` |
 | `reset_test_run` | `cleanup` |
 | `finish_test_run`, including its delete option | `cleanup` |
 
-Permissions do not imply each other. To complete the full create/inspect/assert/cleanup workflow, grant all four. Finishing closes a run even without deletion, so it also requires `cleanup`. No extra `write` permission is required for runtime reset/cleanup; ownership checks remain mandatory for every tool. Discovery/initialization requires a valid credential; discovery lists all tools; execution enforces the grants independently. `McpToolPermissions::REQUIRED` is a tested, fail-closed contract; unknown tools do not get a default permission. All 15 tools below are callable.
+Permissions do not imply each other. To complete the full create/inspect/assert/cleanup workflow, grant all four. Finishing closes a run even without deletion, so it also requires `cleanup`. No extra `write` permission is required for runtime reset/cleanup; ownership checks remain mandatory for every tool. Discovery/initialization requires a valid credential; discovery lists all tools; execution enforces the grants independently. `McpToolPermissions::REQUIRED` is a tested, fail-closed contract; unknown tools do not get a default permission. All 16 tools below are callable.
 
 ### Rate-limiting convention
 
@@ -80,7 +80,7 @@ Rotation: generate a new credential with only the required permissions, update t
 
 ## Invocation audit foundation
 
-`mcp_invocations` contains `id`, `credential_id` (FK to `mcp_credentials`, deletion restricted), nullable `tool_name`, nullable `target`, nullable public UUID `run_id` (intentionally not a foreign key, so audit metadata survives cleanup), `result` (`success`/`error`), nullable `error_code`, UUID `correlation_id`, and `created_at`. Revocation preserves the actor row. Every authenticated tool call writes a row, including cached retries and rejected tool envelopes. No request payload column exists. Unauthenticated requests without an identifiable credential use separate redacted operational diagnostics rather than a fabricated audit actor.
+`mcp_invocations` contains `id`, `credential_id` (FK to `mcp_credentials`, deletion restricted), nullable `tool_name`, nullable `target`, nullable public UUID `run_id` (intentionally not a foreign key, so audit metadata survives cleanup), `result` (`success`/`error`), nullable `error_code`, UUID `correlation_id`, and `created_at`. Revocation preserves the actor row. Every authenticated tool call except `preview_template` writes a row, including cached retries and rejected tool envelopes. Preview has an explicit no-persistence contract: successful, invalid and SDK-rejected preview calls do not write invocation rows or credential last-used timestamps. Initialization/discovery and every other tool retain their existing metadata behavior; authorization and rate limiting still apply to previews. No request payload column exists. Unauthenticated requests without an identifiable credential use separate redacted operational diagnostics rather than a fabricated audit actor.
 
 `McpAuditRedactor` reuses `RequestCredentialPolicy`'s configurable header/query detection and masking plus `EnvironmentVariableWriter::sensitiveName`. It recursively redacts named secrets, header/variable entry values, JSON-encoded metadata, credential-shaped bearer strings and sensitive query parameters; depth/string output is bounded. The `McpInvocation` target setter also applies redaction. Do not put raw request/response bodies or arbitrary free-form payloads into `target`: use compact identifiers. No heuristic can identify every unlabeled secret. Writers apply the helper before persistence, allowlist audit metadata, and must not bypass the model with unredacted query-builder inserts.
 
@@ -156,7 +156,7 @@ Phase 3 adds optional run ownership on revisions. Explicitly authorized run muta
 
 ### P0 read contracts
 
-MCP reads are restricted to the credential’s own runs, including finished runs. `read` does not grant access to ordinary dashboard mocks. `list_test_runs` requires `read`; unmatched request and call evidence tools require `verify`. All tool results carry `ok`, `correlation_id`, and either structured `data` or `error` (stable code/message/details); failed tools also set MCP `isError`. Discovery publishes bounded input schemas and safety annotations.
+MCP reads are restricted to the credential’s own runs, including finished runs. `read` does not grant access to ordinary dashboard mocks. `list_test_runs` requires `read`; unmatched request and call evidence tools require `verify`. All tool results carry `ok`, `correlation_id`, and either structured `data` or `error` (stable code/message/details); failed tools also set MCP `isError`. Discovery publishes bounded input schemas and safety annotations. Tool lists use the SDK’s default 15-item pages; clients must follow `nextCursor` to discover all 16 tools (the tested PHP client does so automatically).
 
 `get_calls` separates the exact since-reset total from the 20-entry evidence window. `explain_match` calls the actual scoped matcher without invoking selection, counters or callbacks. It accepts either curl text or a retained unmatched request UUID. The latter window is 20 requests per run, 24 hours, bodies limited to 64 KiB and headers to 64 entries/4096 bytes each. Captured evidence is encrypted using APP_KEY; truncated evidence cannot claim an exact diagnosis. Expired IDs return NOT_FOUND. Differences omit field values, and exclusions are applied before comparison. Raw arguments are never written to the invocation audit; only scoped identifiers, outcome and correlation are stored.
 
@@ -209,6 +209,7 @@ Every success is `{ "ok": true, "data": {...}, "correlation_id": "UUID" }`. Fail
 | `update_mock` | `{"run_id":"RUN","mock_id":"MOCK","expected_version":1,"changes":{"endpoint":{"name":"Cart","priority":5},"responses":{"update":[{"id":"RESPONSE","status":201}],"add":[{"body":"new"}],"remove":[]}}}` | updated configuration/version/revision, matcher summary, invocation instructions |
 | `get_mock_url` | `{"run_id":"RUN","mock_id":"MOCK","preferred":"path-prefix"}` | `header.url`, required `header.headers`, `header.curl`, `path_prefix.url` / `curl`, origin note |
 | `peek_next_response` | `{"run_id":"RUN","mock_id":"MOCK"}` | Sequence: redacted configured `response`, zero-based `sequence_position`, one-based `next_position` / `position_label`, `response_count`, `reason`; other modes: `applicable: false` |
+| `preview_template` | `{"run_id":"RUN","template":"{\"id\":\"$string.uuid\"}","locale":"en","seed":42}` | rendered typed `output`, `bytes`, `render_ms`, dashboard-shaped `issues`, `synthetic_context`, `sample_notice`; requires only `read` and persists no preview/configuration/auth-audit metadata |
 | `explain_match` | `{"run_id":"RUN","curl":"curl http://localhost/cart?x=wrong"}` or `{"run_id":"RUN","log_entry_id":"LOG_UUID"}` | `selected`, bounded ranked `candidates`, per-field differences/exclusions without values, candidate-window completeness |
 | `get_unmatched_requests` | `{"run_id":"RUN","page":1,"per_page":20}` | retained stable IDs/time/completeness/request metadata, `window` capacity/TTL/truncation limits |
 | `get_calls` | `{"run_id":"RUN","mock_id":"MOCK","limit":20}` | exact `total_match_count`, `last_matched_at`, sequence position if applicable, `recent_calls`, evidence `window` |
@@ -223,6 +224,40 @@ Each response accepts `status`, header-name/value object, `body`, `body_mode` (`
 `changes.endpoint` is a patch; `changes.responses` has `add`, `update` (each with a response UUID), `remove` (UUID list). Unknown fields, cross-mock response IDs and repeated response operations are rejected. Empty endpoint fields are not implicitly overwritten. Updates and reset/delete revisions share `revisions.version_number`; there is no second concurrency counter. A cached create may be replayed for 24 hours even after finish: it returns the original redacted result and never resurrects mocks or reopens routing. A new create in a finished run returns RUN_FINISHED.
 
 Predicates are the existing verification/rule grammar: `field_type` is `header`, `query` or `body_json_path`; `operator` is `equals`, `contains`, `regex` or `exists`. Non-exists operators require a string `value`; regex uses PHP delimiters such as `/pattern/i`. Comparators are exactly `equals`, `at_least`, `at_most`. Unfiltered assertions always use the exact counter. Filtered assertions use existing three-valued evidence evaluation: provable bounds can establish a result; otherwise the tool returns INCONCLUSIVE_EVIDENCE with the count outside the retained window, never a false exact zero.
+
+## Read-only template preview
+
+`preview_template` always requires **read only**, including when referencing a saved response. It uses `ResponseTemplateEngine::preview(template, locale, seedMode, seed, endpoint, environment)` directly, with the same compiler, introspected Faker catalog, renderer, secret-preview guard and synthetic request/path context as the dashboard. It never selects or serves a response, advances counters, creates revisions, applies faults/delays or dispatches callbacks.
+
+| Input | Contract |
+| --- | --- |
+| `run_id` | Required owned public run UUID; supplies the bound Environment without switching the global active Environment. Finished runs can still be inspected. |
+| `template` | Raw template source, at most 262144 characters and subject to the engine's existing byte/depth/node/output limits. Mutually exclusive with saved references. |
+| `mock_id` + `response_id` | Both required for reference mode. The mock must belong to this run and the response to that mock, in Template mode. Ordinary/foreign mocks and responses are inaccessible. |
+| `locale` | Optional configured locale; defaults to the saved response's locale in reference mode, otherwise `en`. |
+| `seed` | Optional integer (fixed preview) or `"random"`; omitted means random, even for a saved response. Does not alter the saved seed settings. |
+
+Success returns a typed `output` (objects, arrays and scalar types retained), `bytes` and `render_ms`, plus the dashboard's exact `issues` entries: `severity`, `code`, `path`, `line`, `col`, `message`, `suggestion`. The existing `synthetic_context` flag indicates context-dependent rendering. `sample_notice` reuses the dashboard wording verbatim: **Request-context values in this preview are synthetic samples, not captured live traffic.** The notice is also returned for context-free Faker samples, as it is displayed by the dashboard. No matched-request data is read; pattern references receive the same `sample_id`-style path captures as editor preview.
+
+Invalid templates return MCP `isError` with `VALIDATION_ERROR` and preview fields under `error.details`, including unchanged dashboard-shaped `issues` and null output. Unknown methods retain `UNKNOWN_METHOD` with the same location/message/suggestion. Secret Environment references retain `SECRET_PREVIEW_HIDDEN`; they are never rendered or exposed. Other secret-shaped literal sample values are redacted through the shared MCP output policy, including nested objects. Standard MCP depth/string redaction bounds still apply; metrics describe the engine's render before output redaction.
+
+Raw-template example (`tools/call` arguments):
+
+```json
+{"run_id":"RUN","template":"{\"id\":\"$string.uuid\",\"name\":\"$person.fullName\",\"env\":\"{{env.NAME}}\"}","locale":"en","seed":42}
+```
+
+Saved-response example:
+
+```json
+{"run_id":"RUN","mock_id":"MOCK","response_id":"RESPONSE","seed":"random"}
+```
+
+### No-persistence boundary and evidence
+
+The handler uses the uncached preview path, never `renderResponse`'s saved-template cache. Preview is the deliberate exception to Phase 3's general invocation audit rule: it skips the SQLite writer reservation, run write lock/transaction, invocation audit and credential last-used update. This applies to validation failures and SDK-rejected preview input too. Bearer authentication, fresh revocation/read-permission checks, run/response ownership, Origin/input bounds and normal infrastructure rate limiting remain enforced. Every other tool still writes its usual audit/usage metadata. Server diagnostics and infrastructure rate-limit cache counters remain outside preview data; with a database-backed cache those cache counters may change. No template source, rendered sample, configuration, call state, revision, audit row or credential timestamp is stored by the preview operation.
+
+`McpTemplatePreviewTest` takes complete serialized database-table snapshots before/after raw and referenced previews, including the HTTP authentication/protocol path and error cases. With the test array-cache backend it also observes SQL and asserts zero INSERT/UPDATE/DELETE/REPLACE statements. It confirms a credential lacking write/verify/cleanup can preview its own saved response, exact diagnostic equality with Livewire, bound-environment/path samples, unchanged active environment and secret protection. The official PHP client tests raw/reference previews and structured errors over HTTP and verified HTTPS. Existing full PHPUnit and schema-drift CI checks include these tests automatically.
 
 ## Primary response fault configuration
 

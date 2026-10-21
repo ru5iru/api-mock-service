@@ -48,6 +48,8 @@ final class McpToolRegistry
             'validate_mock' => ['Validate proposed configuration without saving or advancing runtime state. Supply configuration OR the same changes patch used by update_mock (requires run_id/mock_id). Validates the final response pool with the shared dashboard selection validator.', $object([...$mock, 'configuration' => $proposal, 'changes' => $changes])],
             'update_mock' => ['Patch endpoint fields and add/update/remove individual responses atomically. Omitted fields are preserved. Supply the version returned by get_mock; stale versions return CONFLICT. Supports Weighted, Sequence and Rule selection; validates the final pool atomically, including fallback swaps.', $object([...$mock, 'expected_version' => $integer(0, 2147483647), 'changes' => $changes], ['run_id', 'mock_id', 'expected_version', 'changes'])],
             'get_mock_url' => ['Return both callable routing forms and POSIX example curls. Header routing keeps the path; prefix routing needs no injected header. Replace the origin with the reachable service address from your application.', $object([...$mock, 'preferred' => $preference], ['run_id', 'mock_id'])],
+            'preview_template' => ['Render a sample from a raw template OR an owned mock_id + response_id in Template mode. Always read permission only. Uses the run-bound Environment, dashboard validation/Faker catalog and synthetic request/path samples. Seed is an integer or random (default); referenced locale defaults to its response. Never saves preview/configuration/call state, audit rows or credential timestamps. Secret environment previews stay hidden.', $object([...$mock, 'response_id' => $uuid, 'template' => $string(262144),
+                'locale' => $enum(config('mock.templates.locales', ['en'])), 'seed' => ['type' => ['integer', 'string'], 'minimum' => -2147483648, 'maximum' => 2147483647, 'maxLength' => 6]], ['run_id'])],
             'peek_next_response' => ['Read the next configured Sequence response and current run/environment cursor without consuming it or creating call state. Honors Repeat last, Loop and Not found. Other modes explicitly return not applicable; templates and callbacks are not executed.', $object($mock, ['run_id', 'mock_id'])],
             'explain_match' => ['Diagnose a curl OR retained unmatched log_entry_id using the real scoped matcher, with field comparisons and exclusions, without selecting a response, counters or callbacks. Sensitive values are never returned.', $object([...$run, 'curl' => $string(131072), 'log_entry_id' => $uuid], ['run_id'])],
             'get_unmatched_requests' => ['Read recent owned-run unmatched request IDs for explain_match. Retention is at most 20 entries and 24 hours, not complete history. Payload evidence stays encrypted server-side.', $object([...$run, ...$pagination], ['run_id'])],
@@ -56,7 +58,7 @@ final class McpToolRegistry
             'reset_test_run' => ['Reset only this active owned run’s counters, sequence positions and verification evidence. Preserve all mock configuration; record the reset in run history. Requires cleanup permission.', $object($run, ['run_id'])],
             'finish_test_run' => ['Finish your run with delete_mocks or keep_mocks. Deletion affects only this run. Repeating finish returns the original final summary and never performs additional cleanup. Requires cleanup permission.', $object([...$run, 'cleanup' => $enum(['delete_mocks', 'keep_mocks'])], ['run_id', 'cleanup'])],
         ];
-        $readOnly = ['list_test_runs', 'list_mocks', 'get_mock', 'validate_mock', 'get_mock_url', 'peek_next_response', 'explain_match', 'get_unmatched_requests', 'get_calls', 'assert_calls'];
+        $readOnly = ['list_test_runs', 'list_mocks', 'get_mock', 'validate_mock', 'get_mock_url', 'preview_template', 'peek_next_response', 'explain_match', 'get_unmatched_requests', 'get_calls', 'assert_calls'];
 
         return collect($definitions)->mapWithKeys(fn ($item, $name) => [$name => ['name' => $name, 'description' => $item[0], 'inputSchema' => $item[1],
             'outputSchema' => app(McpResultSchemas::class)->forTool($name),
@@ -70,6 +72,16 @@ final class McpToolRegistry
             throw new McpDomainException(McpErrorCode::NotFound, 'Unknown tool.');
         }
         $this->check($schema, $input, 'arguments');
+        if ($tool === 'preview_template') {
+            $raw = array_key_exists('template', $input);
+            $reference = isset($input['mock_id'], $input['response_id']);
+            if ($raw === $reference || ($raw && (isset($input['mock_id']) || isset($input['response_id']))) || (! $raw && ! $reference)) {
+                $this->invalid('template', 'Provide exactly one of template or the owned mock_id and response_id pair.');
+            }
+            if (is_string($input['seed'] ?? null) && $input['seed'] !== 'random') {
+                $this->invalid('seed', 'Choose an integer seed or random.');
+            }
+        }
         if (isset($input['mock_id']) && ! isset($input['run_id'])) {
             $this->invalid('run_id', 'A mock reference requires its owned run ID.');
         }
@@ -96,7 +108,14 @@ final class McpToolRegistry
             if ($value === null && in_array('null', $type, true)) {
                 return;
             }
-            $type = $type[0];
+            $actual = match (true) {
+                is_int($value) => 'integer', is_string($value) => 'string', is_bool($value) => 'boolean',
+                is_array($value) && array_is_list($value) => 'array', is_array($value) => 'object', default => '',
+            };
+            if (! in_array($actual, $type, true)) {
+                $this->invalid($path, 'Expected '.implode(' or ', $type).'.');
+            }
+            $type = $actual;
         }
         $valid = match ($type) {
             'object' => is_array($value) && ($value === [] || ! array_is_list($value)), 'array' => is_array($value) && array_is_list($value), 'integer' => is_int($value), 'boolean' => is_bool($value), 'string' => is_string($value)

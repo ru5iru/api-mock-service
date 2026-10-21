@@ -27,6 +27,9 @@ final class McpAuditRedactor
         if ($depth > 12) {
             return '[TRUNCATED]';
         }
+        if ($value instanceof \stdClass) {
+            return (object) $this->clean(get_object_vars($value), $depth);
+        }
         if (is_array($value)) {
             $label = $value['name'] ?? $value['key'] ?? $value['field_name'] ?? null;
             $sensitiveEntry = is_string($label) && $this->sensitive($label);

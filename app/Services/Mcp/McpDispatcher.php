@@ -17,28 +17,33 @@ final class McpDispatcher
     {
         $correlation = (string) Str::uuid();
         $run = null;
+        $preview = $tool === 'preview_template';
         try {
-            $result = DB::transaction(function () use ($tool, $input, $owner, $correlation, &$run): array {
+            $operation = function () use ($tool, $input, $owner, $correlation, $preview, &$run): array {
                 // SQLite ignores FOR UPDATE. Reserve its single writer before any
                 // reads to avoid a deferred read-to-write upgrade deadlock. The
                 // no-op does not change credential data; PostgreSQL uses row locks.
-                if (DB::getDriverName() === 'sqlite') {
+                if (! $preview && DB::getDriverName() === 'sqlite') {
                     DB::table('mcp_credentials')->where('id', $owner->id)->update(['last_used_at' => DB::raw('last_used_at')]);
                 }
                 app(McpCredentialService::class)->authorize($owner, McpToolPermissions::required($tool));
                 app(McpToolRegistry::class)->validate($tool, $input);
                 if (isset($input['run_id'])) {
-                    $run = app(McpReads::class)->run($owner, $input['run_id'], true);
+                    $run = app(McpReads::class)->run($owner, $input['run_id'], ! $preview);
                 }
                 $data = in_array($tool, ['start_test_run', 'create_mock', 'update_mock', 'reset_test_run', 'finish_test_run', 'assert_calls'], true)
                     ? app(McpWrites::class)->execute($tool, $input, $owner, $run)
                     : app(McpReads::class)->execute($tool, $input, $owner, $run);
-                $this->audit($owner, $tool, $input, $correlation, null);
+                if (! $preview) {
+                    $this->audit($owner, $tool, $input, $correlation, null);
+                }
 
                 return ['ok' => true, 'data' => app(McpOutput::class)->safe($data, $run), 'correlation_id' => $correlation];
-            }, 5);
+            };
 
-            return $result;
+            // Preview's explicit no-persistence contract also excludes operational
+            // audit/last-used writes; all other tools retain their transaction/audit.
+            return $preview ? $operation() : DB::transaction($operation, 5);
         } catch (Throwable $exception) {
             [$code, $message, $details] = match (true) {
                 $exception instanceof McpDomainException => [$exception->errorCode, $exception->getMessage(), $exception->details],
@@ -51,7 +56,9 @@ final class McpDispatcher
                 // Never log exception messages here: parser/database errors can include a secret input.
                 logger()->error('MCP operation failed', ['correlation_id' => $correlation, 'exception_type' => $exception::class]);
             }
-            $this->audit($owner, $tool, $input, $correlation, $code);
+            if (! $preview) {
+                $this->audit($owner, $tool, $input, $correlation, $code);
+            }
 
             return ['ok' => false, 'error' => app(McpOutput::class)->safe(['code' => $code->value, 'message' => $message, ...($details === [] ? [] : ['details' => $details])], $run), 'correlation_id' => $correlation];
         }

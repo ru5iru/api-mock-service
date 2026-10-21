@@ -16,6 +16,7 @@ final class McpToolPermissions
         'get_mock' => 'read',
         'validate_mock' => 'read',
         'get_mock_url' => 'read',
+        'preview_template' => 'read',
         'peek_next_response' => 'read',
         'explain_match' => 'read',
         'get_unmatched_requests' => 'verify',

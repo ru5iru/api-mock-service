@@ -38,6 +38,13 @@ final class McpReadToolsTest extends TestCase
         self::assertSame(4, McpInvocation::query()->count());
         $other = app(McpCredentialService::class)->generate('other', ['read'])->credential;
         self::assertSame('RUN_NOT_FOUND', app(McpDispatcher::class)->call('get_mock', $args, $other)['error']['code']);
-        $this->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'], ['Authorization' => 'Bearer '.$issued->reveal()])->assertOk()->assertJsonCount(15, 'result.tools');
+        $headers = ['Authorization' => 'Bearer '.$issued->reveal()];
+        $page = $this->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'], $headers)
+            ->assertOk()->assertJsonCount(15, 'result.tools');
+        $next = $this->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/list', 'params' => ['cursor' => $page->json('result.nextCursor')]], $headers)
+            ->assertOk()->assertJsonCount(1, 'result.tools');
+        $names = array_column([...$page->json('result.tools'), ...$next->json('result.tools')], 'name');
+        self::assertCount(16, array_unique($names));
+        self::assertContains('preview_template', $names);
     }
 }

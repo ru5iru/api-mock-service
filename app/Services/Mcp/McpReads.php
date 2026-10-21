@@ -39,6 +39,9 @@ final class McpReads
 
     public function execute(string $tool, array $args, McpCredential $owner, ?TestRun $run): array
     {
+        if ($tool === 'preview_template') {
+            return app(McpTemplatePreview::class)->execute($run, $args);
+        }
         if ($tool === 'list_test_runs') {
             return ['runs' => TestRun::query()->where('credential_id', $owner->id)->when(isset($args['status']), fn ($q) => $q->where('status', $args['status']))->orderByDesc('id')->paginate($args['per_page'] ?? 20, ['public_id', 'label', 'status', 'created_at'], 'page', $args['page'] ?? 1)->toArray()];
         }

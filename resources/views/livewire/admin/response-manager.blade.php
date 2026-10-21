@@ -353,7 +353,7 @@
                     <span id="template-preview-title">Preview</span>
                     <button type="button" wire:click="previewTemplate" wire:loading.attr="disabled" wire:target="previewTemplate">Regenerate</button>
                 </div>
-                <p class="info-note">Request-context values in this preview are synthetic samples, not captured live traffic. Context tokens require the JSON editor.</p>
+                <p class="info-note">{{ \App\Services\Templates\TemplateContext::PREVIEW_NOTICE }} Context tokens require the JSON editor.</p>
                 @if ($previewOutput !== '')
                     <pre>{{ $previewOutput }}</pre>
                     <div class="template-preview-meta"><span>{{ $previewBytes }} B</span><span>{{ number_format($previewRenderMs, 2) }} ms</span></div>

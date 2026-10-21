@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Environment;
 use App\Services\Mcp\McpCredentialService;
+use App\Services\Templates\TemplateContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Laravel\Mcp\Client;
 use Laravel\Mcp\Enums\ProtocolVersion;
 use Symfony\Component\Process\Process;
@@ -49,7 +51,7 @@ final class McpClientIntegrationTest extends TestCase
             $this->ready('https://localhost:'.$tlsPort.'/up', $tls);
             foreach (['http://127.0.0.1:'.$port, 'https://localhost:'.$tlsPort] as $origin) {
                 $client = Client::web($origin.'/mcp')->withToken($token)->withProtocolVersion(ProtocolVersion::V2025_11_25);
-                self::assertCount(15, $client->tools());
+                self::assertCount(16, $client->tools());
                 self::assertSame('2025-11-25', $client->initializeResult()->protocolVersion);
                 $invoke = function (string $name, array $args) use ($client): array {
                     $result = $client->callTool($name, $args);
@@ -106,6 +108,18 @@ final class McpClientIntegrationTest extends TestCase
                 self::assertSame(201, Http::withHeaders([...$sequence['invocation']['header']['headers'], 'X-Mode' => 'yes'])->get($origin.'/sequence-client')->status());
                 self::assertSame(200, Http::withHeaders($sequence['invocation']['header']['headers'])->get($origin.'/sequence-client')->status());
                 self::assertFalse($invoke('peek_next_response', $selectionTarget)['applicable']);
+                $previewMock = $invoke('create_mock', [...$run, 'idempotency_key' => 'preview-client', 'configuration' => ['request' => ['url' => 'http://localhost/preview-client'],
+                    'responses' => [['body_mode' => 'template', 'body' => '{"id":"$number.int({\"min\":7,\"max\":7})","name":"$person.fullName"}']]]]);
+                $issued->credential->update(['can_write' => false]);
+                $sample = $invoke('preview_template', [...$run, 'mock_id' => $previewMock['mock_id'], 'response_id' => $previewMock['responses'][0]['id'], 'seed' => 42]);
+                self::assertSame(7, $sample['output']['id']);
+                self::assertSame(TemplateContext::PREVIEW_NOTICE, $sample['sample_notice']);
+                $rawSample = $invoke('preview_template', [...$run, 'template' => '{"id":"$string.uuid"}', 'seed' => 'random']);
+                self::assertTrue(Str::isUuid($rawSample['output']['id']));
+                $badTemplate = $client->callTool('preview_template', [...$run, 'template' => '{"bad":"$person.fristName"}']);
+                self::assertTrue($badTemplate->isError);
+                self::assertSame('UNKNOWN_METHOD', $badTemplate->structuredContent['error']['details']['issues'][0]['code']);
+                $issued->credential->update(['can_write' => true]);
                 self::assertSame('finished', $invoke('finish_test_run', [...$run, 'cleanup' => 'delete_mocks'])['status']);
                 $client->disconnect();
             }
@@ -114,7 +128,7 @@ final class McpClientIntegrationTest extends TestCase
             self::assertSame(2, json_decode($example->getOutput(), true, flags: JSON_THROW_ON_ERROR)['total_match_count']);
             self::assertStringNotContainsString($token, $example->getOutput());
             $modern = Client::web('http://127.0.0.1:'.$port.'/mcp')->withToken($token)->withProtocolVersion(ProtocolVersion::V2026_07_28);
-            self::assertCount(15, $modern->tools());
+            self::assertCount(16, $modern->tools());
             self::assertNotNull($modern->discoverResult());
         } finally {
             $tls?->stop();

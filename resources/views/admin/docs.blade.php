@@ -418,7 +418,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
 
         <section id="isolated-test-runs" class="card docs-card docs-wide">
             <h2>MCP tools and isolated test runs</h2>
-            <p>Connect an agent to /mcp with a separately issued MCP bearer. Four explicit permissions control 15 tools for run lifecycle, mock configuration, match diagnosis and verification. Dashboard cookies and verification tokens cannot authorize these tools.</p>
+            <p>Connect an agent to /mcp with a separately issued MCP bearer. Four explicit permissions control 16 tools for run lifecycle, mock configuration, match diagnosis and verification. Dashboard cookies and verification tokens cannot authorize these tools.</p>
             <ul>
                 <li>Header routing: send <code>X-MockDeck-Test-Run: &lt;public UUID&gt;</code> with the original mock URL.</li>
                 <li>Base-URL routing: use <code>http://localhost:18473/_mockdeck/run/&lt;public UUID&gt;</code> as the API base, then append the original path/query. HTTPS works with the existing TLS setup.</li>
@@ -427,7 +427,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <li>Unknown, finished or revoked-owner runs return 404. Conflicting header/prefix run IDs return 400. Keep public run UUIDs private: they grant routing access.</li>
                 <li><code>/_mockdeck</code> and <code>/mcp</code> are reserved. Run mocks/state are excluded from normal exports; MCP writes have a read-only run History view using the existing timeline. Verification API tokens remain ordinary-only.</li>
             </ul>
-            <p>Use start_test_run → create_mock → get_calls / assert_calls → finish_test_run. MCP mocks also support Sequence and Rule-based response pools; peek_next_response shows the next Sequence response without consuming it. Exact counters are separate from the 20-call evidence window; incomplete filtered assertions return INCONCLUSIVE_EVIDENCE. The credential lifecycle, schemas and tested local client are documented in <code>docs/MCP.md</code>. No external service or new dashboard management UI is required.</p>
+            <p>Use start_test_run → create_mock → get_calls / assert_calls → finish_test_run. The read-only preview_template tool generates labeled samples without saving them. MCP mocks also support Sequence and Rule-based response pools; peek_next_response shows the next Sequence response without consuming it. Exact counters are separate from the 20-call evidence window; incomplete filtered assertions return INCONCLUSIVE_EVIDENCE. The credential lifecycle, schemas and tested local client are documented in <code>docs/MCP.md</code>. No external service or new dashboard management UI is required.</p>
         </section>
 
         <section id="shortcuts" class="card docs-card">

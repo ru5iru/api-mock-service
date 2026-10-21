@@ -17,7 +17,12 @@ final class McpSchemaReferenceTest extends TestCase
         sort($permissions);
         sort($names);
         self::assertSame($permissions, $names);
-        self::assertCount(15, $tools);
+        self::assertCount(16, $tools);
+        self::assertSame('read', McpToolPermissions::REQUIRED['preview_template']);
+        self::assertTrue($tools['preview_template']['annotations']['readOnlyHint']);
+        self::assertTrue($tools['preview_template']['annotations']['idempotentHint']);
+        self::assertFalse($tools['preview_template']['annotations']['destructiveHint']);
+        self::assertSame(['run_id'], $tools['preview_template']['inputSchema']['required']);
         self::assertSame('read', McpToolPermissions::REQUIRED['peek_next_response']);
         self::assertTrue($tools['peek_next_response']['annotations']['readOnlyHint']);
         self::assertTrue($tools['peek_next_response']['annotations']['idempotentHint']);

@@ -197,3 +197,7 @@ These diagnostics are intentional API behavior and should be preserved in client
 `CallDigestRecorder` stores bounded predicate evidence independently of general request logs. `CallAssertionService` computes conservative count bounds when evidence has been evicted or omitted. The separate stateless verification routes authenticate a hashed instance token before model binding; interactive operator sessions never grant access. See [VERIFICATION_API.md](VERIFICATION_API.md) for the complete contract.
 
 Native format 1.4 is one coordinated update for both tracks. Config/revision services and guides are shared integration files, so the tracks are not strictly file-disjoint. No matching rehash migration is run for existing data; no verification evidence or token credential enters portable configuration or revisions.
+
+### Template preview context
+
+The dashboard and API use `ResponseTemplateEngine::preview(template, locale, seedMode, seed, endpoint)` for validation, catalog-backed Faker rendering and synthetic request/path values. An optional final `Environment` argument binds a preview explicitly without changing the instance-wide active environment; callers omitting it retain the dashboard behavior. Secret-variable preview checks use that same effective environment. `TemplateContext::PREVIEW_NOTICE` holds the existing dashboard wording so other preview consumers can label sample data identically. Preview does not use the saved-response render cache or persist configuration/runtime state.

@@ -112,7 +112,7 @@ final class McpCredentialTest extends TestCase
     {
         self::assertSame([
             'start_test_run' => 'write', 'create_mock' => 'write', 'update_mock' => 'write',
-            'list_test_runs' => 'read', 'list_mocks' => 'read', 'get_mock' => 'read', 'validate_mock' => 'read', 'get_mock_url' => 'read', 'peek_next_response' => 'read', 'explain_match' => 'read',
+            'list_test_runs' => 'read', 'list_mocks' => 'read', 'get_mock' => 'read', 'validate_mock' => 'read', 'get_mock_url' => 'read', 'preview_template' => 'read', 'peek_next_response' => 'read', 'explain_match' => 'read',
             'get_unmatched_requests' => 'verify', 'get_calls' => 'verify', 'assert_calls' => 'verify',
             'reset_test_run' => 'cleanup', 'finish_test_run' => 'cleanup',
         ], McpToolPermissions::REQUIRED);
