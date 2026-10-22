@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Services\Mcp\McpCredentialService;
 use App\Services\Mcp\McpErrorCode;
 use App\Services\Mcp\McpPermission;
+use App\Services\Mcp\McpReadOnlyPreview;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -19,7 +20,7 @@ final class AuthenticateMcpCredential
     public function handle(Request $request, Closure $next, ?string $permission = null): Response
     {
         try {
-            $credential = $this->credentials->authenticate($request->bearerToken());
+            $credential = $this->credentials->authenticate($request->bearerToken(), recordUsage: ! McpReadOnlyPreview::requested($request));
             if ($permission !== null) {
                 $required = McpPermission::tryFrom($permission);
                 if ($required === null) {

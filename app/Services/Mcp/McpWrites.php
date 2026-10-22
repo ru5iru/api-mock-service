@@ -11,7 +11,7 @@ use App\Services\Environments\EnvironmentContext;
 use App\Services\Mutations\EndpointConfigurationValidator;
 use App\Services\Mutations\EndpointInput;
 use App\Services\Mutations\EndpointMutationService;
-use App\Services\Mutations\ResponseMutationService;
+use App\Services\Mutations\ResponsePoolMutationService;
 use App\Services\Revisions\RevisionManager;
 use App\Services\TestRuns\RunRouting;
 use App\Services\TestRuns\TestRunService;
@@ -25,6 +25,9 @@ final class McpWrites
 {
     public function execute(string $tool, array $args, McpCredential $owner, ?TestRun $run): array
     {
+        if ($tool === 'apply_postman_import') {
+            return app(McpPostmanImport::class)->apply($run, $args);
+        }
         if ($tool === 'start_test_run') {
             $environment = isset($args['environment']) ? Environment::query()->where('name', $args['environment'])->first() : app(EnvironmentContext::class)->active();
             if ($environment === null) {
@@ -65,11 +68,11 @@ final class McpWrites
                     throw ValidationException::withMessages(['responses' => 'Provide at least one response.']);
                 }
                 $input = app(McpMockConfiguration::class)->endpoint(collect($config)->except('responses')->all());
+                $pool = app(McpMockConfiguration::class)->pool($config);
+                app(ResponsePoolMutationService::class)->validate($pool);
                 $this->noCollision($run, $input);
                 $endpoint = app(EndpointMutationService::class)->save($input, run: $run);
-                foreach ($config['responses'] as $response) {
-                    app(ResponseMutationService::class)->save($endpoint->id, app(McpMockConfiguration::class)->response($response), run: $run);
-                }
+                app(ResponsePoolMutationService::class)->replace($endpoint->id, $pool, $run);
                 $this->revision($run, $endpoint, $this->snapshot($endpoint), 'MCP create_mock: initial configuration');
 
                 return app(McpOutput::class)->safe($this->result($run, $endpoint), $run);
@@ -83,34 +86,13 @@ final class McpWrites
                 throw new McpDomainException(McpErrorCode::Conflict, 'Configuration changed; read get_mock and retry with its current version.', ['current_version' => $version]);
             }
             $before = $this->snapshot($endpoint);
-            $input = app(McpMockConfiguration::class)->endpoint($args['changes']['endpoint'] ?? [], $endpoint);
+            $config = app(McpMockConfiguration::class)->changes($args['changes'], $endpoint);
+            $input = app(McpMockConfiguration::class)->endpoint(collect($config)->except('responses')->all(), $endpoint);
+            $pool = app(McpMockConfiguration::class)->pool($config, $endpoint);
+            app(ResponsePoolMutationService::class)->validate($pool);
             $this->noCollision($run, $input, $endpoint);
             $endpoint = app(EndpointMutationService::class)->save($input, $endpoint->id, $run);
-            $changes = $args['changes']['responses'] ?? [];
-            $ids = [...array_column($changes['update'] ?? [], 'id'), ...($changes['remove'] ?? [])];
-            if (count($ids) !== count(array_unique($ids))) {
-                throw ValidationException::withMessages(['responses' => 'Each response can be changed only once per operation.']);
-            }
-            foreach ($changes['update'] ?? [] as $data) {
-                $response = $endpoint->responses()->where('uuid', $data['id'])->first();
-                if ($response === null) {
-                    throw new McpDomainException(McpErrorCode::NotFound, 'Response does not belong to this mock.');
-                }
-                app(ResponseMutationService::class)->save($endpoint->id, app(McpMockConfiguration::class)->response($data, $response), $response->id, $run);
-            }
-            foreach ($changes['remove'] ?? [] as $id) {
-                $response = $endpoint->responses()->where('uuid', $id)->first();
-                if ($response === null) {
-                    throw new McpDomainException(McpErrorCode::NotFound, 'Response does not belong to this mock.');
-                }
-                app(ResponseMutationService::class)->delete($endpoint->id, $response->id, $run);
-            }
-            foreach ($changes['add'] ?? [] as $data) {
-                app(ResponseMutationService::class)->save($endpoint->id, app(McpMockConfiguration::class)->response($data), run: $run);
-            }
-            if ($endpoint->responses()->count() > 50) {
-                throw ValidationException::withMessages(['responses' => 'P0 supports at most 50 responses per mock.']);
-            }
+            app(ResponsePoolMutationService::class)->replace($endpoint->id, $pool, $run);
             if ($this->snapshot($endpoint) !== $before) {
                 $this->revision($run, $endpoint, $before, 'MCP update_mock');
             }

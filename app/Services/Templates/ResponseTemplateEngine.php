@@ -2,6 +2,7 @@
 
 namespace App\Services\Templates;
 
+use App\Models\Environment;
 use App\Models\MockEndpoint;
 use App\Models\MockResponse;
 use Illuminate\Support\Facades\Cache;
@@ -19,7 +20,7 @@ final readonly class ResponseTemplateEngine
         return $this->compiler->compile($template, $locale);
     }
 
-    public function preview(string $template, string $locale, string $seedMode, ?int $seed, ?MockEndpoint $endpoint = null): array
+    public function preview(string $template, string $locale, string $seedMode, ?int $seed, ?MockEndpoint $endpoint = null, ?Environment $environment = null): array
     {
         $validation = $this->validate($template, $locale);
         if ($validation->compiled === null) {
@@ -32,7 +33,7 @@ final readonly class ResponseTemplateEngine
         }
 
         $synthetic = $this->contexts->usesContext($template);
-        $context = $synthetic ? $this->contexts->preview($template, $endpoint) : null;
+        $context = $synthetic ? $this->contexts->preview($template, $endpoint, $environment) : null;
         $rendered = $this->renderer->render($validation->compiled, $locale, $seedMode, $seed, null, $context);
 
         return [

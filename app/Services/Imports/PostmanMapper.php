@@ -22,6 +22,24 @@ final readonly class PostmanMapper implements ImportMapper
         return new self($this->formatter, $this->parser, $this->hasher, $this->credentials, $this->urls, $options);
     }
 
+    /** Shared companion-file boundary; declarations/precedence remain in the mapper. */
+    public function environmentValues(string $json): array
+    {
+        if (strlen($json) > config('mock.portable_config.max_bytes', 2097152)) {
+            throw new InvalidArgumentException('The Environment file exceeds the configured upload limit.');
+        }
+        try {
+            $document = json_decode($json, true, 64, JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            throw new InvalidArgumentException($exception->getMessage());
+        }
+        if (! is_array($document['values'] ?? null) || ! array_is_list($document['values'])) {
+            throw new InvalidArgumentException('Environment file must contain a values array.');
+        }
+
+        return $document['values'];
+    }
+
     public function map(string $json, bool $maskSecrets = false): array
     {
         if (strlen($json) > config('mock.portable_config.max_bytes', 2097152)) {

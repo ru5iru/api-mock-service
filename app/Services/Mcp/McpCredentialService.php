@@ -27,7 +27,7 @@ final class McpCredentialService
         return new IssuedMcpCredential(McpCredential::query()->create($attributes), $plain);
     }
 
-    public function authenticate(#[\SensitiveParameter] ?string $bearer): McpCredential
+    public function authenticate(#[\SensitiveParameter] ?string $bearer, bool $recordUsage = true): McpCredential
     {
         $credential = is_string($bearer) && preg_match('/^mdm_[a-f0-9]{64}$/D', $bearer) === 1
             ? McpCredential::query()->where('token_hash', hash('sha256', $bearer))->whereNull('revoked_at')->first()
@@ -36,7 +36,7 @@ final class McpCredentialService
             throw new AuthenticationException('A valid MCP bearer credential is required.');
         }
         // Do not refresh a token's timestamp if it was revoked between lookup and update.
-        if (McpCredential::query()->whereKey($credential->id)->whereNull('revoked_at')->update(['last_used_at' => now()]) !== 1) {
+        if ($recordUsage && McpCredential::query()->whereKey($credential->id)->whereNull('revoked_at')->update(['last_used_at' => now()]) !== 1) {
             throw new AuthenticationException('A valid MCP bearer credential is required.');
         }
 

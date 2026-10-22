@@ -10,6 +10,8 @@ use App\Services\Curl\ParsedCurl;
 use App\Services\Mutations\EndpointInput;
 use App\Services\Mutations\EndpointRequestService;
 use App\Services\Mutations\ResponseInput;
+use App\Services\Mutations\ResponsePoolEntry;
+use App\Services\Mutations\ResponsePoolInput;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use ReflectionClass;
@@ -17,9 +19,77 @@ use ReflectionClass;
 /** Convert public MCP data into the same complete DTOs used by the dashboard. */
 final class McpMockConfiguration
 {
-    public const ENDPOINT = ['name', 'enabled', 'priority', 'curl', 'request', 'matching', 'collection_id', 'tags'];
+    public const ENDPOINT = ['name', 'enabled', 'priority', 'curl', 'request', 'matching', 'collection_id', 'tags', 'selection_mode', 'sequence_on_exhaust'];
 
-    public const RESPONSE = ['id', 'status', 'headers', 'body', 'body_mode', 'locale', 'seed_mode', 'seed', 'delay_ms', 'weight'];
+    public const RESPONSE = ['id', 'status', 'headers', 'body', 'body_mode', 'locale', 'seed_mode', 'seed', 'delay_ms', 'weight', 'sequence_order', 'rule_conditions', 'is_default',
+        'fault_enabled', 'fault_type', 'fault_delay_ms_min', 'fault_delay_ms_max', 'fault_probability'];
+
+    /** Project an explicit patch into a final pool, without saving or changing runtime state. */
+    public function changes(array $changes, MockEndpoint $current): array
+    {
+        $patch = $changes['responses'] ?? [];
+        $ids = [...array_column($patch['update'] ?? [], 'id'), ...($patch['remove'] ?? [])];
+        if (count($ids) !== count(array_unique($ids))) {
+            throw ValidationException::withMessages(['responses' => 'Each response can be changed only once per operation.']);
+        }
+        $rows = $current->responses()->get()->mapWithKeys(fn ($response) => [$response->uuid => ['id' => $response->uuid]])->all();
+        foreach ($ids as $id) {
+            if (! isset($rows[$id])) {
+                throw new McpDomainException(McpErrorCode::NotFound, 'Response does not belong to this mock.');
+            }
+        }
+        foreach ($patch['remove'] ?? [] as $id) {
+            unset($rows[$id]);
+        }
+        foreach ($patch['update'] ?? [] as $data) {
+            $rows[$data['id']] = $data;
+        }
+
+        return [...($changes['endpoint'] ?? []), 'responses' => [...array_values($rows), ...($patch['add'] ?? [])]];
+    }
+
+    public function pool(array $configuration, ?MockEndpoint $current = null): ResponsePoolInput
+    {
+        $mode = $configuration['selection_mode'] ?? $current?->selection_mode ?? 'weighted';
+        $exhaust = $configuration['sequence_on_exhaust'] ?? $current?->sequence_on_exhaust ?? 'repeat_last';
+        if ($mode !== 'sequence') {
+            // Retain pre-extension Weighted metadata, including a no-op patch's
+            // history version; the value is inactive outside Sequence mode.
+            $exhaust = $current?->selection_mode === $mode ? $current->sequence_on_exhaust : ($current === null && $mode === 'weighted' ? 'repeat_last' : null);
+        }
+        if (array_key_exists('sequence_on_exhaust', $configuration) && $mode !== 'sequence') {
+            throw ValidationException::withMessages(['sequence_on_exhaust' => 'On exhaust is only available for Sequence selection.']);
+        }
+        $existing = $current?->responses()->with('rules')->get()->keyBy('uuid');
+        $rows = $configuration['responses'] ?? $existing?->map(fn ($response) => ['id' => $response->uuid])->values()->all() ?? [];
+        if (count($rows) > 50) {
+            throw ValidationException::withMessages(['responses' => 'P0 supports at most 50 responses per mock.']);
+        }
+        $entries = [];
+        $ids = [];
+        foreach ($rows as $index => $data) {
+            $response = isset($data['id']) ? $existing?->get($data['id']) : null;
+            if (isset($data['id']) && $response === null) {
+                throw new McpDomainException(McpErrorCode::NotFound, 'Response does not belong to this mock.');
+            }
+            if ($response !== null && in_array($response->id, $ids, true)) {
+                throw ValidationException::withMessages(['responses' => 'Each response can be changed only once per operation.']);
+            }
+            $ids[] = $response?->id;
+            foreach (['sequence_order' => 'sequence', 'rule_conditions' => 'rule', 'is_default' => 'rule'] as $field => $requiredMode) {
+                if (array_key_exists($field, $data) && $mode !== $requiredMode) {
+                    throw ValidationException::withMessages(["responses.$index.$field" => "$field is only available for $requiredMode selection."]);
+                }
+            }
+            $entries[] = new ResponsePoolEntry($response?->id, $this->response($data, $response),
+                $mode === 'sequence' ? ($data['sequence_order'] ?? ($current?->selection_mode === 'sequence' ? $response?->sequence_order : null) ?? $index) : null,
+                $mode === 'rule' && ($data['is_default'] ?? ($current?->selection_mode === 'rule' && $response?->is_default)),
+                $mode === 'rule' ? ($data['rule_conditions'] ?? ($current?->selection_mode === 'rule' ? $response?->rules->map(fn ($rule) => $rule->only(['field_type', 'field_name', 'operator', 'value', 'priority']))->all() : null) ?? []) : [],
+                $response === null || array_diff(array_keys($data), ['id', 'sequence_order', 'rule_conditions', 'is_default']) !== []);
+        }
+
+        return new ResponsePoolInput($mode, $exhaust, $entries);
+    }
 
     public function keys(array $data, array $allowed): void
     {
@@ -92,7 +162,9 @@ final class McpMockConfiguration
             }
         }
         $map = ['status' => 'statusCode', 'body' => 'body', 'body_mode' => 'bodyMode', 'seed_mode' => 'seedMode',
-            'seed' => 'seed', 'locale' => 'locale', 'weight' => 'weight', 'delay_ms' => 'delayMs'];
+            'seed' => 'seed', 'locale' => 'locale', 'weight' => 'weight', 'delay_ms' => 'delayMs',
+            'fault_enabled' => 'faultEnabled', 'fault_type' => 'faultType', 'fault_delay_ms_min' => 'faultDelayMsMin',
+            'fault_delay_ms_max' => 'faultDelayMsMax', 'fault_probability' => 'faultProbability'];
         foreach ($map as $key => $field) {
             if (array_key_exists($key, $data)) {
                 $values[$field] = $data[$key];

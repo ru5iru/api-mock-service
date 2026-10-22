@@ -5,6 +5,7 @@ namespace App\Services\Imports;
 use App\Models\Collection;
 use App\Models\Environment;
 use App\Models\MockEndpoint;
+use App\Models\TestRun;
 use App\Services\Config\ImportMode;
 use App\Services\Config\ImportPlan;
 use App\Services\Config\ImportSummary;
@@ -45,75 +46,88 @@ final readonly class MappedImportService
             if (! is_array($cached) || ! hash_equals($cached['digest'], $digest)) {
                 throw new InvalidArgumentException('The import preview expired or changed. Preview the file again.');
             }
-            $summary = DB::transaction(function () use ($cached, $token, $digest): ImportSummary {
-                $document = $cached['document'];
-                $mode = $cached['mode'];
-                $plan = $this->analyze($document, $mode, $token, $digest);
-                if ($plan->errors !== []) {
-                    throw new InvalidArgumentException(implode(' ', $plan->errors));
-                }
-                $created = $updated = $responseCreated = $responseUpdated = $responseDeleted = $snapshots = 0;
-                $batch = (string) Str::uuid();
-                foreach ($document['folders'] as $folder) {
-                    Collection::query()->firstOrCreate(['name' => $folder]);
-                }
-                foreach ($document['items'] as $index => $item) {
-                    $action = $plan->items[$index];
-                    if ($action['action'] === 'skip') {
-                        continue;
-                    }
-                    $endpoint = $action['action'] === 'update'
-                        ? MockEndpoint::query()->where('uuid', $action['uuid'])->lockForUpdate()->firstOrFail()
-                        : new MockEndpoint(['enabled' => true, 'priority' => 0]);
-                    $oldResponses = $endpoint->exists ? $endpoint->responses()->get() : collect();
-                    $before = $endpoint->exists ? [...$this->revisions->snapshot($endpoint), 'import_response_pool' => $oldResponses->map(fn ($response) => $this->revisions->snapshot($response))->all()] : null;
-                    $parsed = $this->parser->parse($item['raw_curl']);
-                    RunRouting::validateConfiguration($parsed);
-                    $variant = $this->hasher->forOptions($parsed, false, false, false, $item['excluded_query_params'], $item['excluded_headers'], $item['path_pattern_enabled']);
-                    $collection = Collection::query()->firstOrCreate(['name' => $item['collection']]);
-                    $endpoint->fill([
-                        'name' => $item['name'], 'collection_id' => $collection->id,
-                        'method' => $parsed->method, 'raw_curl' => $item['raw_curl'],
-                        'normalized_curl' => $variant->normalized, 'curl_hash' => $variant->hash,
-                        'signature_version' => (int) substr($variant->name, 1),
-                        'exclude_cookies' => false, 'exclude_auth' => false, 'exclude_headers' => false,
-                        'excluded_query_params' => $item['excluded_query_params'], 'excluded_headers' => $item['excluded_headers'],
-                        'path_pattern_enabled' => $item['path_pattern_enabled'],
-                        'selection_mode' => 'weighted', 'sequence_on_exhaust' => null,
-                        'external_source' => ['type' => $document['type'], 'correlation_key' => $item['correlation_key'], 'spec_title' => $document['title'], 'imported_at' => now()->utc()->toIso8601String(), 'variable_provenance' => $item['variable_provenance'] ?? []],
-                    ])->save();
-                    $before === null ? $created++ : $updated++;
-                    foreach ($item['responses'] as $position => $response) {
-                        // Imported examples are static, equally weighted, with no inferred callback/fault intent.
-                        $attributes = [...$response, 'delay_ms' => 0, 'sequence_order' => null, 'is_default' => false,
-                            'template' => $response['template'] ?? null, 'editor_view' => 'json', 'seed_mode' => 'random', 'seed' => null, 'locale' => 'en',
-                            'fault_enabled' => false, 'fault_type' => 'delay', 'fault_delay_ms_min' => 0, 'fault_delay_ms_max' => null, 'fault_probability' => 100,
-                            'callback_enabled' => false, 'callback_url' => null, 'callback_headers' => null, 'callback_body' => null,
-                            'callback_signing_enabled' => false, 'callback_signing_secret' => null];
-                        if (isset($oldResponses[$position])) {
-                            $oldResponses[$position]->fill($attributes)->save();
-                            $oldResponses[$position]->rules()->delete();
-                            $responseUpdated++;
-                        } else {
-                            $endpoint->responses()->create($attributes);
-                            $responseCreated++;
-                        }
-                    }
-                    foreach ($oldResponses->slice(count($item['responses'])) as $response) {
-                        $response->delete();
-                        $responseDeleted++;
-                    }
-                    if ($before !== null) {
-                        $this->revisions->record($endpoint, $before, 'import', $batch, 'External import: '.$document['type']);
-                        $snapshots++;
-                    }
-                }
-
-                return new ImportSummary($created, $updated, $responseCreated, $responseUpdated, $responseDeleted, 0, $plan->metadata['warning_count'], $snapshots, $snapshots > 0 ? $batch : null);
-            });
+            $summary = $this->applyDocument($cached['document'], $cached['mode'], token: $token, digest: $digest)['summary'];
             Cache::forget('mapped-import:'.$token);
 
             return $summary;
+        });
+    }
+
+    /**
+     * Reused by cached dashboard confirmation and locked, idempotent MCP imports.
+     *
+     * @return array{summary: ImportSummary, endpoints: list<array{endpoint: MockEndpoint, action: string}>, plan: ImportPlan}
+     */
+    public function applyDocument(array $document, ImportMode $mode, ?TestRun $run = null, string $token = '', string $digest = ''): array
+    {
+        return DB::transaction(function () use ($document, $mode, $run, $token, $digest): array {
+            $plan = $this->analyze($document, $mode, $token, $digest, $run);
+            if ($plan->errors !== []) {
+                throw new InvalidArgumentException(implode(' ', $plan->errors));
+            }
+            $created = $updated = $responseCreated = $responseUpdated = $responseDeleted = $snapshots = 0;
+            $batch = (string) Str::uuid();
+            $endpoints = [];
+            foreach ($document['folders'] as $folder) {
+                Collection::query()->firstOrCreate(['name' => $folder]);
+            }
+            foreach ($document['items'] as $index => $item) {
+                $action = $plan->items[$index];
+                if ($action['action'] === 'skip') {
+                    continue;
+                }
+                $endpoint = $action['action'] === 'update'
+                    ? ($run === null ? MockEndpoint::query() : $run->endpoints()->getQuery())->where('uuid', $action['uuid'])->lockForUpdate()->firstOrFail()
+                    : ($run === null ? new MockEndpoint(['enabled' => true, 'priority' => 0]) : $run->endpoints()->make(['enabled' => true, 'priority' => 0]));
+                $oldResponses = $endpoint->exists ? $endpoint->responses()->get() : collect();
+                $before = $endpoint->exists ? [...$this->revisions->snapshot($endpoint), 'import_response_pool' => $oldResponses->map(fn ($response) => $this->revisions->snapshot($response))->all()] : null;
+                $parsed = $this->parser->parse($item['raw_curl']);
+                RunRouting::validateConfiguration($parsed);
+                $variant = $this->hasher->forOptions($parsed, false, false, false, $item['excluded_query_params'], $item['excluded_headers'], $item['path_pattern_enabled']);
+                $collection = Collection::query()->firstOrCreate(['name' => $item['collection']]);
+                $endpoint->fill([
+                    'name' => $item['name'], 'collection_id' => $collection->id,
+                    'method' => $parsed->method, 'raw_curl' => $item['raw_curl'],
+                    'normalized_curl' => $variant->normalized, 'curl_hash' => $variant->hash,
+                    'signature_version' => (int) substr($variant->name, 1),
+                    'exclude_cookies' => false, 'exclude_auth' => false, 'exclude_headers' => false,
+                    'excluded_query_params' => $item['excluded_query_params'], 'excluded_headers' => $item['excluded_headers'],
+                    'path_pattern_enabled' => $item['path_pattern_enabled'],
+                    'selection_mode' => 'weighted', 'sequence_on_exhaust' => null,
+                    'external_source' => ['type' => $document['type'], 'correlation_key' => $item['correlation_key'], 'spec_title' => $document['title'], 'imported_at' => now()->utc()->toIso8601String(), 'variable_provenance' => $item['variable_provenance'] ?? []],
+                ])->save();
+                $before === null ? $created++ : $updated++;
+                foreach ($item['responses'] as $position => $response) {
+                    // Imported examples are static, equally weighted, with no inferred callback/fault intent.
+                    $attributes = [...$response, 'delay_ms' => 0, 'sequence_order' => null, 'is_default' => false,
+                        'template' => $response['template'] ?? null, 'editor_view' => 'json', 'seed_mode' => 'random', 'seed' => null, 'locale' => 'en',
+                        'fault_enabled' => false, 'fault_type' => 'delay', 'fault_delay_ms_min' => 0, 'fault_delay_ms_max' => null, 'fault_probability' => 100,
+                        'callback_enabled' => false, 'callback_url' => null, 'callback_headers' => null, 'callback_body' => null,
+                        'callback_signing_enabled' => false, 'callback_signing_secret' => null];
+                    if (isset($oldResponses[$position])) {
+                        $oldResponses[$position]->fill($attributes)->save();
+                        $oldResponses[$position]->rules()->delete();
+                        $responseUpdated++;
+                    } else {
+                        $endpoint->responses()->create($attributes);
+                        $responseCreated++;
+                    }
+                }
+                foreach ($oldResponses->slice(count($item['responses'])) as $response) {
+                    $response->delete();
+                    $responseDeleted++;
+                }
+                $endpoints[] = ['endpoint' => $endpoint, 'action' => $action['action']];
+                if ($before !== null || $run !== null) {
+                    $snapshot = $before ?? [...$this->revisions->snapshot($endpoint), 'import_response_pool' => $endpoint->responses()->get()->map(fn ($response) => $this->revisions->snapshot($response))->all()];
+                    $this->revisions->record($endpoint, $snapshot, 'import', $batch, 'External import: '.$document['type'], $run);
+                    $snapshots++;
+                }
+            }
+
+            $summary = new ImportSummary($created, $updated, $responseCreated, $responseUpdated, $responseDeleted, 0, $plan->metadata['warning_count'], $snapshots, $snapshots > 0 ? $batch : null);
+
+            return compact('summary', 'endpoints', 'plan');
         });
     }
 
@@ -144,7 +158,13 @@ final readonly class MappedImportService
         }, 3);
     }
 
-    private function analyze(array $document, ImportMode $mode, string $token, string $digest): ImportPlan
+    /** In-memory analysis: no preview cache, locks or configuration writes. */
+    public function previewDocument(array $document, ImportMode $mode, ?TestRun $run = null): ImportPlan
+    {
+        return $this->analyze($document, $mode, '', '', $run);
+    }
+
+    private function analyze(array $document, ImportMode $mode, string $token, string $digest, ?TestRun $run = null): ImportPlan
     {
         $errors = [];
         $counts = ['creates' => 0, 'updates' => 0, 'conflicts' => 0, 'revision_snapshots' => 0];
@@ -153,7 +173,7 @@ final readonly class MappedImportService
         $warningCount = count($document['warnings']);
         $secrets = false;
         foreach ($document['items'] as $item) {
-            $matches = MockEndpoint::query()->where('external_source->type', $document['type'])
+            $matches = ($run === null ? MockEndpoint::query() : $run->endpoints()->getQuery())->where('external_source->type', $document['type'])
                 ->where('external_source->correlation_key', $item['correlation_key'])->orderBy('id')->get();
             $existing = $matches->first();
             $duplicate = isset($seen[$item['correlation_key']]);

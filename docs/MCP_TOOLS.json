@@ -1,5 +1,328 @@
 [
     {
+        "name": "apply_postman_import",
+        "description": "Atomically import the same Postman JSON/options reviewed in preview_postman_import into this active owned run. Creates/updates/skips using the shared dashboard importer; default create-only, upsert replaces matching response pools, clone always creates. Required idempotency key: identical full input returns the cached result, different input conflicts. Returns summary, applied plan and both routing curls for changed mocks. Folder Collections are shared metadata; mocks/responses/history are run-owned. Never executes scripts or creates Environment variables.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "collection": {
+                    "type": "string",
+                    "maxLength": 2097152
+                },
+                "environment": {
+                    "type": "string",
+                    "maxLength": 2097152
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": [
+                        "create-only",
+                        "upsert",
+                        "clone"
+                    ]
+                },
+                "mask_secrets": {
+                    "type": "boolean"
+                },
+                "variable_mode": {
+                    "type": "string",
+                    "enum": [
+                        "exclude",
+                        "resolve"
+                    ]
+                },
+                "idempotency_key": {
+                    "type": "string",
+                    "maxLength": 128
+                }
+            },
+            "required": [
+                "run_id",
+                "collection",
+                "idempotency_key"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "run_id": {
+                            "type": "string"
+                        },
+                        "summary": {
+                            "type": "object"
+                        },
+                        "plan": {
+                            "type": "object"
+                        },
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "mock_id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "action": {
+                                        "type": "string"
+                                    },
+                                    "response_count": {
+                                        "type": "integer"
+                                    },
+                                    "revision_reference": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "invocation": {
+                                        "type": "object",
+                                        "properties": {
+                                            "preferred": {
+                                                "type": "string"
+                                            },
+                                            "header": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "url": {
+                                                        "type": "string"
+                                                    },
+                                                    "headers": {
+                                                        "type": "object"
+                                                    },
+                                                    "curl": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": []
+                                            },
+                                            "path_prefix": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "url": {
+                                                        "type": "string"
+                                                    },
+                                                    "curl": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": []
+                                            },
+                                            "origin_note": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": []
+                                    }
+                                },
+                                "required": []
+                            }
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "preview_postman_import",
+        "description": "Analyze Postman v2.1 JSON and optional companion Environment JSON within your owned run. Returns the dashboard import plan: actions, variable candidates, credential and inert script warnings. Default create-only/exclude; resolve freezes values from the run-bound Environment. No files, variables, preview cache, audit rows or credential timestamps are saved. Scripts never execute.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "collection": {
+                    "type": "string",
+                    "maxLength": 2097152
+                },
+                "environment": {
+                    "type": "string",
+                    "maxLength": 2097152
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": [
+                        "create-only",
+                        "upsert",
+                        "clone"
+                    ]
+                },
+                "mask_secrets": {
+                    "type": "boolean"
+                },
+                "variable_mode": {
+                    "type": "string",
+                    "enum": [
+                        "exclude",
+                        "resolve"
+                    ]
+                }
+            },
+            "required": [
+                "run_id",
+                "collection"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "metadata": {
+                            "type": "object"
+                        },
+                        "token": {
+                            "type": "string"
+                        },
+                        "digest": {
+                            "type": "string"
+                        },
+                        "mode": {
+                            "type": "string"
+                        },
+                        "replace_responses": {
+                            "type": "boolean"
+                        },
+                        "counts": {
+                            "type": "object"
+                        },
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        "errors": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "warnings": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "can_apply": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
         "name": "start_test_run",
         "description": "Create an isolated run owned by this credential, bound to an Environment name (defaults to the active environment without changing it). Returns instructions for both header and prefix routing.",
         "inputSchema": {
@@ -239,7 +562,7 @@
     },
     {
         "name": "create_mock",
-        "description": "Atomically create one run-owned request and 1\u201350 equally weighted-by-default responses. Provide curl OR structured request. Idempotency key required; same-run canonical duplicates return CONFLICT with the existing ID. No scripts execute.",
+        "description": "Atomically create one run-owned request and 1\u201350 responses. Omit selection fields for Weighted; Sequence uses zero-based order and an exhaustion policy; Rule requires exactly one fallback. Provide curl OR structured request. Idempotency key required; same-run canonical duplicates return CONFLICT with the existing ID. No scripts execute.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -250,6 +573,22 @@
                 "configuration": {
                     "type": "object",
                     "properties": {
+                        "selection_mode": {
+                            "type": "string",
+                            "enum": [
+                                "weighted",
+                                "sequence",
+                                "rule"
+                            ]
+                        },
+                        "sequence_on_exhaust": {
+                            "type": "string",
+                            "enum": [
+                                "repeat_last",
+                                "loop",
+                                "not_found"
+                            ]
+                        },
                         "name": {
                             "type": "string",
                             "maxLength": 255
@@ -410,6 +749,95 @@
                                         "type": "integer",
                                         "minimum": 1,
                                         "maximum": 1000000
+                                    },
+                                    "sequence_order": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 49
+                                    },
+                                    "rule_conditions": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "field_type": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "header",
+                                                        "query",
+                                                        "body_json_path"
+                                                    ]
+                                                },
+                                                "field_name": {
+                                                    "type": "string",
+                                                    "maxLength": 255
+                                                },
+                                                "operator": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "equals",
+                                                        "contains",
+                                                        "regex",
+                                                        "exists"
+                                                    ]
+                                                },
+                                                "value": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "maxLength": 4096
+                                                },
+                                                "priority": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 2147483647
+                                                }
+                                            },
+                                            "required": [
+                                                "field_type",
+                                                "field_name",
+                                                "operator",
+                                                "priority"
+                                            ],
+                                            "additionalProperties": false
+                                        },
+                                        "maxItems": 32,
+                                        "minItems": 0
+                                    },
+                                    "is_default": {
+                                        "type": "boolean"
+                                    },
+                                    "fault_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "fault_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "delay",
+                                            "malformed_body",
+                                            "truncated_body",
+                                            "timeout"
+                                        ],
+                                        "description": "Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported."
+                                    },
+                                    "fault_delay_ms_min": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 120000
+                                    },
+                                    "fault_delay_ms_max": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0,
+                                        "maximum": 120000
+                                    },
+                                    "fault_probability": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 100
                                     }
                                 },
                                 "required": [],
@@ -454,6 +882,15 @@
                         },
                         "priority": {
                             "type": "integer"
+                        },
+                        "selection_mode": {
+                            "type": "string"
+                        },
+                        "sequence_on_exhaust": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
                         },
                         "curl": {
                             "type": "string"
@@ -523,6 +960,45 @@
                                     },
                                     "seed_mode": {
                                         "type": "string"
+                                    },
+                                    "sequence_order": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "is_default": {
+                                        "type": "boolean"
+                                    },
+                                    "rule_conditions": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "fault_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "fault_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "delay",
+                                            "malformed_body",
+                                            "truncated_body",
+                                            "timeout"
+                                        ]
+                                    },
+                                    "fault_delay_ms_min": {
+                                        "type": "integer"
+                                    },
+                                    "fault_delay_ms_max": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "fault_probability": {
+                                        "type": "integer"
                                     }
                                 },
                                 "required": []
@@ -804,6 +1280,15 @@
                         "priority": {
                             "type": "integer"
                         },
+                        "selection_mode": {
+                            "type": "string"
+                        },
+                        "sequence_on_exhaust": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
                         "curl": {
                             "type": "string"
                         },
@@ -872,6 +1357,45 @@
                                     },
                                     "seed_mode": {
                                         "type": "string"
+                                    },
+                                    "sequence_order": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "is_default": {
+                                        "type": "boolean"
+                                    },
+                                    "rule_conditions": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "fault_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "fault_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "delay",
+                                            "malformed_body",
+                                            "truncated_body",
+                                            "timeout"
+                                        ]
+                                    },
+                                    "fault_delay_ms_min": {
+                                        "type": "integer"
+                                    },
+                                    "fault_delay_ms_max": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "fault_probability": {
+                                        "type": "integer"
                                     }
                                 },
                                 "required": []
@@ -935,7 +1459,7 @@
     },
     {
         "name": "validate_mock",
-        "description": "Validate proposed configuration without saving or advancing runtime state. Optional owned run/mock reference compares with an existing configuration. Uses the same dashboard validators.",
+        "description": "Validate proposed configuration without saving or advancing runtime state. Supply configuration OR the same changes patch used by update_mock (requires run_id/mock_id). Validates the final response pool with the shared dashboard selection validator.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -950,6 +1474,22 @@
                 "configuration": {
                     "type": "object",
                     "properties": {
+                        "selection_mode": {
+                            "type": "string",
+                            "enum": [
+                                "weighted",
+                                "sequence",
+                                "rule"
+                            ]
+                        },
+                        "sequence_on_exhaust": {
+                            "type": "string",
+                            "enum": [
+                                "repeat_last",
+                                "loop",
+                                "not_found"
+                            ]
+                        },
                         "name": {
                             "type": "string",
                             "maxLength": 255
@@ -1060,6 +1600,10 @@
                             "items": {
                                 "type": "object",
                                 "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
                                     "status": {
                                         "type": "integer",
                                         "minimum": 100,
@@ -1110,6 +1654,95 @@
                                         "type": "integer",
                                         "minimum": 1,
                                         "maximum": 1000000
+                                    },
+                                    "sequence_order": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 49
+                                    },
+                                    "rule_conditions": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "field_type": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "header",
+                                                        "query",
+                                                        "body_json_path"
+                                                    ]
+                                                },
+                                                "field_name": {
+                                                    "type": "string",
+                                                    "maxLength": 255
+                                                },
+                                                "operator": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "equals",
+                                                        "contains",
+                                                        "regex",
+                                                        "exists"
+                                                    ]
+                                                },
+                                                "value": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "maxLength": 4096
+                                                },
+                                                "priority": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 2147483647
+                                                }
+                                            },
+                                            "required": [
+                                                "field_type",
+                                                "field_name",
+                                                "operator",
+                                                "priority"
+                                            ],
+                                            "additionalProperties": false
+                                        },
+                                        "maxItems": 32,
+                                        "minItems": 0
+                                    },
+                                    "is_default": {
+                                        "type": "boolean"
+                                    },
+                                    "fault_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "fault_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "delay",
+                                            "malformed_body",
+                                            "truncated_body",
+                                            "timeout"
+                                        ],
+                                        "description": "Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported."
+                                    },
+                                    "fault_delay_ms_min": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 120000
+                                    },
+                                    "fault_delay_ms_max": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0,
+                                        "maximum": 120000
+                                    },
+                                    "fault_probability": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 100
                                     }
                                 },
                                 "required": [],
@@ -1121,105 +1754,6 @@
                     },
                     "required": [],
                     "additionalProperties": false
-                }
-            },
-            "required": [
-                "configuration"
-            ],
-            "additionalProperties": false
-        },
-        "outputSchema": {
-            "type": "object",
-            "properties": {
-                "ok": {
-                    "type": "boolean"
-                },
-                "data": {
-                    "type": "object",
-                    "properties": {
-                        "valid": {
-                            "type": "boolean"
-                        },
-                        "errors": {
-                            "type": "array",
-                            "items": {
-                                "type": "object"
-                            }
-                        },
-                        "warnings": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "required": []
-                },
-                "error": {
-                    "type": "object",
-                    "properties": {
-                        "code": {
-                            "type": "string",
-                            "enum": [
-                                "VALIDATION_ERROR",
-                                "AUTH_ERROR",
-                                "FORBIDDEN",
-                                "CONFLICT",
-                                "RUN_NOT_FOUND",
-                                "RUN_FINISHED",
-                                "ASSERTION_FAILED",
-                                "INCONCLUSIVE_EVIDENCE",
-                                "IDEMPOTENCY_CONFLICT",
-                                "NOT_FOUND"
-                            ]
-                        },
-                        "message": {
-                            "type": "string"
-                        },
-                        "details": {
-                            "type": "object"
-                        }
-                    },
-                    "required": [
-                        "code",
-                        "message"
-                    ]
-                },
-                "correlation_id": {
-                    "type": "string",
-                    "format": "uuid"
-                }
-            },
-            "required": [
-                "ok",
-                "correlation_id"
-            ]
-        },
-        "annotations": {
-            "readOnlyHint": true,
-            "destructiveHint": false,
-            "idempotentHint": true,
-            "openWorldHint": false
-        }
-    },
-    {
-        "name": "update_mock",
-        "description": "Patch endpoint fields and add/update/remove individual responses atomically. Omitted fields are preserved. Supply the version returned by get_mock; stale versions return CONFLICT. Responses remain Weighted in P0.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "run_id": {
-                    "type": "string",
-                    "format": "uuid"
-                },
-                "mock_id": {
-                    "type": "string",
-                    "format": "uuid"
-                },
-                "expected_version": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 2147483647
                 },
                 "changes": {
                     "type": "object",
@@ -1227,6 +1761,22 @@
                         "endpoint": {
                             "type": "object",
                             "properties": {
+                                "selection_mode": {
+                                    "type": "string",
+                                    "enum": [
+                                        "weighted",
+                                        "sequence",
+                                        "rule"
+                                    ]
+                                },
+                                "sequence_on_exhaust": {
+                                    "type": "string",
+                                    "enum": [
+                                        "repeat_last",
+                                        "loop",
+                                        "not_found"
+                                    ]
+                                },
                                 "name": {
                                     "type": "string",
                                     "maxLength": 255
@@ -1394,6 +1944,95 @@
                                                 "type": "integer",
                                                 "minimum": 1,
                                                 "maximum": 1000000
+                                            },
+                                            "sequence_order": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 49
+                                            },
+                                            "rule_conditions": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "field_type": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "header",
+                                                                "query",
+                                                                "body_json_path"
+                                                            ]
+                                                        },
+                                                        "field_name": {
+                                                            "type": "string",
+                                                            "maxLength": 255
+                                                        },
+                                                        "operator": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "equals",
+                                                                "contains",
+                                                                "regex",
+                                                                "exists"
+                                                            ]
+                                                        },
+                                                        "value": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "maxLength": 4096
+                                                        },
+                                                        "priority": {
+                                                            "type": "integer",
+                                                            "minimum": 0,
+                                                            "maximum": 2147483647
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "field_type",
+                                                        "field_name",
+                                                        "operator",
+                                                        "priority"
+                                                    ],
+                                                    "additionalProperties": false
+                                                },
+                                                "maxItems": 32,
+                                                "minItems": 0
+                                            },
+                                            "is_default": {
+                                                "type": "boolean"
+                                            },
+                                            "fault_enabled": {
+                                                "type": "boolean"
+                                            },
+                                            "fault_type": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "delay",
+                                                    "malformed_body",
+                                                    "truncated_body",
+                                                    "timeout"
+                                                ],
+                                                "description": "Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported."
+                                            },
+                                            "fault_delay_ms_min": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_delay_ms_max": {
+                                                "type": [
+                                                    "integer",
+                                                    "null"
+                                                ],
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_probability": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 100
                                             }
                                         },
                                         "required": [],
@@ -1461,6 +2100,653 @@
                                                 "type": "integer",
                                                 "minimum": 1,
                                                 "maximum": 1000000
+                                            },
+                                            "sequence_order": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 49
+                                            },
+                                            "rule_conditions": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "field_type": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "header",
+                                                                "query",
+                                                                "body_json_path"
+                                                            ]
+                                                        },
+                                                        "field_name": {
+                                                            "type": "string",
+                                                            "maxLength": 255
+                                                        },
+                                                        "operator": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "equals",
+                                                                "contains",
+                                                                "regex",
+                                                                "exists"
+                                                            ]
+                                                        },
+                                                        "value": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "maxLength": 4096
+                                                        },
+                                                        "priority": {
+                                                            "type": "integer",
+                                                            "minimum": 0,
+                                                            "maximum": 2147483647
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "field_type",
+                                                        "field_name",
+                                                        "operator",
+                                                        "priority"
+                                                    ],
+                                                    "additionalProperties": false
+                                                },
+                                                "maxItems": 32,
+                                                "minItems": 0
+                                            },
+                                            "is_default": {
+                                                "type": "boolean"
+                                            },
+                                            "fault_enabled": {
+                                                "type": "boolean"
+                                            },
+                                            "fault_type": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "delay",
+                                                    "malformed_body",
+                                                    "truncated_body",
+                                                    "timeout"
+                                                ],
+                                                "description": "Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported."
+                                            },
+                                            "fault_delay_ms_min": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_delay_ms_max": {
+                                                "type": [
+                                                    "integer",
+                                                    "null"
+                                                ],
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_probability": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 100
+                                            }
+                                        },
+                                        "required": [
+                                            "id"
+                                        ],
+                                        "additionalProperties": false
+                                    },
+                                    "maxItems": 50,
+                                    "minItems": 0
+                                },
+                                "remove": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
+                                    "maxItems": 50,
+                                    "minItems": 0
+                                }
+                            },
+                            "required": [],
+                            "additionalProperties": false
+                        }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                }
+            },
+            "required": [],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "valid": {
+                            "type": "boolean"
+                        },
+                        "errors": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        "warnings": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "update_mock",
+        "description": "Patch endpoint fields and add/update/remove individual responses atomically. Omitted fields are preserved. Supply the version returned by get_mock; stale versions return CONFLICT. Supports Weighted, Sequence and Rule selection; validates the final pool atomically, including fallback swaps.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "mock_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "expected_version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                },
+                "changes": {
+                    "type": "object",
+                    "properties": {
+                        "endpoint": {
+                            "type": "object",
+                            "properties": {
+                                "selection_mode": {
+                                    "type": "string",
+                                    "enum": [
+                                        "weighted",
+                                        "sequence",
+                                        "rule"
+                                    ]
+                                },
+                                "sequence_on_exhaust": {
+                                    "type": "string",
+                                    "enum": [
+                                        "repeat_last",
+                                        "loop",
+                                        "not_found"
+                                    ]
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "maxLength": 255
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "priority": {
+                                    "type": "integer",
+                                    "minimum": -1000,
+                                    "maximum": 1000
+                                },
+                                "curl": {
+                                    "type": "string",
+                                    "maxLength": 131072
+                                },
+                                "request": {
+                                    "type": "object",
+                                    "properties": {
+                                        "method": {
+                                            "type": "string",
+                                            "enum": [
+                                                "GET",
+                                                "POST",
+                                                "PUT",
+                                                "PATCH",
+                                                "DELETE",
+                                                "HEAD",
+                                                "OPTIONS"
+                                            ]
+                                        },
+                                        "url": {
+                                            "type": "string",
+                                            "maxLength": 8192
+                                        },
+                                        "headers": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "string",
+                                                "maxLength": 4096
+                                            },
+                                            "maxProperties": 64
+                                        },
+                                        "body": {
+                                            "type": "string",
+                                            "maxLength": 65536
+                                        }
+                                    },
+                                    "required": [
+                                        "url"
+                                    ],
+                                    "additionalProperties": false
+                                },
+                                "matching": {
+                                    "type": "object",
+                                    "properties": {
+                                        "exclude_cookies": {
+                                            "type": "boolean"
+                                        },
+                                        "exclude_auth": {
+                                            "type": "boolean"
+                                        },
+                                        "exclude_headers": {
+                                            "type": "boolean"
+                                        },
+                                        "excluded_query_params": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "maxLength": 255
+                                            },
+                                            "maxItems": 100,
+                                            "minItems": 0
+                                        },
+                                        "excluded_headers": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "maxLength": 255
+                                            },
+                                            "maxItems": 100,
+                                            "minItems": 0
+                                        },
+                                        "path_pattern_enabled": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [],
+                                    "additionalProperties": false
+                                },
+                                "collection_id": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 2147483647
+                                },
+                                "tags": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 2147483647
+                                    },
+                                    "maxItems": 50,
+                                    "minItems": 0
+                                }
+                            },
+                            "required": [],
+                            "additionalProperties": false
+                        },
+                        "responses": {
+                            "type": "object",
+                            "properties": {
+                                "add": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "status": {
+                                                "type": "integer",
+                                                "minimum": 100,
+                                                "maximum": 599
+                                            },
+                                            "headers": {
+                                                "type": "object",
+                                                "additionalProperties": {
+                                                    "type": "string",
+                                                    "maxLength": 4096
+                                                },
+                                                "maxProperties": 64
+                                            },
+                                            "body": {
+                                                "type": "string",
+                                                "maxLength": 65536
+                                            },
+                                            "body_mode": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "static",
+                                                    "template"
+                                                ]
+                                            },
+                                            "locale": {
+                                                "type": "string",
+                                                "maxLength": 32
+                                            },
+                                            "seed_mode": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "random",
+                                                    "fixed",
+                                                    "request"
+                                                ]
+                                            },
+                                            "seed": {
+                                                "type": "integer",
+                                                "minimum": -2147483648,
+                                                "maximum": 2147483647
+                                            },
+                                            "delay_ms": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 30000
+                                            },
+                                            "weight": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 1000000
+                                            },
+                                            "sequence_order": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 49
+                                            },
+                                            "rule_conditions": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "field_type": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "header",
+                                                                "query",
+                                                                "body_json_path"
+                                                            ]
+                                                        },
+                                                        "field_name": {
+                                                            "type": "string",
+                                                            "maxLength": 255
+                                                        },
+                                                        "operator": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "equals",
+                                                                "contains",
+                                                                "regex",
+                                                                "exists"
+                                                            ]
+                                                        },
+                                                        "value": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "maxLength": 4096
+                                                        },
+                                                        "priority": {
+                                                            "type": "integer",
+                                                            "minimum": 0,
+                                                            "maximum": 2147483647
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "field_type",
+                                                        "field_name",
+                                                        "operator",
+                                                        "priority"
+                                                    ],
+                                                    "additionalProperties": false
+                                                },
+                                                "maxItems": 32,
+                                                "minItems": 0
+                                            },
+                                            "is_default": {
+                                                "type": "boolean"
+                                            },
+                                            "fault_enabled": {
+                                                "type": "boolean"
+                                            },
+                                            "fault_type": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "delay",
+                                                    "malformed_body",
+                                                    "truncated_body",
+                                                    "timeout"
+                                                ],
+                                                "description": "Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported."
+                                            },
+                                            "fault_delay_ms_min": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_delay_ms_max": {
+                                                "type": [
+                                                    "integer",
+                                                    "null"
+                                                ],
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_probability": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 100
+                                            }
+                                        },
+                                        "required": [],
+                                        "additionalProperties": false
+                                    },
+                                    "maxItems": 50,
+                                    "minItems": 0
+                                },
+                                "update": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {
+                                                "type": "string",
+                                                "format": "uuid"
+                                            },
+                                            "status": {
+                                                "type": "integer",
+                                                "minimum": 100,
+                                                "maximum": 599
+                                            },
+                                            "headers": {
+                                                "type": "object",
+                                                "additionalProperties": {
+                                                    "type": "string",
+                                                    "maxLength": 4096
+                                                },
+                                                "maxProperties": 64
+                                            },
+                                            "body": {
+                                                "type": "string",
+                                                "maxLength": 65536
+                                            },
+                                            "body_mode": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "static",
+                                                    "template"
+                                                ]
+                                            },
+                                            "locale": {
+                                                "type": "string",
+                                                "maxLength": 32
+                                            },
+                                            "seed_mode": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "random",
+                                                    "fixed",
+                                                    "request"
+                                                ]
+                                            },
+                                            "seed": {
+                                                "type": "integer",
+                                                "minimum": -2147483648,
+                                                "maximum": 2147483647
+                                            },
+                                            "delay_ms": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 30000
+                                            },
+                                            "weight": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 1000000
+                                            },
+                                            "sequence_order": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 49
+                                            },
+                                            "rule_conditions": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "field_type": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "header",
+                                                                "query",
+                                                                "body_json_path"
+                                                            ]
+                                                        },
+                                                        "field_name": {
+                                                            "type": "string",
+                                                            "maxLength": 255
+                                                        },
+                                                        "operator": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "equals",
+                                                                "contains",
+                                                                "regex",
+                                                                "exists"
+                                                            ]
+                                                        },
+                                                        "value": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "maxLength": 4096
+                                                        },
+                                                        "priority": {
+                                                            "type": "integer",
+                                                            "minimum": 0,
+                                                            "maximum": 2147483647
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "field_type",
+                                                        "field_name",
+                                                        "operator",
+                                                        "priority"
+                                                    ],
+                                                    "additionalProperties": false
+                                                },
+                                                "maxItems": 32,
+                                                "minItems": 0
+                                            },
+                                            "is_default": {
+                                                "type": "boolean"
+                                            },
+                                            "fault_enabled": {
+                                                "type": "boolean"
+                                            },
+                                            "fault_type": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "delay",
+                                                    "malformed_body",
+                                                    "truncated_body",
+                                                    "timeout"
+                                                ],
+                                                "description": "Existing primary-response fault. Timeout approximates a timeout with bounded delay; connection_reset is unsupported."
+                                            },
+                                            "fault_delay_ms_min": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_delay_ms_max": {
+                                                "type": [
+                                                    "integer",
+                                                    "null"
+                                                ],
+                                                "minimum": 0,
+                                                "maximum": 120000
+                                            },
+                                            "fault_probability": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 100
                                             }
                                         },
                                         "required": [
@@ -1517,6 +2803,15 @@
                         },
                         "priority": {
                             "type": "integer"
+                        },
+                        "selection_mode": {
+                            "type": "string"
+                        },
+                        "sequence_on_exhaust": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
                         },
                         "curl": {
                             "type": "string"
@@ -1586,6 +2881,45 @@
                                     },
                                     "seed_mode": {
                                         "type": "string"
+                                    },
+                                    "sequence_order": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "is_default": {
+                                        "type": "boolean"
+                                    },
+                                    "rule_conditions": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "fault_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "fault_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "delay",
+                                            "malformed_body",
+                                            "truncated_body",
+                                            "timeout"
+                                        ]
+                                    },
+                                    "fault_delay_ms_min": {
+                                        "type": "integer"
+                                    },
+                                    "fault_delay_ms_max": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "fault_probability": {
+                                        "type": "integer"
                                     }
                                 },
                                 "required": []
@@ -1764,6 +3098,374 @@
                         },
                         "origin_note": {
                             "type": "string"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "preview_template",
+        "description": "Render a sample from a raw template OR an owned mock_id + response_id in Template mode. Always read permission only. Uses the run-bound Environment, dashboard validation/Faker catalog and synthetic request/path samples. Seed is an integer or random (default); referenced locale defaults to its response. Never saves preview/configuration/call state, audit rows or credential timestamps. Secret environment previews stay hidden.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "mock_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "response_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "template": {
+                    "type": "string",
+                    "maxLength": 262144
+                },
+                "locale": {
+                    "type": "string",
+                    "enum": [
+                        "en",
+                        "en_US",
+                        "en_GB",
+                        "fr_FR",
+                        "de_DE",
+                        "es_ES",
+                        "it_IT",
+                        "ja_JP"
+                    ]
+                },
+                "seed": {
+                    "type": [
+                        "integer",
+                        "string"
+                    ],
+                    "minimum": -2147483648,
+                    "maximum": 2147483647,
+                    "maxLength": 6
+                }
+            },
+            "required": [
+                "run_id"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "output": {
+                            "type": [
+                                "object",
+                                "array",
+                                "string",
+                                "integer",
+                                "number",
+                                "boolean",
+                                "null"
+                            ]
+                        },
+                        "bytes": {
+                            "type": "integer"
+                        },
+                        "render_ms": {
+                            "type": "number"
+                        },
+                        "synthetic_context": {
+                            "type": "boolean"
+                        },
+                        "sample_notice": {
+                            "type": "string"
+                        },
+                        "issues": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "severity": {
+                                        "type": "string"
+                                    },
+                                    "code": {
+                                        "type": "string"
+                                    },
+                                    "path": {
+                                        "type": "string"
+                                    },
+                                    "line": {
+                                        "type": "integer"
+                                    },
+                                    "col": {
+                                        "type": "integer"
+                                    },
+                                    "message": {
+                                        "type": "string"
+                                    },
+                                    "suggestion": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "severity",
+                                    "code",
+                                    "path",
+                                    "line",
+                                    "col",
+                                    "message",
+                                    "suggestion"
+                                ]
+                            }
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "peek_next_response",
+        "description": "Read the next configured Sequence response and current run/environment cursor without consuming it or creating call state. Honors Repeat last, Loop and Not found. Other modes explicitly return not applicable; templates and callbacks are not executed.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "mock_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "run_id",
+                "mock_id"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "applicable": {
+                            "type": "boolean"
+                        },
+                        "selection_mode": {
+                            "type": "string"
+                        },
+                        "sequence_position": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "response_count": {
+                            "type": "integer"
+                        },
+                        "next_position": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "position_label": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "reason": {
+                            "type": "string"
+                        },
+                        "response": {
+                            "type": [
+                                "object",
+                                "null"
+                            ],
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "status": {
+                                    "type": "integer"
+                                },
+                                "headers": {
+                                    "type": [
+                                        "object",
+                                        "array",
+                                        "null"
+                                    ]
+                                },
+                                "body": {
+                                    "type": "string"
+                                },
+                                "body_mode": {
+                                    "type": "string"
+                                },
+                                "weight": {
+                                    "type": "integer"
+                                },
+                                "delay_ms": {
+                                    "type": "integer"
+                                },
+                                "locale": {
+                                    "type": "string"
+                                },
+                                "seed": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                },
+                                "seed_mode": {
+                                    "type": "string"
+                                },
+                                "sequence_order": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                },
+                                "is_default": {
+                                    "type": "boolean"
+                                },
+                                "rule_conditions": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object"
+                                    }
+                                },
+                                "fault_enabled": {
+                                    "type": "boolean"
+                                },
+                                "fault_type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "delay",
+                                        "malformed_body",
+                                        "truncated_body",
+                                        "timeout"
+                                    ]
+                                },
+                                "fault_delay_ms_min": {
+                                    "type": "integer"
+                                },
+                                "fault_delay_ms_max": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                },
+                                "fault_probability": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": []
                         }
                     },
                     "required": []
