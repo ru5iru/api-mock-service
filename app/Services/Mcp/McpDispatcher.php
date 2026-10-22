@@ -17,7 +17,7 @@ final class McpDispatcher
     {
         $correlation = (string) Str::uuid();
         $run = null;
-        $preview = $tool === 'preview_template';
+        $preview = McpReadOnlyPreview::tool($tool);
         try {
             $operation = function () use ($tool, $input, $owner, $correlation, $preview, &$run): array {
                 // SQLite ignores FOR UPDATE. Reserve its single writer before any
@@ -31,7 +31,7 @@ final class McpDispatcher
                 if (isset($input['run_id'])) {
                     $run = app(McpReads::class)->run($owner, $input['run_id'], ! $preview);
                 }
-                $data = in_array($tool, ['start_test_run', 'create_mock', 'update_mock', 'reset_test_run', 'finish_test_run', 'assert_calls'], true)
+                $data = in_array($tool, ['start_test_run', 'apply_postman_import', 'create_mock', 'update_mock', 'reset_test_run', 'finish_test_run', 'assert_calls'], true)
                     ? app(McpWrites::class)->execute($tool, $input, $owner, $run)
                     : app(McpReads::class)->execute($tool, $input, $owner, $run);
                 if (! $preview) {

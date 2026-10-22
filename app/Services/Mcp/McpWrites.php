@@ -25,6 +25,9 @@ final class McpWrites
 {
     public function execute(string $tool, array $args, McpCredential $owner, ?TestRun $run): array
     {
+        if ($tool === 'apply_postman_import') {
+            return app(McpPostmanImport::class)->apply($run, $args);
+        }
         if ($tool === 'start_test_run') {
             $environment = isset($args['environment']) ? Environment::query()->where('name', $args['environment'])->first() : app(EnvironmentContext::class)->active();
             if ($environment === null) {

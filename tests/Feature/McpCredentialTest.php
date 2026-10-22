@@ -111,8 +111,8 @@ final class McpCredentialTest extends TestCase
     public function test_permission_mapping_is_a_fixed_contract_and_unknown_permissions_fail_validation(): void
     {
         self::assertSame([
-            'start_test_run' => 'write', 'create_mock' => 'write', 'update_mock' => 'write',
-            'list_test_runs' => 'read', 'list_mocks' => 'read', 'get_mock' => 'read', 'validate_mock' => 'read', 'get_mock_url' => 'read', 'preview_template' => 'read', 'peek_next_response' => 'read', 'explain_match' => 'read',
+            'start_test_run' => 'write', 'create_mock' => 'write', 'apply_postman_import' => 'write', 'update_mock' => 'write',
+            'list_test_runs' => 'read', 'list_mocks' => 'read', 'get_mock' => 'read', 'validate_mock' => 'read', 'get_mock_url' => 'read', 'preview_template' => 'read', 'preview_postman_import' => 'read', 'peek_next_response' => 'read', 'explain_match' => 'read',
             'get_unmatched_requests' => 'verify', 'get_calls' => 'verify', 'assert_calls' => 'verify',
             'reset_test_run' => 'cleanup', 'finish_test_run' => 'cleanup',
         ], McpToolPermissions::REQUIRED);

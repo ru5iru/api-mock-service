@@ -123,3 +123,7 @@ The translation table below is checked against `FakerMethodCatalog.resolve()`; i
 | `$randomCountry` | `{{location.country}}` | Country |
 
 All other `$name` variables (for example `$someObscureVar`) are unmapped and warned by name; no guessed translation is applied. This pass does not change script inheritance, execution policy or script handling.
+
+## MCP tools
+
+Agents can call the read-only `preview_postman_import` tool with raw collection/optional companion JSON and an owned run ID. It reuses this mapper and the shared import-plan analyzer without writing a cached preview. Correlation is restricted to the run; scripts remain inert. The write-only `apply_postman_import` tool re-supplies the same content/options plus an idempotency key and uses the shared atomic writer. Endpoints/responses and history belong to the run; folder Collections remain shared metadata and are retained after run cleanup. No variables are silently created. See [MCP input/output and limits](MCP.md#postman-import-preview).

@@ -42,9 +42,9 @@ final class McpReadToolsTest extends TestCase
         $page = $this->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'], $headers)
             ->assertOk()->assertJsonCount(15, 'result.tools');
         $next = $this->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/list', 'params' => ['cursor' => $page->json('result.nextCursor')]], $headers)
-            ->assertOk()->assertJsonCount(1, 'result.tools');
+            ->assertOk()->assertJsonCount(3, 'result.tools');
         $names = array_column([...$page->json('result.tools'), ...$next->json('result.tools')], 'name');
-        self::assertCount(16, array_unique($names));
+        self::assertCount(18, array_unique($names));
         self::assertContains('preview_template', $names);
     }
 }

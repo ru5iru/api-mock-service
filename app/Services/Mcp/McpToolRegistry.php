@@ -39,7 +39,12 @@ final class McpToolRegistry
         $pagination = ['page' => $integer(1, 10000), 'per_page' => $integer(1, 50)];
         $preference = $enum(['header', 'path-prefix']);
         $condition = $object($conditionFields, ['field_type', 'field_name', 'operator']);
+        $import = [...$run, 'collection' => $string(config('mock.portable_config.max_bytes', 2097152)),
+            'environment' => $string(config('mock.portable_config.max_bytes', 2097152)),
+            'mode' => $enum(['create-only', 'upsert', 'clone']), 'mask_secrets' => ['type' => 'boolean'], 'variable_mode' => $enum(['exclude', 'resolve'])];
         $definitions = [
+            'apply_postman_import' => ['Atomically import the same Postman JSON/options reviewed in preview_postman_import into this active owned run. Creates/updates/skips using the shared dashboard importer; default create-only, upsert replaces matching response pools, clone always creates. Required idempotency key: identical full input returns the cached result, different input conflicts. Returns summary, applied plan and both routing curls for changed mocks. Folder Collections are shared metadata; mocks/responses/history are run-owned. Never executes scripts or creates Environment variables.', $object([...$import, 'idempotency_key' => $string(128)], ['run_id', 'collection', 'idempotency_key'])],
+            'preview_postman_import' => ['Analyze Postman v2.1 JSON and optional companion Environment JSON within your owned run. Returns the dashboard import plan: actions, variable candidates, credential and inert script warnings. Default create-only/exclude; resolve freezes values from the run-bound Environment. No files, variables, preview cache, audit rows or credential timestamps are saved. Scripts never execute.', $object($import, ['run_id', 'collection'])],
             'start_test_run' => ['Create an isolated run owned by this credential, bound to an Environment name (defaults to the active environment without changing it). Returns instructions for both header and prefix routing.', $object(['label' => $string(), 'environment' => $string(), 'preferred' => $preference], ['label'])],
             'list_test_runs' => ['Recover your own active or finished runs after a client restart. Does not expose another credential or ordinary dashboard mocks.', $object(['status' => $enum(['active', 'finished']), ...$pagination])],
             'create_mock' => ['Atomically create one run-owned request and 1–50 responses. Omit selection fields for Weighted; Sequence uses zero-based order and an exhaustion policy; Rule requires exactly one fallback. Provide curl OR structured request. Idempotency key required; same-run canonical duplicates return CONFLICT with the existing ID. No scripts execute.', $object([...$run, 'configuration' => $config, 'idempotency_key' => $string(128)], ['run_id', 'configuration', 'idempotency_key'])],
@@ -58,11 +63,11 @@ final class McpToolRegistry
             'reset_test_run' => ['Reset only this active owned run’s counters, sequence positions and verification evidence. Preserve all mock configuration; record the reset in run history. Requires cleanup permission.', $object($run, ['run_id'])],
             'finish_test_run' => ['Finish your run with delete_mocks or keep_mocks. Deletion affects only this run. Repeating finish returns the original final summary and never performs additional cleanup. Requires cleanup permission.', $object([...$run, 'cleanup' => $enum(['delete_mocks', 'keep_mocks'])], ['run_id', 'cleanup'])],
         ];
-        $readOnly = ['list_test_runs', 'list_mocks', 'get_mock', 'validate_mock', 'get_mock_url', 'preview_template', 'peek_next_response', 'explain_match', 'get_unmatched_requests', 'get_calls', 'assert_calls'];
+        $readOnly = ['list_test_runs', 'list_mocks', 'get_mock', 'validate_mock', 'get_mock_url', 'preview_template', 'preview_postman_import', 'peek_next_response', 'explain_match', 'get_unmatched_requests', 'get_calls', 'assert_calls'];
 
         return collect($definitions)->mapWithKeys(fn ($item, $name) => [$name => ['name' => $name, 'description' => $item[0], 'inputSchema' => $item[1],
             'outputSchema' => app(McpResultSchemas::class)->forTool($name),
-            'annotations' => ['readOnlyHint' => in_array($name, $readOnly, true), 'destructiveHint' => in_array($name, ['finish_test_run', 'update_mock', 'reset_test_run'], true), 'idempotentHint' => in_array($name, [...$readOnly, 'create_mock', 'finish_test_run'], true), 'openWorldHint' => false]]])->all();
+            'annotations' => ['readOnlyHint' => in_array($name, $readOnly, true), 'destructiveHint' => in_array($name, ['finish_test_run', 'update_mock', 'reset_test_run', 'apply_postman_import'], true), 'idempotentHint' => in_array($name, [...$readOnly, 'create_mock', 'apply_postman_import', 'finish_test_run'], true), 'openWorldHint' => false]]])->all();
     }
 
     public function validate(string $tool, array $input): void
@@ -72,6 +77,13 @@ final class McpToolRegistry
             throw new McpDomainException(McpErrorCode::NotFound, 'Unknown tool.');
         }
         $this->check($schema, $input, 'arguments');
+        if (in_array($tool, ['preview_postman_import', 'apply_postman_import'], true)) {
+            foreach (['collection', 'environment'] as $field) {
+                if (isset($input[$field]) && strlen($input[$field]) > config('mock.portable_config.max_bytes', 2097152)) {
+                    $this->invalid($field, 'The file exceeds the configured upload limit.');
+                }
+            }
+        }
         if ($tool === 'preview_template') {
             $raw = array_key_exists('template', $input);
             $reference = isset($input['mock_id'], $input['response_id']);

@@ -51,7 +51,7 @@ final class McpClientIntegrationTest extends TestCase
             $this->ready('https://localhost:'.$tlsPort.'/up', $tls);
             foreach (['http://127.0.0.1:'.$port, 'https://localhost:'.$tlsPort] as $origin) {
                 $client = Client::web($origin.'/mcp')->withToken($token)->withProtocolVersion(ProtocolVersion::V2025_11_25);
-                self::assertCount(16, $client->tools());
+                self::assertCount(18, $client->tools());
                 self::assertSame('2025-11-25', $client->initializeResult()->protocolVersion);
                 $invoke = function (string $name, array $args) use ($client): array {
                     $result = $client->callTool($name, $args);
@@ -120,6 +120,24 @@ final class McpClientIntegrationTest extends TestCase
                 self::assertTrue($badTemplate->isError);
                 self::assertSame('UNKNOWN_METHOD', $badTemplate->structuredContent['error']['details']['issues'][0]['code']);
                 $issued->credential->update(['can_write' => true]);
+                $collection = json_encode(['info' => ['name' => 'Client import', 'schema' => 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'],
+                    'item' => [['name' => 'Imported', 'request' => ['method' => 'GET', 'url' => 'https://ignored.example/imported-client'],
+                        'response' => [['name' => 'Success', 'code' => 200, 'body' => '{"imported":true}']]]]]);
+                $importArgs = [...$run, 'collection' => $collection];
+                $issued->credential->update(['can_write' => false]);
+                $plan = $invoke('preview_postman_import', $importArgs);
+                self::assertTrue($plan['can_apply']);
+                self::assertSame('create', $plan['items'][0]['action']);
+                $issued->credential->update(['can_write' => true]);
+                $imported = $invoke('apply_postman_import', [...$importArgs, 'idempotency_key' => 'client-import']);
+                self::assertSame($imported, $invoke('apply_postman_import', [...$importArgs, 'idempotency_key' => 'client-import']));
+                $conflicting = $client->callTool('apply_postman_import', [...$importArgs, 'idempotency_key' => 'client-import', 'mode' => 'clone']);
+                self::assertTrue($conflicting->isError);
+                self::assertSame('IDEMPOTENCY_CONFLICT', $conflicting->structuredContent['error']['code']);
+                $importMock = $imported['items'][0];
+                Http::withHeaders($importMock['invocation']['header']['headers'])->get($origin.'/imported-client')->throw();
+                Http::get($origin.parse_url($importMock['invocation']['path_prefix']['url'], PHP_URL_PATH))->throw();
+                self::assertSame(2, $invoke('get_calls', [...$run, 'mock_id' => $importMock['mock_id']])['total_match_count']);
                 self::assertSame('finished', $invoke('finish_test_run', [...$run, 'cleanup' => 'delete_mocks'])['status']);
                 $client->disconnect();
             }
@@ -128,7 +146,7 @@ final class McpClientIntegrationTest extends TestCase
             self::assertSame(2, json_decode($example->getOutput(), true, flags: JSON_THROW_ON_ERROR)['total_match_count']);
             self::assertStringNotContainsString($token, $example->getOutput());
             $modern = Client::web('http://127.0.0.1:'.$port.'/mcp')->withToken($token)->withProtocolVersion(ProtocolVersion::V2026_07_28);
-            self::assertCount(16, $modern->tools());
+            self::assertCount(18, $modern->tools());
             self::assertNotNull($modern->discoverResult());
         } finally {
             $tls?->stop();

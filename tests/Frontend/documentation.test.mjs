@@ -111,7 +111,7 @@ test('MCP server documentation covers active transport and credential lifecycle'
         assert.ok(guide.includes(command), command);
     }
     assert.ok(read('docs/USER_GUIDE.md').includes('](MCP.md#credential-lifecycle-cli)'));
-    for (const term of ['Streamable HTTP', '16 tools', 'INCONCLUSIVE_EVIDENCE', 'MCP_TOOLS.json', 'peek_next_response', 'preview_template', 'Troubleshooting']) assert.ok(guide.includes(term), term);
+    for (const term of ['Streamable HTTP', '18 tools', 'INCONCLUSIVE_EVIDENCE', 'MCP_TOOLS.json', 'peek_next_response', 'preview_template', 'preview_postman_import', 'apply_postman_import', 'Troubleshooting']) assert.ok(guide.includes(term), term);
 });
 
 

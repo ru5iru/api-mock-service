@@ -35,6 +35,19 @@ final class McpAuditRedactor
             $sensitiveEntry = is_string($label) && $this->sensitive($label);
             $result = [];
             foreach ($value as $name => $item) {
+                // Variable provenance contains identifiers, never resolved values.
+                if ($name === 'tokens' && is_array($item) && array_is_list($item)
+                    && count(array_filter($item, static fn ($token): bool => is_string($token) && preg_match('/^\{\{\s*\$?[A-Za-z_][A-Za-z0-9_.-]*\s*\}\}$/D', $token) === 1)) === count($item)) {
+                    $result[$name] = $item;
+
+                    continue;
+                }
+                // Import review flags are public metadata, never credential values.
+                if (in_array($name, ['contains_secrets', 'is_secret'], true) && is_bool($item)) {
+                    $result[$name] = $item;
+
+                    continue;
+                }
                 $result[$name] = $this->sensitive((string) $name) || ($name === 'value' && $sensitiveEntry)
                     ? '[REDACTED]' : $this->clean($item, $depth + 1);
             }

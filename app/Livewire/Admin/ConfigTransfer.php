@@ -266,11 +266,7 @@ final class ConfigTransfer extends Component
         $environmentValues = [];
         if ($this->format === 'postman' && $this->environmentFile) {
             try {
-                $environmentDocument = json_decode(file_get_contents($this->environmentFile->getRealPath()), true, 64, JSON_THROW_ON_ERROR);
-                if (! is_array($environmentDocument['values'] ?? null) || ! array_is_list($environmentDocument['values'])) {
-                    throw new InvalidArgumentException('Environment file must contain a values array.');
-                }
-                $environmentValues = $environmentDocument['values'];
+                $environmentValues = app(PostmanMapper::class)->environmentValues(file_get_contents($this->environmentFile->getRealPath()));
             } catch (JsonException|InvalidArgumentException $exception) {
                 $this->addError('environmentFile', $exception->getMessage());
 

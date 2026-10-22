@@ -1,5 +1,328 @@
 [
     {
+        "name": "apply_postman_import",
+        "description": "Atomically import the same Postman JSON/options reviewed in preview_postman_import into this active owned run. Creates/updates/skips using the shared dashboard importer; default create-only, upsert replaces matching response pools, clone always creates. Required idempotency key: identical full input returns the cached result, different input conflicts. Returns summary, applied plan and both routing curls for changed mocks. Folder Collections are shared metadata; mocks/responses/history are run-owned. Never executes scripts or creates Environment variables.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "collection": {
+                    "type": "string",
+                    "maxLength": 2097152
+                },
+                "environment": {
+                    "type": "string",
+                    "maxLength": 2097152
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": [
+                        "create-only",
+                        "upsert",
+                        "clone"
+                    ]
+                },
+                "mask_secrets": {
+                    "type": "boolean"
+                },
+                "variable_mode": {
+                    "type": "string",
+                    "enum": [
+                        "exclude",
+                        "resolve"
+                    ]
+                },
+                "idempotency_key": {
+                    "type": "string",
+                    "maxLength": 128
+                }
+            },
+            "required": [
+                "run_id",
+                "collection",
+                "idempotency_key"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "run_id": {
+                            "type": "string"
+                        },
+                        "summary": {
+                            "type": "object"
+                        },
+                        "plan": {
+                            "type": "object"
+                        },
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "mock_id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "action": {
+                                        "type": "string"
+                                    },
+                                    "response_count": {
+                                        "type": "integer"
+                                    },
+                                    "revision_reference": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "invocation": {
+                                        "type": "object",
+                                        "properties": {
+                                            "preferred": {
+                                                "type": "string"
+                                            },
+                                            "header": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "url": {
+                                                        "type": "string"
+                                                    },
+                                                    "headers": {
+                                                        "type": "object"
+                                                    },
+                                                    "curl": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": []
+                                            },
+                                            "path_prefix": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "url": {
+                                                        "type": "string"
+                                                    },
+                                                    "curl": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": []
+                                            },
+                                            "origin_note": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": []
+                                    }
+                                },
+                                "required": []
+                            }
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
+        "name": "preview_postman_import",
+        "description": "Analyze Postman v2.1 JSON and optional companion Environment JSON within your owned run. Returns the dashboard import plan: actions, variable candidates, credential and inert script warnings. Default create-only/exclude; resolve freezes values from the run-bound Environment. No files, variables, preview cache, audit rows or credential timestamps are saved. Scripts never execute.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "collection": {
+                    "type": "string",
+                    "maxLength": 2097152
+                },
+                "environment": {
+                    "type": "string",
+                    "maxLength": 2097152
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": [
+                        "create-only",
+                        "upsert",
+                        "clone"
+                    ]
+                },
+                "mask_secrets": {
+                    "type": "boolean"
+                },
+                "variable_mode": {
+                    "type": "string",
+                    "enum": [
+                        "exclude",
+                        "resolve"
+                    ]
+                }
+            },
+            "required": [
+                "run_id",
+                "collection"
+            ],
+            "additionalProperties": false
+        },
+        "outputSchema": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "metadata": {
+                            "type": "object"
+                        },
+                        "token": {
+                            "type": "string"
+                        },
+                        "digest": {
+                            "type": "string"
+                        },
+                        "mode": {
+                            "type": "string"
+                        },
+                        "replace_responses": {
+                            "type": "boolean"
+                        },
+                        "counts": {
+                            "type": "object"
+                        },
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        "errors": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "warnings": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "can_apply": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": []
+                },
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "VALIDATION_ERROR",
+                                "AUTH_ERROR",
+                                "FORBIDDEN",
+                                "CONFLICT",
+                                "RUN_NOT_FOUND",
+                                "RUN_FINISHED",
+                                "ASSERTION_FAILED",
+                                "INCONCLUSIVE_EVIDENCE",
+                                "IDEMPOTENCY_CONFLICT",
+                                "NOT_FOUND"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "details": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ]
+                },
+                "correlation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "required": [
+                "ok",
+                "correlation_id"
+            ]
+        },
+        "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        }
+    },
+    {
         "name": "start_test_run",
         "description": "Create an isolated run owned by this credential, bound to an Environment name (defaults to the active environment without changing it). Returns instructions for both header and prefix routing.",
         "inputSchema": {

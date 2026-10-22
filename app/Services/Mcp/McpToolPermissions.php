@@ -10,6 +10,7 @@ final class McpToolPermissions
     public const REQUIRED = [
         'start_test_run' => 'write',
         'create_mock' => 'write',
+        'apply_postman_import' => 'write',
         'update_mock' => 'write',
         'list_test_runs' => 'read',
         'list_mocks' => 'read',
@@ -17,6 +18,7 @@ final class McpToolPermissions
         'validate_mock' => 'read',
         'get_mock_url' => 'read',
         'preview_template' => 'read',
+        'preview_postman_import' => 'read',
         'peek_next_response' => 'read',
         'explain_match' => 'read',
         'get_unmatched_requests' => 'verify',

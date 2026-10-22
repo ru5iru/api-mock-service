@@ -39,6 +39,9 @@ final class McpReads
 
     public function execute(string $tool, array $args, McpCredential $owner, ?TestRun $run): array
     {
+        if ($tool === 'preview_postman_import') {
+            return app(McpPostmanImport::class)->preview($run, $args);
+        }
         if ($tool === 'preview_template') {
             return app(McpTemplatePreview::class)->execute($run, $args);
         }

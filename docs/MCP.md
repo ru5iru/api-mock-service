@@ -1,6 +1,6 @@
 # MockDeck MCP
 
-Phase 3 exposes a local Streamable HTTP server at **`/mcp`** with 16 tools: the original 14 P0 tools plus `peek_next_response` and `preview_template`. It builds on Phase 1’s shared services/independent credentials and Phase 2’s two-way request isolation. No external MCP hosting, identity service or agent service is required by MockDeck. Ordinary dashboard requests and verification tokens retain their existing behavior.
+Phase 3 exposes a local Streamable HTTP server at **`/mcp`** with 18 tools: the original 14 P0 tools plus `peek_next_response`, `preview_template`, `preview_postman_import` and `apply_postman_import`. It builds on Phase 1’s shared services/independent credentials and Phase 2’s two-way request isolation. No external MCP hosting, identity service or agent service is required by MockDeck. Ordinary dashboard requests and verification tokens retain their existing behavior.
 
 ## Behavior baseline
 
@@ -46,13 +46,13 @@ Each credential stores `name`, unique SHA-256 `token_hash`, `can_read`, `can_wri
 
 | Category / tool | Required permission |
 |---|---|
-| `start_test_run`, `create_mock`, `update_mock` | `write` |
-| `list_test_runs`, `list_mocks`, `get_mock`, `validate_mock`, `get_mock_url`, `preview_template`, `peek_next_response`, `explain_match` | `read` |
+| `start_test_run`, `create_mock`, `update_mock`, `apply_postman_import` | `write` |
+| `list_test_runs`, `list_mocks`, `get_mock`, `validate_mock`, `get_mock_url`, `preview_template`, `preview_postman_import`, `peek_next_response`, `explain_match` | `read` |
 | `get_unmatched_requests`, `get_calls`, `assert_calls` | `verify` |
 | `reset_test_run` | `cleanup` |
 | `finish_test_run`, including its delete option | `cleanup` |
 
-Permissions do not imply each other. To complete the full create/inspect/assert/cleanup workflow, grant all four. Finishing closes a run even without deletion, so it also requires `cleanup`. No extra `write` permission is required for runtime reset/cleanup; ownership checks remain mandatory for every tool. Discovery/initialization requires a valid credential; discovery lists all tools; execution enforces the grants independently. `McpToolPermissions::REQUIRED` is a tested, fail-closed contract; unknown tools do not get a default permission. All 16 tools below are callable.
+Permissions do not imply each other. To complete the full create/inspect/assert/cleanup workflow, grant all four. Finishing closes a run even without deletion, so it also requires `cleanup`. No extra `write` permission is required for runtime reset/cleanup; ownership checks remain mandatory for every tool. Discovery/initialization requires a valid credential; discovery lists all tools; execution enforces the grants independently. `McpToolPermissions::REQUIRED` is a tested, fail-closed contract; unknown tools do not get a default permission. All 18 tools below are callable.
 
 ### Rate-limiting convention
 
@@ -80,7 +80,7 @@ Rotation: generate a new credential with only the required permissions, update t
 
 ## Invocation audit foundation
 
-`mcp_invocations` contains `id`, `credential_id` (FK to `mcp_credentials`, deletion restricted), nullable `tool_name`, nullable `target`, nullable public UUID `run_id` (intentionally not a foreign key, so audit metadata survives cleanup), `result` (`success`/`error`), nullable `error_code`, UUID `correlation_id`, and `created_at`. Revocation preserves the actor row. Every authenticated tool call except `preview_template` writes a row, including cached retries and rejected tool envelopes. Preview has an explicit no-persistence contract: successful, invalid and SDK-rejected preview calls do not write invocation rows or credential last-used timestamps. Initialization/discovery and every other tool retain their existing metadata behavior; authorization and rate limiting still apply to previews. No request payload column exists. Unauthenticated requests without an identifiable credential use separate redacted operational diagnostics rather than a fabricated audit actor.
+`mcp_invocations` contains `id`, `credential_id` (FK to `mcp_credentials`, deletion restricted), nullable `tool_name`, nullable `target`, nullable public UUID `run_id` (intentionally not a foreign key, so audit metadata survives cleanup), `result` (`success`/`error`), nullable `error_code`, UUID `correlation_id`, and `created_at`. Revocation preserves the actor row. Every authenticated tool call except `preview_template` and `preview_postman_import` writes a row, including cached retries and rejected tool envelopes. Both previews have an explicit no-persistence contract: successful, invalid and SDK-rejected preview calls do not write invocation rows or credential last-used timestamps. Initialization/discovery and every other tool retain their existing metadata behavior; authorization and rate limiting still apply to previews. No request payload column exists. Unauthenticated requests without an identifiable credential use separate redacted operational diagnostics rather than a fabricated audit actor.
 
 `McpAuditRedactor` reuses `RequestCredentialPolicy`'s configurable header/query detection and masking plus `EnvironmentVariableWriter::sensitiveName`. It recursively redacts named secrets, header/variable entry values, JSON-encoded metadata, credential-shaped bearer strings and sensitive query parameters; depth/string output is bounded. The `McpInvocation` target setter also applies redaction. Do not put raw request/response bodies or arbitrary free-form payloads into `target`: use compact identifiers. No heuristic can identify every unlabeled secret. Writers apply the helper before persistence, allowlist audit metadata, and must not bypass the model with unredacted query-builder inserts.
 
@@ -135,7 +135,7 @@ Both mechanisms invoke `ResolveTestRun` before the same `EndpointMatcher`, using
 
 Isolation is a two-way wall: run traffic considers only its own run's endpoints, and ordinary traffic considers only NULL-run endpoints. A miss never falls back to ordinary mocks or another run. Identical signatures can coexist across these scopes. Invalid/unknown/finished runs or runs owned by revoked credentials return 404 with `test_run_unavailable`. Conflicting header/prefix IDs return 400; providing the same ID through both is allowed. A run UUID is a routing capability, not a management credential: keep it private. Requests do not require the MCP bearer token, so applications that can only change a base URL remain supported. Running requests already admitted before finish/revocation may complete; later requests and queued callback jobs fail closed.
 
-`/_mockdeck` and all descendants, plus `/mcp` and descendants, are application-owned namespaces. `/mcp` authenticates before protocol handling (401 without a credential); descendants remain reserved and never fall through to mocks. Nginx forwards these paths normally to Laravel; no duplicate matcher or proxy rewrite is involved. Existing 10 MiB Nginx body and 60-second FastCGI timeout limits remain unchanged. The `/api/v1/verify/*` API remains ordinary-only, including reset-all: an old verification token cannot inspect or reset run state. Routing reads the live request and run row, independently of request-log retention.
+`/_mockdeck` and all descendants, plus `/mcp` and descendants, are application-owned namespaces. `/mcp` authenticates before protocol handling (401 without a credential); descendants remain reserved and never fall through to mocks. Nginx forwards these paths normally to Laravel; no duplicate matcher or proxy rewrite is involved. The shared Nginx body ceiling is 25 MiB to carry two bounded Postman files with JSON-RPC escaping; the FastCGI timeout remains 60 seconds. Per-file and non-import MCP limits remain enforced in Laravel. The `/api/v1/verify/*` API remains ordinary-only, including reset-all: an old verification token cannot inspect or reset run state. Routing reads the live request and run row, independently of request-log retention.
 
 
 ## Isolation regression coverage
@@ -146,7 +146,7 @@ Isolation is a two-way wall: run traffic considers only its own run's endpoints,
 
 ## Phase 3 transport
 
-The `/mcp` POST endpoint now uses official `laravel/mcp` 1.0.2, locked by Composer. Streamable HTTP JSON responses support the requested `initialize` / `tools/list` / `tools/call` flow for protocol 2025-11-25, plus the library's current stateless discovery protocol 2026-07-28. Resources and Prompts are outside this phase and are not advertised. No external service is contacted at initialization. Each HTTP request must carry a locally issued `Authorization: Bearer mdm_…`; dashboard cookies and verification `mdv_` tokens never suffice. The existing `mcp-auth` and `mcp` named throttles apply. Input is bounded to 1 MiB and browser Origin is checked. GET/DELETE return 405 because this server needs no persistent SSE/session channel. Domain tool failures use structured results plus `isError`, distinct from JSON-RPC protocol failures.
+The `/mcp` POST endpoint now uses official `laravel/mcp` 1.0.2, locked by Composer. Streamable HTTP JSON responses support the requested `initialize` / `tools/list` / `tools/call` flow for protocol 2025-11-25, plus the library's current stateless discovery protocol 2026-07-28. Resources and Prompts are outside this phase and are not advertised. No external service is contacted at initialization. Each HTTP request must carry a locally issued `Authorization: Bearer mdm_…`; dashboard cookies and verification `mdv_` tokens never suffice. The existing `mcp-auth` and `mcp` named throttles apply. Non-import input is bounded to 1 MiB; Postman tools have a separate envelope allowance for two bounded files (see below). Browser Origin is checked. GET/DELETE return 405 because this server needs no persistent SSE/session channel. Domain tool failures use structured results plus `isError`, distinct from JSON-RPC protocol failures.
 
 ### Atomic creation and idempotency foundations
 
@@ -156,7 +156,7 @@ Phase 3 adds optional run ownership on revisions. Explicitly authorized run muta
 
 ### P0 read contracts
 
-MCP reads are restricted to the credential’s own runs, including finished runs. `read` does not grant access to ordinary dashboard mocks. `list_test_runs` requires `read`; unmatched request and call evidence tools require `verify`. All tool results carry `ok`, `correlation_id`, and either structured `data` or `error` (stable code/message/details); failed tools also set MCP `isError`. Discovery publishes bounded input schemas and safety annotations. Tool lists use the SDK’s default 15-item pages; clients must follow `nextCursor` to discover all 16 tools (the tested PHP client does so automatically).
+MCP reads are restricted to the credential’s own runs, including finished runs. `read` does not grant access to ordinary dashboard mocks. `list_test_runs` requires `read`; unmatched request and call evidence tools require `verify`. All tool results carry `ok`, `correlation_id`, and either structured `data` or `error` (stable code/message/details); failed tools also set MCP `isError`. Discovery publishes bounded input schemas and safety annotations. Tool lists use the SDK’s default 15-item pages; clients must follow `nextCursor` to discover all 18 tools (the tested PHP client does so automatically).
 
 `get_calls` separates the exact since-reset total from the 20-entry evidence window. `explain_match` calls the actual scoped matcher without invoking selection, counters or callbacks. It accepts either curl text or a retained unmatched request UUID. The latter window is 20 requests per run, 24 hours, bodies limited to 64 KiB and headers to 64 entries/4096 bytes each. Captured evidence is encrypted using APP_KEY; truncated evidence cannot claim an exact diagnosis. Expired IDs return NOT_FOUND. Differences omit field values, and exclusions are applied before comparison. Raw arguments are never written to the invocation audit; only scoped identifiers, outcome and correlation are stored.
 
@@ -209,6 +209,8 @@ Every success is `{ "ok": true, "data": {...}, "correlation_id": "UUID" }`. Fail
 | `update_mock` | `{"run_id":"RUN","mock_id":"MOCK","expected_version":1,"changes":{"endpoint":{"name":"Cart","priority":5},"responses":{"update":[{"id":"RESPONSE","status":201}],"add":[{"body":"new"}],"remove":[]}}}` | updated configuration/version/revision, matcher summary, invocation instructions |
 | `get_mock_url` | `{"run_id":"RUN","mock_id":"MOCK","preferred":"path-prefix"}` | `header.url`, required `header.headers`, `header.curl`, `path_prefix.url` / `curl`, origin note |
 | `peek_next_response` | `{"run_id":"RUN","mock_id":"MOCK"}` | Sequence: redacted configured `response`, zero-based `sequence_position`, one-based `next_position` / `position_label`, `response_count`, `reason`; other modes: `applicable: false` |
+| `preview_postman_import` | `{"run_id":"RUN","collection":"RAW JSON","environment":"OPTIONAL RAW JSON","mode":"create-only"}` | dashboard-shaped run-scoped plan; no persistence |
+| `apply_postman_import` | `{"run_id":"RUN","collection":"RAW JSON","idempotency_key":"import-1"}` | summary, applied plan, changed mock IDs, history references and both invocation forms |
 | `preview_template` | `{"run_id":"RUN","template":"{\"id\":\"$string.uuid\"}","locale":"en","seed":42}` | rendered typed `output`, `bytes`, `render_ms`, dashboard-shaped `issues`, `synthetic_context`, `sample_notice`; requires only `read` and persists no preview/configuration/auth-audit metadata |
 | `explain_match` | `{"run_id":"RUN","curl":"curl http://localhost/cart?x=wrong"}` or `{"run_id":"RUN","log_entry_id":"LOG_UUID"}` | `selected`, bounded ranked `candidates`, per-field differences/exclusions without values, candidate-window completeness |
 | `get_unmatched_requests` | `{"run_id":"RUN","page":1,"per_page":20}` | retained stable IDs/time/completeness/request metadata, `window` capacity/TTL/truncation limits |
@@ -427,3 +429,54 @@ Template/pool coverage also creates a V6 path-pattern mock through the structure
 The [Phase 3 acceptance report](MCP_PHASE3_REPORT.md) records the exact tested client, all acceptance outcomes and environment-blocked checks.
 
 Atomic rollback is exercised with a second response containing a CRLF header value: it passes the public structural schema but fails the shared response validator after the endpoint and first response have been built. The outer transaction leaves neither partial configuration nor a retry cache entry.
+
+## Postman import preview
+
+`preview_postman_import` requires **read**, an owned `run_id`, and raw JSON text in `collection`; optional `environment` is companion Postman Environment JSON text. Both files use `MOCK_CONFIG_MAX_BYTES` (2 MiB each by default), counted in UTF-8 bytes, plus the existing 500-endpoint/5,000-response mapping caps. JSON-RPC escaping has a separate bounded envelope allowance (12 × file cap + 64 KiB); other tools retain the 1 MiB transport bound. The shared Nginx body ceiling is 25 MiB for the default two-file worst case; deployments increasing the file cap must raise that ceiling too. Application upload caps remain unchanged.
+
+Optional `mode` is `create-only` (default), `upsert` or `clone`; correlation examines only endpoints in this run. `variable_mode` is `exclude` (default) or `resolve`, using the **run-bound** MockDeck Environment. Resolve freezes literal matching values and reports missing keys as blocking plan errors. Optional `mask_secrets` uses the dashboard mapper's existing masking switch (default false). Companion values are candidates only; these tools never auto-create or overwrite Environment variables.
+
+The result is the dashboard `ImportPlan.toArray()` shape (`metadata`, `counts`, `items`, `errors`, `warnings`, `can_apply`, `mode`, `replace_responses`, `token`, `digest`), passed through normal MCP redaction. `token`/`digest` are unused placeholders: no preview cache is created. Per-request actions and warnings, flattened Collection names, variable candidates/provenance and the boolean `contains_secrets` banner flag are retained. Invalid file structures produce `VALIDATION_ERROR`; mapped per-request blocking issues remain in `errors` with `can_apply: false`.
+
+The landed mapper supports embedded/folder variables, companion precedence, exclusion/resolve, and saved-response environment/dynamic-variable templates. Scripts have differentiated Pre-request/Test warnings and line counts only. Script source display and static `pm.globals/environment.set()` name extraction have **not** landed; this tool does not claim those capabilities. No script text enters the mapped configuration or any execution facility.
+
+Like `preview_template`, Postman preview skips tool audit and credential last-used writes as well as configuration/runtime writes, including invalid input. Infrastructure rate limiting and server diagnostics remain enabled. HTTP tests compare every table and observe zero mutation SQL with the array cache backend; the existing full PHPUnit CI jobs discover these tests automatically.
+
+## Apply a Postman import to a test run
+
+`apply_postman_import` requires **write** (not read or cleanup), an active owned `run_id`, the same raw `collection`/optional `environment` text and options as preview, and `idempotency_key` (up to 128 characters). `mode`, `variable_mode` and `mask_secrets` have exactly the preview defaults. No source files are read on the server: the client sends their content.
+
+Raw content is intentionally re-supplied rather than referring to cached preview tokens. Preview stays nonpersistent, has no expiry, and has no server-side secret-bearing upload cache. The existing `McpIdempotency.execute()` hashes the **full input** (including companion content and options) and caches only the redacted result under credential/run/tool/key for 24 hours. Identical retries return the original result; changed input under that key produces `IDEMPOTENCY_CONFLICT`. As with `create_mock`, a cached successful result can be replayed after the run finishes; new imports into finished runs return `RUN_FINISHED`. An expired key is a new operation, so default Create only remains useful for safe re-imports.
+
+`MappedImportService.applyDocument()` is the single shared dashboard/MCP writer. It re-analyzes actions at apply time under the existing MCP run lock/transaction, so changes since preview are reflected in the returned `plan`. Run-owned endpoints are made through `TestRun.endpoints()` (the foreign key exists **before the first INSERT**), never created as ordinary mocks and moved later. Responses inherit ownership through their endpoint. Correlation queries and updates stay within that run; an ordinary or another run's identical key does not cause a skip/update. Existing import duplicate-signature semantics remain unchanged.
+
+Folder names still flatten to shared MockDeck Collections (`Auth / Login`); Collection names/metadata are not private run data. Importing can create these shared folders just as dashboard import does. Their creation rolls back with a failed import, but finishing/deleting a run does not delete shared Collections. Ordinary endpoints/responses are untouched, and run endpoints/responses/history remain excluded from native endpoint exports. Environment variables are never created or overwritten. For `resolve`, both preview and apply independently read the current run-bound Environment values; re-preview if those values change before applying.
+
+Output contains `run_id`, `summary` (the existing `ImportSummary` counters and `import_batch_id`), the applied dashboard-shaped `plan`, and `items` for changed mocks only. Each changed item has `mock_id`, `name`, `action`, `response_count`, `revision_reference`, and `invocation` with header/prefix URLs and POSIX curls. Skips remain in `plan.items` and have no changed item. Redaction is identical to other MCP tools: do not send redacted curls back as edits. Imported requests with literal secret headers still require those actual header values when called. Imports can exceed `get_mock`'s 50-response readback window; `response_count` reports the full pool.
+
+Every changed run mock records an initial configuration or update pre-state with the existing revision manager and one run-scoped `import_batch_id`. Dashboard imports retain their original revision behavior. Apply writes a normal invocation audit on success/failure; source JSON, companion values and script text are never audit payloads. Import validation or an insert failure rolls back endpoints, responses, folders, revisions and idempotency cache insertion atomically; the error audit remains. Scripts are only detected by the mapper: no evaluation, JavaScript runtime or translation is added.
+
+### Worked preview → apply → routed calls
+
+Using the tested official Laravel PHP MCP client with its own bearer, prepare a v2.1 collection with a GET `/imported-client` request and a saved 200 example body `{"imported":true}`. The HTTP/trusted-HTTPS integration test exercises these exact steps:
+
+```php
+$run = $client->callTool('start_test_run', ['label' => 'Imported fixtures'])->structuredContent['data']['run_id'];
+$args = ['run_id' => $run, 'collection' => file_get_contents('fixtures.postman_collection.json')];
+$preview = $client->callTool('preview_postman_import', $args)->structuredContent;
+// Review $preview['data']['items'], variable_candidates, warnings and can_apply.
+$applied = $client->callTool('apply_postman_import', [...$args, 'idempotency_key' => 'fixtures-v1'])->structuredContent;
+$mock = $applied['data']['items'][0];
+// $mock['invocation'] has callable URLs, routing headers, and a curl for each form.
+```
+
+For the returned run ID `RUN` and default host deployment:
+
+```bash
+curl -H 'X-MockDeck-Test-Run: RUN' http://localhost:18473/imported-client
+curl http://localhost:18473/_mockdeck/run/RUN/imported-client
+```
+
+Both return the saved example. `get_calls` for that `run_id` / `mock_id` reports `total_match_count: 2`. Repeating apply with `fixtures-v1` returns the original summary/IDs without creating anything; changing `mode` to `clone` under the same key returns `IDEMPOTENCY_CONFLICT`. Supply a new key for an intentional clone/update. Use the normal `finish_test_run` cleanup afterward.
+
+Tests cover dashboard parity, zero preview database writes/table changes, both routing forms, owner/run isolation, all import modes, first-insert ownership, failure rollback, template rendering against the run Environment, retry conflict/finished-run semantics and script non-execution/source non-retention. Source checks prohibit process/evaluation/runtime APIs in the mapper/orchestrator path. The official client covers preview/apply/retry/conflict and routed call counts over HTTP and verified HTTPS, under the same full PHPUnit and network-isolated CI workflow already used for Phase 3.

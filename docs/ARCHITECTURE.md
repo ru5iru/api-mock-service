@@ -201,3 +201,7 @@ Native format 1.4 is one coordinated update for both tracks. Config/revision ser
 ### Template preview context
 
 The dashboard and API use `ResponseTemplateEngine::preview(template, locale, seedMode, seed, endpoint)` for validation, catalog-backed Faker rendering and synthetic request/path values. An optional final `Environment` argument binds a preview explicitly without changing the instance-wide active environment; callers omitting it retain the dashboard behavior. Secret-variable preview checks use that same effective environment. `TemplateContext::PREVIEW_NOTICE` holds the existing dashboard wording so other preview consumers can label sample data identically. Preview does not use the saved-response render cache or persist configuration/runtime state.
+
+### Run-scoped external imports
+
+`McpPostmanImport` orchestrates `PostmanMapper` and the shared `MappedImportService.previewDocument()` / `applyDocument()` boundaries. Preview stays in memory; the original dashboard cached-preview/confirmation flow uses the same analyzer and writer. An explicit `TestRun` scopes correlation and endpoint construction before INSERT, with responses inheriting endpoint ownership. Apply executes under the existing MCP run lock and `McpIdempotency` transaction; every changed run endpoint receives an existing run-scoped revision batch. Folder Collections retain their existing shared-metadata behavior. Neither path interprets Postman scripts or creates Environment variables.

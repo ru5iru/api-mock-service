@@ -7,18 +7,11 @@ use App\Services\Templates\ResponseTemplateEngine;
 use App\Services\Templates\TemplateContext;
 use App\Services\Templates\TemplateIssue;
 use App\Services\Templates\TemplateRenderException;
-use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 /** Pure preview adapter: no saved-response rendering cache, audit or mutation APIs. */
 final class McpTemplatePreview
 {
-    public static function requested(Request $request): bool
-    {
-        return $request->isMethod('POST') && $request->input('method') === 'tools/call'
-            && $request->input('params.name') === 'preview_template';
-    }
-
     public function execute(TestRun $run, array $args): array
     {
         $endpoint = $response = null;
