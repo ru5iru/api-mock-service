@@ -117,14 +117,14 @@
     @endif
 
     <div class="endpoint-list" wire:loading.class="is-loading">
-        <div class="skeleton-list" wire:loading.flex wire:target="search,method,state,sort,clearFilters">
+        <div class="skeleton-list" wire:loading.flex wire:target="search,method,state,sort,collection,tags,clearFilters">
             @foreach (range(1, 3) as $row)
                 <span class="skeleton-row" aria-hidden="true"></span>
             @endforeach
             <span class="sr-only">Loading endpoints…</span>
         </div>
 
-        <div wire:loading.remove wire:target="search,method,state,sort,clearFilters">
+        <div wire:loading.remove wire:target="search,method,state,sort,collection,tags,clearFilters">
             @forelse ($endpoints as $endpoint)
                 @php
                     $stats = $endpoint->requestStats();

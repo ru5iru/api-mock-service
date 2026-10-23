@@ -14,6 +14,8 @@
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}?v={{ filemtime(public_path('css/tokens.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
     <script src="{{ asset('js/panels.js') }}?v={{ filemtime(public_path('js/panels.js')) }}" defer data-navigate-once></script>
+    <script src="{{ asset('js/validation.js') }}?v={{ filemtime(public_path('js/validation.js')) }}" defer data-navigate-once></script>
+    <script src="{{ asset('js/docs.js') }}?v={{ filemtime(public_path('js/docs.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/toasts.js') }}?v={{ filemtime(public_path('js/toasts.js')) }}" data-navigate-once></script>
     <script src="{{ asset('js/dialogs.js') }}?v={{ filemtime(public_path('js/dialogs.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/menu.js') }}?v={{ filemtime(public_path('js/menu.js')) }}" defer data-navigate-once></script>
@@ -367,7 +369,7 @@
 
         document.addEventListener('keydown', (event) => {
             const row = event.target.closest?.('[data-row-href]');
-            if (row && event.key === 'Enter') {
+            if (row && event.target === row && event.key === 'Enter') {
                 event.preventDefault();
                 window.location.href = row.dataset.rowHref;
             }

@@ -28,10 +28,17 @@
             @endif
         </div>
     </div>
+    @if ($responseId !== '' || $requestLogId !== '')
+        <div class="quick-filter-row" aria-label="Callback scope">
+            @if ($responseId !== '')<button type="button" class="tag-chip selectable" wire:click="$set('responseId', '')" aria-label="Remove response scope">Response #{{ $responseId }} · Remove</button>@endif
+            @if ($requestLogId !== '')<button type="button" class="tag-chip selectable" wire:click="$set('requestLogId', '')" aria-label="Remove request scope">Request {{ $requestLogId }} · Remove</button>@endif
+        </div>
+    @endif
+    <p class="field-help">Showing up to 100 recent attempts matching these filters. Search checks recorded targets and request IDs in this window.</p>
     @if ($message !== '') <p class="info-note" role="status">{{ $message }}</p> @endif
     <div class="table-scroll log-table-scroll">
         <table class="log-table">
-            <thead><tr><th scope="col">Time</th><th scope="col">Target</th><th scope="col">Environment</th><th scope="col">Method</th><th scope="col">Attempt</th><th scope="col">Status</th><th scope="col" class="numeric">Duration</th><th scope="col">Retry of</th><th scope="col">Action</th></tr></thead>
+            <thead><tr><th scope="col">Status</th><th scope="col">Target / details</th><th scope="col">Time</th><th scope="col">Environment</th><th scope="col">Method</th><th scope="col">Attempt</th><th scope="col" class="numeric">Duration</th><th scope="col">Retry of</th><th scope="col">Action</th></tr></thead>
             <tbody>
                 @php($previousDay = null)
                 @forelse ($rows as $attempt)
@@ -41,14 +48,27 @@
                         @php($previousDay = $day)
                     @endif
                     <tr wire:key="callback-attempt-{{ $attempt->id }}">
-                        <td class="nowrap"><time datetime="{{ $attempt->created_at->toIso8601String() }}" data-log-time data-clock="{{ $clock }}" title="{{ $attempt->created_at->toIso8601String() }}">{{ $attempt->created_at->diffForHumans(short: true) }}</time></td>
-                        <td><code>{{ Str::limit($attempt->response?->callback_url ?? '[response deleted]', 75) }}</code>
+                        <td><x-badge :variant="$attempt->status === 'success' ? 'success' : ($attempt->status === 'pending' ? 'info' : 'danger')">{{ ucfirst($attempt->status) }}{{ $attempt->http_status ? ' · '.$attempt->http_status : '' }}</x-badge></td>
+
+                        <td><code>{{ Str::limit($redactor->redact($attempt->target_url ?? '[target unavailable]'), 75) }}</code>
+                            <details class="normalized-details" data-disclosure wire:ignore.self wire:key="callback-detail-{{ $attempt->id }}">
+                                <summary><x-disclosure-chevron /> Attempt #{{ $attempt->id }}</summary>
+                                <dl class="definition-list">
+                                    <div><dt>Recorded target</dt><dd><code>{{ $redactor->redact($attempt->target_url ?? '[target unavailable]') }}</code></dd></div>
+                                    <div><dt>Response</dt><dd>#{{ $attempt->response_id ?? 'deleted' }} · {{ $attempt->response?->external_label ?? 'Saved response' }}</dd></div>
+                                    <div><dt>Request</dt><dd>{{ $attempt->request_log_id ?? 'No request reference' }}</dd></div>
+                                    <div><dt>Outcome</dt><dd>{{ $attempt->error ? $redactor->redact($attempt->error) : ($attempt->http_status ? 'Receiver returned HTTP '.$attempt->http_status : 'No error detail recorded.') }}</dd></div>
+                                    <div><dt>Lineage</dt><dd>{{ $attempt->retry_of_id ? 'Retry of #'.$attempt->retry_of_id : ($attempt->resend_of_id ? 'Resend of #'.$attempt->resend_of_id : 'Original attempt') }}</dd></div>
+                                </dl>
+                                <p class="field-help">Resend queues a new attempt using this attempt's captured target and payload. The original record is retained.</p>
+                            </details>
                             @if ($attempt->request_log_id)<a class="table-link" href="{{ route('dashboard.logs.index', ['type' => 'requests', 'search' => $attempt->request_log_id]) }}" wire:navigate>Request log</a>@endif
                         </td>
+                        <td class="nowrap"><time datetime="{{ $attempt->created_at->toIso8601String() }}" data-log-time data-clock="{{ $clock }}" title="{{ $attempt->created_at->toIso8601String() }}">{{ $attempt->created_at->diffForHumans(short: true) }}</time></td>
                         <td><x-badge>{{ $attempt->environment ?? '—' }}</x-badge></td>
                         <td><span class="method-badge method-{{ strtolower($attempt->method) }}">{{ $attempt->method }}</span></td>
                         <td>{{ $attempt->attempt_number }}</td>
-                        <td><x-badge :variant="$attempt->status === 'success' ? 'success' : ($attempt->status === 'pending' ? 'info' : 'danger')">{{ ucfirst($attempt->status) }}{{ $attempt->http_status ? ' · '.$attempt->http_status : '' }}</x-badge></td>
+
                         <td class="numeric">{{ $attempt->duration_ms === null ? '—' : $attempt->duration_ms.' ms' }}</td>
                         <td>{{ $attempt->retry_of_id ? 'Retry #'.$attempt->retry_of_id : ($attempt->resend_of_id ? 'Resend #'.$attempt->resend_of_id : '—') }}</td>
                         <td><button class="icon-button" type="button" wire:click="resend({{ $attempt->id }})" aria-label="Resend callback attempt {{ $attempt->id }}">Resend</button></td>

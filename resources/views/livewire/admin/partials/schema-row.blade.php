@@ -152,7 +152,8 @@
                     <input type="text" aria-label="From date" placeholder="From" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.from">
                     <input type="text" aria-label="To date" placeholder="To" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.to">
                 @else
-                    <input type="number" min="1" aria-label="Date amount" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.{{ ($row['mode'] ?? 'recent') === 'recent' ? 'days' : 'years' }}">
+                    <input type="number" min="1" aria-label="Date amount ({{ ($row['mode'] ?? 'recent') === 'recent' ? 'days' : 'years' }})" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.{{ ($row['mode'] ?? 'recent') === 'recent' ? 'days' : 'years' }}">
+                    <span class="field-help">{{ ($row['mode'] ?? 'recent') === 'recent' ? 'days' : 'years' }}</span>
                 @endif
                 @if (($row['mode'] ?? 'recent') !== 'fixed')
                     <select class="ui-select ui-select-dense" aria-label="Date output format" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.format">

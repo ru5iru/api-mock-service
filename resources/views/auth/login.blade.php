@@ -11,6 +11,7 @@
     <x-favicon-links />
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}" data-navigate-once></script>
     <script src="{{ asset('js/panels.js') }}?v={{ filemtime(public_path('js/panels.js')) }}" defer data-navigate-once></script>
+    <script src="{{ asset('js/validation.js') }}?v={{ filemtime(public_path('js/validation.js')) }}" defer></script>
     <script src="{{ asset('js/menu.js') }}?v={{ filemtime(public_path('js/menu.js')) }}" defer data-navigate-once></script>
     <link rel="preload" href="{{ asset('fonts/jetbrains-mono/jetbrains-mono-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ asset('css/tokens.css') }}?v={{ filemtime(public_path('css/tokens.css')) }}">
@@ -32,12 +33,12 @@
                 <div class="field">
                     <label for="username">Username</label>
                     <input id="username" name="username" type="text" value="{{ old('username') }}" autocomplete="username" required autofocus>
-                    @error('username') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('username') <p class="field-error" data-error-for="{{ 'username' }}">{{ $message }}</p> @enderror
                 </div>
                 <div class="field">
                     <label for="password">Password</label>
                     <input id="password" name="password" type="password" autocomplete="current-password" required>
-                    @error('password') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('password') <p class="field-error" data-error-for="{{ 'password' }}">{{ $message }}</p> @enderror
                 </div>
                 <button class="button button-primary button-full" type="submit">Sign in</button>
             </form>

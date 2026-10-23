@@ -889,3 +889,45 @@ The import preview composes the existing `.selection-preview`, `.organization-gr
 ### MCP run History reuse
 
 `resources/views/admin/run-history.blade.php` composes the existing dashboard layout, Page Header, normalized disclosure with the shared chevron, and Version History timeline/diff component. It introduces no new token or visual pattern. The component receives a locked run scope, filters every revision lookup to that scope, and hides restoration for redacted runtime snapshots. Deleted mocks keep comparison between retained versions; comparison with current is available while the mock exists. Ordinary editor History behavior remains unchanged.
+
+### Environment containment
+
+The Environment editor uses a shrinking `minmax(0, 1fr)` track. Cards and table wrappers have `min-width: 0`; variable columns scroll inside `.table-scroll`. At narrow widths headings and name/replacement actions wrap. Verify the reachability of Save, Duplicate, Delete and Add actions, including by internal table scrolling; root-page overflow alone is not sufficient.
+
+### Validation and Environment drafts
+
+Field errors carry `data-error-for` with the validation/model path. Shared `public/js/validation.js` associates them with the matching input, preserves existing help descriptions, announces errors, and focuses newly invalid visible fields. Nested `wire:model` paths must match the validator's paths. Both the dashboard and sign-in shell load it.
+
+Environment name, variable and new-variable drafts survive switching Environments within the page. Saving/deleting one variable updates only that row, preserving other drafts. Stored secret values remain write-only; successful secret saves clear their replacement input. A row's Unsaved indicator uses `wire:dirty`, rather than claiming every row is dirty.
+
+### History width and row activation
+
+`.ui-dialog.history-dialog` owns the wide History variant so generic dialog styles cannot shrink it. `.revision-history-panel` is a size container: at 640px or less, version actions and diff columns stack according to available component width, including inline response History. Reading order remains version, actions, comparison.
+
+Registry keyboard navigation activates only when the row itself receives Enter. Nested buttons, links, checkboxes and disclosures keep their native keyboard behavior.
+
+### Callback evidence
+
+Callback logs lead with Status and display the attempt's recorded target, never the mutable current callback URL. Attempt details reuse `.normalized-details` and `.definition-list` for sanitized errors, response/request references and retry/resend lineage. Secret-shaped text uses the existing redactor and is Blade escaped. Removable scope chips expose response/request deep-link filters. Search covers recorded targets and request IDs in the explicitly bounded 100-attempt window. Resend uses the captured target/payload and keeps the original record.
+
+### Task order, identity and truthful state
+
+Request curl entry and its parse/credential/duplicate feedback precede optional endpoint settings in both DOM and visual order. Response and Callback rows share `response-identity.blade.php`: stable response ID, imported example label when available, and bounded body/template summary. Selection status and preview badges reflect the existing selection fingerprint; they do not imply a draft before a change.
+
+### Autocomplete and tooltip dismissal
+
+JSON suggestions keep focus/caret in the editor. List options have stable IDs and `aria-selected`; the editor's `aria-expanded` and `aria-activedescendant` mirror the visible list through Livewire morphs. Escape closes suggestions and clears the active descendant. Escape on help dismisses the tooltip even while its anchor remains focused; leaving focus clears the dismissal. Relative date amounts expose days/years in both their accessible name and visible copy.
+
+### Prospective import changes and export scope
+
+Update previews reuse `.revision-diff-change` / `.revision-diff-values` inside the native import disclosure. They show Before/After, mask secrets, bound long values, and explicitly state merge/replacement consequences. Native responses compare by UUID; Postman examples compare by position, matching apply behavior. Review data is generated without applying mutations. Export actions state their effective scope; the pre-import download uses the scope/redaction settings above and may be partial/redacted.
+
+### Documentation retrieval and recovery
+
+Documentation's compact `.docs-searchbar` reuses native inputs/selects and the spacing scale. It remains below the persistent header, filters sections/Contents, announces result count, and provides a section jump and Clear search. Section offsets track the bar's actual height so wrapped mobile controls do not obscure headings. Run History uses current or retained names plus IDs. Expired-session recovery opens sign in with a GET; server-error retries appear only for GET requests, avoiding automatic POST resubmission.
+
+Semantic notices retain their existing icons, foreground/background tokens and borders with a uniform 1px boundary. Avoid a second thick colored side accent; status must remain understandable from copy and icons.
+
+On narrow screens the documentation search and section fields share a row, with count/Clear below. Callback attempt definition rows stack their label and value inside the target column, and outcome cells align to the top. Prospective import diffs sit below the scrollable summary table so Before/After can stack at the actual mobile component width.
+
+Response weight explains its Weighted-only effect. Non-fallback rule Conditions start expanded inside Details, avoiding a second required disclosure; `wire:ignore.self` retains the operator’s choice through updates.

@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ResponseTemplateController;
 use App\Http\Controllers\Api\RevisionController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Auth\DashboardSessionController;
+use App\Models\MockEndpoint;
 use App\Models\Revision;
 use App\Models\TestRun;
 use Illuminate\Support\Facades\Route;
@@ -40,7 +41,12 @@ Route::prefix('dashboard')
             $run = TestRun::where('public_id', $publicId)->firstOrFail();
             $entityIds = Revision::where('test_run_id', $run->id)->where('entity_type', 'endpoint')->distinct()->pluck('entity_id');
 
-            return view('admin.run-history', compact('run', 'entityIds'));
+            $entityNames = MockEndpoint::withoutGlobalScopes()->where('test_run_id', $run->id)->whereIn('id', $entityIds)->pluck('name', 'id');
+            $retainedNames = Revision::where('test_run_id', $run->id)->where('entity_type', 'endpoint')
+                ->latest('version_number')->get()->unique('entity_id')->mapWithKeys(fn ($revision) => [$revision->entity_id => $revision->snapshot['name'] ?? null]);
+            $entityNames = $entityNames->union($retainedNames);
+
+            return view('admin.run-history', compact('run', 'entityIds', 'entityNames'));
         })->name('test-runs.history');
         Route::view('/docs', 'admin.docs')->name('docs');
         Route::view('/config', 'admin.config')->name('config.index');

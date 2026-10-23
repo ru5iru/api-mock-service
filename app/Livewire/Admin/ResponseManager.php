@@ -863,6 +863,7 @@ JSON;
 
         return view('livewire.admin.response-manager', [
             'responses' => $responses,
+            'selectionDirty' => $this->selectionFingerprint() !== $this->savedSelectionFingerprint,
             'selectionEnvironment' => $environment,
             'sequencePosition' => $position,
             'nextSequenceResponse' => $next,

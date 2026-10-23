@@ -6,6 +6,12 @@
     </x-page-header>
 
     <div class="docs-grid">
+        <div class="card docs-searchbar docs-wide" role="search" aria-label="Documentation">
+            <label class="field"><span>Search documentation</span><input type="search" data-docs-search placeholder="Search commands, matching, callbacks…" aria-describedby="docs-results"></label>
+            <label class="field"><span>Section</span><select class="ui-select" data-docs-jump><option value="">Jump to a section…</option></select></label>
+            <button class="text-button" type="button" data-docs-clear>Clear search</button>
+            <span id="docs-results" class="field-help" role="status" data-docs-results></span>
+        </div>
         <nav class="card docs-card docs-wide" aria-labelledby="docs-contents">
             <h2 id="docs-contents">Contents</h2>
             <ol class="docs-toc">

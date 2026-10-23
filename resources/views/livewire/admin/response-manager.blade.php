@@ -9,7 +9,7 @@
                     <button type="button" wire:click="setSelectionMode('{{ $mode }}')" aria-pressed="{{ $selectionMode === $mode ? 'true' : 'false' }}">{{ $label }}</button>
                 @endforeach
             </div>
-            <p class="field-help">Unsaved selection draft. <x-help-tip title="Saving selection" label="Save selection applies this mode and order. Save changes also saves these drafts. Weighted is the default mode." /></p>
+            <p class="field-help">{{ $selectionDirty ? 'Unsaved selection changes.' : 'Selection saved.' }} <x-help-tip title="Saving selection" label="Save selection applies this mode and order. Save changes also saves these drafts. Weighted is the default mode." /></p>
             @if ($selectionMode === 'sequence')
                 <label class="field" for="sequence-on-exhaust"><span>On exhaust</span>
                     <select class="ui-select" id="sequence-on-exhaust" wire:model.live="sequenceOnExhaust">
@@ -55,10 +55,11 @@
 
                 @endif
                 <div class="response-status">
-                    <x-radio name="configured-response" value="{{ $response->id }}" wire:click="edit({{ $response->id }})" :checked="$editingId === $response->id || ($responses->count() === 1 && $editingId === null)" aria-label="Select response {{ $response->status_code }} for editing" />
+                    <x-radio name="configured-response" value="{{ $response->id }}" wire:click="edit({{ $response->id }})" :checked="$editingId === $response->id || ($responses->count() === 1 && $editingId === null)" aria-label="Select response {{ $response->id }} (HTTP {{ $response->status_code }}) for editing" />
                     <strong>{{ $response->status_code }}</strong>
                 </div>
                 <div class="response-description response-row-summary" title="{{ ($response->body_mode ?? 'static') === 'template' ? 'JSON response template' : ($response->body ?: 'Empty body') }}">
+                    <x-response-identity :response="$response" />
                     @if ($selectionMode === 'weighted')Weight {{ $response->weight }}@endif
                     @if ($selectionMode === 'sequence')<x-badge variant="info">Position {{ $responseIndex + 1 }}</x-badge>@endif
                     @if ($selectionMode === 'rule')
@@ -95,7 +96,7 @@
                 @if ($selectionMode === 'rule')
                     <div class="selection-response-details">
                         <label class="toggle-inline"><x-radio name="fallback-response" value="{{ $response->id }}" wire:click="setFallback({{ $response->id }})" :checked="$fallbackResponseId === $response->id" aria-label="Use response {{ $response->id }} as default fallback" /><span>Default / fallback</span></label>
-                        <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="response-conditions-{{ $response->id }}">
+                        <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="response-conditions-{{ $response->id }}" @if ($fallbackResponseId !== $response->id) open @endif>
                             <summary><x-disclosure-chevron /><strong>Conditions</strong></summary>
                             @if ($fallbackResponseId === $response->id)<p class="field-help">Fallback is selected only when no other response matches; its conditions are not evaluated.</p>@endif
                             @foreach ($responseRules[$response->id] ?? [] as $ruleIndex => $condition)
@@ -153,24 +154,25 @@
             <div class="field">
                 <label for="status-code">Status</label>
                 <input id="status-code" type="number" min="100" max="599" wire:model="statusCode">
-                @error('statusCode') <p class="field-error">{{ $message }}</p> @enderror
+                @error('statusCode') <p class="field-error" data-error-for="{{ 'statusCode' }}">{{ $message }}</p> @enderror
             </div>
             <div class="field">
                 <label for="response-weight">Weight</label>
-                <input id="response-weight" type="number" min="1" wire:model="weight">
-                @error('weight') <p class="field-error">{{ $message }}</p> @enderror
+                <input id="response-weight" type="number" min="1" wire:model="weight" aria-describedby="response-weight-help">
+                <small id="response-weight-help" class="field-help">Used only by Weighted selection. Sequence and rule-based selection ignore this value.</small>
+                @error('weight') <p class="field-error" data-error-for="{{ 'weight' }}">{{ $message }}</p> @enderror
             </div>
             <div class="field">
                 <label for="response-delay">Delay (ms)</label>
                 <input id="response-delay" type="number" min="0" max="{{ config('mock.max_delay_ms') }}" wire:model="delayMs">
-                @error('delayMs') <p class="field-error">{{ $message }}</p> @enderror
+                @error('delayMs') <p class="field-error" data-error-for="{{ 'delayMs' }}">{{ $message }}</p> @enderror
             </div>
         </div>
 
         <div class="field">
             <label for="response-headers">Headers <span>JSON object</span></label>
             <textarea id="response-headers" class="code-input compact" rows="5" spellcheck="false" wire:model="headersJson"></textarea>
-            @error('headersJson') <p class="field-error">{{ $message }}</p> @enderror
+            @error('headersJson') <p class="field-error" data-error-for="{{ 'headersJson' }}">{{ $message }}</p> @enderror
         </div>
 
         <fieldset class="field option-group" aria-labelledby="body-mode-label">
@@ -185,7 +187,7 @@
             <div class="field">
                 <label for="response-body">Body <span>sent as-is</span></label>
                 <textarea id="response-body" class="code-input compact" rows="9" spellcheck="false" wire:model="body"></textarea>
-                @error('body') <p class="field-error">{{ $message }}</p> @enderror
+                @error('body') <p class="field-error" data-error-for="{{ 'body' }}">{{ $message }}</p> @enderror
             </div>
         @else
             @php
@@ -237,7 +239,7 @@
                     <div class="field">
                         <label for="template-seed">Seed value</label>
                         <input id="template-seed" type="number" wire:model.live.debounce.400ms="seed">
-                        @error('seed') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('seed') <p class="field-error" data-error-for="{{ 'seed' }}">{{ $message }}</p> @enderror
                     </div>
                 @else
                     <div class="field template-seed-note">
@@ -313,12 +315,12 @@
                     ></textarea>
                     <div id="template-method-suggestions" class="template-autocomplete" data-template-autocomplete role="listbox" aria-label="Faker method suggestions" wire:ignore hidden></div>
                     <span id="template-editor-help" class="field-help">Type $ or {{ '{{' }} to insert a supported Faker method.</span>
-                    @error('template') <p id="response-template-error" class="field-error">{{ $message }}</p> @enderror
+                    @error('template') <p id="response-template-error" class="field-error" data-error-for="{{ 'template' }}">{{ $message }}</p> @enderror
                 </div>
             @endif
 
             @if ($errorIssues->isNotEmpty())
-                <div class="validation-panel error-panel" role="alert">
+                <div class="validation-panel error-panel" role="alert" data-error-for="template">
                     <strong>Fix template errors before saving</strong>
                     <ul>
                         @foreach ($errorIssues as $issue)
@@ -378,18 +380,18 @@
                         <option value="truncated_body">Truncated body</option>
                         <option value="timeout">Timeout (long delay)</option>
                     </select>
-                    @error('faultType') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('faultType') <p class="field-error" data-error-for="{{ 'faultType' }}">{{ $message }}</p> @enderror
                 </div>
                 <div class="field">
                     <label for="response-fault-probability">Probability (%)</label>
                     <input id="response-fault-probability" type="number" min="0" max="100" wire:model="faultProbability" @disabled(! $faultEnabled)>
-                    @error('faultProbability') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('faultProbability') <p class="field-error" data-error-for="{{ 'faultProbability' }}">{{ $message }}</p> @enderror
                 </div>
             </div>
             @if (in_array($faultType, ['delay', 'timeout'], true))
                 <div class="field-row two">
-                    <div class="field"><label for="response-fault-delay-min">Delay min (ms)</label><input id="response-fault-delay-min" type="number" min="0" max="120000" wire:model="faultDelayMsMin" @disabled(! $faultEnabled)>@error('faultDelayMsMin') <p class="field-error">{{ $message }}</p> @enderror</div>
-                    <div class="field"><label for="response-fault-delay-max">Delay max (ms) <span>optional</span></label><input id="response-fault-delay-max" type="number" min="0" max="120000" wire:model="faultDelayMsMax" @disabled(! $faultEnabled)>@error('faultDelayMsMax') <p class="field-error">{{ $message }}</p> @enderror</div>
+                    <div class="field"><label for="response-fault-delay-min">Delay min (ms)</label><input id="response-fault-delay-min" type="number" min="0" max="120000" wire:model="faultDelayMsMin" @disabled(! $faultEnabled)>@error('faultDelayMsMin') <p class="field-error" data-error-for="{{ 'faultDelayMsMin' }}">{{ $message }}</p> @enderror</div>
+                    <div class="field"><label for="response-fault-delay-max">Delay max (ms) <span>optional</span></label><input id="response-fault-delay-max" type="number" min="0" max="120000" wire:model="faultDelayMsMax" @disabled(! $faultEnabled)>@error('faultDelayMsMax') <p class="field-error" data-error-for="{{ 'faultDelayMsMax' }}">{{ $message }}</p> @enderror</div>
                 </div>
             @endif
             @if ($faultType === 'timeout')
@@ -414,6 +416,7 @@
             @php($rowCallbackEnabled = $editingId === $response->id ? $callbackEnabled : ($pendingFormDrafts[$response->id]['state']['callbackEnabled'] ?? $response->callback_enabled))
             <div class="card callback-response-row {{ $editingId === $response->id ? 'selected' : '' }}" wire:key="callback-row-{{ $response->id }}">
                 <x-badge>HTTP {{ $response->status_code }}</x-badge>
+                <x-response-identity :response="$response" />
                 <span class="response-row-summary">@if ($selectionMode === 'sequence')Position {{ $responseIndex + 1 }}@elseif ($selectionMode === 'rule'){{ $fallbackResponseId === $response->id ? 'Fallback' : count($responseRules[$response->id] ?? []).' conditions' }}@else Weight {{ $response->weight }}@endif</span>
                 <x-badge :variant="$rowCallbackEnabled ? 'success' : 'neutral'">{{ $rowCallbackEnabled ? 'Enabled' : 'Disabled' }}</x-badge>
                 <button class="icon-button" type="button" wire:click="editCallback({{ $response->id }}, {{ $rowCallbackEnabled ? 'false' : 'true' }})" aria-label="Configure callback for response {{ $response->id }}">{{ $rowCallbackEnabled ? 'Edit callback' : 'Enable callback' }}</button>

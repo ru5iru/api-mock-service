@@ -65,7 +65,7 @@ jobs:
 
       - name: Check dashboard layouts and documentation in both themes
         env:
-          APP_ENV: testing
+          APP_ENV: local
           APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
           DB_CONNECTION: sqlite
           DB_DATABASE: ${{ runner.temp }}/browser.sqlite
@@ -83,6 +83,7 @@ jobs:
           trap 'kill "$server_pid" || true' EXIT
           curl --fail --silent --show-error --retry 20 --retry-delay 1 --retry-connrefused "$MOCKDECK_BASE_URL/up"
           make browser-test
+          MOCKDECK_BROWSER_FIXTURE=1 make browser-regression-test
 
       - name: Upload browser screenshots and server log
         if: always()

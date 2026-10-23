@@ -1,8 +1,23 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
 
 const read = (path) => readFileSync(path, 'utf8');
+
+test('dashboard fix checklist retains all critique items and resolvable evidence links', () => {
+    const path = 'docs/DASHBOARD_FIX_CHECKLIST.md';
+    const checklist = read(path);
+    const ids = [...checklist.matchAll(/^\| (F\d{2}) \| \[x\]/gm)].map(match => match[1]);
+    assert.deepEqual(ids, Array.from({ length: 24 }, (_, index) => `F${String(index + 1).padStart(2, '0')}`));
+    for (const match of checklist.matchAll(/\]\(([^)]+)\)/g)) {
+        assert.ok(existsSync(resolve(dirname(path), match[1])), `Missing checklist evidence: ${match[1]}`);
+    }
+    assert.ok(checklist.includes('not fresh reruns'));
+    assert.ok(checklist.includes('Remote GitHub CI result: not verified'));
+    assert.ok(read('README.md').includes('](docs/DASHBOARD_FIX_CHECKLIST.md)'));
+});
 
 test('README links every maintained operator and implementation guide', () => {
     const readme = read('README.md');

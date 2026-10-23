@@ -64,7 +64,7 @@
                     </div>
                 @endforelse
             </div>
-            @error('selectedEndpointUuids') <p class="field-error">{{ $message }}</p> @enderror
+            @error('selectedEndpointUuids') <p class="field-error" data-error-for="{{ 'selectedEndpointUuids' }}">{{ $message }}</p> @enderror
 
             <label class="toggle-row transfer-toggle">
                 <span>
@@ -97,8 +97,8 @@
                     <span>I understand this export may contain credentials.</span>
                 </label>
             @endif
-            @error('redactSecrets') <p class="field-error">{{ $message }}</p> @enderror
-            @error('export') <p class="field-error">{{ $message }}</p> @enderror
+            @error('redactSecrets') <p class="field-error" data-error-for="{{ 'redactSecrets' }}">{{ $message }}</p> @enderror
+            @error('export') <p class="field-error" data-error-for="{{ 'export' }}">{{ $message }}</p> @enderror
 
             <div class="export-facts">
                 <div><strong>Included</strong><span>Endpoints, responses, collections, tags, environments, and non-secret variables</span></div>
@@ -113,7 +113,7 @@
                     </button>
                 </span>
                 <button class="button button-primary" type="button" wire:click="exportAll" wire:loading.attr="disabled" wire:target="exportAll" @disabled($endpointTotal === 0 || ($exportScope === 'collection' && $exportCollectionId === '') || ($exportScope === 'environment' && $exportEnvironmentId === '')) title="{{ $endpointTotal === 0 ? 'Create an endpoint before exporting.' : '' }}">
-                    Export all
+                    {{ $exportScope === 'all' ? 'Export all endpoints' : 'Export current scope' }}
                 </button>
             </div>
         </section>
@@ -148,7 +148,7 @@
                             <button class="icon-button" type="button" wire:click="removeFile" aria-label="Remove selected import file">Remove</button>
                         </div>
                     @endif
-                    @error('configFile') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                    @error('configFile') <p class="field-error" data-error-for="{{ 'configFile' }}" role="alert">{{ $message }}</p> @enderror
                 </div>
 
                 @if ($format === 'postman')
@@ -161,7 +161,7 @@
                                 <strong>{{ $environmentFile ? $environmentFile->getClientOriginalName() : 'Drop an Environment JSON file or browse' }}</strong>
                                 <span>Its values override embedded collection/folder candidates.</span>
                             </label>
-                            @error('environmentFile') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                            @error('environmentFile') <p class="field-error" data-error-for="{{ 'environmentFile' }}" role="alert">{{ $message }}</p> @enderror
                         </div>
                     </details>
                 @endif
@@ -223,11 +223,11 @@
                 $skipped = count(array_filter($plan['items'], fn ($item) => ($item['action'] ?? null) === 'skip'));
             @endphp
             @if (($plan['metadata']['format'] ?? '') === 'postman')
-                <p><strong>{{ $plan['metadata']['title'] }}</strong> · {{ $plan['metadata']['request_count'] }} requests · {{ $plan['metadata']['folder_count'] }} folders · {{ $plan['metadata']['warning_count'] }} warnings</p>
+                <p><strong>{{ $plan['metadata']['title'] }}</strong> · {{ $plan['metadata']['request_count'] }} {{ Str::plural('request', $plan['metadata']['request_count']) }} · {{ $plan['metadata']['folder_count'] }} {{ Str::plural('folder', $plan['metadata']['folder_count']) }} · {{ $plan['metadata']['warning_count'] }} {{ Str::plural('warning', $plan['metadata']['warning_count']) }}</p>
                 <div class="selection-preview" aria-label="Postman variable review">
                     @php($candidates = $plan['metadata']['variable_candidates'] ?? [])
                     @php($unknown = collect($candidates)->filter(fn ($candidate) => ! $candidate['known'] && ! ($candidate['exists_in_environment'] ?? false))->pluck('name')->all())
-                    <strong>{{ count($candidates) }} variables referenced, {{ count($unknown) }} without a known value</strong>
+                    <strong>{{ count($candidates) }} {{ Str::plural('variable', count($candidates)) }} referenced, {{ count($unknown) }} without a known value</strong>
                     @if($unknown !== [])<p class="muted">{{ implode(', ', $unknown) }}</p>@endif
                     <div class="organization-grid">
                         <div class="field">
@@ -263,8 +263,8 @@
                             <small class="muted">Creates missing keys only. Existing values are kept; unknown candidates get an empty value.</small>
                         </details>
                     @endif
-                    @error('variableEnvironmentId') <p class="field-error" role="alert">{{ $message }}</p> @enderror
-                    @error('variables') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                    @error('variableEnvironmentId') <p class="field-error" data-error-for="{{ 'variableEnvironmentId' }}" role="alert">{{ $message }}</p> @enderror
+                    @error('variables') <p class="field-error" data-error-for="{{ 'variables' }}" role="alert">{{ $message }}</p> @enderror
                 </div>
                 @if ($plan['metadata']['contains_secrets'] && ! $maskImportedSecrets)
                     <div class="secret-warning">
@@ -351,7 +351,26 @@
                             </tbody>
                         </table>
                     </div>
-                    {{-- TODO: Render field-level update diffs when ImportPlan exposes old/new values. --}}
+                    @foreach ($plan['items'] as $item)
+                                    @if ($item['action'] === 'update')
+                    <details class="normalized-details revision-history-panel import-change-preview" data-disclosure wire:ignore.self wire:key="import-changes-{{ $loop->index }}">
+                                            <summary><x-disclosure-chevron />Review changes for {{ $item['name'] }} · {{ count($item['changes'] ?? []) }} {{ Str::plural('field', count($item['changes'] ?? [])) }}</summary>
+                                            <p class="field-help">{{ $item['response_pool_policy'] ?? '' }} Secret values are masked; long text is truncated.</p>
+                                            @forelse ($item['changes'] ?? [] as $change)
+                                                <article class="revision-diff-change">
+                                                    <div class="revision-diff-heading"><code>{{ $change['path'] }}</code><x-badge>{{ $change['type'] }}</x-badge></div>
+                                                    <div class="revision-diff-values">
+                                                        @foreach (['before' => 'Before', 'after' => 'After'] as $side => $label)
+                                                            <div><strong>{{ $label }}</strong><pre>{{ is_array($change[$side]) || is_object($change[$side]) ? json_encode($change[$side], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : (is_bool($change[$side]) ? ($change[$side] ? 'true' : 'false') : ($change[$side] ?? '—')) }}</pre></div>
+                                                        @endforeach
+                                                    </div>
+                                                </article>
+                                            @empty
+                                                <p>No endpoint or response field changes. Import trace metadata may be refreshed.</p>
+                                            @endforelse
+                                        </details>
+                                    @endif
+                    @endforeach
                 </details>
             @endif
 
@@ -362,10 +381,11 @@
                 </label>
             @endif
 
-            @error('import') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+            @error('import') <p class="field-error" data-error-for="{{ 'import' }}" role="alert">{{ $message }}</p> @enderror
 
             <div class="form-actions preview-actions">
-                <button class="text-button" type="button" wire:click="exportAll">Export a backup first</button>
+                <button class="text-button" type="button" wire:click="exportAll">Export current scope before importing</button>
+                <p class="field-help">Uses the export scope and redaction settings above; this may be a partial, redacted copy.</p>
                 <span class="disabled-tooltip" title="{{ ! $plan['can_apply'] ? 'Resolve preview errors before importing.' : (($format === 'native' && $plan['warnings'] !== [] && ! $acknowledgeWarnings) ? 'Review and acknowledge the warnings first.' : '') }}">
                     <button
                         class="button button-primary"

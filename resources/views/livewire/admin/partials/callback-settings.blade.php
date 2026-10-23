@@ -5,7 +5,7 @@
                     <div class="field">
                         <label for="callback-url">Target URL</label>
                         <input id="callback-url" type="text" inputmode="url" placeholder="https://example.test/webhook" wire:model="callbackUrl">
-                        @error('callbackUrl') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('callbackUrl') <p class="field-error" data-error-for="{{ 'callbackUrl' }}">{{ $message }}</p> @enderror
                     </div>
                     <div class="field">
                         <label for="callback-method">Method</label>
@@ -19,7 +19,7 @@
                 <div class="field">
                     <label for="callback-headers">Headers <span>JSON object</span></label>
                     <textarea id="callback-headers" class="code-input compact" rows="4" spellcheck="false" wire:model="callbackHeadersJson"></textarea>
-                    @error('callbackHeadersJson') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('callbackHeadersJson') <p class="field-error" data-error-for="{{ 'callbackHeadersJson' }}">{{ $message }}</p> @enderror
                 </div>
                 <div class="field">
                     <div class="template-toolbar">
@@ -74,20 +74,20 @@
                         </div>
                     @endif
                     <span class="field-help">Faker and request-context tokens. <x-help-tip title="Callback body tokens" label="Use environment values, $request.method, $request.body, $request.json.field, or Faker methods. Advanced context tokens require the JSON editor." /> <code>@verbatim{{env.KEY}}@endverbatim</code></span>
-                    @error('callbackBody') <p class="field-error">{{ $message }}</p> @enderror
+                    @error('callbackBody') <p class="field-error" data-error-for="{{ 'callbackBody' }}">{{ $message }}</p> @enderror
                     <button class="text-button" type="button" wire:click="previewCallback">Preview callback body</button>
                     @if ($callbackPreview !== '') <pre class="code-block">{{ $callbackPreview }}</pre> @endif
                 </div>
                 <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="callback-retry-{{ $editingId }}">
                 <summary><x-disclosure-chevron /><strong>Retry policy</strong></summary>
                 <div class="field-row three">
-                    <div class="field"><label for="callback-delay">Delay min (ms)</label><input id="callback-delay" type="number" min="0" max="30000" wire:model="callbackDelayMs">@error('callbackDelayMs') <p class="field-error">{{ $message }}</p> @enderror</div>
-                    <div class="field"><label for="callback-delay-max">Delay max (ms) <span>optional</span></label><input id="callback-delay-max" type="number" min="0" max="30000" wire:model="callbackDelayMaxMs">@error('callbackDelayMaxMs') <p class="field-error">{{ $message }}</p> @enderror</div>
-                    <div class="field"><label for="callback-attempts">Max attempts</label><input id="callback-attempts" type="number" min="1" max="5" wire:model="callbackRetry">@error('callbackRetry') <p class="field-error">{{ $message }}</p> @enderror</div>
+                    <div class="field"><label for="callback-delay">Delay min (ms)</label><input id="callback-delay" type="number" min="0" max="30000" wire:model="callbackDelayMs">@error('callbackDelayMs') <p class="field-error" data-error-for="{{ 'callbackDelayMs' }}">{{ $message }}</p> @enderror</div>
+                    <div class="field"><label for="callback-delay-max">Delay max (ms) <span>optional</span></label><input id="callback-delay-max" type="number" min="0" max="30000" wire:model="callbackDelayMaxMs">@error('callbackDelayMaxMs') <p class="field-error" data-error-for="{{ 'callbackDelayMaxMs' }}">{{ $message }}</p> @enderror</div>
+                    <div class="field"><label for="callback-attempts">Max attempts</label><input id="callback-attempts" type="number" min="1" max="5" wire:model="callbackRetry">@error('callbackRetry') <p class="field-error" data-error-for="{{ 'callbackRetry' }}">{{ $message }}</p> @enderror</div>
                 </div>
                 <div class="field-row two">
-                    <div class="field"><label for="callback-backoff">Retry backoff (ms)</label><input id="callback-backoff" type="number" min="0" max="30000" wire:model="callbackBackoffMs">@error('callbackBackoffMs') <p class="field-error">{{ $message }}</p> @enderror</div>
-                    <div class="field"><label for="callback-timeout">Attempt timeout (ms)</label><input id="callback-timeout" type="number" min="100" max="10000" wire:model="callbackTimeoutMs">@error('callbackTimeoutMs') <p class="field-error">{{ $message }}</p> @enderror</div>
+                    <div class="field"><label for="callback-backoff">Retry backoff (ms)</label><input id="callback-backoff" type="number" min="0" max="30000" wire:model="callbackBackoffMs">@error('callbackBackoffMs') <p class="field-error" data-error-for="{{ 'callbackBackoffMs' }}">{{ $message }}</p> @enderror</div>
+                    <div class="field"><label for="callback-timeout">Attempt timeout (ms)</label><input id="callback-timeout" type="number" min="100" max="10000" wire:model="callbackTimeoutMs">@error('callbackTimeoutMs') <p class="field-error" data-error-for="{{ 'callbackTimeoutMs' }}">{{ $message }}</p> @enderror</div>
                 </div>
                 </details>
                 <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="callback-signing-{{ $editingId }}">
@@ -97,9 +97,9 @@
                         <label class="toggle-inline"><input type="checkbox" wire:model.live="callbackSigningEnabled"><span>Sign requests</span></label>
                         <label for="callback-secret">Signing secret {{ $callbackSecretSet ? '(saved; leave blank to keep)' : '' }}</label>
                         <input id="callback-secret" type="password" autocomplete="new-password" wire:model="callbackSigningSecret">
-                        @error('callbackSigningSecret') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('callbackSigningSecret') <p class="field-error" data-error-for="{{ 'callbackSigningSecret' }}">{{ $message }}</p> @enderror
                     </div>
-                    <div class="field"><label for="callback-signature-header">Signature header</label><input id="callback-signature-header" wire:model="callbackSignatureHeader">@error('callbackSignatureHeader') <p class="field-error">{{ $message }}</p> @enderror</div>
+                    <div class="field"><label for="callback-signature-header">Signature header</label><input id="callback-signature-header" wire:model="callbackSignatureHeader">@error('callbackSignatureHeader') <p class="field-error" data-error-for="{{ 'callbackSignatureHeader' }}">{{ $message }}</p> @enderror</div>
                 </div>
                 <p class="field-help">HMAC signing. <x-help-tip title="Callback signing" label="Signing computes the lowercase hex HMAC-SHA256 of the exact raw resolved body bytes, using your secret as the key, and sends the digest in the named header. With signing off, that header is omitted entirely." /></p>
                 </details>
@@ -107,7 +107,7 @@
                     <div class="callback-actions">
                         <button class="button button-secondary button-small" type="button" wire:click="sendTestCallback">Send test callback</button>
                         <a class="text-button" href="{{ route('dashboard.logs.index', ['type' => 'callbacks', 'response_id' => $editingId]) }}" wire:navigate>View callback log</a>
-                        @error('callbackEnabled') <p class="field-error">{{ $message }}</p> @enderror
+                        @error('callbackEnabled') <p class="field-error" data-error-for="{{ 'callbackEnabled' }}">{{ $message }}</p> @enderror
                     </div>
                     @if ($callbackTestId && $callbackTestStatus)
                         <p class="info-note" role="status" @if ($callbackTestStatus === 'Queued' || $callbackTestStatus === 'Pending') wire:poll.2s="pollCallbackTest" @endif>Test callback: {{ $callbackTestStatus }}</p>
