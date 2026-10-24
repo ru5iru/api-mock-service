@@ -32,7 +32,7 @@
                             class="text-button danger-text"
                             type="button"
                             wire:click="restore({{ $revision->id }})"
-                            data-confirm-title="Restore version" data-confirm="Restore version {{ $revision->version_number }}? The current live values will change, and the restored state will be saved as a new rollback revision."
+                            data-confirm-title="Restore version" data-confirm="Restore version {{ $revision->version_number }}? The current live values will change, and the restored state will be saved as a new rollback revision. Unsaved drafts for this item will be discarded; restoring an endpoint reloads the editor and discards its other unsaved drafts."
                         >Restore</button>
                         @endif
                     </div>
@@ -42,10 +42,10 @@
     @endif
 
     @if ($diff !== [])
-        <section class="revision-diff-viewer" aria-live="polite" aria-labelledby="revision-diff-heading">
+        <section class="revision-diff-viewer" aria-live="polite" aria-labelledby="revision-diff-heading-{{ $entityType }}-{{ $entityId }}-{{ $runId ?? 'ordinary' }}">
             <div class="section-heading section-heading-inline">
                 <div>
-                    <h4 id="revision-diff-heading">Version {{ $diff['from']['version'] }} compared with {{ $diff['to']['kind'] === 'current' ? 'current' : 'version '.$diff['to']['version'] }}</h4>
+                    <h4 id="revision-diff-heading-{{ $entityType }}-{{ $entityId }}-{{ $runId ?? 'ordinary' }}">Version {{ $diff['from']['version'] }} compared with {{ $diff['to']['kind'] === 'current' ? 'current' : 'version '.$diff['to']['version'] }}</h4>
                     <p>{{ count($diff['changes']) }} structural {{ Str::plural('change', count($diff['changes'])) }}</p>
                 </div>
                 <button class="text-button" type="button" wire:click="clearDiff">Close diff</button>
@@ -53,7 +53,7 @@
 
             @forelse ($diff['changes'] as $change)
                 <article class="revision-diff-change renderer-{{ $change['renderer'] }}">
-                    <div class="revision-diff-heading">
+                    <div class="revision-diff-heading-{{ $entityType }}-{{ $entityId }}-{{ $runId ?? 'ordinary' }}">
                         <code>{{ $change['path'] }}</code>
                         <x-badge :variant="$change['type'] === 'removed' ? 'danger' : ($change['type'] === 'added' ? 'success' : 'info')">{{ $change['type'] }}</x-badge>
                     </div>

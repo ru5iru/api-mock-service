@@ -2,6 +2,7 @@
 
 namespace App\Services\Templates;
 
+use Illuminate\Validation\ValidationException;
 use JsonException;
 use stdClass;
 
@@ -46,8 +47,9 @@ final class TemplateSchemaConverter
     }
 
     /** @param array<string, mixed> $schema */
-    public function schemaToTemplate(array $schema): string
+    public function schemaToTemplate(array $schema, string $prefix = 'builderSchema'): string
     {
+        $this->validateSchema($schema, $prefix);
         $object = $this->rowsToObject($schema['fields'] ?? []);
         $root = $object;
 
@@ -59,6 +61,38 @@ final class TemplateSchemaConverter
         }
 
         return json_encode($root, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR);
+    }
+
+    public function validateSchema(array $schema, string $prefix = 'builderSchema'): void
+    {
+        $errors = [];
+        $visitRow = null;
+        $visitObject = function (array $rows, string $path, string $label) use (&$errors, &$visitRow, $prefix): void {
+            $seen = [];
+            foreach ($rows as $index => $row) {
+                $key = trim((string) ($row['key'] ?? ''));
+                $rowPath = $path.'.'.$index;
+                if ($key !== '' && array_key_exists($key, $seen)) {
+                    $message = 'Field "'.$key.'" appears more than once in '.$label.'. Use a unique name in this object.';
+                    $errors[$prefix.'.'.$seen[$key].'.key'] = $message;
+                    $errors[$prefix.'.'.$rowPath.'.key'] = $message;
+                } else {
+                    $seen[$key] = $rowPath;
+                }
+                $visitRow($row, $rowPath, $label.($key === '' ? '' : '.'.$key));
+            }
+        };
+        $visitRow = function (array $row, string $path, string $label) use (&$visitObject, &$visitRow): void {
+            if (($row['type'] ?? '') === 'object') {
+                $visitObject($row['children'] ?? [], $path.'.children', $label);
+            } elseif (($row['type'] ?? '') === 'array' && is_array($row['item'] ?? null)) {
+                $visitRow($row['item'], $path.'.item', $label.'[]');
+            }
+        };
+        $visitObject($schema['fields'] ?? [], 'fields', '$');
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     /** @return array<string, mixed>|null */

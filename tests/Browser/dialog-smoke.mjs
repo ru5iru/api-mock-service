@@ -81,9 +81,9 @@ try {
         await page.goto(`${base}/dashboard/endpoints/${fixture.main}/edit?tab=response`);
         const reset = page.getByRole('button', { name: 'Reset sequence', exact: true });
         await cancel(reset);
-        assert.match(await page.locator('.selection-settings').innerText(), /Currently on call 2/);
+        assert.match(await page.locator('.selection-settings').innerText(), /Next response: 2/);
         await confirm(reset);
-        await poll(async () => (await page.locator('.selection-settings').innerText()).includes('Currently on call 1'), 'Reset confirmation did not reset');
+        await poll(async () => (await page.locator('.selection-settings').innerText()).includes('Next response: 1'), 'Reset confirmation did not reset');
         await page.getByRole('button', { name: 'Endpoint history', exact: true }).click();
         const history = page.locator('#endpoint-history-dialog');
         const restore = history.locator('.revision-row').last().getByRole('button', { name: 'Restore', exact: true });

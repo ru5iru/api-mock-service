@@ -19,7 +19,8 @@ test('callback editor lives in its own tab and documents raw-body HMAC signing',
     assert.match(settings, /Sign requests/);
     assert.match(settings, /HMAC-SHA256 of the exact raw resolved body bytes/);
     assert.match(settings, /type="password"/);
-    assert.match(settings, /Send test callback/);
+    assert.match(settings, /Test saved callback/);
+    assert.match(settings, /Save callback to test changed settings/);
     assert.match(guide, /Callback configuration belongs in the Callback tab/);
     assert.match(guide, /Owner: log viewer, callback log, endpoint form/);
 });

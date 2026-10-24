@@ -164,3 +164,4 @@ setup-test:
 # Writes test fixtures. Set MOCKDECK_BROWSER_FIXTURE=1 only for a disposable DB.
 browser-regression-test:
 	node tests/Browser/critique-regressions.mjs
+	node tests/Browser/endpoint-editor-regressions.mjs

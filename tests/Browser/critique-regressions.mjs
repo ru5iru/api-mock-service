@@ -16,6 +16,8 @@ const browser = await chromium.launch({ headless: true, ...(process.env.MOCKDECK
 try {
     for (const theme of ['light', 'dark']) for (const width of [390, 740, 1440]) {
         const page = await browser.newPage({ viewport: { width, height: 900 } });
+        // The test deliberately replaces pages after checking drafts; accept only the unload guard.
+        page.on('dialog', dialog => dialog.type() === 'beforeunload' ? dialog.accept() : dialog.dismiss());
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         page.setDefaultTimeout(10000);

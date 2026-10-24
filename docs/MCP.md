@@ -137,7 +137,6 @@ Isolation is a two-way wall: run traffic considers only its own run's endpoints,
 
 `/_mockdeck` and all descendants, plus `/mcp` and descendants, are application-owned namespaces. `/mcp` authenticates before protocol handling (401 without a credential); descendants remain reserved and never fall through to mocks. Nginx forwards these paths normally to Laravel; no duplicate matcher or proxy rewrite is involved. The shared Nginx body ceiling is 25 MiB to carry two bounded Postman files with JSON-RPC escaping; the FastCGI timeout remains 60 seconds. Per-file and non-import MCP limits remain enforced in Laravel. The `/api/v1/verify/*` API remains ordinary-only, including reset-all: an old verification token cannot inspect or reset run state. Routing reads the live request and run row, independently of request-log retention.
 
-
 ## Isolation regression coverage
 
 `ConcurrentRunRoutingTest` launches eight PHP HTTP server workers and 24 barrier-synchronized TCP clients. Two runs and ordinary traffic all use the same POST path/query/JSON body and strict retained headers. Header and prefix mechanisms are mixed within each run. The test asserts each scope gets only its own responses, every sequence position 0–7 exactly once, and separate counts/digests. It runs in the normal full PHPUnit suite using a disposable SQLite file, plus the container CI job against the dedicated disposable PostgreSQL database `mockdeck_run_isolation_test`. The PostgreSQL mode refuses any other database name and requires `MOCKDECK_RUN_CONCURRENCY_POSTGRES=true`; never point it at a working instance.
@@ -337,8 +336,6 @@ Weighted and Rule modes return `applicable: false`, `reason: "not_applicable"` a
 
 ### Verified prerequisite CI
 
-Before this extension, [Phase 3 CI run 39436157601](https://github.com/ru5iru/api-mock-service/actions/runs/39436157601), commit `ea50049096430cee53ca29b055a81bc3c4bdfa50`, completed successfully. Its `test` and `containers` jobs passed, including full Make validation, offline MCP, concurrent run routing on PostgreSQL and concurrent MCP mutations. This is an observed GitHub result, not an inference from workflow configuration. The new tests run under the existing full PHPUnit job and the generated-schema drift check.
-
 ## Tested local client and complete workflow
 
 The tested client is **official `laravel/mcp` 1.0.2 PHP WebClient + explicit bearer token**, using Streamable HTTP protocol `2025-11-25`. The integration suite also checks `2026-07-28` stateless discovery. OAuth, stdio and specific editor/cloud-agent integrations were not tested and are not claimed. Credentials are provisioned locally; no external auth service is needed.
@@ -425,8 +422,6 @@ Maintain `mockdeck:mcp-prune` on an hourly schedule for physical TTL cleanup. Au
 Candidate explanations always include the real selected endpoint, then rank the bounded window by method/path agreement and configured priority. The winner itself is selected solely by the existing matcher, including its header-policy specificity. History and cached-create outputs use the same secret redaction as live results.
 
 Template/pool coverage also creates a V6 path-pattern mock through the structured MCP input, renders path captures plus the bound Environment and seeded UUID token, then replaces a response through add/remove while preserving omitted matching fields and the original curl. No-op patches preserve the configuration version.
-
-The [Phase 3 acceptance report](MCP_PHASE3_REPORT.md) records the exact tested client, all acceptance outcomes and environment-blocked checks.
 
 Atomic rollback is exercised with a second response containing a CRLF header value: it passes the public structural schema but fails the shared response validator after the endpoint and first response have been built. The outer transaction leaves neither partial configuration nor a retry cache entry.
 

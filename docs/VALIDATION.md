@@ -357,8 +357,14 @@ The full suite now includes `McpTransportTest`, `McpReadToolsTest`, `McpWorkflow
 
 Container CI additionally runs `ConcurrentMcpMutationTest` with `MOCKDECK_MCP_CONCURRENCY_POSTGRES=true`, using the same dedicated `mockdeck_run_isolation_test` database after the routing test. It refuses other PostgreSQL database names. This exercises actual row locks rather than relying only on SQLite’s writer reservation.
 
-### Dashboard critique regression checks
+### Dashboard UI regression checks
 
 `make browser-test` remains a read-only layout/documentation smoke check. For a **disposable test database only**, run `MOCKDECK_BROWSER_FIXTURE=1 make browser-regression-test` with the same database environment as the running test server and `MOCKDECK_BASE_URL` set. This writes isolated fixture endpoints, Environments, responses, revisions and callback attempts. Never enable it against an operator database.
 
 The CI browser job runs this suite after its normal smoke checks. It covers light/dark themes at 390/740/1440px, reachable Environment actions and error focus, retained drafts, History readability/focus return, nested Copy keyboard behavior, response identity/draft status, autocomplete through a Livewire morph, tooltip Escape, callback historical evidence/redaction, documentation search/jump, and Native/Postman prospective changes. Browser captures go to the existing CI artifact directory. Physical-device gestures and screen-reader speech still require manual testing.
+
+## Endpoint Create/Edit regression coverage
+
+`make browser-regression-test` includes `tests/Browser/endpoint-editor-regressions.mjs` in the existing CI browser job. With the same explicitly disposable database and `MOCKDECK_BROWSER_FIXTURE=1`, it covers both themes at 390/740/1440px, local response save versus selection drafts, callback save/test provenance, N-shortcut cancellation, duplicate Builder recovery, tooltip descriptions, nested control reachability and 200% CSS zoom. It never sends a callback. It writes fixtures and must not target an operator database.
+
+PHP regression classes `EndpointSelectionDraftTest`, `CallbackTestProvenanceTest`, `BuilderDuplicateKeysTest`, `EditorErrorDestinationsTest` and `EditorSequenceStatusTest` are discovered by the existing `php artisan test` job. Node tests exercise scoped dirty-state and error-focus behavior and catalog retry/cache recovery. CI configuration is not evidence of a successful remote run; record actual results separately.

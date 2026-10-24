@@ -56,7 +56,7 @@
             menus().forEach((item) => close(item));
             return;
         }
-        if (event.target.closest('a, button') && !event.target.closest('label, [data-faker-search]')) {
+        if (event.target.closest('a, button') && !event.target.closest('label, [data-faker-search], [data-faker-clear]')) {
             close(menu);
         }
     });

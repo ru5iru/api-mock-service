@@ -1,4 +1,4 @@
-<div class="endpoint-editor" data-unsaved-form x-data="{ activeTab: $wire.entangle('activeTab'), switchTab(tab) { this.activeTab = tab; $wire.touchSection(tab); } }">
+<div class="endpoint-editor" data-unsaved-form data-draft-scope="request" data-draft-baseline="{{ json_encode($requestBaseline) }}" data-draft-current="{{ json_encode($this->requestDraftValues()) }}" x-data="{ activeTab: $wire.entangle('activeTab'), switchTab(tab) { this.activeTab = tab; $wire.touchSection(tab); } }">
     <header class="page-header">
         <div class="page-header-copy">
             <h1 class="page-breadcrumbs"><a href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Endpoints</a><span aria-hidden="true">/</span><x-inline-title :name="$name" :placeholder="$preview ? $derivedName : 'New endpoint'" /></h1>
@@ -279,7 +279,7 @@
                 </div>
 
                 <div class="policy-group">
-                    <div class="policy-heading"><div><strong>Query</strong><span>{{ count($queryParameters) }} parsed</span></div><x-badge>{{ $excludedQueryParams === [] && $excludedHeaderNames === [] ? 'Always included' : collect($queryParameters)->where('excluded', true)->count().' of '.count($queryParameters).' excluded' }}</x-badge></div>
+                    <div class="policy-heading"><div><strong>Query</strong><span>{{ count($queryParameters) }} parsed</span></div><x-badge>{{ $excludedQueryParams === [] ? 'Always included' : collect($queryParameters)->where('excluded', true)->count().' of '.count($queryParameters).' excluded' }}</x-badge></div>
                     @if ($queryParameters !== [])
                         <div class="parsed-policy-list">
                             @foreach ($queryParameters as $parameter)

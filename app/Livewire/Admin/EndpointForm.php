@@ -31,6 +31,9 @@ final class EndpointForm extends Component
 
     private ?array $importVariableProvenance = null;
 
+    #[Locked]
+    public array $requestBaseline = [];
+
     public ?int $endpointId = null;
 
     public string $name = '';
@@ -48,6 +51,10 @@ final class EndpointForm extends Component
     public bool $excludeAuth = true;
 
     public bool $excludeHeaders = false;
+
+    /** Subordinate choices before the temporary all-header override. */
+    #[Locked]
+    public ?array $headerChoicesBeforeOverride = null;
 
     /** @var list<string> */
     public array $excludedQueryParams = [];
@@ -88,6 +95,9 @@ final class EndpointForm extends Component
     public function renameEndpoint(string $value): void
     {
         $this->name = app(EndpointMutationService::class)->rename($this->endpointId, $value);
+        if ($this->endpointId !== null) {
+            $this->requestBaseline['name'] = $this->name;
+        }
         $this->resetValidation('name');
     }
 
@@ -192,6 +202,8 @@ final class EndpointForm extends Component
                 $this->rawCurl = $prefill;
             }
 
+            $this->requestBaseline = $this->requestDraftValues();
+
             return;
         }
 
@@ -216,15 +228,28 @@ final class EndpointForm extends Component
             ->get()
             ->mapWithKeys(static fn ($environment): array => [$environment->id => $environment->pivot->enabled ? '1' : '0'])
             ->all();
+        $this->requestBaseline = $this->requestDraftValues();
+    }
+
+    public function requestDraftValues(): array
+    {
+        $fields = ['name', 'enabled', 'priority', 'rawCurl', 'excludeCookies', 'excludeAuth', 'excludeHeaders',
+            'excludedQueryParams', 'excludedHeaderNames', 'pathPatternEnabled', 'pathParameterNames',
+            'collectionId', 'tagIds', 'environmentOverrides', 'newCollectionName', 'newTagName'];
+
+        return array_combine($fields, array_map(fn ($field) => $this->{$field}, $fields));
     }
 
     public function updatedExcludeHeaders(bool $value): void
     {
         $this->touchSection('matching');
-
         if ($value) {
+            $this->headerChoicesBeforeOverride ??= [$this->excludeCookies, $this->excludeAuth];
             $this->excludeCookies = true;
             $this->excludeAuth = true;
+        } elseif ($this->headerChoicesBeforeOverride !== null) {
+            [$this->excludeCookies, $this->excludeAuth] = $this->headerChoicesBeforeOverride;
+            $this->headerChoicesBeforeOverride = null;
         }
     }
 
@@ -444,6 +469,9 @@ final class EndpointForm extends Component
             $endpoint = app(EndpointMutationService::class)->save($this->mutationInput(), $this->endpointId);
         } catch (ValidationException $exception) {
             $this->setErrorBag($exception->errors());
+            $firstField = explode('.', (string) array_key_first($exception->errors()))[0];
+            $this->activeTab = in_array($firstField, ['excludedQueryParams', 'excludedHeaderNames', 'pathPatternEnabled'], true)
+                ? 'matching' : 'request';
 
             return null;
         }

@@ -319,7 +319,6 @@ Documentation map:
 - [Validation guide](docs/VALIDATION.md) — automated checks and manual smoke scenarios
 - [Architecture guide](docs/ARCHITECTURE.md) — matching, templates, persistence, and extension boundaries
 - [UI guide](docs/UI_GUIDE.md) — tokens, components, themes, copy, code surfaces, and accessibility
-- [Dashboard fix checklist](docs/DASHBOARD_FIX_CHECKLIST.md) — all 24 critique items, implementation evidence and verification limits
 
 Read the architecture guide before changing canonicalization, matching, response rendering, or portable configuration.
 

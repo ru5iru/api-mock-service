@@ -22,6 +22,7 @@
                     @error('callbackHeadersJson') <p class="field-error" data-error-for="{{ 'callbackHeadersJson' }}">{{ $message }}</p> @enderror
                 </div>
                 <div class="field">
+                    <p class="field-help">Callback generation shares the response's Locale and Seed settings in the Response tab.</p>
                     <div class="template-toolbar">
                         <div class="segmented-control" role="group" aria-label="Callback body editor view">
                             <span class="disabled-tooltip" @if (! $callbackBuilderSupported) tabindex="0" aria-label="Builder unavailable. This callback body uses features the builder cannot show; continue editing JSON." title="This callback body uses features the builder cannot show; continue editing JSON." @endif>
@@ -75,11 +76,11 @@
                     @endif
                     <span class="field-help">Faker and request-context tokens. <x-help-tip title="Callback body tokens" label="Use environment values, $request.method, $request.body, $request.json.field, or Faker methods. Advanced context tokens require the JSON editor." /> <code>@verbatim{{env.KEY}}@endverbatim</code></span>
                     @error('callbackBody') <p class="field-error" data-error-for="{{ 'callbackBody' }}">{{ $message }}</p> @enderror
-                    <button class="text-button" type="button" wire:click="previewCallback">Preview callback body</button>
+                    <button class="text-button" type="button" wire:click="previewCallback" wire:loading.attr="disabled" wire:target="previewCallback">Preview callback body</button>
                     @if ($callbackPreview !== '') <pre class="code-block">{{ $callbackPreview }}</pre> @endif
                 </div>
                 <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="callback-retry-{{ $editingId }}">
-                <summary><x-disclosure-chevron /><strong>Retry policy</strong></summary>
+                <summary><x-disclosure-chevron /><strong>Timing and retries</strong></summary>
                 <div class="field-row three">
                     <div class="field"><label for="callback-delay">Delay min (ms)</label><input id="callback-delay" type="number" min="0" max="30000" wire:model="callbackDelayMs">@error('callbackDelayMs') <p class="field-error" data-error-for="{{ 'callbackDelayMs' }}">{{ $message }}</p> @enderror</div>
                     <div class="field"><label for="callback-delay-max">Delay max (ms) <span>optional</span></label><input id="callback-delay-max" type="number" min="0" max="30000" wire:model="callbackDelayMaxMs">@error('callbackDelayMaxMs') <p class="field-error" data-error-for="{{ 'callbackDelayMaxMs' }}">{{ $message }}</p> @enderror</div>
@@ -105,12 +106,13 @@
                 </details>
                 @if ($editingId)
                     <div class="callback-actions">
-                        <button class="button button-secondary button-small" type="button" wire:click="sendTestCallback">Send test callback</button>
+                        <button class="button button-secondary button-small" type="button" wire:click="sendTestCallback" wire:loading.attr="disabled" wire:dirty.attr="disabled" wire:target="sendTestCallback,callbackEnabled,callbackUrl,callbackMethod,callbackHeadersJson,callbackBody,callbackDelayMs,callbackDelayMaxMs,callbackRetry,callbackBackoffMs,callbackTimeoutMs,callbackSigningEnabled,callbackSigningSecret,callbackSignatureHeader,callbackBuilderSchema" @disabled($callbackDirty)>Test saved callback</button>
                         <a class="text-button" href="{{ route('dashboard.logs.index', ['type' => 'callbacks', 'response_id' => $editingId]) }}" wire:navigate>View callback log</a>
                         @error('callbackEnabled') <p class="field-error" data-error-for="{{ 'callbackEnabled' }}">{{ $message }}</p> @enderror
                     </div>
+                    <p class="field-help">Saved target: <code>{{ $savedCallbackTarget ?: 'No target saved' }}</code>. Save callback to test changed settings. Test requests use synthetic sample context.</p>
                     @if ($callbackTestId && $callbackTestStatus)
-                        <p class="info-note" role="status" @if ($callbackTestStatus === 'Queued' || $callbackTestStatus === 'Pending') wire:poll.2s="pollCallbackTest" @endif>Test callback: {{ $callbackTestStatus }}</p>
+                        <p class="info-note" role="status" @if ($callbackTestStatus === 'Queued' || $callbackTestStatus === 'Pending') wire:poll.2s="pollCallbackTest" @endif>Saved callback test: {{ $callbackTestStatus }}</p>
                     @endif
                 @endif
             </div>

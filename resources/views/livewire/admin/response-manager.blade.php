@@ -1,4 +1,4 @@
-<div class="response-manager" data-context-catalog="{{ json_encode($contextCatalog) }}">
+<div class="response-manager" data-draft-scope="responses" data-draft-baseline="{{ json_encode($this->editorDraftValues($formBaseline)) }}" data-draft-current="{{ json_encode($this->editorDraftValues()) }}" data-server-dirty="{{ $selectionDirty || $otherDraftsDirty ? 'true' : 'false' }}" data-context-catalog="{{ json_encode($contextCatalog) }}">
 <section id="panel-response" role="tabpanel" aria-labelledby="tab-response" x-show="activeTab === 'response'">
 <div class="response-grid {{ $bodyMode === 'template' ? 'template-active' : '' }}">
     <div class="response-list">
@@ -16,7 +16,7 @@
                         <option value="repeat_last">Repeat last</option><option value="loop">Loop</option><option value="not_found">Not found</option>
                     </select>
                 </label>
-                <p class="field-help" role="status">Currently on call {{ $sequencePosition + 1 }} of {{ $responses->count() }} for {{ $selectionEnvironment->name }}. <x-help-tip title="Sequence position" label="This is the next call position. Reset affects only the active environment and retains match counts." /></p>
+                <p class="field-help" role="status">@if ($responses->isEmpty())No responses configured for {{ $selectionEnvironment->name }}.@elseif ($nextSequencePosition === null)Sequence exhausted for {{ $selectionEnvironment->name }}.@else Next response: {{ $nextSequencePosition }} of {{ $responses->count() }} for {{ $selectionEnvironment->name }}.@endif Matched calls: {{ $totalMatchCount }}. <x-help-tip title="Sequence position" label="The next position follows the On exhaust policy. Reset affects only the active environment and retains match counts." /></p>
                 <button class="button button-tertiary button-small" type="button" wire:click="resetSequence" data-confirm-title="Confirm response action" data-confirm="Reset the sequence position for {{ $selectionEnvironment->name }} only? Match counts and other environments will be retained.">Reset sequence</button>
             @endif
             @php
@@ -24,13 +24,15 @@
             @endphp
             @if ($selectionErrors->isNotEmpty())
                 <div class="validation-panel error-panel" role="alert">
-                    @foreach ($selectionErrors->flatten() as $message)<p>{{ $message }}</p>@endforeach
+                    @foreach ($selectionErrors as $path => $messages)
+                        @foreach ($messages as $message)<p>@if (str_starts_with($path, 'responseRules.'))<button type="button" class="text-button" data-focus-error="{{ $path }}">{{ $message }}</button>@else{{ $message }}@endif</p>@endforeach
+                    @endforeach
                 </div>
             @endif
             <button class="button button-primary button-small" type="button" wire:click="saveSelection" wire:loading.attr="disabled" wire:target="saveSelection">Save selection</button>
             @if ($selectionMode !== 'weighted')
                 <section class="signature-panel selection-preview" aria-labelledby="selection-preview-title">
-                    <h3 id="selection-preview-title">Selection preview <x-badge>Draft</x-badge></h3>
+                    <h3 id="selection-preview-title">Selection preview <x-badge>{{ $selectionDirty ? 'Draft' : 'Saved' }}</x-badge></h3>
                     @if ($selectionMode === 'sequence')
                         <p>{{ $nextSequenceResponse ? 'Next: response #'.$nextSequenceResponse->id.' · HTTP '.$nextSequenceResponse->status_code : 'Next: HTTP 404 · sequence exhausted or no responses' }}</p>
                     @else
@@ -55,11 +57,12 @@
 
                 @endif
                 <div class="response-status">
-                    <x-radio name="configured-response" value="{{ $response->id }}" wire:click="edit({{ $response->id }})" :checked="$editingId === $response->id || ($responses->count() === 1 && $editingId === null)" aria-label="Select response {{ $response->id }} (HTTP {{ $response->status_code }}) for editing" />
+                    <x-radio name="configured-response" value="{{ $response->id }}" wire:click="edit({{ $response->id }})" :checked="$editingId === $response->id" aria-label="Select response {{ $response->id }} (HTTP {{ $response->status_code }}) for editing" />
                     <strong>{{ $response->status_code }}</strong>
                 </div>
                 <div class="response-description response-row-summary" title="{{ ($response->body_mode ?? 'static') === 'template' ? 'JSON response template' : ($response->body ?: 'Empty body') }}">
                     <x-response-identity :response="$response" />
+                    @if ($this->responseHasDraft($response->id))<x-badge variant="warning">Unsaved changes</x-badge>@endif
                     @if ($selectionMode === 'weighted')Weight {{ $response->weight }}@endif
                     @if ($selectionMode === 'sequence')<x-badge variant="info">Position {{ $responseIndex + 1 }}</x-badge>@endif
                     @if ($selectionMode === 'rule')
@@ -100,15 +103,18 @@
                             <summary><x-disclosure-chevron /><strong>Conditions</strong></summary>
                             @if ($fallbackResponseId === $response->id)<p class="field-help">Fallback is selected only when no other response matches; its conditions are not evaluated.</p>@endif
                             @foreach ($responseRules[$response->id] ?? [] as $ruleIndex => $condition)
+                                @php
+                                    $conditionPath = 'responseRules.'.$response->id.'.'.$ruleIndex;
+                                @endphp
                                 <div class="rule-condition-row" wire:key="condition-{{ $response->id }}-{{ $ruleIndex }}">
                                     <div class="field-row three">
-                                        <label class="field"><span>Field type</span><select class="ui-select" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_type"><option value="header">Header</option><option value="query">Query</option><option value="body_json_path">Body JSON path</option></select></label>
-                                        <label class="field"><span>Field name</span><input type="text" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_name" placeholder="X-Mode / status / user.id"></label>
-                                        <label class="field"><span>Operator</span><select class="ui-select" wire:model.live="responseRules.{{ $response->id }}.{{ $ruleIndex }}.operator">@foreach (['equals', 'contains', 'regex', 'exists'] as $operator)<option value="{{ $operator }}">{{ ucfirst($operator) }}</option>@endforeach</select></label>
+                                        <label class="field"><span>Field type</span><select class="ui-select" wire:model.live="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_type"><option value="header">Header</option><option value="query">Query</option><option value="body_json_path">Body JSON path</option></select>@error($conditionPath.'.field_type')<span class="field-error" data-error-for="{{ $conditionPath.'.field_type' }}" role="alert">{{ $message }}</span>@enderror</label>
+                                        <label class="field"><span>{{ $condition['field_type'] === 'body_json_path' ? 'Body JSON path' : 'Field name' }}</span><input type="text" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.field_name" aria-describedby="rule-name-help-{{ $response->id }}-{{ $ruleIndex }}" placeholder="{{ match ($condition['field_type']) { 'header' => 'X-Mode', 'query' => 'status', default => 'user.id' } }}"><small class="field-help" id="rule-name-help-{{ $response->id }}-{{ $ruleIndex }}">{{ match ($condition['field_type']) { 'header' => 'HTTP header name, case-insensitive.', 'query' => 'Query parameter name from the URL.', default => 'Dot-separated JSON path, for example user.id or items.0.sku.' } }}</small>@error($conditionPath.'.field_name')<span class="field-error" data-error-for="{{ $conditionPath.'.field_name' }}" role="alert">{{ $message }}</span>@enderror</label>
+                                        <label class="field"><span>Operator</span><select class="ui-select" wire:model.live="responseRules.{{ $response->id }}.{{ $ruleIndex }}.operator">@foreach (['equals', 'contains', 'regex', 'exists'] as $operator)<option value="{{ $operator }}">{{ ucfirst($operator) }}</option>@endforeach</select>@error($conditionPath.'.operator')<span class="field-error" data-error-for="{{ $conditionPath.'.operator' }}" role="alert">{{ $message }}</span>@enderror</label>
                                     </div>
                                     <div class="field-row three">
-                                        <label class="field"><span>Value</span><input type="text" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.value" @disabled($condition['operator'] === 'exists')></label>
-                                        <label class="field"><span>Priority (lower first)</span><input type="number" min="0" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.priority"></label>
+                                        <label class="field"><span>Value</span><input type="text" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.value" @disabled($condition['operator'] === 'exists') @if ($condition['operator'] === 'regex') aria-describedby="rule-value-help-{{ $response->id }}-{{ $ruleIndex }}" @endif>@if ($condition['operator'] === 'regex')<small class="field-help" id="rule-value-help-{{ $response->id }}-{{ $ruleIndex }}">Include regex delimiters, for example <code>/^test$/i</code>.</small>@endif@error($conditionPath.'.value')<span class="field-error" data-error-for="{{ $conditionPath.'.value' }}" role="alert">{{ $message }}</span>@enderror</label>
+                                        <label class="field"><span>Priority (lower first)</span><input type="number" min="0" wire:model="responseRules.{{ $response->id }}.{{ $ruleIndex }}.priority">@error($conditionPath.'.priority')<span class="field-error" data-error-for="{{ $conditionPath.'.priority' }}" role="alert">{{ $message }}</span>@enderror</label>
                                         <button class="icon-button danger" type="button" wire:click="removeRule({{ $response->id }}, {{ $ruleIndex }})" aria-label="Remove condition {{ $ruleIndex + 1 }} from response {{ $response->id }}">Remove</button>
                                     </div>
                                 </div>
@@ -141,10 +147,15 @@
             @endif
         </div>
 
-        @if ($errors->any())
+        @php
+
+            $responseErrors = collect($errors->getMessages())->reject(fn ($messages, $key) => preg_match('/^(selection_mode|sequence_on_exhaust|sequence_order|is_default|responseRules)/', $key));
+
+        @endphp
+        @if ($responseErrors->isNotEmpty())
             <div class="validation-panel error-panel" role="alert">
                 <strong>Response changes were not saved.</strong>
-                @foreach (array_unique($errors->all()) as $message)<p>{{ $message }}</p>@endforeach
+                @foreach ($responseErrors->flatten()->unique() as $message)<p>{{ $message }}</p>@endforeach
             </div>
         @endif
 
@@ -413,10 +424,13 @@
 <section id="panel-callback" role="tabpanel" aria-labelledby="tab-callback" x-show="activeTab === 'callback'" x-cloak>
     <div class="callback-response-list" aria-label="Response callbacks">
         @forelse ($responses as $responseIndex => $response)
-            @php($rowCallbackEnabled = $editingId === $response->id ? $callbackEnabled : ($pendingFormDrafts[$response->id]['state']['callbackEnabled'] ?? $response->callback_enabled))
+            @php
+                $rowCallbackEnabled = $editingId === $response->id ? $callbackEnabled : ($pendingFormDrafts[$response->id]['state']['callbackEnabled'] ?? $response->callback_enabled);
+            @endphp
             <div class="card callback-response-row {{ $editingId === $response->id ? 'selected' : '' }}" wire:key="callback-row-{{ $response->id }}">
                 <x-badge>HTTP {{ $response->status_code }}</x-badge>
                 <x-response-identity :response="$response" />
+                @if ($this->responseHasDraft($response->id))<x-badge variant="warning">Unsaved changes</x-badge>@endif
                 <span class="response-row-summary">@if ($selectionMode === 'sequence')Position {{ $responseIndex + 1 }}@elseif ($selectionMode === 'rule'){{ $fallbackResponseId === $response->id ? 'Fallback' : count($responseRules[$response->id] ?? []).' conditions' }}@else Weight {{ $response->weight }}@endif</span>
                 <x-badge :variant="$rowCallbackEnabled ? 'success' : 'neutral'">{{ $rowCallbackEnabled ? 'Enabled' : 'Disabled' }}</x-badge>
                 <button class="icon-button" type="button" wire:click="editCallback({{ $response->id }}, {{ $rowCallbackEnabled ? 'false' : 'true' }})" aria-label="Configure callback for response {{ $response->id }}">{{ $rowCallbackEnabled ? 'Edit callback' : 'Enable callback' }}</button>

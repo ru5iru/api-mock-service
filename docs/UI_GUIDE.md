@@ -1,5 +1,7 @@
 # MockDeck UI Component Reference
 
+Endpoint navigation compares saved scope baselines with current editable values through `public/js/editor-drafts.js`. Request, response/callback and selection drafts remain independently dirty after a failed or partial save. Anchors and the N shortcut use the shared confirmation; browser close/refresh uses before-unload protection. Inspection/preview actions never mark a configuration dirty. Response and Callback rows use the existing warning badge for retained Unsaved changes; saved identity summaries remain unchanged until persisted.
+
 Use these recipes without adding page-specific classes to alter their appearance. The CSS and Blade paths below are authoritative. Update this reference and its source-verification tests in the same change as a shared component. Token names resolve to **exact light and dark values** in [Theme tokens](#theme-tokens); geometry is identical in both themes unless stated otherwise. `transparent` means the ancestor surface shows through, not a new color.
 
 ## Contents
@@ -118,6 +120,12 @@ Custom panel perimeter is always `details[data-menu] > :not(summary)`: 1px `--bo
 **Do/Don't:** reuse `data-menu`; don't add a feature-specific outside-click controller. Reserve action-bar/toast space through `MockDeckPanels`; don't use viewport height alone. Keep an accessible native-select label even when captions are hidden; don't hide meaning with the caption. Use the native Popover top layer where supported; don't solve a stacking trap by escalating arbitrary z-indexes. Older browsers fall back to fixed positioning and do not get the same top-layer guarantee.
 
 ## Form fields
+
+Sequence status separates the normalized next response position from total matched calls and explicitly names empty/exhausted pools. Selection preview uses the same Saved/Draft fingerprint as its status text; response-edit radios represent the current form only. The Faker picker includes an existing mini-empty-state with Clear search; clearing keeps the picker open. Failed catalog requests can retry. Builder hints explain interpolation, ISO-8601 timezone examples and the depth limit. Endpoint tabs and nested Builder summaries have 44px minimum targets; narrow nesting uses existing spacing tokens to preserve input width.
+
+Rule-validation summaries link to `data-focus-error` model paths. Inline errors use the same response ID, condition index and field path as their `wire:model`; shared validation opens nested disclosures before focusing the control. Builder control/action names include their field path. History comparison headings include entity type, ID and run scope so multiple open comparisons remain distinct.
+
+Builder Field name inputs validate unique nonblank sibling names before conversion, after trimming. Errors identify the containing object and bind to each colliding `builderSchema.*.key` or `callbackBuilderSchema.*.key` path. Preserve both rows until corrected; do not switch to JSON or save a stale last-valid template to bypass those errors. Blank starter rows remain neutral.
 
 **Purpose:** editable scalar/multiline data with visible labels; compact table controls retain a hidden label, not a second layout.
 
@@ -424,7 +432,7 @@ Server equivalent: `$this->dispatch('toast', message: 'Response updated.');`. Do
 
 **Anatomy:** EndpointForm owns `.flow-nav > [role=tablist][data-endpoint-tabs] > button[role=tab]` and matching `[role=tabpanel][aria-labelledby]` IDs. Alpine activeTab is entangled with the existing Livewire component; tab panels remain mounted and use x-show. Switching has no anchor scrolling or component remount. The URL tab parameter supports direct links; new endpoints redirect to tab=response after creation. Signature is shared on Request/Matching; Response/Callback use `.endpoint-context-strip`.
 
-**Classes/tokens:** tab bar sticky at `--site-nav-height` (measured main nav height;65px fallback), z30, `--bg`, 1px `--border` bottom,16px bottom margin. Buttons retain minimum40px,6px 12px padding,7px gap,12px/600, `--text-muted`, transparent fill,2px transparent underline. aria-selected=true uses `--text` / `--accent` underline. Status circle18px: neutral muted/surface/border; valid success tokens/✓; attention warning tokens/!. Geometry is theme-independent.
+**Classes/tokens:** tab bar sticky at `--site-nav-height` (measured main nav height;65px fallback), z30, `--bg`, 1px `--border` bottom,16px bottom margin. Buttons retain minimum44px,6px 12px padding,7px gap,12px/600, `--text-muted`, transparent fill,2px transparent underline. aria-selected=true uses `--text` / `--accent` underline. Status circle18px: neutral muted/surface/border; valid success tokens/✓; attention warning tokens/!. Geometry is theme-independent.
 
 **States:** click or arrow/Home/End selects, updates aria-selected and roving tabindex; focus does not scroll. Hidden panels are display:none and have no accessible/focusable content. Drafts remain in the same Livewire components until saved, cancelled or navigation. Request/Matching/Response completeness retains its validators, including exactly one fallback in rule mode. No hover/loading/disabled tab skin beyond button hover text and global focus ring; tabs do not submit the form.
 
@@ -931,3 +939,5 @@ Semantic notices retain their existing icons, foreground/background tokens and b
 On narrow screens the documentation search and section fields share a row, with count/Clear below. Callback attempt definition rows stack their label and value inside the target column, and outcome cells align to the top. Prospective import diffs sit below the scrollable summary table so Before/After can stack at the actual mobile component width.
 
 Response weight explains its Weighted-only effect. Non-fallback rule Conditions start expanded inside Details, avoiding a second required disclosure; `wire:ignore.self` retains the operator’s choice through updates.
+
+Tooltip triggers in `resources/views/components/help-tip.blade.php` are native buttons with a scoped Alpine description ID, referenced by aria-describedby and the tooltip content ID. The ID is stable for that mounted tooltip. Shared panel placement, focus/hover opening and Escape dismissal remain in `public/js/panels.js`.

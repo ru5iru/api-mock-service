@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
     <script src="{{ asset('js/panels.js') }}?v={{ filemtime(public_path('js/panels.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/validation.js') }}?v={{ filemtime(public_path('js/validation.js')) }}" defer data-navigate-once></script>
+    <script src="{{ asset('js/editor-drafts.js') }}?v={{ filemtime(public_path('js/editor-drafts.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/docs.js') }}?v={{ filemtime(public_path('js/docs.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/toasts.js') }}?v={{ filemtime(public_path('js/toasts.js')) }}" data-navigate-once></script>
     <script src="{{ asset('js/dialogs.js') }}?v={{ filemtime(public_path('js/dialogs.js')) }}" defer data-navigate-once></script>
@@ -254,12 +255,8 @@
 
         document.addEventListener('input', (event) => {
             resizeEditor(event.target);
-            if (event.target.closest?.('[data-unsaved-form]')) window.MockDeck.formDirty = true;
         });
 
-        document.addEventListener('change', (event) => {
-            if (event.target.closest?.('[data-unsaved-form]')) window.MockDeck.formDirty = true;
-        });
 
         document.addEventListener('dragover', (event) => {
             const dropzone = event.target.closest?.('[data-dropzone]');
@@ -284,9 +281,6 @@
         });
 
         document.addEventListener('click', async (event) => {
-            const dirtyButton = event.target.closest('button[wire\\:click]');
-            if (dirtyButton?.closest('[data-unsaved-form]')) window.MockDeck.formDirty = true;
-
             const pasteButton = event.target.closest('[data-paste-curl]');
             if (pasteButton) {
                 try {
@@ -323,32 +317,6 @@
                 event.target.closest('[data-host-note]')?.remove();
             }
         });
-
-        document.addEventListener('submit', (event) => {
-            if (event.target.matches('[data-endpoint-save-form]')) window.MockDeck.formDirty = false;
-        });
-
-        let navigationPending = false;
-        const guardUnsavedNavigation = async (event) => {
-            if (event.type === 'keydown' && event.key !== 'Enter') return;
-            if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || (event.button !== undefined && event.button !== 0)) return;
-            const link = event.target.closest('a[href]');
-            if (!link || link.getAttribute('href')?.startsWith('#') || !window.MockDeck.formDirty || !document.querySelector('[data-unsaved-form]')) return;
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            if (navigationPending) return;
-            navigationPending = true;
-            try {
-                if (await window.MockDeck.ask({ title: 'Discard unsaved changes?', message: 'Your unsaved endpoint changes will be lost.', danger: true, confirmLabel: 'Leave page', trigger: link })) {
-                    window.MockDeck.formDirty = false;
-                    link.click();
-                }
-            } finally {
-                navigationPending = false;
-            }
-        };
-        // Livewire starts trusted pointer navigation on mousedown/mouseup, and keyboard navigation on Enter.
-        for (const type of ['mousedown', 'keydown', 'click']) document.addEventListener(type, guardUnsavedNavigation, true);
 
         document.addEventListener('keydown', (event) => {
             if (event.target.closest?.('dialog[open]')) return;
@@ -539,7 +507,6 @@
             scheduleLogSync();
         }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open', 'aria-expanded'] });
         document.addEventListener('livewire:navigated', () => {
-            window.MockDeck.formDirty = false;
             const path = window.location.pathname;
             document.querySelectorAll('[data-persistent-topbar] a[wire\\:navigate]').forEach((link) => {
                 const target = new URL(link.href, window.location.href).pathname;
@@ -562,7 +529,7 @@
             if (isEditing || target?.closest('dialog[open]') || event.ctrlKey || event.metaKey || event.altKey) return;
 
             if (event.key === 'n' || event.key === 'N') {
-                window.location.href = @js(route('dashboard.endpoints.create'));
+                window.MockDeckEditor.navigate(@js(route('dashboard.endpoints.create')), target);
             } else if (event.key === '/') {
                 event.preventDefault();
                 document.querySelector('[data-search-shortcut]')?.focus();

@@ -52,6 +52,7 @@ test('all validation messages expose their model path and share accessible assoc
     const source = read('public/js/validation.js');
     assert.match(source, /setAttribute\('aria-invalid', 'true'\)/);
     assert.match(source, /setAttribute\('aria-describedby'/);
-    assert.match(source, /first.focus/);
+    assert.match(source, /reveal\(first\)/);
+    assert.match(source, /control.focus/);
     for (const path of ['resources/views/layouts/dashboard.blade.php', 'resources/views/auth/login.blade.php']) assert.match(read(path), /js\/validation.js/);
 });

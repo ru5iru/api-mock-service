@@ -1,6 +1,6 @@
 @props(['label', 'title' => 'More information'])
 
-<span class="help-tip" tabindex="0" role="button" aria-label="{{ $title }}">
+<button type="button" class="help-tip" x-data="{}" x-id="['help-description']" x-bind:aria-describedby="$id('help-description')" aria-label="{{ $title }}">
     <span aria-hidden="true">?</span>
-    <span class="help-tip-content" role="tooltip">{{ $label }}</span>
-</span>
+    <span class="help-tip-content" role="tooltip" x-bind:id="$id('help-description')">{{ $label }}</span>
+</button>

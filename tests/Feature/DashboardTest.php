@@ -184,14 +184,20 @@ final class DashboardTest extends TestCase
             ->assertSeeHtml('section-status valid');
     }
 
-    public function test_ignoring_all_headers_visibly_includes_cookie_and_auth_exclusions(): void
+    public function test_ignoring_all_headers_temporarily_overrides_and_restores_cookie_and_auth_choices(): void
     {
         Livewire::test(EndpointForm::class)
             ->set('excludeCookies', false)
             ->set('excludeAuth', false)
             ->set('excludeHeaders', true)
             ->assertSet('excludeCookies', true)
-            ->assertSet('excludeAuth', true);
+            ->assertSet('excludeAuth', true)
+            ->assertSee('Cookie and authentication exclusions are included because all headers are ignored.')
+            ->assertSeeHtml('disabled checked')
+            ->set('excludeHeaders', false)
+            ->assertSet('excludeCookies', false)
+            ->assertSet('excludeAuth', false)
+            ->assertDontSee('Cookie and authentication exclusions are included because all headers are ignored.');
     }
 
     public function test_endpoint_form_can_mask_detected_request_secrets(): void

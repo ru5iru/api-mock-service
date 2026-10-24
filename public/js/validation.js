@@ -2,6 +2,12 @@
     'use strict';
     let nextId = 0;
     let previous = new Set();
+    function reveal(control) {
+        for (let parent = control.parentElement; parent; parent = parent.parentElement) {
+            if (parent.matches('details:not([data-menu])')) parent.open = true;
+        }
+        if (control.getClientRects().length) control.focus({ preventScroll: false });
+    }
     function sync() {
         const current = new Set();
         let first;
@@ -34,12 +40,17 @@
         });
         previous = current;
         if (first) {
-            for (let parent = first.parentElement; parent; parent = parent.parentElement) {
-                if (parent.matches('details:not([data-menu])')) parent.open = true;
-            }
-            if (first.getClientRects().length) first.focus({ preventScroll: false });
+            reveal(first);
         }
     }
+    document.addEventListener('click', event => {
+        const link = event.target.closest?.('[data-focus-error]');
+        if (!link) return;
+        const scope = link.closest('[wire\\:id]') || document;
+        const control = [...scope.querySelectorAll('input, select, textarea')].find(input =>
+            [...input.attributes].some(attr => attr.name.startsWith('wire:model') && attr.value === link.dataset.focusError));
+        if (control) reveal(control);
+    });
     let frame;
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(sync); };
     new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });

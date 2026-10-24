@@ -12,6 +12,9 @@
             }).then(function (response) {
                 if (!response.ok) throw new Error('Faker catalog could not be loaded.');
                 return response.json();
+            }).catch(function (error) {
+                catalogPromise = null;
+                throw error;
             });
         }
 
@@ -161,7 +164,18 @@
             picker.querySelectorAll('[data-faker-group]').forEach(function (group) {
                 group.hidden = !group.querySelector('[data-faker-option]:not([hidden])');
             });
+            const empty = picker.querySelector('[data-faker-empty]');
+            if (empty) empty.hidden = Boolean(picker.querySelector('[data-faker-option]:not([hidden])'));
         }
+    });
+
+    document.addEventListener('click', function (event) {
+        const clear = event.target.closest?.('[data-faker-clear]');
+        if (!clear) return;
+        const search = clear.closest('[data-faker-picker]').querySelector('[data-faker-search]');
+        search.value = '';
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+        search.focus();
     });
 
     document.addEventListener('toggle', function (event) {

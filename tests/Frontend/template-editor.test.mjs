@@ -25,8 +25,8 @@ test('builder exposes grouped methods, argument fields, pointer and keyboard reo
     assert.match(row, /data-faker-option/);
     assert.match(row, /args_options/);
     assert.match(row, /data-schema-drag-handle/);
-    assert.match(row, /aria-label="Move field up"/);
-    assert.match(row, /aria-label="Move field down"/);
+    assert.match(row, /aria-label="Move field up for/);
+    assert.match(row, /aria-label="Move field down for/);
     assert.match(source, /reorderSchemaRow/);
     assert.match(source, /positionFakerPicker/);
     assert.match(source, /details\[data-faker-picker\]\[open\]/);
