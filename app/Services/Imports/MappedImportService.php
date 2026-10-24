@@ -98,12 +98,8 @@ final readonly class MappedImportService
                 ])->save();
                 $before === null ? $created++ : $updated++;
                 foreach ($item['responses'] as $position => $response) {
-                    // Imported examples are static, equally weighted, with no inferred callback/fault intent.
-                    $attributes = [...$response, 'delay_ms' => 0, 'sequence_order' => null, 'is_default' => false,
-                        'template' => $response['template'] ?? null, 'editor_view' => 'json', 'seed_mode' => 'random', 'seed' => null, 'locale' => 'en',
-                        'fault_enabled' => false, 'fault_type' => 'delay', 'fault_delay_ms_min' => 0, 'fault_delay_ms_max' => null, 'fault_probability' => 100,
-                        'callback_enabled' => false, 'callback_url' => null, 'callback_headers' => null, 'callback_body' => null,
-                        'callback_signing_enabled' => false, 'callback_signing_secret' => null];
+                    // Mapped body modes are retained; examples are equally weighted with no inferred callback/fault intent.
+                    $attributes = $this->responseAttributes($response);
                     if (isset($oldResponses[$position])) {
                         $oldResponses[$position]->fill($attributes)->save();
                         $oldResponses[$position]->rules()->delete();
@@ -129,6 +125,42 @@ final readonly class MappedImportService
 
             return compact('summary', 'endpoints', 'plan');
         });
+    }
+
+    private function responseAttributes(array $response): array
+    {
+        return [...$response, 'delay_ms' => 0, 'sequence_order' => null, 'is_default' => false,
+            'template' => $response['template'] ?? null, 'editor_view' => 'json', 'seed_mode' => 'random', 'seed' => null, 'locale' => 'en',
+            'fault_enabled' => false, 'fault_type' => 'delay', 'fault_delay_ms_min' => 0, 'fault_delay_ms_max' => null, 'fault_probability' => 100,
+            'callback_enabled' => false, 'callback_url' => null, 'callback_headers' => null, 'callback_body' => null,
+            'callback_signing_enabled' => false, 'callback_signing_secret' => null];
+    }
+
+    private function previewChanges(MockEndpoint $endpoint, array $item): array
+    {
+        $after = [
+            'name' => $item['name'], 'collection' => $item['collection'], 'raw_curl' => $item['raw_curl'],
+            'exclude_cookies' => false, 'exclude_auth' => false, 'exclude_headers' => false,
+            'excluded_query_params' => $item['excluded_query_params'], 'excluded_headers' => $item['excluded_headers'],
+            'path_pattern_enabled' => $item['path_pattern_enabled'], 'selection_mode' => 'weighted', 'sequence_on_exhaust' => null,
+        ];
+        $before = collect($this->revisions->snapshot($endpoint))->only(array_keys($after))->all();
+        $before['collection'] = $endpoint->collection?->name;
+        $before['responses'] = [];
+        $after['responses'] = [];
+        $old = $endpoint->responses()->with('rules')->get();
+        foreach ($item['responses'] as $index => $response) {
+            $attributes = [...$this->responseAttributes($response), 'response_rules' => []];
+            $after['responses']['example_'.($index + 1)] = $attributes;
+            if (isset($old[$index])) {
+                $before['responses']['example_'.($index + 1)] = collect($this->revisions->snapshot($old[$index]))->only(array_keys($attributes))->all();
+            }
+        }
+        foreach ($old->slice(count($item['responses'])) as $index => $response) {
+            $before['responses']['example_'.($index + 1)] = $this->revisions->snapshot($response);
+        }
+
+        return app(ImportPreviewDiffer::class)->diff($before, $after);
     }
 
     public function createVariables(string $token, string $digest, Environment $environment, array $secretChoices = []): array
@@ -200,6 +232,8 @@ final readonly class MappedImportService
                 'variant' => $item['variant'], 'collection' => $item['collection'], 'response_count' => count($item['responses']),
                 'variable_fields' => $item['variable_provenance'] ?? [],
                 'action' => $action, 'warnings' => $warnings,
+                'changes' => $action === 'update' ? $this->previewChanges($existing, $item) : [],
+                'response_pool_policy' => 'Replace saved examples by position; omitted responses are deleted. Existing callbacks, faults and rules are reset.',
                 'message' => match ($action) {
                     'update' => 'Replace the matched endpoint request and saved response pool.', 'skip' => 'Correlation key already present; no changes.', default => 'Create endpoint and saved examples.'
                 },

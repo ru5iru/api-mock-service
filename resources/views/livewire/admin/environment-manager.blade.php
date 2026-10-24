@@ -5,7 +5,7 @@
             <input id="new-environment" type="text" wire:model="newEnvironmentName" placeholder="New environment">
             <button class="button button-primary button-small" type="submit">Add</button>
         </form>
-        @error('newEnvironmentName') <p class="field-error">{{ $message }}</p> @enderror
+        @error('newEnvironmentName') <p class="field-error" data-error-for="{{ 'newEnvironmentName' }}">{{ $message }}</p> @enderror
 
         <div class="environment-list-items">
             @foreach ($environments as $environment)
@@ -20,7 +20,7 @@
         </div>
     </aside>
 
-    <div class="environment-editor">
+    <div class="environment-editor" wire:key="environment-editor-{{ $selectedEnvironmentId }}">
         <section class="card form-card">
             <div class="card-heading tight">
                 <div><h2>{{ $selectedEnvironment->name }}</h2><p>Names and variables are shared by every endpoint using this environment.</p></div>
@@ -39,7 +39,7 @@
                 </label>
                 <button class="button button-primary" type="button" wire:click="renameSelected" wire:loading.attr="disabled" wire:target="renameSelected">Save name</button>
             </div>
-            @error('renameEnvironment') <p class="field-error">{{ $message }}</p> @enderror
+            @error('renameEnvironment') <p class="field-error" data-error-for="{{ 'renameEnvironment' }}">{{ $message }}</p> @enderror
 
             <details class="normalized-details danger-zone" data-disclosure>
                 <summary><x-disclosure-chevron /> Delete environment</summary>
@@ -56,12 +56,12 @@
                     </label>
                     <button class="button button-danger" type="button" wire:click="deleteSelected" data-confirm-title="Confirm environment action" data-confirm="Delete {{ $selectedEnvironment->name }}? Its variables and endpoint overrides will be removed.">Delete</button>
                 </div>
-                @error('replacementEnvironmentId') <p class="field-error">{{ $message }}</p> @enderror
+                @error('replacementEnvironmentId') <p class="field-error" data-error-for="{{ 'replacementEnvironmentId' }}">{{ $message }}</p> @enderror
             </details>
         </section>
 
         <section class="card form-card">
-            <div class="card-heading"><div><h2>Variables</h2><p>Secret values are write-only and remain masked after saving.</p></div></div>
+            <div class="card-heading"><div><h2>Variables</h2><p>Secret values are write-only and remain masked after saving. Drafts are kept when switching environments on this page.</p></div></div>
 
             <div class="table-scroll">
                 <table class="header-table environment-variable-table">
@@ -69,10 +69,10 @@
                     <tbody>
                         @forelse ($selectedEnvironment->variables as $variable)
                             <tr wire:key="environment-variable-{{ $variable->id }}">
-                                <td><input aria-label="Variable key" type="text" wire:model="variableDrafts.{{ $variable->id }}.key">@error('variableDrafts.'.$variable->id.'.key')<span class="field-error">{{ $message }}</span>@enderror</td>
-                                <td><input aria-label="Variable value" type="{{ $variable->is_secret ? 'password' : 'text' }}" wire:model="variableDrafts.{{ $variable->id }}.value" placeholder="{{ $variable->is_secret ? '•••••••• · leave blank to keep' : '' }}" autocomplete="off">@error('variableDrafts.'.$variable->id.'.value')<span class="field-error">{{ $message }}</span>@enderror</td>
+                                <td><input aria-label="Variable key" type="text" wire:model="variableDrafts.{{ $variable->id }}.key">@error('variableDrafts.'.$variable->id.'.key')<span class="field-error" data-error-for="{{ 'variableDrafts.'.$variable->id.'.key' }}" role="alert">{{ $message }}</span>@enderror</td>
+                                <td><input aria-label="Variable value" type="{{ $variable->is_secret ? 'password' : 'text' }}" wire:model="variableDrafts.{{ $variable->id }}.value" placeholder="{{ $variable->is_secret ? '•••••••• · leave blank to keep' : '' }}" autocomplete="off">@error('variableDrafts.'.$variable->id.'.value')<span class="field-error" data-error-for="{{ 'variableDrafts.'.$variable->id.'.value' }}">{{ $message }}</span>@enderror</td>
                                 <td><input aria-label="Secret variable" type="checkbox" wire:model="variableDrafts.{{ $variable->id }}.is_secret"></td>
-                                <td><div class="row-actions"><button class="button button-primary button-small" type="button" wire:click="saveVariable({{ $variable->id }})" wire:loading.attr="disabled" wire:target="saveVariable({{ $variable->id }})">Save</button><button class="icon-button danger" type="button" wire:click="deleteVariable({{ $variable->id }})" data-confirm-title="Confirm environment action" data-confirm="Delete {{ $variable->key }}?">Delete</button></div></td>
+                                <td><span class="field-help" wire:dirty wire:target="variableDrafts.{{ $variable->id }}">Unsaved</span><div class="row-actions"><button class="button button-primary button-small" type="button" wire:click="saveVariable({{ $variable->id }})" wire:loading.attr="disabled" wire:target="saveVariable({{ $variable->id }})">Save</button><button class="icon-button danger" type="button" wire:click="deleteVariable({{ $variable->id }})" data-confirm-title="Confirm environment action" data-confirm="Delete {{ $variable->key }}?">Delete</button></div></td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="empty-table">No variables in this environment.</td></tr>
@@ -88,8 +88,8 @@
                     </tfoot>
                 </table>
             </div>
-            @error('newVariableKey') <p class="field-error">{{ $message }}</p> @enderror
-            @error('newVariableValue') <p class="field-error">{{ $message }}</p> @enderror
+            @error('newVariableKey') <p class="field-error" data-error-for="{{ 'newVariableKey' }}">{{ $message }}</p> @enderror
+            @error('newVariableValue') <p class="field-error" data-error-for="{{ 'newVariableValue' }}">{{ $message }}</p> @enderror
         </section>
     </div>
 </div>

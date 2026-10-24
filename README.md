@@ -330,7 +330,7 @@ Read the architecture guide before changing canonicalization, matching, response
 - Response templates produce JSON and support request/path/environment context in the JSON editor.
 - Builder is a lossless subset of the JSON template language and disables itself for unsupported structures.
 - OpenAPI generation and recording/proxying remain planned. Verification uses exact counters and a bounded digest window for conditional assertions.
-- Native JSON import/export is implemented; third-party OpenAPI, Postman, WireMock, Mockoon, and Hoverfly adapters remain planned.
+- Native JSON import/export and Postman Collection v2.1 import are implemented; OpenAPI, WireMock, Mockoon and Hoverfly adapters remain planned.
 
 ## Framework references
 

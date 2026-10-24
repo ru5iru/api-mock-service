@@ -12,6 +12,9 @@
             }).then(function (response) {
                 if (!response.ok) throw new Error('Faker catalog could not be loaded.');
                 return response.json();
+            }).catch(function (error) {
+                catalogPromise = null;
+                throw error;
             });
         }
 
@@ -43,8 +46,26 @@
         window.MockDeckPanels?.close(popover);
         popover.hidden = true;
         popover.replaceChildren();
-        root.querySelector('[data-template-editor]')?.setAttribute('aria-expanded', 'false');
+        var editor = root.querySelector('[data-template-editor]');
+        editor?.setAttribute('aria-expanded', 'false');
+        editor?.removeAttribute('aria-activedescendant');
     }
+
+    function syncAutocompleteState(root) {
+        var editor = root?.querySelector('[data-template-editor]');
+        var popover = root?.querySelector('[data-template-autocomplete]');
+        if (!editor || !popover) return;
+        var selected = !popover.hidden && popover.querySelector('[aria-selected="true"]');
+        var expanded = String(Boolean(selected));
+        if (editor.getAttribute('aria-expanded') !== expanded) editor.setAttribute('aria-expanded', expanded);
+        if (selected) {
+            if (editor.getAttribute('aria-activedescendant') !== selected.id) editor.setAttribute('aria-activedescendant', selected.id);
+        } else editor.removeAttribute('aria-activedescendant');
+    }
+    // The list is wire:ignore, but Livewire may morph the textarea's initial ARIA attributes.
+    new MutationObserver(function () {
+        document.querySelectorAll('[data-template-editor-root]').forEach(syncAutocompleteState);
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-expanded', 'aria-activedescendant'] });
 
     function positionFakerPicker(picker) {
         var summary = picker.querySelector('summary');
@@ -76,7 +97,9 @@
             var contextItems = [];
             try { contextItems = JSON.parse(contextRoot?.dataset.contextCatalog || '[]'); } catch (_) { /* Faker catalog remains usable. */ }
             // Request context belongs only in JSON autocomplete, never in the visual Builder.
-            var items = (await catalog()).concat(contextItems).filter(function (item) {
+            var methods = await catalog();
+            if (!editor.isConnected || editor !== document.activeElement || JSON.stringify(activeFragment(editor)) !== JSON.stringify(fragment)) return;
+            var items = methods.concat(contextItems).filter(function (item) {
                 var haystack = [item.id].concat(item.aliases || []).join(' ').toLowerCase();
                 return haystack.includes(fragment.query.toLowerCase());
             }).slice(0, 10);
@@ -93,6 +116,8 @@
                 var sample = document.createElement('small');
                 button.type = 'button';
                 button.setAttribute('role', 'option');
+                button.id = popover.id + '-option-' + index;
+                button.tabIndex = -1;
                 button.setAttribute('aria-selected', String(index === 0));
                 button.dataset.autocompleteOption = '';
                 button.title = 'Sample: ' + (typeof item.sample === 'string' ? item.sample : JSON.stringify(item.sample));
@@ -109,7 +134,7 @@
 
             popover.hidden = false;
             positionPopover(editor, popover);
-            editor.setAttribute('aria-expanded', 'true');
+            syncAutocompleteState(root);
         } catch (error) {
             closeAutocomplete(root);
             window.MockDeck?.toast?.('Faker method suggestions could not be loaded.', 'danger');
@@ -123,6 +148,7 @@
         var next = (current + direction + options.length) % options.length;
         options.forEach(function (option, index) { option.setAttribute('aria-selected', String(index === next)); });
         options[next].scrollIntoView({ block: 'nearest' });
+        syncAutocompleteState(popover.closest('[data-template-editor-root]'));
     }
 
     document.addEventListener('input', function (event) {
@@ -138,7 +164,18 @@
             picker.querySelectorAll('[data-faker-group]').forEach(function (group) {
                 group.hidden = !group.querySelector('[data-faker-option]:not([hidden])');
             });
+            const empty = picker.querySelector('[data-faker-empty]');
+            if (empty) empty.hidden = Boolean(picker.querySelector('[data-faker-option]:not([hidden])'));
         }
+    });
+
+    document.addEventListener('click', function (event) {
+        const clear = event.target.closest?.('[data-faker-clear]');
+        if (!clear) return;
+        const search = clear.closest('[data-faker-picker]').querySelector('[data-faker-search]');
+        search.value = '';
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+        search.focus();
     });
 
     document.addEventListener('toggle', function (event) {
@@ -240,6 +277,10 @@
     document.addEventListener('dragend', function () {
         draggedSchemaRow?.element?.classList.remove('schema-dragging');
         draggedSchemaRow = null;
+    });
+
+    document.addEventListener('livewire:navigated', function () {
+        document.querySelectorAll('[data-template-editor-root]').forEach(closeAutocomplete);
     });
 
     window.addEventListener('resize', function () {

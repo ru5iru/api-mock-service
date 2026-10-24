@@ -8,6 +8,7 @@ use App\Models\MockEndpoint;
 use App\Services\Callbacks\CallbackDispatcher;
 use App\Services\Environments\EnvironmentContext;
 use App\Services\Matching\PathPattern;
+use App\Services\Mcp\McpAuditRedactor;
 use App\Services\Mutations\CallbackConfigurationValidator;
 use App\Services\Mutations\ResponseInput;
 use App\Services\Mutations\ResponseMutationService;
@@ -318,6 +319,21 @@ final class ResponseManager extends Component
         }
     }
 
+    public function editorDraftValues(?array $state = null): array
+    {
+        $state ??= $this->formState();
+        $fields = [...self::FORM_FIELDS, 'builderSchema', 'callbackBuilderSchema'];
+
+        return array_intersect_key($state, array_flip($fields));
+    }
+
+    public function responseHasDraft(int $id): bool
+    {
+        return $this->editingId === $id
+            ? $this->formFingerprint() !== $this->savedFormFingerprint
+            : isset($this->pendingFormDrafts[$id]);
+    }
+
     private function restoreFormDraft(array $draft): void
     {
         foreach ($draft['state'] as $field => $value) {
@@ -329,7 +345,7 @@ final class ResponseManager extends Component
 
     private function formFingerprint(?array $state = null): string
     {
-        return hash('sha256', json_encode(array_map(fn ($field) => $state === null ? $this->{$field} : $state[$field], self::FORM_FIELDS), JSON_THROW_ON_ERROR));
+        return hash('sha256', json_encode($this->editorDraftValues($state), JSON_THROW_ON_ERROR));
     }
 
     private function selectionDraft(): array
@@ -400,6 +416,7 @@ final class ResponseManager extends Component
     public function save(): void
     {
         $this->resetValidation();
+        $this->validateBuilderDrafts();
         try {
             app(ResponseMutationService::class)->save($this->endpointId, $this->mutationInput(), $this->editingId);
         } catch (ResponseValidationException $exception) {
@@ -414,12 +431,32 @@ final class ResponseManager extends Component
         unset($this->pendingFormDrafts[$this->editingId ?? 'new']);
         $this->dispatch('toast', message: $this->editingId === null ? 'Response added.' : 'Response updated.');
         $this->resetForm();
-        $this->loadSelection();
+        $this->loadSelection(preserveDraft: true);
     }
 
     private function callbackRules(): array
     {
         return app(CallbackConfigurationValidator::class)->rules();
+    }
+
+    private function validateBuilderDrafts(): void
+    {
+        $schemas = app(TemplateSchemaConverter::class);
+        if ($this->bodyMode === 'template' && $this->editorView === 'builder') {
+            $schemas->validateSchema($this->builderSchema);
+        }
+        if ($this->callbackEditorView === 'builder') {
+            $schemas->validateSchema($this->callbackBuilderSchema, 'callbackBuilderSchema');
+        }
+    }
+
+    private function clearBuilderErrors(string $prefix): void
+    {
+        foreach (array_keys($this->getErrorBag()->getMessages()) as $key) {
+            if (str_starts_with($key, $prefix.'.')) {
+                $this->resetErrorBag($key);
+            }
+        }
     }
 
     private function callbackValues(): array
@@ -461,6 +498,9 @@ final class ResponseManager extends Component
             return;
         }
         $this->resetValidation();
+        if ($this->callbackEditorView === 'builder') {
+            app(TemplateSchemaConverter::class)->validateSchema($this->callbackBuilderSchema, 'callbackBuilderSchema');
+        }
         app(ResponseMutationService::class)->saveCallback($this->endpointId, $this->editingId, $this->callbackValues(), $this->callbackSecretSet);
         $this->callbackSecretSet = $this->callbackSigningSecret !== '' || $this->callbackSecretSet;
         $this->callbackSigningSecret = '';
@@ -469,6 +509,8 @@ final class ResponseManager extends Component
                 $this->formBaseline[$field] = $this->{$field};
             }
         }
+        $this->formBaseline['callbackBuilderSchema'] = $this->callbackBuilderSchema;
+        $this->formBaseline['callbackEditorView'] = $this->callbackEditorView;
         $this->savedFormFingerprint = $this->formFingerprint($this->formBaseline);
         $this->stashCurrentForm();
         $this->publishCallbackValidity();
@@ -482,13 +524,16 @@ final class ResponseManager extends Component
         if ($this->editingId === $responseId) {
             $this->resetForm();
         }
-        $this->loadSelection();
+        $this->loadSelection(preserveDraft: true);
         $this->dispatch('toast', message: 'Response deleted.');
     }
 
     public function previewCallback(): void
     {
         $this->callbackPreview = '';
+        if ($this->callbackEditorView === 'builder') {
+            app(TemplateSchemaConverter::class)->validateSchema($this->callbackBuilderSchema, 'callbackBuilderSchema');
+        }
         try {
             $response = $this->editingId === null
                 ? $this->endpoint()->responses()->make(['locale' => $this->locale, 'seed_mode' => $this->seedMode, 'seed' => $this->seed])
@@ -510,6 +555,11 @@ final class ResponseManager extends Component
 
     public function sendTestCallback(): void
     {
+        if ($this->callbackHasDraft()) {
+            $this->addError('callbackEnabled', 'Save callback to test these changes. The test uses saved settings.');
+
+            return;
+        }
         if ($this->editingId === null || ! $this->endpoint()->responses()->findOrFail($this->editingId)->callback_enabled) {
             $this->addError('callbackEnabled', 'Save an enabled callback before testing it.');
 
@@ -520,6 +570,18 @@ final class ResponseManager extends Component
         $this->callbackTestId = $id;
         $this->callbackTestStatus = 'Queued';
         app(CallbackDispatcher::class)->enqueue($this->editingId, $id, app(EnvironmentContext::class)->active()->id, app(TemplateContext::class)->synthetic($id, null, $this->endpoint()));
+    }
+
+    public function callbackHasDraft(): bool
+    {
+        foreach (self::FORM_FIELDS as $field) {
+            if (str_starts_with($field, 'callback') && $this->{$field} !== ($this->formBaseline[$field] ?? null)) {
+                return true;
+            }
+        }
+
+        return $this->callbackEditorView === 'builder'
+            && $this->callbackBuilderSchema !== ($this->formBaseline['callbackBuilderSchema'] ?? []);
     }
 
     public function pollCallbackTest(): void
@@ -585,7 +647,19 @@ final class ResponseManager extends Component
             return;
         }
 
-        $this->template = app(TemplateSchemaConverter::class)->schemaToTemplate($this->builderSchema);
+        $this->clearBuilderErrors('builderSchema');
+        try {
+            $this->template = app(TemplateSchemaConverter::class)->schemaToTemplate($this->builderSchema);
+        } catch (ValidationException $exception) {
+            foreach ($exception->errors() as $key => $messages) {
+                foreach ($messages as $message) {
+                    $this->addError($key, $message);
+                }
+            }
+            $this->clearPreview();
+
+            return;
+        }
         $this->templateIssues = app(ResponseTemplateEngine::class)->validate($this->template, $this->locale)->issueArrays();
         $this->builderSupported = true;
         $this->clearPreview();
@@ -610,7 +684,19 @@ final class ResponseManager extends Component
     public function updatedCallbackBuilderSchema(): void
     {
         if ($this->callbackEditorView === 'builder') {
-            $this->callbackBody = app(TemplateSchemaConverter::class)->schemaToTemplate($this->callbackBuilderSchema);
+            $this->clearBuilderErrors('callbackBuilderSchema');
+            $this->callbackPreview = '';
+            try {
+                $this->callbackBody = app(TemplateSchemaConverter::class)->schemaToTemplate($this->callbackBuilderSchema, 'callbackBuilderSchema');
+            } catch (ValidationException $exception) {
+                foreach ($exception->errors() as $key => $messages) {
+                    foreach ($messages as $message) {
+                        $this->addError($key, $message);
+                    }
+                }
+
+                return;
+            }
             $this->callbackBuilderSupported = true;
             $this->callbackPreview = '';
         }
@@ -622,6 +708,9 @@ final class ResponseManager extends Component
             return;
         }
 
+        if ($this->callbackEditorView === 'builder' && $view === 'json') {
+            app(TemplateSchemaConverter::class)->validateSchema($this->callbackBuilderSchema, 'callbackBuilderSchema');
+        }
         $this->callbackEditorView = $view;
         if ($view === 'builder') {
             $this->callbackBuilderSchema = app(TemplateSchemaConverter::class)->templateToSchema($this->callbackBody)
@@ -635,7 +724,11 @@ final class ResponseManager extends Component
             $this->bodyMode = $mode;
             $this->resetValidation('bodyMode');
             if ($mode === 'template') {
-                $this->updatedTemplate();
+                if ($this->editorView === 'builder') {
+                    $this->updatedBuilderSchema();
+                } else {
+                    $this->updatedTemplate();
+                }
             }
         }
     }
@@ -650,6 +743,9 @@ final class ResponseManager extends Component
             return;
         }
 
+        if ($this->editorView === 'builder' && $view === 'json') {
+            $schemas->validateSchema($this->builderSchema);
+        }
         $this->editorView = $view;
         if ($view === 'builder') {
             $projected = $schemas->templateToSchema($this->template);
@@ -849,6 +945,7 @@ JSON;
         $responses = collect($this->responseOrder)->map(fn ($id) => $pool->get($id))->filter()->values();
         $position = (int) ($state?->sequence_position ?? 0);
         $next = null;
+        $index = null;
         if ($responses->isNotEmpty()) {
             $index = $position;
             if ($index >= $responses->count()) {
@@ -863,8 +960,14 @@ JSON;
 
         return view('livewire.admin.response-manager', [
             'responses' => $responses,
+            'selectionDirty' => $this->selectionFingerprint() !== $this->savedSelectionFingerprint,
+            'otherDraftsDirty' => count(array_diff(array_keys($this->pendingFormDrafts), [$this->editingId ?? 'new'])) > 0,
+            'callbackDirty' => $this->callbackHasDraft(),
+            'savedCallbackTarget' => $this->editingId === null ? '' : app(McpAuditRedactor::class)->redact((string) $pool->get($this->editingId)?->callback_url),
             'selectionEnvironment' => $environment,
             'sequencePosition' => $position,
+            'nextSequencePosition' => $next === null ? null : $index + 1,
+            'totalMatchCount' => (int) ($state?->total_match_count ?? 0),
             'nextSequenceResponse' => $next,
             'rulePreview' => $responses->filter(fn ($item) => $item->id !== $this->fallbackResponseId && ($this->responseRules[$item->id] ?? []) !== [])
                 ->sortBy(fn ($item) => collect($this->responseRules[$item->id])->min('priority'))->values(),

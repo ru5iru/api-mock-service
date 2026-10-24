@@ -77,7 +77,7 @@
     new MutationObserver(refresh).observe(document.body, { childList: true, subtree: true });
     document.addEventListener('pointerover', (event) => {
         const tip = event.target.closest?.('.help-tip');
-        if (tip) open(tip, tip.querySelector('.help-tip-content'));
+        if (tip && !tip.hasAttribute('data-tip-dismissed')) open(tip, tip.querySelector('.help-tip-content'));
     });
     document.addEventListener('pointerout', (event) => {
         const tip = event.target.closest?.('.help-tip');
@@ -85,11 +85,22 @@
     });
     document.addEventListener('focusin', (event) => {
         const tip = event.target.closest?.('.help-tip');
-        if (tip) open(tip, tip.querySelector('.help-tip-content'));
+        if (tip && !tip.hasAttribute('data-tip-dismissed')) open(tip, tip.querySelector('.help-tip-content'));
     });
     document.addEventListener('focusout', (event) => {
         const tip = event.target.closest?.('.help-tip');
-        if (tip && !tip.contains(event.relatedTarget) && !tip.matches(':hover')) close(tip.querySelector('.help-tip-content'));
+        if (tip && !tip.contains(event.relatedTarget)) {
+            tip.removeAttribute('data-tip-dismissed');
+            if (!tip.matches(':hover')) close(tip.querySelector('.help-tip-content'));
+        }
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        const tip = document.activeElement?.closest('.help-tip');
+        if (tip) {
+            tip.setAttribute('data-tip-dismissed', '');
+            close(tip.querySelector('.help-tip-content'));
+        }
     });
     window.MockDeckPanels = { open, close, position };
 }());

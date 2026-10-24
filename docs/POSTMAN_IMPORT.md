@@ -127,3 +127,5 @@ All other `$name` variables (for example `$someObscureVar`) are unmapped and war
 ## MCP tools
 
 Agents can call the read-only `preview_postman_import` tool with raw collection/optional companion JSON and an owned run ID. It reuses this mapper and the shared import-plan analyzer without writing a cached preview. Correlation is restricted to the run; scripts remain inert. The write-only `apply_postman_import` tool re-supplies the same content/options plus an idempotency key and uses the shared atomic writer. Endpoints/responses and history belong to the run; folder Collections remain shared metadata and are retained after run cleanup. No variables are silently created. See [MCP input/output and limits](MCP.md#postman-import-preview).
+
+Update matching previews include Before/After fields and saved-example changes by position. The preview explicitly warns that the saved response pool is replaced, omitted responses are deleted, and existing callbacks, faults and rules are reset. It uses the same response attributes as apply and masks secret-shaped values. This review step does not write configuration.

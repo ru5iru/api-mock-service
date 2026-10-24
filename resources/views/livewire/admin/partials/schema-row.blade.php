@@ -3,6 +3,7 @@
     $schemaTarget = $schemaTarget ?? 'response';
     $schema = $schemaTarget === 'callback' ? $callbackBuilderSchema : $builderSchema;
     $type = $row['type'] ?? 'string';
+    $fieldContext = ucfirst($schemaTarget).' field '.$rowPath.(trim((string) ($row['key'] ?? '')) === '' ? '' : ' ('.$row['key'].')');
     $method = $row['method'] ?? 'person.firstName';
     $selectedMethod = collect($fakerCatalog)->firstWhere('id', $method);
     $groups = collect($fakerCatalog)->groupBy('module');
@@ -23,13 +24,14 @@
         <span class="schema-drag-handle" @if ($showKey) draggable="true" data-schema-drag-handle title="Drag to reorder" @endif aria-hidden="true">⋮⋮</span>
         @if ($showKey)
             <label class="schema-key">
-                <span class="sr-only">Field name</span>
+                <span class="sr-only">Field name for {{ $fieldContext }}</span>
                 <input type="text" placeholder="Field name" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.key">
+                @error($schemaModel.'.'.$rowPath.'.key')<span class="field-error" data-error-for="{{ $schemaModel.'.'.$rowPath.'.key' }}" role="alert">{{ $message }}</span>@enderror
             </label>
         @endif
 
         <label class="schema-type">
-            <span class="sr-only">Field type</span>
+            <span class="sr-only">Field type for {{ $fieldContext }}</span>
             <select class="ui-select ui-select-dense" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.type">
                 <option value="faker">Faker</option>
                 <option value="string">String</option>
@@ -50,9 +52,9 @@
                     <div class="faker-picker-panel">
                         <label class="search-field faker-search">
                             <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                            <input type="search" aria-label="Search Faker methods" placeholder="Search methods" data-faker-search>
+                            <input type="search" aria-label="Search Faker methods for {{ $fieldContext }}" placeholder="Search methods" data-faker-search>
                         </label>
-                        <div class="faker-options" data-faker-options role="listbox" aria-label="Faker methods">
+                        <div class="faker-options" data-faker-options role="listbox" aria-label="Faker methods for {{ $fieldContext }}">
                             @foreach ($groups as $module => $methods)
                                 <section data-faker-group>
                                     <h4>{{ $module }}</h4>
@@ -72,11 +74,12 @@
                                     @endforeach
                                 </section>
                             @endforeach
+                            <div class="mini-empty-state" data-faker-empty role="status" hidden><strong>No matching Faker methods</strong><button type="button" class="text-button" data-faker-clear>Clear search</button></div>
                         </div>
                     </div>
                 </details>
                 <details class="schema-args" data-menu>
-                    <summary class="icon-button" title="Configure Faker arguments" aria-label="Configure Faker arguments">⚙</summary>
+                    <summary class="icon-button" title="Configure Faker arguments" aria-label="Configure Faker arguments for {{ $fieldContext }}">⚙</summary>
                     <div>
                         @if (($selectedMethod['argsHint'] ?? []) !== [])
                             <div class="schema-argument-fields">
@@ -112,34 +115,35 @@
                     </div>
                 </details>
             @elseif ($type === 'string')
-                <select class="ui-select ui-select-dense" aria-label="String mode" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
+                <select class="ui-select ui-select-dense" aria-label="String mode for {{ $fieldContext }}" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
                     <option value="fixed">Fixed</option>
                     <option value="interpolated">Interpolated</option>
                 </select>
-                <input type="text" aria-label="String value" placeholder="Value" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.value">
+                <input type="text" aria-label="String value for {{ $fieldContext }}" placeholder="Value" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.value">
+                @if (($row['mode'] ?? 'fixed') === 'interpolated')<small class="field-help">@verbatimExample: Hello {{person.firstName}}. Use Fixed to send token text literally.@endverbatim</small>@endif
             @elseif ($type === 'number')
-                <select class="ui-select ui-select-dense" aria-label="Number mode" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
+                <select class="ui-select ui-select-dense" aria-label="Number mode for {{ $fieldContext }}" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
                     <option value="fixed">Fixed</option>
                     <option value="int">Random integer</option>
                     <option value="float">Random decimal</option>
                 </select>
                 @if (($row['mode'] ?? 'fixed') === 'fixed')
-                    <input type="number" step="any" aria-label="Number value" placeholder="0" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.value">
+                    <input type="number" step="any" aria-label="Number value for {{ $fieldContext }}" placeholder="0" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.value">
                 @else
-                    <input type="number" step="any" aria-label="Minimum" placeholder="Min" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.min">
-                    <input type="number" step="any" aria-label="Maximum" placeholder="Max" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.max">
+                    <input type="number" step="any" aria-label="Minimum for {{ $fieldContext }}" placeholder="Min" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.min">
+                    <input type="number" step="any" aria-label="Maximum for {{ $fieldContext }}" placeholder="Max" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.max">
                     @if (($row['mode'] ?? '') === 'float')
-                        <input type="number" min="0" max="10" aria-label="Decimal places" placeholder="Decimals" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.decimals">
+                        <input type="number" min="0" max="10" aria-label="Decimal places for {{ $fieldContext }}" placeholder="Decimals" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.decimals">
                     @endif
                 @endif
             @elseif ($type === 'boolean')
-                <select class="ui-select ui-select-dense" aria-label="Boolean value" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
+                <select class="ui-select ui-select-dense" aria-label="Boolean value for {{ $fieldContext }}" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
                     <option value="true">True</option>
                     <option value="false">False</option>
                     <option value="random">Random</option>
                 </select>
             @elseif ($type === 'date')
-                <select class="ui-select ui-select-dense" aria-label="Date mode" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
+                <select class="ui-select ui-select-dense" aria-label="Date mode for {{ $fieldContext }}" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.mode">
                     <option value="recent">Recent</option>
                     <option value="past">Past</option>
                     <option value="future">Future</option>
@@ -147,15 +151,17 @@
                     <option value="fixed">Fixed</option>
                 </select>
                 @if (($row['mode'] ?? 'recent') === 'fixed')
-                    <input type="datetime-local" aria-label="Fixed date" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.value">
+                    <input type="datetime-local" aria-label="Fixed date for {{ $fieldContext }}" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.value">
                 @elseif (($row['mode'] ?? 'recent') === 'between')
-                    <input type="text" aria-label="From date" placeholder="From" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.from">
-                    <input type="text" aria-label="To date" placeholder="To" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.to">
+                    <input type="text" aria-label="From date for {{ $fieldContext }}" placeholder="From" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.from">
+                    <input type="text" aria-label="To date for {{ $fieldContext }}" placeholder="To" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.to">
+                    <small class="field-help">Use ISO-8601, for example 2026-01-01T00:00:00Z. Include Z or an offset to make the timezone explicit.</small>
                 @else
-                    <input type="number" min="1" aria-label="Date amount" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.{{ ($row['mode'] ?? 'recent') === 'recent' ? 'days' : 'years' }}">
+                    <input type="number" min="1" aria-label="Date amount ({{ ($row['mode'] ?? 'recent') === 'recent' ? 'days' : 'years' }}) for {{ $fieldContext }}" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.{{ ($row['mode'] ?? 'recent') === 'recent' ? 'days' : 'years' }}">
+                    <span class="field-help">{{ ($row['mode'] ?? 'recent') === 'recent' ? 'days' : 'years' }}</span>
                 @endif
                 @if (($row['mode'] ?? 'recent') !== 'fixed')
-                    <select class="ui-select ui-select-dense" aria-label="Date output format" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.format">
+                    <select class="ui-select ui-select-dense" aria-label="Date output format for {{ $fieldContext }}" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.format">
                         <option value="iso">ISO-8601</option>
                         <option value="date">Date</option>
                         <option value="epochMs">Epoch ms</option>
@@ -165,18 +171,20 @@
             @elseif ($type === 'object')
                 <span class="schema-type-summary">{{ count($row['children'] ?? []) }} {{ Str::plural('field', count($row['children'] ?? [])) }}</span>
             @elseif ($type === 'array')
-                <select class="ui-select ui-select-dense" aria-label="Array length mode" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.length_mode">
+                <select class="ui-select ui-select-dense" aria-label="Array length mode for {{ $fieldContext }}" wire:model.live="{{ $schemaModel }}.{{ $rowPath }}.length_mode">
                     <option value="fixed">Fixed length</option>
                     <option value="range">Min–max length</option>
                 </select>
                 @if (($row['length_mode'] ?? 'fixed') === 'range')
-                    <input type="number" min="0" max="1000" aria-label="Minimum length" placeholder="Min" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.length_min">
-                    <input type="number" min="0" max="1000" aria-label="Maximum length" placeholder="Max" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.length_max">
+                    <input type="number" min="0" max="1000" aria-label="Minimum length for {{ $fieldContext }}" placeholder="Min" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.length_min">
+                    <input type="number" min="0" max="1000" aria-label="Maximum length for {{ $fieldContext }}" placeholder="Max" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.length_max">
                 @else
-                    <input type="number" min="0" max="1000" aria-label="Array length" placeholder="Length" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.length">
+                    <input type="number" min="0" max="1000" aria-label="Array length for {{ $fieldContext }}" placeholder="Length" wire:model.live.debounce.400ms="{{ $schemaModel }}.{{ $rowPath }}.length">
                 @endif
             @endif
         </div>
+
+        @if ($depth >= 6)<small class="field-help">Builder nesting limit reached. Edit JSON for other supported structures.</small>@endif
 
         <label class="schema-nullable" title="Probability that this field is null">
             <span>Null %</span>
@@ -184,10 +192,10 @@
         </label>
 
         @if ($showKey)
-            <div class="schema-row-actions" aria-label="Field actions">
-                <button class="icon-button" type="button" wire:click="moveSchemaRow('{{ $parentPath }}', {{ $rowIndex }}, -1, '{{ $schemaTarget }}')" aria-label="Move field up" @disabled($rowIndex === 0)>↑</button>
-                <button class="icon-button" type="button" wire:click="moveSchemaRow('{{ $parentPath }}', {{ $rowIndex }}, 1, '{{ $schemaTarget }}')" aria-label="Move field down" @disabled($rowIndex >= $rowCount - 1)>↓</button>
-                <button class="icon-button danger" type="button" wire:click="removeSchemaRow('{{ $parentPath }}', {{ $rowIndex }}, '{{ $schemaTarget }}')" aria-label="Delete field">×</button>
+            <div class="schema-row-actions" aria-label="Field actions for {{ $fieldContext }}">
+                <button class="icon-button" type="button" wire:click="moveSchemaRow('{{ $parentPath }}', {{ $rowIndex }}, -1, '{{ $schemaTarget }}')" aria-label="Move field up for {{ $fieldContext }}" @disabled($rowIndex === 0)>↑</button>
+                <button class="icon-button" type="button" wire:click="moveSchemaRow('{{ $parentPath }}', {{ $rowIndex }}, 1, '{{ $schemaTarget }}')" aria-label="Move field down for {{ $fieldContext }}" @disabled($rowIndex >= $rowCount - 1)>↓</button>
+                <button class="icon-button danger" type="button" wire:click="removeSchemaRow('{{ $parentPath }}', {{ $rowIndex }}, '{{ $schemaTarget }}')" aria-label="Delete field for {{ $fieldContext }}">×</button>
             </div>
         @endif
     </div>

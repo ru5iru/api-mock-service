@@ -12,6 +12,7 @@ use App\Services\Curl\CurlParser;
 use App\Services\Curl\HashVariant;
 use App\Services\Curl\ParsedCurl;
 use App\Services\Environments\EnvironmentContext;
+use App\Services\Imports\ImportPreviewDiffer;
 use App\Services\Matching\MatchPrecedence;
 use App\Services\Matching\PatternPathMatcher;
 use App\Services\Response\FaultConfigurationValidator;
@@ -264,7 +265,10 @@ final readonly class ConfigImporter
                 $counts['conflicts']++;
             }
 
-            $items[] = $this->item($index, $uuid, $name, $action, $message, $variant->name);
+            $items[] = [...$this->item($index, $uuid, $name, $action, $message, $variant->name),
+                'changes' => $action === 'update' ? app(ImportPreviewDiffer::class)->native($byUuid, $source, $replaceResponses) : [],
+                'response_pool_policy' => $replaceResponses ? 'Replace the response pool; omitted responses are deleted.' : 'Merge responses by UUID; omitted responses are retained.',
+            ];
         }
 
         $warnings = array_values(array_unique($warnings));

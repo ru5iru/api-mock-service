@@ -7,6 +7,7 @@ use App\Services\Environments\EnvironmentContext;
 use App\Services\Mutations\ResponsePoolMutationService;
 use App\Services\Mutations\SelectionInput;
 use App\Services\Response\ResponseSelectionService;
+use Illuminate\Validation\ValidationException;
 
 trait EditsResponseSelection
 {
@@ -98,7 +99,29 @@ trait EditsResponseSelection
 
     public function saveSelection(): void
     {
-        app(ResponsePoolMutationService::class)->save($this->endpointId, $this->selectionInput());
+        try {
+            app(ResponsePoolMutationService::class)->save($this->endpointId, $this->selectionInput());
+        } catch (ValidationException $exception) {
+            $ids = $this->endpoint()->responses()->get()->modelKeys();
+            $errors = [];
+            foreach ($exception->errors() as $key => $messages) {
+                if (preg_match('/^responseRules\.(\d+)\.(\d+)$/D', $key, $match) && isset($ids[(int) $match[1]])) {
+                    $id = $ids[(int) $match[1]];
+                    $index = (int) $match[2];
+                    $rule = $this->responseRules[$id][$index] ?? [];
+                    $message = implode(' ', $messages);
+                    $field = str_contains($message, 'priority') ? 'priority'
+                        : (str_contains($message, 'Equals, Contains') ? 'operator'
+                            : (str_contains($message, 'field type')
+                                ? (in_array($rule['field_type'] ?? '', ['header', 'query', 'body_json_path'], true) ? 'field_name' : 'field_type')
+                                : 'value'));
+                    $key = 'responseRules.'.$id.'.'.$index.'.'.$field;
+                    $messages = array_map(fn ($text) => 'Response #'.$id.', condition '.($index + 1).': '.$text, $messages);
+                }
+                $errors[$key] = $messages;
+            }
+            throw ValidationException::withMessages($errors);
+        }
         $this->loadSelection();
         $this->resetValidation();
         if (! $this->savingDrafts) {
@@ -112,8 +135,10 @@ trait EditsResponseSelection
         $this->dispatch('toast', message: 'Sequence reset for the active environment. Match count was retained.');
     }
 
-    private function loadSelection(): void
+    private function loadSelection(bool $preserveDraft = false): void
     {
+        $draft = $preserveDraft && ! $this->savingDrafts && $this->selectionFingerprint() !== $this->savedSelectionFingerprint
+            ? $this->selectionDraft() : null;
         $endpoint = $this->endpoint();
         $this->selectionMode = $endpoint->selection_mode ?? 'weighted';
         $this->sequenceOnExhaust = $endpoint->sequence_on_exhaust ?? 'repeat_last';
@@ -127,6 +152,21 @@ trait EditsResponseSelection
             'field_type', 'field_name', 'operator', 'value', 'priority',
         ]))->all()])->all();
         $this->savedSelectionFingerprint = $this->selectionFingerprint();
+        if ($draft !== null) {
+            $savedOrder = $this->responseOrder;
+            $this->selectionMode = $draft['selectionMode'];
+            $this->sequenceOnExhaust = $draft['sequenceOnExhaust'];
+            $this->responseOrder = array_values(array_unique([
+                ...array_intersect($draft['responseOrder'], $savedOrder), ...$savedOrder,
+            ]));
+            $this->fallbackResponseId = in_array($draft['fallbackResponseId'], $savedOrder, true)
+                ? $draft['fallbackResponseId'] : null;
+            foreach ($savedOrder as $id) {
+                if (array_key_exists($id, $draft['responseRules'])) {
+                    $this->responseRules[$id] = $draft['responseRules'][$id];
+                }
+            }
+        }
         $this->publishSelectionValidity();
     }
 

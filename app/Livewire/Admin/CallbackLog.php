@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\CallbackAttempt;
 use App\Services\Callbacks\CallbackDispatcher;
 use App\Services\Environments\EnvironmentContext;
+use App\Services\Mcp\McpAuditRedactor;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -74,18 +75,21 @@ final class CallbackLog extends Component
             '24h' => now()->subDay(),
             default => null,
         };
-        $rows = CallbackAttempt::query()->with('response:id,callback_url')
+        $rows = CallbackAttempt::query()->with('response:id,external_label')
             ->when(in_array($this->method, ['POST', 'PUT', 'PATCH', 'DELETE'], true), fn ($query) => $query->where('method', $this->method))
             ->when(in_array($this->status, ['pending', 'success', 'failed', 'timeout'], true), fn ($query) => $query->where('status', $this->status))
             ->when(ctype_digit($this->responseId) && $this->responseId !== '', fn ($query) => $query->where('response_id', (int) $this->responseId))
             ->when($this->requestLogId !== '', fn ($query) => $query->where('request_log_id', $this->requestLogId))
             ->when($cutoff !== null, fn ($query) => $query->where('created_at', '>=', $cutoff))
-            ->when($this->search !== '', fn ($query) => $query->where(function ($nested): void {
-                $nested->where('request_log_id', 'like', '%'.$this->search.'%')
-                    ->orWhereHas('response', fn ($response) => $response->where('callback_url', 'like', '%'.$this->search.'%'));
-            }))
             ->latest()->limit(100)->get();
+        $redactor = app(McpAuditRedactor::class);
+        if ($this->search !== '') {
+            $needle = mb_strtolower($this->search);
+            $rows = $rows->filter(fn (CallbackAttempt $attempt): bool => str_contains(
+                mb_strtolower($redactor->redact($attempt->target_url ?? '').' '.$attempt->request_log_id), $needle,
+            ));
+        }
 
-        return view('livewire.admin.callback-log', ['rows' => $rows]);
+        return view('livewire.admin.callback-log', ['rows' => $rows, 'redactor' => $redactor]);
     }
 }

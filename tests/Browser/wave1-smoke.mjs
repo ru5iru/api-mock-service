@@ -66,12 +66,12 @@ try {
         assert.deepEqual(await served.json(), { response: 'first' });
         await page.reload();
         await page.getByRole('tab', { name: /^Response/ }).click();
-        await poll(async () => (await settings.innerText()).includes('Currently on call 2 of 2'), 'Live request did not advance sequence readout');
+        await poll(async () => (await settings.innerText()).includes('Next response: 2 of 2'), 'Live request did not advance sequence readout');
         await settings.getByRole('button', { name: 'Reset sequence', exact: true }).click();
         const confirm = page.locator('#confirm-dialog');
         assert.match(await confirm.innerText(), /only\?/);
         await commit(() => confirm.locator('[data-confirm-accept]').click());
-        await poll(async () => (await settings.innerText()).includes('Currently on call 1 of 2'), 'Reset did not update the sequence readout');
+        await poll(async () => (await settings.innerText()).includes('Next response: 1 of 2'), 'Reset did not update the sequence readout');
         await page.screenshot({ path: resolve(shots, `${theme}-wave1-sequence.png`), fullPage: true });
         await commit(() => settings.getByRole('button', { name: 'Rule-based', exact: true }).click());
         await save();

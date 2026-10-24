@@ -1,1 +1,1 @@
-<x-layouts.error status="419" title="Session expired" message="Refresh the page and try your request again." />
+<x-layouts.error status="419" title="Session expired" message="Refresh your session by opening sign in, then return and try your request again." />

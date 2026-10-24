@@ -1,8 +1,18 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const read = (path) => readFileSync(path, 'utf8');
+
+test('README documentation links resolve to maintained source guides', () => {
+    const links = [...read('README.md').matchAll(/\]\((docs\/[^)#]+)(?:#[^)]*)?\)/g)].map(match => match[1]);
+    assert.ok(links.length > 0);
+    for (const path of links) {
+        assert.ok(existsSync(resolve(path)), `Missing documentation: ${path}`);
+    }
+});
 
 test('README links every maintained operator and implementation guide', () => {
     const readme = read('README.md');

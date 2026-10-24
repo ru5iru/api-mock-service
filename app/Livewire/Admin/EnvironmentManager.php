@@ -10,6 +10,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -32,6 +33,10 @@ final class EnvironmentManager extends Component
     /** @var array<int, array{key: string, value: string, is_secret: bool}> */
     public array $variableDrafts = [];
 
+    /** Drafts live only in this page's Livewire state; stored secrets are never loaded. */
+    #[Locked]
+    public array $environmentDrafts = [];
+
     public function mount(EnvironmentContext $context): void
     {
         $this->selectEnvironment($context->active()->id);
@@ -39,16 +44,22 @@ final class EnvironmentManager extends Component
 
     public function selectEnvironment(int $environmentId): void
     {
+        if (isset($this->selectedEnvironmentId)) {
+            $this->environmentDrafts[$this->selectedEnvironmentId] = [
+                'name' => $this->renameEnvironment, 'variables' => $this->variableDrafts,
+                'newKey' => $this->newVariableKey, 'newValue' => $this->newVariableValue, 'newSecret' => $this->newVariableSecret,
+            ];
+        }
         $environment = Environment::query()->with('variables')->findOrFail($environmentId);
         $this->selectedEnvironmentId = $environment->id;
-        $this->renameEnvironment = $environment->name;
-        $this->variableDrafts = $environment->variables->mapWithKeys(static fn (EnvironmentVariable $variable): array => [
-            $variable->id => [
-                'key' => $variable->key,
-                'value' => $variable->is_secret ? '' : (string) $variable->value,
-                'is_secret' => $variable->is_secret,
-            ],
+        $draft = $this->environmentDrafts[$environment->id] ?? null;
+        $this->renameEnvironment = $draft['name'] ?? $environment->name;
+        $this->variableDrafts = $draft['variables'] ?? $environment->variables->mapWithKeys(fn (EnvironmentVariable $variable): array => [
+            $variable->id => $this->variableDraft($variable),
         ])->all();
+        $this->newVariableKey = $draft['newKey'] ?? '';
+        $this->newVariableValue = $draft['newValue'] ?? '';
+        $this->newVariableSecret = $draft['newSecret'] ?? false;
         $this->resetValidation();
     }
 
@@ -75,6 +86,7 @@ final class EnvironmentManager extends Component
             'renameEnvironment' => ['required', 'string', 'max:120', Rule::unique('environments', 'name')->ignore($environment->id)],
         ]);
         $environment->update(['name' => trim($data['renameEnvironment'])]);
+        unset($this->environmentDrafts[$this->selectedEnvironmentId]);
         $this->dispatch('toast', message: 'Environment renamed.');
     }
 
@@ -123,6 +135,8 @@ final class EnvironmentManager extends Component
             return;
         }
         $this->replacementEnvironmentId = null;
+        unset($this->environmentDrafts[$environment->id]);
+        unset($this->selectedEnvironmentId);
         $this->selectEnvironment($context->active()->id);
         $this->dispatch('toast', message: 'Environment deleted.');
     }
@@ -150,7 +164,8 @@ final class EnvironmentManager extends Component
         $this->newVariableKey = '';
         $this->newVariableValue = '';
         $this->newVariableSecret = false;
-        $this->selectEnvironment($this->selectedEnvironmentId);
+        $this->variableDrafts[$variable->id] = $this->variableDraft($variable);
+        unset($this->environmentDrafts[$this->selectedEnvironmentId]);
         $this->dispatch('toast', message: $variable->key.' added.');
     }
 
@@ -158,14 +173,18 @@ final class EnvironmentManager extends Component
     {
         $variable = $this->selected()->variables()->findOrFail($variableId);
         $draft = $this->variableDrafts[$variableId] ?? [];
-        validator($draft, [
-            'key' => [
+        $this->validate([
+            "variableDrafts.{$variableId}.key" => [
                 'required', 'string', 'max:120', 'regex:/^[A-Za-z_][A-Za-z0-9_.-]*$/',
                 Rule::unique('environment_variables', 'key')->where('environment_id', $this->selectedEnvironmentId)->ignore($variable->id),
             ],
-            'value' => ['nullable', 'string', 'max:65535'],
-            'is_secret' => ['required', 'boolean'],
-        ])->validate();
+            "variableDrafts.{$variableId}.value" => ['nullable', 'string', 'max:65535'],
+            "variableDrafts.{$variableId}.is_secret" => ['required', 'boolean'],
+        ], ["variableDrafts.{$variableId}.key.regex" => 'Begin the key with a letter or underscore. Use only letters, numbers, dots, hyphens and underscores.'], [
+            "variableDrafts.{$variableId}.key" => 'variable key',
+            "variableDrafts.{$variableId}.value" => 'variable value',
+            "variableDrafts.{$variableId}.is_secret" => 'secret setting',
+        ]);
 
         if ($variable->is_secret && ! $draft['is_secret'] && $draft['value'] === '') {
             $this->addError("variableDrafts.{$variableId}.value", 'Enter a replacement value before making a secret variable public.');
@@ -178,7 +197,8 @@ final class EnvironmentManager extends Component
             $attributes['value'] = $draft['value'];
         }
         $variable->update($attributes);
-        $this->selectEnvironment($this->selectedEnvironmentId);
+        $this->variableDrafts[$variable->id] = $this->variableDraft($variable->refresh());
+        unset($this->environmentDrafts[$this->selectedEnvironmentId]);
         $this->dispatch('toast', message: $variable->key.' saved.');
     }
 
@@ -187,7 +207,7 @@ final class EnvironmentManager extends Component
         $variable = $this->selected()->variables()->findOrFail($variableId);
         $key = $variable->key;
         $variable->delete();
-        $this->selectEnvironment($this->selectedEnvironmentId);
+        unset($this->variableDrafts[$variableId], $this->environmentDrafts[$this->selectedEnvironmentId]);
         $this->dispatch('toast', message: $key.' deleted.');
     }
 
@@ -198,6 +218,11 @@ final class EnvironmentManager extends Component
             'selectedEnvironment' => $this->selected()->load('variables'),
             'activeEnvironmentId' => $context->active()->id,
         ]);
+    }
+
+    private function variableDraft(EnvironmentVariable $variable): array
+    {
+        return ['key' => $variable->key, 'value' => $variable->is_secret ? '' : (string) $variable->value, 'is_secret' => $variable->is_secret];
     }
 
     private function selected(): Environment

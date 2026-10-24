@@ -29,7 +29,12 @@
                 <div><strong>MockDeck</strong><small>Error {{ $status }}</small></div>
             </div>
             <x-page-header :title="$title" :description="$message" />
-            <a class="button button-primary" href="{{ url('/dashboard') }}">Back to endpoints</a>
+            @if ((string) $status === '419')
+                <a class="button button-primary" href="{{ route('dashboard.login') }}">Refresh session</a>
+            @elseif (in_array((string) $status, ['500', '503'], true) && request()->isMethod('GET'))
+                <a class="button button-primary" href="{{ request()->url() }}">Try again</a>
+            @endif
+            <a class="button button-secondary" href="{{ url('/dashboard') }}">Back to endpoints</a>
         </section>
     </main>
 </body>

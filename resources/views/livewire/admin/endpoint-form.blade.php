@@ -1,8 +1,8 @@
-<div class="endpoint-editor" data-unsaved-form x-data="{ activeTab: $wire.entangle('activeTab'), switchTab(tab) { this.activeTab = tab; $wire.touchSection(tab); } }">
+<div class="endpoint-editor" data-unsaved-form data-draft-scope="request" data-draft-baseline="{{ json_encode($requestBaseline) }}" data-draft-current="{{ json_encode($this->requestDraftValues()) }}" x-data="{ activeTab: $wire.entangle('activeTab'), switchTab(tab) { this.activeTab = tab; $wire.touchSection(tab); } }">
     <header class="page-header">
         <div class="page-header-copy">
             <h1 class="page-breadcrumbs"><a href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Endpoints</a><span aria-hidden="true">/</span><x-inline-title :name="$name" :placeholder="$preview ? $derivedName : 'New endpoint'" /></h1>
-            @error('name') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+            @error('name') <p class="field-error" data-error-for="{{ 'name' }}" role="alert">{{ $message }}</p> @enderror
         </div>
         @if ($endpointId)<div class="page-header-actions"><button class="icon-button" type="button" data-dialog-open="endpoint-history-dialog" aria-label="Endpoint history" title="Endpoint history">↶ History</button></div>@endif
     </header>
@@ -50,109 +50,6 @@
                     </div>
                 </div>
 
-                <div class="endpoint-control-grid">
-                    <div class="control-card">
-                        <div>
-                            <strong>Endpoint enabled</strong>
-                            <small>Disabled endpoints remain configured but never match.</small>
-                        </div>
-                        <label class="switch-control">
-                            <input type="checkbox" wire:model="enabled" aria-label="Endpoint enabled">
-                            <span aria-hidden="true"></span>
-                        </label>
-                    </div>
-                    <div class="field control-field">
-                        <label for="endpoint-priority">
-                            Priority <span>-1000 to 1000</span>
-                            <x-help-tip title="Priority" label="Priority is considered before signature specificity. For example, priority 10 can win over priority 0 even when priority 0 includes more headers." />
-                        </label>
-                        <input id="endpoint-priority" type="number" min="-1000" max="1000" step="1" wire:model="priority" aria-describedby="priority-help @error('priority') priority-error @enderror">
-                        <small id="priority-help" class="field-help">Use 0 normally. Increase it only to prefer this endpoint over an overlapping signature.</small>
-                        @error('priority') <p id="priority-error" class="field-error">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-
-                <div class="policy-group path-pattern-policy">
-                    <label class="toggle-row">
-                        <span><strong>Use path parameters</strong><small>Wildcard segments; query, retained headers and body still match exactly.</small></span>
-                        <input type="checkbox" wire:model.live="pathPatternEnabled" aria-label="Use path parameters">
-                    </label>
-                    @if ($pathPatternEnabled && $pathSegments !== [])
-                        <div class="path-segment-editor" aria-label="Path segments">
-                            @foreach ($pathSegments as $index => $segment)
-                                @if ($index > 0)<span aria-hidden="true">/</span>@endif
-                                @if ($segment !== '')
-                                    @php($isParameter = str_starts_with($segment, '{') && str_ends_with($segment, '}'))
-                                    <div class="path-segment-chip {{ $isParameter ? 'is-parameter' : '' }}" wire:key="path-segment-{{ $index }}">
-                                        <button type="button" class="button button-secondary button-small" wire:click="togglePathSegment({{ $index }})" aria-pressed="{{ $isParameter ? 'true' : 'false' }}" aria-label="{{ $isParameter ? 'Use literal for segment '.$index : 'Use parameter for segment '.$index }}" title="{{ $isParameter ? 'Use literal segment' : 'Use path parameter' }}">{{ $isParameter ? '{ }' : $segment }}</button>
-                                        @if ($isParameter)<input type="text" class="path-parameter-name" wire:model.live.debounce.300ms="pathParameterNames.{{ $index }}" aria-label="Parameter name for segment {{ $index }}" maxlength="80" spellcheck="false">@endif
-                                    </div>
-                                @endif
-                            @endforeach
-                        </div>
-                    @endif
-                    @error('pathPatternEnabled') <p class="field-error" role="alert">{{ $message }}</p> @enderror
-                </div>
-
-                <div class="organization-grid">
-                    <div class="field">
-                        <label for="endpoint-collection">Collection</label>
-                        <select class="ui-select" id="endpoint-collection" wire:model="collectionId">
-                            <option value="">No collection</option>
-                            @foreach ($collections as $endpointCollection)<option value="{{ $endpointCollection->id }}">{{ $endpointCollection->name }}</option>@endforeach
-                        </select>
-                        <div class="inline-create-control">
-                            <input type="text" wire:model="newCollectionName" placeholder="New collection name" aria-label="New collection name">
-                            <button class="button button-secondary button-small" type="button" wire:click="createCollectionInline">Create</button>
-                        </div>
-                        @error('collectionId') <p class="field-error">{{ $message }}</p> @enderror
-                        @error('newCollectionName') <p class="field-error">{{ $message }}</p> @enderror
-                    </div>
-
-                    <fieldset class="field tag-input">
-                        <legend>Tags <x-help-tip title="Endpoint tags" label="Use tags to filter endpoints or assign them in bulk. Save changes to store this endpoint’s tag assignments." /></legend>
-                        <div class="tag-choice-list">
-                            @forelse ($availableTags as $tag)
-                                <label class="tag-chip selectable {{ in_array((string) $tag->id, array_map('strval', $tagIds), true) ? 'selected' : '' }}">
-                                    <input type="checkbox" wire:model="tagIds" value="{{ $tag->id }}"><span>{{ $tag->name }}</span>
-                                </label>
-                            @empty
-                                <span class="field-help">No tags yet.</span>
-                            @endforelse
-                        </div>
-                        <div class="inline-create-control">
-                            <input type="text" wire:model="newTagName" placeholder="New tag" aria-label="New tag name">
-                            <button class="button button-secondary button-small" type="button" wire:click="createTagInline">Add tag</button>
-                        </div>
-                        @error('tagIds.*') <p class="field-error">{{ $message }}</p> @enderror
-                        @error('newTagName') <p class="field-error">{{ $message }}</p> @enderror
-                    </fieldset>
-                </div>
-
-                <details class="normalized-details environment-overrides" data-disclosure>
-                    <summary><x-disclosure-chevron /> Environment availability</summary>
-                    <div class="table-scroll">
-                        <table class="header-table">
-                            <thead><tr><th scope="col">Environment</th><th scope="col">Behavior</th></tr></thead>
-                            <tbody>
-                                <tr><th scope="row">All other environments</th><td>Inherits endpoint state ({{ $enabled ? 'enabled' : 'disabled' }})</td></tr>
-                                @foreach ($environments as $environment)
-                                    <tr>
-                                        <th scope="row">{{ $environment->name }} @if($environment->is_default)<x-badge>Default</x-badge>@endif</th>
-                                        <td>
-                                            <select class="ui-select" wire:model="environmentOverrides.{{ $environment->id }}" aria-label="{{ $environment->name }} override">
-                                                <option value="">Inherit endpoint state</option>
-                                                <option value="1">Allow when endpoint is enabled</option>
-                                                <option value="0">Force disabled</option>
-                                            </select>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </details>
-
                 <div class="field curl-field">
                     @if ($preview && ! $isExample && ! $curlExpanded)
                         <div class="curl-summary">
@@ -183,7 +80,7 @@
                         placeholder="curl --request GET 'https://api.example.test/v1/items?limit=10'"
                     ></textarea>
                     @endif
-                    @error('rawCurl') <p id="raw-curl-error" class="field-error" role="alert">{{ $message }}</p> @enderror
+                    @error('rawCurl') <p id="raw-curl-error" class="field-error" data-error-for="{{ 'rawCurl' }}" role="alert">{{ $message }}</p> @enderror
 
                     <div id="curl-status" class="parse-status {{ $preview ? 'success' : ($previewError ? 'error' : 'idle') }}" aria-live="polite">
                         @if ($preview)
@@ -227,6 +124,111 @@
                         </div>
                     @endif
                 </div>
+
+                <div class="endpoint-control-grid">
+                    <div class="control-card">
+                        <div>
+                            <strong>Endpoint enabled</strong>
+                            <small>Disabled endpoints remain configured but never match.</small>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" wire:model="enabled" aria-label="Endpoint enabled">
+                            <span aria-hidden="true"></span>
+                        </label>
+                    </div>
+                    <div class="field control-field">
+                        <label for="endpoint-priority">
+                            Priority <span>-1000 to 1000</span>
+                            <x-help-tip title="Priority" label="Priority is considered before signature specificity. For example, priority 10 can win over priority 0 even when priority 0 includes more headers." />
+                        </label>
+                        <input id="endpoint-priority" type="number" min="-1000" max="1000" step="1" wire:model="priority" aria-describedby="priority-help @error('priority') priority-error @enderror">
+                        <small id="priority-help" class="field-help">Use 0 normally. Increase it only to prefer this endpoint over an overlapping signature.</small>
+                        @error('priority') <p id="priority-error" class="field-error" data-error-for="{{ 'priority' }}">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+
+                <div class="policy-group path-pattern-policy">
+                    <label class="toggle-row">
+                        <span><strong>Use path parameters</strong><small>Wildcard segments; query, retained headers and body still match exactly.</small></span>
+                        <input type="checkbox" wire:model.live="pathPatternEnabled" aria-label="Use path parameters">
+                    </label>
+                    @if ($pathPatternEnabled && $pathSegments !== [])
+                        <div class="path-segment-editor" aria-label="Path segments">
+                            @foreach ($pathSegments as $index => $segment)
+                                @if ($index > 0)<span aria-hidden="true">/</span>@endif
+                                @if ($segment !== '')
+                                    @php($isParameter = str_starts_with($segment, '{') && str_ends_with($segment, '}'))
+                                    <div class="path-segment-chip {{ $isParameter ? 'is-parameter' : '' }}" wire:key="path-segment-{{ $index }}">
+                                        <button type="button" class="button button-secondary button-small" wire:click="togglePathSegment({{ $index }})" aria-pressed="{{ $isParameter ? 'true' : 'false' }}" aria-label="{{ $isParameter ? 'Use literal for segment '.$index : 'Use parameter for segment '.$index }}" title="{{ $isParameter ? 'Use literal segment' : 'Use path parameter' }}">{{ $isParameter ? '{ }' : $segment }}</button>
+                                        @if ($isParameter)<input type="text" class="path-parameter-name" wire:model.live.debounce.300ms="pathParameterNames.{{ $index }}" aria-label="Parameter name for segment {{ $index }}" maxlength="80" spellcheck="false">@endif
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
+                    @error('pathPatternEnabled') <p class="field-error" data-error-for="{{ 'pathPatternEnabled' }}" role="alert">{{ $message }}</p> @enderror
+                </div>
+
+                <div class="organization-grid">
+                    <div class="field">
+                        <label for="endpoint-collection">Collection</label>
+                        <select class="ui-select" id="endpoint-collection" wire:model="collectionId">
+                            <option value="">No collection</option>
+                            @foreach ($collections as $endpointCollection)<option value="{{ $endpointCollection->id }}">{{ $endpointCollection->name }}</option>@endforeach
+                        </select>
+                        <div class="inline-create-control">
+                            <input type="text" wire:model="newCollectionName" placeholder="New collection name" aria-label="New collection name">
+                            <button class="button button-secondary button-small" type="button" wire:click="createCollectionInline">Create</button>
+                        </div>
+                        @error('collectionId') <p class="field-error" data-error-for="{{ 'collectionId' }}">{{ $message }}</p> @enderror
+                        @error('newCollectionName') <p class="field-error" data-error-for="{{ 'newCollectionName' }}">{{ $message }}</p> @enderror
+                    </div>
+
+                    <fieldset class="field tag-input">
+                        <legend>Tags <x-help-tip title="Endpoint tags" label="Use tags to filter endpoints or assign them in bulk. Save changes to store this endpoint’s tag assignments." /></legend>
+                        <div class="tag-choice-list">
+                            @forelse ($availableTags as $tag)
+                                <label class="tag-chip selectable {{ in_array((string) $tag->id, array_map('strval', $tagIds), true) ? 'selected' : '' }}">
+                                    <input type="checkbox" wire:model="tagIds" value="{{ $tag->id }}"><span>{{ $tag->name }}</span>
+                                </label>
+                            @empty
+                                <span class="field-help">No tags yet.</span>
+                            @endforelse
+                        </div>
+                        <div class="inline-create-control">
+                            <input type="text" wire:model="newTagName" placeholder="New tag" aria-label="New tag name">
+                            <button class="button button-secondary button-small" type="button" wire:click="createTagInline">Add tag</button>
+                        </div>
+                        @error('tagIds.*') <p class="field-error" data-error-for="{{ 'tagIds.*' }}">{{ $message }}</p> @enderror
+                        @error('newTagName') <p class="field-error" data-error-for="{{ 'newTagName' }}">{{ $message }}</p> @enderror
+                    </fieldset>
+                </div>
+
+                <details class="normalized-details environment-overrides" data-disclosure>
+                    <summary><x-disclosure-chevron /> Environment availability</summary>
+                    <div class="table-scroll">
+                        <table class="header-table">
+                            <thead><tr><th scope="col">Environment</th><th scope="col">Behavior</th></tr></thead>
+                            <tbody>
+                                <tr><th scope="row">All other environments</th><td>Inherits endpoint state ({{ $enabled ? 'enabled' : 'disabled' }})</td></tr>
+                                @foreach ($environments as $environment)
+                                    <tr>
+                                        <th scope="row">{{ $environment->name }} @if($environment->is_default)<x-badge>Default</x-badge>@endif</th>
+                                        <td>
+                                            <select class="ui-select" wire:model="environmentOverrides.{{ $environment->id }}" aria-label="{{ $environment->name }} override">
+                                                <option value="">Inherit endpoint state</option>
+                                                <option value="1">Allow when endpoint is enabled</option>
+                                                <option value="0">Force disabled</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+
             </section>
 
             <section id="panel-matching" role="tabpanel" aria-labelledby="tab-matching" class="card form-card editor-section" x-show="activeTab === 'matching'" x-cloak>
@@ -277,7 +279,7 @@
                 </div>
 
                 <div class="policy-group">
-                    <div class="policy-heading"><div><strong>Query</strong><span>{{ count($queryParameters) }} parsed</span></div><x-badge>{{ $excludedQueryParams === [] && $excludedHeaderNames === [] ? 'Always included' : collect($queryParameters)->where('excluded', true)->count().' of '.count($queryParameters).' excluded' }}</x-badge></div>
+                    <div class="policy-heading"><div><strong>Query</strong><span>{{ count($queryParameters) }} parsed</span></div><x-badge>{{ $excludedQueryParams === [] ? 'Always included' : collect($queryParameters)->where('excluded', true)->count().' of '.count($queryParameters).' excluded' }}</x-badge></div>
                     @if ($queryParameters !== [])
                         <div class="parsed-policy-list">
                             @foreach ($queryParameters as $parameter)
@@ -303,8 +305,8 @@
                         <button type="button" class="text-button" wire:click="dismissExclusionHint" aria-label="Dismiss field exclusion hint">Dismiss</button>
                     </div>
                 @endif
-                @error('excludedQueryParams') <p class="field-error" role="alert">{{ $message }}</p> @enderror
-                @error('excludedHeaderNames') <p class="field-error" role="alert">{{ $message }}</p> @enderror
+                @error('excludedQueryParams') <p class="field-error" data-error-for="{{ 'excludedQueryParams' }}" role="alert">{{ $message }}</p> @enderror
+                @error('excludedHeaderNames') <p class="field-error" data-error-for="{{ 'excludedHeaderNames' }}" role="alert">{{ $message }}</p> @enderror
             </section>
 
 
