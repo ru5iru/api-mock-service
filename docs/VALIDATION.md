@@ -118,7 +118,7 @@ Open `http://localhost:18473/dashboard`. Verify:
 Import/export smoke check:
 
 1. Export one endpoint with secret redaction enabled.
-2. Confirm the JSON has `format: "mockdeck"`, a supported `format_version` (`1`, `"1.0"`, `"1.1"`, `"1.2"`, `"1.3"`, or `"1.4"`), and no numeric database IDs or derived hashes.
+2. Confirm a fresh export has `format: "mockdeck"`, exact string `format_version: "1.5"`, `$schema: "https://mockdeck.dev/schemas/config-v1.5.json"`, and no numeric database IDs or derived hashes. Legacy import versions accepted are integer `1` and strings `"1.0"`, `"1.1"`, `"1.2"`, `"1.3"`, `"1.4"` and `"1.5"`.
 3. If the source curl contained auth, cookies, an API-key header, or a configured sensitive query key, confirm the value is absent and the endpoint is disabled with `requires_secret_replacement: true`.
 4. Preview the file in `clone` mode; confirm no rows are written before **Apply import**.
 5. Review and acknowledge warnings, apply, and confirm endpoint/response counts.
@@ -362,6 +362,8 @@ Container CI additionally runs `ConcurrentMcpMutationTest` with `MOCKDECK_MCP_CO
 `make browser-test` remains a read-only layout/documentation smoke check. For a **disposable test database only**, run `MOCKDECK_BROWSER_FIXTURE=1 make browser-regression-test` with the same database environment as the running test server and `MOCKDECK_BASE_URL` set. This writes isolated fixture endpoints, Environments, responses, revisions and callback attempts. Never enable it against an operator database.
 
 The CI browser job runs this suite after its normal smoke checks. It covers light/dark themes at 390/740/1440px, reachable Environment actions and error focus, retained drafts, History readability/focus return, nested Copy keyboard behavior, response identity/draft status, autocomplete through a Livewire morph, tooltip Escape, callback historical evidence/redaction, documentation search/jump, and Native/Postman prospective changes. Browser captures go to the existing CI artifact directory. Physical-device gestures and screen-reader speech still require manual testing.
+
+The critique and endpoint-editor suites' zoom check is 200% **CSS zoom**, not real browser zoom. These maintained regression suites do not yet cover 320px, real browser zoom at 400%, axe scans or screen readers. Phase 0 findings are **known issues** documented separately in [PHASE0-RUNTIME.md](PHASE0-RUNTIME.md); they are not additional coverage in these scripts.
 
 ## Endpoint Create/Edit regression coverage
 

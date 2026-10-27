@@ -453,11 +453,13 @@ Logs retain route tabs via `.log-type-tabs > a[aria-current=page]`; they are not
 
 **Purpose:** optional short context; required instructions/errors stay visibly in the form.
 
-**Anatomy:** `resources/views/components/help-tip.blade.php`; focusable `.help-tip[role=button][aria-label]` containing ? and `.help-tip-content[role=tooltip]`. `public/js/panels.js` places it on hover/focus using the same anchored bounds as menus.
+**Anatomy:** `resources/views/components/help-tip.blade.php`; native `<button type="button" class="help-tip">` with `aria-label`, containing ? and `.help-tip-content[role=tooltip]`. Alpine `x-id` scopes the content's ID, which the button references through `aria-describedby`. `public/js/panels.js` places it on hover/focus using the same anchored bounds as menus.
 
 **Classes/tokens:** trigger20x20px, margin-left5px, 1px `--border-strong`, circle, `--surface` / `--text-muted`, 12px/600. Content desired290px (max viewport minus32px), 10px 12px padding, 1px `--border-strong`, 6px radius, `--surface` / `--text`, `--shadow-lg`, 13px/1.45/400. Fallback CSS uses z60 and translateX(-50%); native `:popover-open` removes that transform and uses fixed shared placement.
 
 **States:** hidden opacity0/visibility hidden; hover/focus/focus-within or popover-open opacity1/visible, transition `--motion-base`. Focus global ring. No active/disabled/loading variant. Pointer-events none: this is explanation, not an interactive menu. Tooltip copy explicitly uses white-space:normal and overflow-wrap:anywhere, independent of a parent metadata row’s nowrap styling. Fitting tooltips have no scrollbars; genuinely viewport-constrained content retains overflow:auto. It escapes the Signature card's overflow through the top layer.
+
+**Known gaps:** tooltip content cannot be hovered onto; moving the pointer onto the bubble closes it. Escape does not dismiss a tooltip opened by hover only. Focused-trigger Escape dismissal is supported; it does not resolve these hover gaps.
 
 **Example:**
 
@@ -753,6 +755,10 @@ In-app unsaved navigation uses the shared dialog. Browser reload/tab-close does 
 
 The Python validator scans CSS/JS/Blade for hex/rgb/hsl literals outside tokens.css and non-token font declarations. It checks 20 declared text foreground/background pairs at >=4.5:1 and 11 declared border/focus/semantic pairs at >=3:1 in both themes. It does **not** validate every contrast pairing, alpha-composited colors, every token reference, spacing, radii, height, class usage, documentation accuracy, layout or stacking. The reference tests compare token-table values to tokens.css and verify named selector/component sources. Browser assertions cover 999/1000/1001/1024/1440/390px, short viewports, response validity, disclosures, fixed offsets, menu bounds/top layer, dialog layering, toast removal/pause and template preview isolation. These are focused regressions, not exhaustive visual proof.
 
+The critique and endpoint-editor regression suites cover 390/740/1440px widths and 200% **CSS zoom**. These maintained suites do not yet provide 320px, real browser zoom at 400%, axe or screen-reader coverage. Phase 0 findings are **known issues**, recorded separately in [PHASE0-RUNTIME.md](PHASE0-RUNTIME.md); they do not extend these regression suites' coverage.
+
+**Known gaps:** the single-character shortcuts `N`, `/` and `?` have no disable or remap option.
+
 **Commands/examples:**
 
 ```sh
@@ -863,7 +869,9 @@ The application-wide audit checks registry/pagination, logs and details, import 
 
 **Classes/tokens:** flex wrapping with `--space-1` (4px) gaps and `--space-2` (8px) top margin; chips have `min-width:0`, `max-width:100%`. Names use the existing dense field geometry: minimum 44px height, 8px/12px padding, 6px radius, 13px text, `--surface` background, `--text` foreground and 1px `--border-strong`. Input width is 10rem and shrinks within the available row. Buttons reuse `.button.button-secondary.button-small`, including their mobile minimum. Light/dark values come directly from the Theme tokens table; no component-specific colors exist.
 
-**States:** literal displays its segment; parameter displays `{ }` and its name input. Hover uses `--accent-border`; focus uses `--accent` border plus `--shadow-focus`; disabled uses `--disabled-bg`, `--disabled-fg`, `--disabled-border` and not-allowed cursor. Validation uses `.field-error`. Livewire updates the canonical preview and synthetic context catalog; no custom loading or motion variant is introduced.
+**States:** literal displays its segment; parameter displays `{ }` and its name input. Hover uses `--accent-border`; focus uses `--accent` border plus `--shadow-focus`. The intended disabled recipe is `--disabled-bg`, `--disabled-fg`, `--border` and a not-allowed cursor, as on existing disabled controls. Validation uses `.field-error`. Livewire updates the canonical preview and synthetic context catalog; no custom loading or motion variant is introduced.
+
+**Known gap:** `public/css/app.css` references `--disabled-border` for the disabled path-parameter input, but `public/css/tokens.css` does not define it. That reference does not implement the intended `--border` recipe; CSS is unchanged by this documentation correction.
 
 ```blade
 <div class="path-segment-editor" aria-label="Path segments">

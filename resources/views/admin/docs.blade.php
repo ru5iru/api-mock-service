@@ -142,6 +142,10 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
             </ol>
             <h3>Endpoint state and priority</h3>
             <p>Disabled endpoints never participate in matching. When multiple enabled endpoints could match, the highest priority wins. If priorities are equal, the more specific signature wins.</p>
+            <h3>Saving endpoint and response drafts</h3>
+            <p>On an existing endpoint, <strong>Save changes</strong> commits response/selection/callback drafts first, in their own transaction, then validates and saves the endpoint. These saves are not atomic across both components. If the endpoint is then rejected, for example because another tab created a duplicate signature, the response changes remain saved while the endpoint stays unsaved. Browser validation, such as an out-of-range priority, normally prevents submission before those saves begin.</p>
+            <p>In-app navigation away from a dirty editor opens the shared <strong>Discard unsaved changes?</strong> confirmation. Reload and tab close use the browser's own leave prompt; its wording is browser-controlled and the browser may not show it. Unsaved edits are held in memory only: there is no autosave or draft recovery. Accepting a leave prompt discards unsaved edits; saved changes remain.</p>
+            <p>After session expiry, the next page load or Livewire action redirects to the login page in the observed runtime checks; no 419 was observed. The browser leave prompt may appear during that navigation. Accepting it loses unsaved edits, while saved changes remain. Cancelling a prompt can retain the old page temporarily; it is not draft recovery.</p>
         </section>
 
         <section id="endpoint-registry" class="card docs-card docs-wide">
@@ -166,6 +170,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <div><dt>Fallback</dt><dd>A normalized stored signature matched after the hash did not. Inspect the request log for drift.</dd></div>
                 <div><dt>None</dt><dd>No enabled endpoint matched the request.</dd></div>
             </dl>
+            <p>For endpoints created in the editor, <strong>Ignore cookies</strong> starts off, including when the saved cURL has no <code>Cookie</code> header. An incoming request carrying <code>Cookie</code> will not match a saved request without it unless cookies are excluded by the matching policy.</p>
         </section>
 
         <section id="environments" class="card docs-card docs-wide">
@@ -199,11 +204,13 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
         <section id="async-callbacks" class="card docs-card docs-wide">
             <h2>Asynchronous callbacks</h2>
             <p>Open a response's <strong>Callback</strong> disclosure, enable it, and enter an HTTP(S) URL, method, header JSON, and a JSON body template. Save the response. The separate callback worker runs after the mock response is sent, so network failures and configured delay never hold up the caller.</p>
-            <p>Use <code>@verbatim{{env.KEY}}@endverbatim</code> for values from the active environment and <code>$request.method</code>, <code>$request.id</code>, <code>$request.body</code>, or <code>$request.json.field</code> for the triggering request. The callback body reuses the response Faker template renderer. Choose Builder for field-based JSON or JSON for context tokens and advanced directives; switching views does not discard the body. Maximum delay is 30 seconds; Max attempts includes the first try (1–5), non-2xx responses retry after the configured backoff, and each attempt has a bounded timeout.</p>
+            <p>Use <code>@verbatim{{env.KEY}}@endverbatim</code> for Environment values and <code>$request.method</code>, <code>$request.id</code>, <code>$request.body</code>, or <code>$request.json.field</code> for the triggering request. The callback body reuses the response Faker template renderer. Choose Builder for field-based JSON or JSON for context tokens and advanced directives; switching views does not discard the body. Maximum delay is 30 seconds; Max attempts includes the first try (1–5), non-2xx responses retry after the configured backoff, and each attempt has a bounded timeout.</p>
+            <p>The Environment ID and request context are bound when the request is served. When the callback worker handles the job, it reloads the saved callback configuration and reads that Environment's current values. It resolves URL, headers and body once, before the initial delay and retries; retries reuse those resolved values. Disabling a callback does not cancel delivery already queued, including when disabled through the shared save service. If the source response is deleted before the worker loads it, the job returns without delivery.</p>
             <h3>Signature verification</h3>
             <p>When <strong>Sign requests</strong> is enabled, MockDeck computes lowercase hex HMAC-SHA256 over the <strong>exact raw resolved body bytes</strong> using the write-only signing secret, then places the digest in the configured header (default <code>X-MockDeck-Signature</code>). Verify it against raw bytes before parsing or re-encoding JSON. With signing disabled, the signature header is omitted entirely.</p>
-            <p>Save callback changes, then choose <strong>Test saved callback</strong> even without a previous request. Testing is blocked while callback settings are unsaved; the redacted saved target is shown beside the action. The inline result shows status, HTTP code, and duration. Open <a href="{{ route('dashboard.logs.index', ['type' => 'callbacks']) }}" wire:navigate>Logs → Callbacks</a> to filter attempts and select <strong>Resend</strong>, which creates a fresh attempt with the original resolved URL, headers, and body and the current signing secret. The original attempt and primary response stay unchanged.</p>
+            <p>Save callback changes, then choose <strong>Test saved callback</strong> even without a previous request. Testing is blocked while callback settings are unsaved; the redacted saved target is shown beside the action. The inline result shows status, HTTP code, and duration. Open <a href="{{ route('dashboard.logs.index', ['type' => 'callbacks']) }}" wire:navigate>Logs → Callbacks</a> to filter attempts and select <strong>Resend</strong>, which creates a fresh attempt using the stored resolved target, method, headers and body, signing with the current settings rather than re-resolving Environment values. The original attempt and primary response stay unchanged.</p>
             <p>Resolved fields may contain secret environment values, so callback API reads and exports do not reveal them. Callback targets are only checked for well-formed HTTP(S) URLs; localhost/internal targets are intentionally allowed for testing. Do not expose this capability to untrusted users.</p>
+            <p>The callback-attempt API's <code>target</code> is the response's current saved callback URL, possibly containing Environment tokens, or <code>[response deleted]</code>. The dashboard's <strong>Recorded target</strong> instead shows the attempt's stored destination through the existing redactor. The API never returns resolved headers or body; its <code>target</code> is not historical resolved-request evidence.</p>
         </section>
 
         <section id="response-templating" class="card docs-card docs-wide">
@@ -394,6 +401,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
             <ul>
                 <li>Templated entries include render time but not the rendered body.</li>
                 <li>Create an endpoint directly from an unmatched request's reconstructed cURL.</li>
+                <li><strong>Copy request curl</strong> copies the reconstructed command, containing method and URL only, through the shared clipboard handler.</li>
                 <li>Filter by method, match, status, endpoint, time range, row limit, or unmatched-only.</li>
                 <li>Group consecutive repeats and choose local/UTC clock plus Compact/Comfortable density.</li>
                 <li>Density persists in the current browser; the Local/UTC clock choice applies to the current log view.</li>
@@ -444,6 +452,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <div><dt><kbd>?</kbd></dt><dd>Open shortcut help</dd></div>
                 <div><dt><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>Enter</kbd></dt><dd>Save the endpoint form</dd></div>
             </dl>
+            <p><strong>Known gaps:</strong> the single-character shortcuts <kbd>N</kbd>, <kbd>/</kbd> and <kbd>?</kbd> have no disable or remap option. Tooltip content cannot be hovered onto, and Escape does not dismiss a tooltip opened by hover only.</p>
         </section>
         <section id="licensing" class="card docs-card docs-wide">
             <h2>License and third-party notices</h2>

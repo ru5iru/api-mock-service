@@ -64,6 +64,10 @@ Keyboard shortcuts are ignored while typing in a form control:
 
 Request, Matching, Response, and Callback are separate tabs. Switching keeps unsaved edits in the current editor session and does not scroll the document. Request and Matching share the Signature sidebar; Response and Callback retain a compact method/path strip. The tabs stick below the main navigation, and the save bar stays at the viewport bottom with the scrolling panel ending above it. **Save changes** saves request settings and response/selection/callback drafts, including drafts held for another response. **Cancel edit** discards the selected response draft; navigating away asks before discarding unsaved work. The header's **History** button opens endpoint versions from every tab.
 
+In-app navigation away from a dirty editor opens the shared **Discard unsaved changes?** confirmation. Reload and tab close use the browser's own leave prompt; its wording is browser-controlled and the browser may not show it. Unsaved edits are held in memory only: there is no autosave or draft recovery. Accepting a leave prompt discards unsaved edits; saved changes remain.
+
+After session expiry, the next page load or Livewire action redirects to the login page in the observed runtime checks; no 419 was observed. The browser leave prompt may appear during that navigation. Accepting it loses unsaved edits, while saved changes remain. Cancelling a prompt can retain the old page temporarily; it is not draft recovery.
+
 Authentication is ignored by default for newly created endpoints. Transport metadata such as `Host`, `Content-Length`, `User-Agent`, `Accept`, `Connection`, and `X-Request-ID` is always excluded because clients and proxies can change it.
 
 Absolute URLs are required during configuration, but scheme, host, and port are not part of the signature. An endpoint created from `https://api.example.test/v1/items` is invoked through the MockDeck host at `/v1/items`.
@@ -73,6 +77,8 @@ URL-embedded credentials, relative URLs, non-HTTP schemes, file-backed cURL bodi
 ## 4. Understand request matching
 
 The canonical request contains the uppercase method, normalized path/query, selected lowercase headers, one blank line, and the canonical body. JSON object keys are sorted recursively; JSON array order is retained. Repeated query values keep their order.
+
+For endpoints created in the editor, **Ignore cookies** starts off, including when the saved cURL has no `Cookie` header. An incoming request carrying `Cookie` will not match a saved request without it unless cookies are excluded by the matching policy.
 
 | Variant | Included data | Specificity |
 |---|---|---:|
@@ -344,6 +350,8 @@ Open **Request log**. Search by path, endpoint, or request ID, and filter by met
 
 Choose local or UTC timestamps and Compact or Comfortable density. Density is stored in the current browser. Expand a row to inspect canonical data, response selection, matching details, and nearest candidates. An unmatched row can be used to start a new endpoint from reconstructed cURL.
 
+The row's **Copy request curl** control copies the reconstructed command, containing method and URL only. It uses the shared clipboard behavior described in the [UI guide](UI_GUIDE.md#buttons).
+
 Logs are flat JSON written to stdout and/or daily files. They are not stored in PostgreSQL. File reading is bounded across current and rotated logs, and malformed/partial lines are skipped.
 
 ## 14. Export and import configuration
@@ -403,7 +411,9 @@ Each saved response can send an independent HTTP request after its normal mock r
 
 The callback runs in a dedicated background worker (`docker compose ps callback-worker`); stopped workers leave new jobs queued. Choose a fixed minimum delay, or set a larger maximum for a random range (up to 30 seconds). **Max attempts** includes the first delivery (1–5 total); non-2xx HTTP responses and network errors retry until the first success or this limit, waiting the configured backoff between attempts. Each attempt has a hard 100–10,000 ms timeout. Redirects do not count as success and are not followed automatically.
 
-URL, headers, and JSON body support `{{env.KEY}}` values from the *active environment at invocation time* plus `$request.method`, `$request.url`, `$request.body`, `$request.id`, `$request.json.field`, and `{{$request.method}}` interpolation. The JSON body also supports the same `$module.method`, `$repeat`, `$pick`, and other directives as response templating. Choose **Builder** for representable field-based JSON or **JSON** for context tokens and advanced directives; switching to JSON does not erase the body, and Builder is disabled when the body cannot be represented faithfully. The editor's JSON autocomplete and **Preview callback body** use the same shared Faker compiler/renderer. Request tokens are also available in ordinary response templates through their JSON editor. The preview uses synthetic request data, and a missing environment variable fails the callback attempt without changing the primary reply.
+URL, headers, and JSON body support `{{env.KEY}}` plus `$request.method`, `$request.url`, `$request.body`, `$request.id`, `$request.json.field`, and `{{$request.method}}` interpolation. The JSON body also supports the same `$module.method`, `$repeat`, `$pick`, and other directives as response templating. Choose **Builder** for representable field-based JSON or **JSON** for context tokens and advanced directives; switching to JSON does not erase the body, and Builder is disabled when the body cannot be represented faithfully. The editor's JSON autocomplete and **Preview callback body** use the same shared Faker compiler/renderer. Request tokens are also available in ordinary response templates through their JSON editor. The preview uses synthetic request data, and a missing environment variable fails the callback attempt without changing the primary reply.
+
+The Environment ID and request context are bound when the request is served. When the callback worker handles the job, it reloads the saved callback configuration and reads that Environment's current values. It resolves URL, headers and body once, before the initial delay and retries; retries reuse those resolved values. Disabling a callback does not cancel delivery already queued, including when disabled through the shared save service. If the source response is deleted before the worker loads it, the job returns without delivery.
 
 For example, set URL to `https://{{env.WEBHOOK_HOST}}/events`, header `X-Request: {{$request.method}}`, and body:
 
@@ -413,7 +423,7 @@ For example, set URL to `https://{{env.WEBHOOK_HOST}}/events`, header `X-Request
 
 To sign requests, enable **Sign requests**, set a secret (write-only after saving), and choose the header name (default `X-MockDeck-Signature`). MockDeck calculates a lowercase hexadecimal **HMAC-SHA256 of the exact raw resolved body bytes**, with your signing secret as the HMAC key, and sends the digest as that header's value. A receiver can verify with PHP `hash_equals(hash_hmac('sha256', $rawBody, $secret), $header)`. Do not re-encode parsed JSON before checking the signature. Disabling signing removes the signature header entirely, including a similarly named user-configured header; it does not send an empty signature.
 
-Save callback changes before selecting **Test saved callback**. The action is blocked while callback settings are unsaved and shows the redacted saved target; it never silently saves a draft. This uses a synthetic request even when no matching request has ever been received. The inline result updates from Queued/Pending to status, HTTP code, and duration. Open **Callback log** to filter attempts by method, status, time, request ID, or target. A callback log row links to its triggering request; the request detail links back to callback attempts. **Resend** creates a new attempt using the original resolved target, headers, and body, signing them anew using the current secret. It never mutates the original row or replays the primary response.
+Save callback changes before selecting **Test saved callback**. The action is blocked while callback settings are unsaved and shows the redacted saved target; it never silently saves a draft. This uses a synthetic request even when no matching request has ever been received. The inline result updates from Queued/Pending to status, HTTP code, and duration. Open **Callback log** to filter attempts by method, status, time, request ID, or target. A callback log row links to its triggering request; the request detail links back to callback attempts. **Resend** creates a new attempt using the stored resolved target, method, headers and body, signing with the current settings rather than re-resolving Environment values. It never mutates the original row or replays the primary response.
 
 Attempt payloads, URLs, and job context may contain environment secrets: MockDeck encrypts stored resolved fields, omits them from callback-log API reads and portable exports, and protects callback endpoints with dashboard access. Keep `APP_KEY` private. The callback target is intentionally allowed to reach any well-formed HTTP(S) URL, including local network targets: MockDeck is a localhost-oriented test tool, **not** an SSRF-hardened publicly exposed proxy.
 
@@ -443,10 +453,12 @@ The dashboard uses the following protected template endpoints and organization A
 | `POST /api/imports/{batch_id}/undo` | Restore every recorded pre-import state atomically. |
 | `GET/PATCH /api/responses/{id}/callback` | Read masked callback config or save changes as a new response revision. |
 | `POST /api/responses/{id}/callback/test` | Queue a synthetic test delivery. |
-| `GET /api/callback-attempts` | Filter recent attempt metadata; resolved payloads stay private. |
+| `GET /api/callback-attempts` | Filter recent attempt metadata; `target` is the response's current saved callback URL or `[response deleted]`, not the recorded destination. |
 | `POST /api/callback-attempts/{id}/resend` | Queue a new attempt using that attempt's resolved request. |
 
 They require dashboard access and are intended for the built-in editor, not as unauthenticated public APIs.
+
+The callback-attempt API's `target` can still contain Environment tokens because it is the response's current saved callback URL. The dashboard's **Recorded target** instead shows the attempt's stored destination through the existing redactor. The API never returns resolved headers or body; its `target` is not historical resolved-request evidence.
 
 ## 18. Operations and validation
 
@@ -525,7 +537,9 @@ Current native exports use 1.5 and include modes, order, default flags, conditio
 
 ### Saving endpoint and response drafts
 
-On an existing endpoint, **Save changes** saves edited response fields and selection drafts before saving the endpoint and navigating. An untouched Add response form does not create another response. **Add response** / **Update response** and **Save selection** remain available to save their respective sections directly. Validation errors keep the page and drafts visible; correct the inline message and retry. Response/selection saves occur before the endpoint save, so an endpoint validation error can leave those sections saved while the endpoint still needs correction.
+On an existing endpoint, **Save changes** commits response/selection/callback drafts first, in their own transaction, then validates and saves the endpoint. These saves are not atomic across both components. If the endpoint is then rejected, for example because another tab created a duplicate signature, the response changes remain saved while the endpoint stays unsaved. Browser validation, such as an out-of-range priority, normally prevents submission before those saves begin.
+
+An untouched Add response form does not create another response. **Add response** / **Update response** and **Save selection** remain available to save their respective sections directly. Validation errors keep the page and remaining drafts visible; correct the inline message and retry.
 
 ### Finding callback configuration
 
