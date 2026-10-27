@@ -91,7 +91,7 @@ try {
         await poll(() => condition.getByLabel('Value', { exact: true }).isDisabled(), 'Exists operator should disable Value');
         await commit(() => condition.getByLabel('Operator').selectOption('equals'));
         assert.equal(await disclosure.evaluate(node => node.open), true, 'Conditions collapsed after returning to equals');
-        await condition.getByLabel('Field name', { exact: true }).fill('X-Mode');
+        await condition.getByRole('textbox', { name: 'Field name HTTP header name, case-insensitive.', exact: true }).fill('X-Mode');
         await condition.getByLabel('Value', { exact: true }).fill('yes');
         await save();
         await poll(async () => (await settings.locator('.selection-preview').innerText()).includes('X-Mode'), 'Rule preview not updated');
