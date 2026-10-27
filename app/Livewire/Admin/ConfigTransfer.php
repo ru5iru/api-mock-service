@@ -79,6 +79,9 @@ final class ConfigTransfer extends Component
     /** @var list<string> */
     public array $importedEndpointUuids = [];
 
+    /** @var list<string> Presentation metadata for the retained-created-endpoint list. */
+    public array $importedUpdatedEndpointUuids = [];
+
     public function selectAll(): void
     {
         $this->selectedEndpointUuids = $this->exportQuery()->pluck('uuid')->all();
@@ -296,6 +299,10 @@ final class ConfigTransfer extends Component
 
         $mode = (string) ($this->plan['mode'] ?? $this->mode);
         $lastEndpointId = (int) (MockEndpoint::query()->max('id') ?? 0);
+        $this->importedUpdatedEndpointUuids = array_values(array_filter(array_map(
+            static fn (array $item): ?string => ($item['action'] ?? null) === 'update' ? ($item['uuid'] ?? null) : null,
+            $this->plan['items'] ?? [],
+        )));
         $this->importedEndpointUuids = array_values(array_filter(array_map(
             static fn (array $item): ?string => in_array($item['action'] ?? null, ['create', 'update'], true)
                 ? ($item['uuid'] ?? null)
@@ -412,6 +419,7 @@ final class ConfigTransfer extends Component
         $this->summary = [];
         $this->importUndone = false;
         $this->importedEndpointUuids = [];
+        $this->importedUpdatedEndpointUuids = [];
         $this->acknowledgeWarnings = false;
     }
 
@@ -445,7 +453,7 @@ final class ConfigTransfer extends Component
             ->orderBy('uuid');
     }
 
-    /** @return SupportCollection<int, string> */
+    /** @return SupportCollection<int, array{type: string, id: int, label: string}> */
     private function undoItems(): SupportCollection
     {
         $batchId = $this->summary['import_batch_id'] ?? null;
@@ -459,10 +467,19 @@ final class ConfigTransfer extends Component
             ->orderBy('entity_type')
             ->orderBy('entity_id')
             ->get()
-            ->map(static function (Revision $revision): string {
-                return $revision->entity_type === 'endpoint'
+            ->flatMap(static function (Revision $revision): array {
+                $label = $revision->entity_type === 'endpoint'
                     ? (string) ($revision->snapshot['name'] ?: 'Endpoint '.$revision->entity_id)
-                    : 'Response '.($revision->snapshot['status_code'] ?? $revision->entity_id);
-            });
+                    : 'Response #'.$revision->entity_id.' (HTTP '.($revision->snapshot['status_code'] ?? 'unknown').')';
+                $items = [['type' => $revision->entity_type, 'id' => $revision->entity_id, 'label' => $label]];
+                foreach ($revision->snapshot['import_response_pool'] ?? [] as $response) {
+                    $items[] = ['type' => 'response', 'id' => (int) $response['id'],
+                        'label' => 'Response #'.$response['id'].' (HTTP '.$response['status_code'].')'];
+                }
+
+                return $items;
+            })
+            ->unique(static fn (array $item): string => $item['type'].':'.$item['id'])
+            ->values();
     }
 }

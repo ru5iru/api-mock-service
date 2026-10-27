@@ -53,9 +53,10 @@
                         <td><code>{{ Str::limit($redactor->redact($attempt->target_url ?? '[target unavailable]'), 75) }}</code>
                             <details class="normalized-details" data-disclosure wire:ignore.self wire:key="callback-detail-{{ $attempt->id }}">
                                 <summary><x-disclosure-chevron /> Attempt #{{ $attempt->id }}</summary>
+                                <p class="field-help">Recorded attempt fields retain the delivery evidence. The response label uses current configuration.</p>
                                 <dl class="definition-list">
                                     <div><dt>Recorded target</dt><dd><code>{{ $redactor->redact($attempt->target_url ?? '[target unavailable]') }}</code></dd></div>
-                                    <div><dt>Response</dt><dd>#{{ $attempt->response_id ?? 'deleted' }} · {{ $attempt->response?->external_label ?? 'Saved response' }}</dd></div>
+                                    <div><dt>Response / current label</dt><dd>#{{ $attempt->response_id ?? 'deleted' }} · {{ $attempt->response?->external_label ?? 'Saved response' }}</dd></div>
                                     <div><dt>Request</dt><dd>{{ $attempt->request_log_id ?? 'No request reference' }}</dd></div>
                                     <div><dt>Outcome</dt><dd>{{ $attempt->error ? $redactor->redact($attempt->error) : ($attempt->http_status ? 'Receiver returned HTTP '.$attempt->http_status : 'No error detail recorded.') }}</dd></div>
                                     <div><dt>Lineage</dt><dd>{{ $attempt->retry_of_id ? 'Retry of #'.$attempt->retry_of_id : ($attempt->resend_of_id ? 'Resend of #'.$attempt->resend_of_id : 'Original attempt') }}</dd></div>

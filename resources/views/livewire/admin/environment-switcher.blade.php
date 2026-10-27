@@ -6,6 +6,7 @@
     </summary>
     <div class="environment-switcher-panel" role="menu" aria-label="Active environment">
         <span class="user-menu-label">Active environment</span>
+        <p class="field-help">Selecting an Environment changes the active Environment for the whole instance and applies immediately to ordinary mock traffic. Test runs keep their bound Environment.</p>
         @foreach ($environments as $environment)
             <button type="button" role="menuitemradio" aria-checked="{{ $environment->id === $activeEnvironmentId ? 'true' : 'false' }}" tabindex="-1" data-environment-option wire:click="activate({{ $environment->id }})" @class(['active' => $environment->id === $activeEnvironmentId])>
                 <span>{{ $environment->name }}</span>

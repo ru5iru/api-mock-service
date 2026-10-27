@@ -184,6 +184,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <li>Add variables. Secret values are write-only after saving and always masked or redacted.</li>
                 <li>Use the endpoint editor's Environment availability table for explicit overrides. Inherit stores no override.</li>
             </ol>
+            <p>Selecting an Environment changes the active Environment for the whole instance and applies immediately to ordinary mock traffic. Test runs keep their bound Environment.</p>
             <p>An endpoint matches only when it is enabled and the active environment has no override or an enabled override. This eligibility check does not change request hashes or precedence. New request-log entries show the active environment.</p>
         </section>
 
@@ -200,13 +201,14 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
             </ul>
             <p>Choose <strong>Weighted</strong>, <strong>Sequence</strong>, or <strong>Rule-based</strong> above the configured response list, then select <strong>Save selection</strong>. Sequence uses the existing row drag handles (or up/down controls); choose Repeat last, Loop, or Not found on exhaustion. The next-call readout and confirmed Reset sequence are scoped to the active environment.</p>
             <p>Rule-based selection combines each response's Conditions with AND, tries responses in ascending condition priority, and requires exactly one Default / fallback. Drag responses to change global rule priority. The saved fallback cannot be deleted until a replacement has been selected and saved. Selection preview shows the next response or ordered conditions without advancing runtime state.</p>
+            <p>The request must first match this endpoint by method, path/query, retained headers and body; rules then choose among its responses. A rule cannot make a different request match. To vary a header or query value, exclude it in Matching first, then choose the response with a rule.</p>
         </section>
 
         <section id="async-callbacks" class="card docs-card docs-wide">
             <h2>Asynchronous callbacks</h2>
             <p>Open a response's <strong>Callback</strong> disclosure, enable it, and enter an HTTP(S) URL, method, header JSON, and a JSON body template. Save the response. The separate callback worker runs after the mock response is sent, so network failures and configured delay never hold up the caller.</p>
             <p>Use <code>@verbatim{{env.KEY}}@endverbatim</code> for Environment values and <code>$request.method</code>, <code>$request.id</code>, <code>$request.body</code>, or <code>$request.json.field</code> for the triggering request. The callback body reuses the response Faker template renderer. Choose Builder for field-based JSON or JSON for context tokens and advanced directives; switching views does not discard the body. Maximum delay is 30 seconds; Max attempts includes the first try (1–5), non-2xx responses retry after the configured backoff, and each attempt has a bounded timeout.</p>
-            <p>The Environment ID and request context are bound when the request is served. When the callback worker handles the job, it reloads the saved callback configuration and reads that Environment's current values. It resolves URL, headers and body once, before the initial delay and retries; retries reuse those resolved values. Disabling a callback does not cancel delivery already queued, including when disabled through the shared save service. If the source response is deleted before the worker loads it, the job returns without delivery.</p>
+            <p>The Environment ID and request context are bound when the request is served. When the callback worker handles the job, it reloads the saved callback configuration and reads that Environment's current values. It resolves URL, headers and body once, before the initial delay and retries; retries reuse those resolved values. Disabling a callback stops enqueues from future mock calls but does not cancel delivery already queued, including when disabled through the shared save service. If the source response is deleted before the worker loads it, the job returns without delivery.</p>
             <h3>Signature verification</h3>
             <p>When <strong>Sign requests</strong> is enabled, MockDeck computes lowercase hex HMAC-SHA256 over the <strong>exact raw resolved body bytes</strong> using the write-only signing secret, then places the digest in the configured header (default <code>X-MockDeck-Signature</code>). Verify it against raw bytes before parsing or re-encoding JSON. With signing disabled, the signature header is omitted entirely.</p>
             <p>Save callback changes, then choose <strong>Test saved callback</strong> even without a previous request. Testing is blocked while callback settings are unsaved; the redacted saved target is shown beside the action. The inline result shows status, HTTP code, and duration. Open <a href="{{ route('dashboard.logs.index', ['type' => 'callbacks']) }}" wire:navigate>Logs → Callbacks</a> to filter attempts and select <strong>Resend</strong>, which creates a fresh attempt using the stored resolved target, method, headers and body, signing with the current settings rather than re-resolving Environment values. The original attempt and primary response stay unchanged.</p>
@@ -367,7 +369,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <li>Confirm to apply atomically. Version 1 files remain supported and missing template fields become static responses.</li>
                 <li>Update-by-UUID preview shows how many endpoint/response pre-states will be versioned. After apply, Undo this import restores the complete recorded batch.</li>
             </ol>
-        <p><strong>Postman v2.1:</strong> choose Postman in the Import panel. Preview flattened folders, variable exclusions and saved examples before confirmation. Whole path variables become parameters; body variables stay literal. Scripts are never executed. Create only skips matching correlation keys; Update matching replaces the saved response pool with an undoable revision batch. Renaming or moving items breaks correlation. Companion Environment files and Postman export are not included.</p>
+        <p><strong>Postman v2.1:</strong> choose Postman in the Import panel. Preview flattened folders, variable exclusions and saved examples before confirmation. Whole path variables become parameters; body variables stay literal. Scripts are never executed. Create only skips matching correlation keys; Update matching replaces the saved response pool with an undoable revision batch. Renaming or moving items breaks correlation. Postman export is not included. Exclude keeps the field out of matching. Resolve substitutes the selected Environment's current value into the signature at preview time and does not follow later changes.</p>
         </section>
 
         <section id="wave-two" class="card docs-card">
@@ -393,16 +395,17 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <li>Review canonical request, JSON body/template, and organization changes in the shared before/after viewer.</li>
                 <li>Choose <strong>Restore</strong> and confirm the named version. Restore changes live values and appends a new rollback revision; it never rewrites existing history.</li>
             </ol>
-            <p>An Update-by-UUID import groups all changed entity pre-states under one batch. Its success panel keeps <strong>Undo this import</strong> available and lists every affected endpoint/response before restoring them atomically.</p>
+            <p>For Update by UUID, preview lists the recorded pre-import states. Undo restores changed existing endpoints and responses to their pre-import state, including responses removed by authoritative replacement. Newly created endpoints and separately created Environment variables are retained. Runtime counters are untouched. The confirmation lists the recorded states and retained created endpoints; undo appends rollback revisions.</p>
         </section>
 
         <section id="request-log" class="card docs-card">
             <h2>Request log</h2>
+            <p>Request event fields are recorded at request time. Endpoint names and nearest configured candidates use current configuration.</p>
             <p>Search and filter by path, endpoint, request ID, method, match, status, and time. Expand a row to inspect canonical data and nearest candidates.</p>
             <ul>
                 <li>Templated entries include render time but not the rendered body.</li>
                 <li>Create an endpoint directly from an unmatched request's reconstructed cURL.</li>
-                <li><strong>Copy request curl</strong> copies the reconstructed command, containing method and URL only, through the shared clipboard handler.</li>
+                <li><strong>Copy request curl</strong> uses the shared clipboard handler. The reconstructed cURL contains method and URL only; add headers and body before using it.</li>
                 <li>Filter by method, match, status, endpoint, time range, row limit, or unmatched-only.</li>
                 <li>Group consecutive repeats and choose local/UTC clock plus Compact/Comfortable density.</li>
                 <li>Density persists in the current browser; the Local/UTC clock choice applies to the current log view.</li>

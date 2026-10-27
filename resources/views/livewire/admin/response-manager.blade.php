@@ -104,6 +104,7 @@
                         <label class="toggle-inline"><x-radio name="fallback-response" value="{{ $response->id }}" wire:click="setFallback({{ $response->id }})" :checked="$fallbackResponseId === $response->id" aria-label="Use response {{ $response->id }} as default fallback" /><span>Default / fallback</span></label>
                         <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="response-conditions-{{ $response->id }}" @if ($fallbackResponseId !== $response->id) open @endif>
                             <summary><x-disclosure-chevron /><strong>Conditions</strong></summary>
+                            <p class="field-help">Rules select after endpoint matching. <span wire:ignore><x-help-tip title="Match before response selection" label="The request must first match this endpoint by method, path/query, retained headers and body; rules then choose among its responses. A rule cannot make a different request match. To vary a header or query value, exclude it in Matching first, then choose the response with a rule." /></span></p>
                             @if ($fallbackResponseId === $response->id)<p class="field-help">Fallback is selected only when no other response matches; its conditions are not evaluated.</p>@endif
                             @foreach ($responseRules[$response->id] ?? [] as $ruleIndex => $condition)
                                 @php
@@ -425,6 +426,7 @@
 </div>
 </section>
 <section id="panel-callback" role="tabpanel" aria-labelledby="tab-callback" x-show="activeTab === 'callback'" x-cloak>
+    <p class="field-help">New callback deliveries use worker-time values, not a snapshot taken when the mock was called.</p>
     <div class="callback-response-list" aria-label="Response callbacks">
         @forelse ($responses as $responseIndex => $response)
             @php

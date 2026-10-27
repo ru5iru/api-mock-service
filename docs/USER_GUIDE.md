@@ -128,7 +128,7 @@ Select endpoint rows to expose **Move to collection** and **Add tags** in the bu
 
 ## 6. Environments and variables
 
-The active environment is global to the MockDeck server. The migration creates **Development** as the default and active environment, preserving existing endpoint behavior.
+Selecting an Environment changes the active Environment for the whole instance and applies immediately to ordinary mock traffic. Test runs keep their bound Environment. The migration creates **Development** as the default and active environment, preserving existing endpoint behavior.
 
 1. Open the header environment switcher.
 2. Select an environment to make it active immediately.
@@ -352,7 +352,9 @@ Open **Request log**. Search by path, endpoint, or request ID, and filter by met
 
 Choose local or UTC timestamps and Compact or Comfortable density. Density is stored in the current browser. Expand a row to inspect canonical data, response selection, matching details, and nearest candidates. An unmatched row can be used to start a new endpoint from reconstructed cURL.
 
-The row's **Copy request curl** control copies the reconstructed command, containing method and URL only. It uses the shared clipboard behavior described in the [UI guide](UI_GUIDE.md#buttons).
+The row's **Copy request curl** control uses the shared clipboard behavior described in the [UI guide](UI_GUIDE.md#buttons). The reconstructed cURL contains method and URL only; add headers and body before using it.
+
+Request event fields are recorded at request time. Endpoint names and nearest configured candidates use current configuration.
 
 Logs are flat JSON written to stdout and/or daily files. They are not stored in PostgreSQL. File reading is bounded across current and rotated logs, and malformed/partial lines are skipped.
 
@@ -378,7 +380,7 @@ Environment-scoped export includes endpoints that inherit their state and endpoi
 4. Review validation errors, exact-signature conflicts, overlap warnings, UUID actions, and redaction warnings.
 5. Acknowledge warnings and apply. Apply rechecks the digest/conflicts under locks and writes atomically.
 
-For **Update by UUID**, preview also reports how many endpoint/response pre-states will receive a revision. Every changed existing entity is snapshotted under one import batch before its imported values replace the live values. The success panel keeps **Undo this import** available; one confirmation lists the affected entities and restores all recorded pre-states atomically. The undo itself appends rollback revisions, so it does not erase evidence of the import.
+For Update by UUID, preview lists the recorded pre-import states. Undo restores changed existing endpoints and responses to their pre-import state, including responses removed by authoritative replacement. Newly created endpoints and separately created Environment variables are retained. Runtime counters are untouched. The confirmation lists the recorded states and retained created endpoints; undo appends rollback revisions.
 
 Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Versions 1/1.0/1.1/1.2 remain supported; missing fields use backward-compatible defaults, with Weighted selection and no rules. Current exports use format `1.5`; version 1.3 retains its selection configuration while importing without field exclusions, path patterns, or faults.
 
@@ -415,7 +417,7 @@ The callback runs in a dedicated background worker (`docker compose ps callback-
 
 URL, headers, and JSON body support `{{env.KEY}}` plus `$request.method`, `$request.url`, `$request.body`, `$request.id`, `$request.json.field`, and `{{$request.method}}` interpolation. The JSON body also supports the same `$module.method`, `$repeat`, `$pick`, and other directives as response templating. Choose **Builder** for representable field-based JSON or **JSON** for context tokens and advanced directives; switching to JSON does not erase the body, and Builder is disabled when the body cannot be represented faithfully. The editor's JSON autocomplete and **Preview callback body** use the same shared Faker compiler/renderer. Request tokens are also available in ordinary response templates through their JSON editor. The preview uses synthetic request data, and a missing environment variable fails the callback attempt without changing the primary reply.
 
-The Environment ID and request context are bound when the request is served. When the callback worker handles the job, it reloads the saved callback configuration and reads that Environment's current values. It resolves URL, headers and body once, before the initial delay and retries; retries reuse those resolved values. Disabling a callback does not cancel delivery already queued, including when disabled through the shared save service. If the source response is deleted before the worker loads it, the job returns without delivery.
+The Environment ID and request context are bound when the request is served. When the callback worker handles the job, it reloads the saved callback configuration and reads that Environment's current values. It resolves URL, headers and body once, before the initial delay and retries; retries reuse those resolved values. Disabling a callback stops enqueues from future mock calls but does not cancel delivery already queued, including when disabled through the shared save service. If the source response is deleted before the worker loads it, the job returns without delivery.
 
 For example, set URL to `https://{{env.WEBHOOK_HOST}}/events`, header `X-Request: {{$request.method}}`, and body:
 
@@ -525,6 +527,8 @@ Runtime state is independent per endpoint and environment. The readout shows the
 
 ### Rule-based
 
+The request must first match this endpoint by method, path/query, retained headers and body; rules then choose among its responses. A rule cannot make a different request match. To vary a header or query value, exclude it in Matching first, then choose the response with a rule.
+
 Choose Rule-based and expand Conditions on a response. A condition chooses Header, Query, or Body JSON path, a field name, an operator, and a value. Body paths use dotted syntax such as `user.id`. Header matching is case-insensitive by name. Operators are Equals (exact scalar text), Contains (substring), Regex (PHP regular expression with delimiters such as `/approved/i`), and Exists (no value needed). JSON booleans compare as `true` or `false`; missing fields do not match except that Exists reports their absence as false.
 
 All conditions on one response are combined with AND. Rule-bearing responses are tried by their lowest condition priority, lower first. Dragging responses renumbers their condition priorities globally; priorities can also be edited directly. Ties use existing response weight descending, then stable UUID. The first full match wins. Unruled responses are not competing conditions. Exactly one **Default / fallback** response is required; selecting one clears the other draft default, and saving updates the pool atomically. The fallback's own conditions are not evaluated.
@@ -593,7 +597,7 @@ Open **Import / export → Postman** and upload a **v2.1** collection JSON file.
 
 Create only skips existing correlation keys; Update matching replaces the matched request and response pool with one undoable revision batch; Clone always creates another endpoint. Folder names flatten with ` / `; root requests use the collection title. Whole path variables become `{name}` parameters; request-body variables remain literal. Saved examples become equal-weight responses (Template when supported response variables are present), with their imported names in **Details**. Zero examples means zero responses until you add one.
 
-Renaming/moving an item or changing its method/path breaks future correlation. Update replaces local response templates, rules, callbacks and faults; runtime counters are preserved. **Undo this import** restores updated configuration and the prior response pool, but does not remove newly created endpoints. Postman export is not included. Expand the optional Environment-file upload to supply candidate values, review/create missing variables in a chosen Environment, then choose Exclude (default) or Resolve for matching fields. Resolve freezes current Environment values into the signature; it does not follow later changes. Saved response `{{name}}` tokens use active-Environment `{{env.name}}` interpolation, and supported Postman dynamic variables use the shared Faker catalog. See [Postman import](POSTMAN_IMPORT.md) for auth/body support and all mapping boundaries.
+Renaming/moving an item or changing its method/path breaks future correlation. Update replaces local response templates, rules, callbacks and faults; runtime counters are preserved. **Undo this import** follows the restoration and retention boundaries in [Export and import configuration](#14-export-and-import-configuration). Postman export is not included. Expand the optional Environment-file upload to supply candidate values, review/create missing variables in a chosen Environment, then choose Exclude (default) or Resolve for matching fields. Exclude keeps the field out of matching. Resolve substitutes the selected Environment's current value into the signature at preview time and does not follow later changes. Saved response `{{name}}` tokens use active-Environment `{{env.name}}` interpolation, and supported Postman dynamic variables use the shared Faker catalog. See [Postman import](POSTMAN_IMPORT.md) for auth/body support and all mapping boundaries.
 
 
 ## MCP server and isolated agent tests

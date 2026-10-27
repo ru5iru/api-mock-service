@@ -471,6 +471,8 @@ Logs retain route tabs via `.log-type-tabs > a[aria-current=page]`; they are not
 
 **Do/Don't:** keep the visible summary one line; don't bury validation only in a tooltip. Use the component; don't hand-position tooltips inside overflow containers. Keep tooltip text noninteractive; don't put buttons into pointer-events-none content.
 
+Static help tips inside Livewire-rendered regions can use a scoped `wire:ignore` wrapper around the existing component, preserving the shared panel controller's runtime attributes. Keep the text static and verify focus, visible tooltip bounds and scoped descriptions at 390px after a Livewire update. Do not ignore the surrounding editable controls.
+
 ## Drag-reorder rows
 
 **Purpose:** reorder configuration; drag must have keyboard-command alternatives.
@@ -941,6 +943,8 @@ JSON suggestions keep focus/caret in the editor. List options have stable IDs an
 ### Prospective import changes and export scope
 
 Update previews reuse `.revision-diff-change` / `.revision-diff-values` inside the native import disclosure. They show Before/After, mask secrets, bound long values, and explicitly state merge/replacement consequences. Native responses compare by UUID; Postman examples compare by position, matching apply behavior. Review data is generated without applying mutations. Export actions state their effective scope; the pre-import download uses the scope/redaction settings above and may be partial/redacted.
+
+Import completion uses the existing `.definition-list` to separate **Restores** from **Retains**. Count restored endpoints/responses from batch snapshots, including embedded prior response pools, and retained created endpoints from ImportSummary; names come from the batch and reviewed import identities. Keep the full restoration/retention scope in the shared `data-confirm` message, mark the undo confirmation as destructive, and keep Cancel as initial focus. These are presentation labels, not another undo implementation.
 
 ### Documentation retrieval and recovery
 
