@@ -9,7 +9,8 @@ APP_URL ?= $(shell python3 scripts/setup.py url)
 
 help:
 	@printf '%s\n' \
-	  'First start: make setup → read .env credentials → make up → make health' \
+	  'First start: make setup (new .env without certificates selects HTTP) → read .env credentials → make up → make health' \
+	  'Existing .env: selection is preserved; make http-enable selects certificate-free HTTP' \
 	  'setup          Check tools and create .env / fill placeholder secrets safely' \
 	  'up / down      Build and start / stop (keep database volumes)' \
 	  'status / logs  Container status / follow application, database and Nginx logs' \
@@ -28,6 +29,7 @@ help:
 	  'browser-regression-test  Fixture-writing UI checks; disposable DB and opt-in required' \
 	  'build / shell / artisan ARGS="..."  Clean image build / shell / Artisan command' \
 	  'Full setup and prerequisites: docs/SETUP.md'
+	@python3 scripts/setup.py summary
 
 check-tools:
 	@command -v docker >/dev/null || { echo "Install Docker Engine/Desktop first." >&2; exit 1; }

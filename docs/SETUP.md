@@ -22,7 +22,9 @@ make setup
 
 This checks Docker/Compose availability, creates `.env` from `.env.example` if missing, and generates a unique application key, database password and dashboard password wherever known placeholders or empty values remain. Re-running it preserves configured credentials, settings and database data. Secrets are not printed to the terminal. Open `.env` locally and note `MOCK_DASHBOARD_USERNAME` (default `admin`) and the generated `MOCK_DASHBOARD_PASSWORD` for login.
 
-The default is HTTP on port **18473**. To use another port, edit both `APP_PORT` and `APP_URL` before starting, for example:
+For a **new** `.env` without a complete, nonempty certificate pair, setup selects HTTP only (`COMPOSE_FILE=docker-compose.yml`) and an HTTP `APP_URL`. It does not generate certificates. With the certificate pair already present, setup retains the template's selection. For an **existing** `.env`, setup preserves its protocol selection and every configured value; use `make http-enable` explicitly if you want certificate-free HTTP. Setup/help output lists the effective Compose files, APP_URL scheme and next command without printing credentials.
+
+The default port is **18473**. To use another port, edit both `APP_PORT` and `APP_URL` before starting, for example:
 
 ```dotenv
 APP_PORT=19483
@@ -32,6 +34,8 @@ APP_URL=http://localhost:19483
 Keep existing keys/passwords when updating an existing installation. Do not delete `.env` or regenerate its application key to perform an update. If you change a database password after PostgreSQL has already initialized, changing `.env` alone does not change the database role's password.
 
 ## 3. Start HTTP and sign in
+
+For a new certificate-free installation, `make setup` has already selected HTTP. For an existing `.env` or a different selection, run `make http-enable` first. Read the credentials in `.env`, then:
 
 ```bash
 make up

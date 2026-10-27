@@ -273,6 +273,9 @@
                                                     @endforeach
                                                 </div>
                                             @endif
+                                            @if ($tier === 'none' && ($event['_nearest'][0]['method_matches'] ?? false) && ($event['_nearest'][0]['path_matches'] ?? false))
+                                                <p class="info-note" role="note" data-cookie-matching-hint>If this request came from a browser, check whether it carries cookies that this endpoint's signature does not expect (Matching → Ignore cookies).</p>
+                                            @endif
                                             <a class="button button-primary button-small" href="{{ route('dashboard.endpoints.create', ['curl' => $event['_reconstructed_curl']]) }}" wire:navigate>Create mock from this request</a>
                                         @else
                                             <h3>{{ $event['_endpoint_name'] ?? 'Matched endpoint' }}</h3>

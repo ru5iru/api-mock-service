@@ -15,7 +15,7 @@ make up
 make health
 ```
 
-Setup preserves configured credentials; do not replace an existing `.env` during updates. Migrations run automatically. For HTTP + HTTPS on the same port, install mkcert, run `make https-setup`, then `make up` and `make https-check`. Follow [Local HTTP and HTTPS](HTTPS.md) for Windows/WSL certificate trust. `make help` lists daily commands.
+For a new `.env` without a complete certificate pair, setup selects certificate-free HTTP and generates no certificates. Existing `.env` values and protocol selection are preserved; run `make http-enable` if needed before `make up` to select HTTP only. Read credentials from `.env`; do not replace it during updates. Migrations run automatically. For HTTP + HTTPS on the same port, install mkcert, then run `make https-setup`, `make up`, `make health`, and `make https-check`. Follow [Local HTTP and HTTPS](HTTPS.md) for Windows/WSL certificate trust. `make help` shows effective Compose files, APP_URL scheme and the next command without secrets.
 
 Open `http://localhost:18473/dashboard` (or `https://localhost:18473/dashboard` when enabled). The dashboard uses the username and password configured by:
 
@@ -61,6 +61,8 @@ Keyboard shortcuts are ignored while typing in a form control:
    - ignore all headers.
 6. Review the canonical request, signature variant, and SHA-256 hash.
 7. Save the endpoint and configure at least one response.
+
+An endpoint with zero saved responses shows a **No response** badge and an **Add response** link in the registry. The link opens the Response tab, where the persistent note explains the diagnostic 500 until a response is saved. The note and tab cue clear immediately after saving a response, including for imported Postman requests with no saved examples. No placeholder response is created.
 
 Request, Matching, Response, and Callback are separate tabs. Switching keeps unsaved edits in the current editor session and does not scroll the document. Request and Matching share the Signature sidebar; Response and Callback retain a compact method/path strip. The tabs stick below the main navigation, and the save bar stays at the viewport bottom with the scrolling panel ending above it. **Save changes** saves request settings and response/selection/callback drafts, including drafts held for another response. **Cancel edit** discards the selected response draft; navigating away asks before discarding unsaved work. The header's **History** button opens endpoint versions from every tab.
 

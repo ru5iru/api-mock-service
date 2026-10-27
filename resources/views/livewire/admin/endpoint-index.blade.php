@@ -188,7 +188,7 @@
                         @if ($endpoint->responses_count === 0)
                             <div class="inline-warning">
                                 <span aria-hidden="true">!</span>
-                                <strong>No responses – requests will fail</strong>
+                                <strong><x-badge variant="warning">No response</x-badge></strong>
                                 <a href="{{ route('dashboard.endpoints.edit', $endpoint) }}?tab=response" wire:navigate data-stop-row-navigation>Add response</a>
                             </div>
                         @endif

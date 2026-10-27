@@ -10,6 +10,7 @@
         $requestReady = (bool) $preview && ! $duplicate && ! $isExample && $this->requestMetadataReady();
         $matchingReady = (bool) $preview;
         $responseReady = $this->responseSectionReady();
+        $hasNoResponses = $endpoint && ! $endpoint->responses()->exists();
         $saveBlockReason = ! $preview
             ? 'Paste a valid curl command to continue.'
             : ($duplicate
@@ -31,8 +32,8 @@
     <nav class="flow-nav" aria-label="Endpoint settings">
         <div role="tablist" aria-label="Endpoint settings" data-endpoint-tabs>
             @foreach (['request' => ['Request', $requestState], 'matching' => ['Matching', $matchingState], 'response' => ['Response', $responseState], 'callback' => ['Callback', $callbackState]] as $tab => [$label, $state])
-                <button id="tab-{{ $tab }}" type="button" role="tab" aria-controls="panel-{{ $tab }}" x-bind:aria-selected="activeTab === '{{ $tab }}'" x-bind:tabindex="activeTab === '{{ $tab }}' ? 0 : -1" x-on:click="switchTab('{{ $tab }}')">
-                    <span>{{ $label }}</span><i class="section-status {{ $state }}" aria-label="{{ $state === 'valid' ? ($tab === 'response' ? 'Response selection is complete' : ($tab === 'request' ? 'Request is valid' : $label.' policy is ready')) : ($state === 'attention' ? ($tab === 'response' ? 'Response selection needs attention' : ($tab === 'request' ? 'Request needs attention' : $label.' policy needs attention')) : $label.' not yet reviewed') }}">{{ $stateSymbol($state) }}</i>
+                <button id="tab-{{ $tab }}" type="button" role="tab" aria-controls="panel-{{ $tab }}" x-bind:aria-selected="activeTab === '{{ $tab }}'" x-bind:tabindex="activeTab === '{{ $tab }}' ? 0 : -1" x-on:click="switchTab('{{ $tab }}')" @if ($tab === 'response' && $hasNoResponses) aria-describedby="response-empty-note" title="No response yet. Add one so this endpoint can answer requests. Until then it returns a diagnostic 500." @endif>
+                    <span>{{ $label }}</span><i class="section-status {{ $state }}" aria-label="{{ $tab === 'response' && $hasNoResponses ? 'No response yet' : ($state === 'valid' ? ($tab === 'response' ? 'Response selection is complete' : ($tab === 'request' ? 'Request is valid' : $label.' policy is ready')) : ($state === 'attention' ? ($tab === 'response' ? 'Response selection needs attention' : ($tab === 'request' ? 'Request needs attention' : $label.' policy needs attention')) : $label.' not yet reviewed')) }}">{{ $stateSymbol($state) }}</i>
                 </button>
             @endforeach
         </div>
@@ -244,10 +245,10 @@
                         <div><strong>Headers</strong><span>{{ count($headerAnalysis) }} parsed</span></div>
                         <x-help-tip title="Header matching" label="Volatile transport headers are always removed. You can additionally ignore cookies, authentication, or every header." />
                     </div>
-                    <label class="toggle-row {{ $excludeHeaders ? 'overridden' : '' }}">
-                        <span><strong>Ignore cookies</strong><small>Removes the Cookie header from the signature.</small></span>
-                        <input type="checkbox" wire:model.live="excludeCookies" @disabled($excludeHeaders) @checked($excludeHeaders || $excludeCookies)>
-                    </label>
+                    <div class="toggle-row {{ $excludeHeaders ? 'overridden' : '' }}">
+                        <span><span class="label-row"><label for="ignore-cookies"><strong>Ignore cookies</strong></label><span wire:ignore><x-help-tip title="Browser cookies and matching" label="A request carrying a Cookie header does not match an endpoint saved without one unless cookies are ignored. Enable Ignore cookies to match browser traffic that carries cookies." /></span></span><small id="ignore-cookies-description">Removes the Cookie header from the signature.</small></span>
+                        <input id="ignore-cookies" type="checkbox" aria-describedby="ignore-cookies-description" wire:model.live="excludeCookies" @disabled($excludeHeaders) @checked($excludeHeaders || $excludeCookies)>
+                    </div>
                     <label class="toggle-row {{ $excludeHeaders ? 'overridden' : '' }}">
                         <span><strong>Ignore authentication</strong><small>Removes Authorization and Proxy-Authorization headers.</small></span>
                         <input type="checkbox" wire:model.live="excludeAuth" @disabled($excludeHeaders) @checked($excludeHeaders || $excludeAuth)>

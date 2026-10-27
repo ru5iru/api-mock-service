@@ -1,5 +1,8 @@
 <div class="response-manager" data-draft-scope="responses" data-draft-baseline="{{ json_encode($this->editorDraftValues($formBaseline)) }}" data-draft-current="{{ json_encode($this->editorDraftValues()) }}" data-server-dirty="{{ $selectionDirty || $otherDraftsDirty ? 'true' : 'false' }}" data-context-catalog="{{ json_encode($contextCatalog) }}">
 <section id="panel-response" role="tabpanel" aria-labelledby="tab-response" x-show="activeTab === 'response'">
+@if ($responses->isEmpty())
+    <p class="info-note" role="note" id="response-empty-note">No response yet. Add one so this endpoint can answer requests. Until then it returns a diagnostic 500.</p>
+@endif
 <div class="response-grid {{ $bodyMode === 'template' ? 'template-active' : '' }}">
     <div class="response-list">
         <section class="card selection-settings" aria-labelledby="response-selection-title">

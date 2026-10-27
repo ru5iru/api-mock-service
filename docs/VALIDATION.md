@@ -35,11 +35,13 @@ Follow [SETUP.md](SETUP.md), then run:
 
 ```bash
 make setup
+# A new .env without certificates selects HTTP; otherwise run make http-enable if needed.
+# Read dashboard credentials from .env before starting.
 make up
 make health
 ```
 
-Setup creates a missing `.env`, generates missing placeholder credentials, and preserves configured secrets. Read the dashboard username/password from `.env` to sign in. Install mkcert and follow [HTTPS.md](HTTPS.md) before running `make https-setup` if dual HTTP/HTTPS is required.
+Setup creates a missing `.env`, generates missing placeholder credentials, and selects HTTP only for a new `.env` without a complete certificate pair. Existing `.env` settings are preserved: run `make http-enable` if needed for certificate-free HTTP before `make up`. Read credentials from `.env`. For dual HTTP/HTTPS, install mkcert, then run `make https-setup`, `make up`, `make health`, and `make https-check`; see [HTTPS.md](HTTPS.md).
 
 ## Complete automated validation
 
@@ -151,6 +153,16 @@ Callback smoke check (use a local disposable receiver):
 6. Verify a non-2xx response is retried only up to Max attempts, a stalled receiver times out, and neither affects the mock response or subsequent requests.
 7. Export even with `--include-sensitive`; check that the signing secret, secret environment values, resolved callback payloads, and attempts are absent. Import a signed callback and confirm signing remains disabled until a new secret is entered.
 8. Check the editor and callback log at 1440px, 1024px, and 390px in both themes; run axe on each view and resolve any accessibility findings before release.
+
+## First-run clarity checks
+
+`tests/Browser/first-run-smoke.mjs` checks created and imported zero-response endpoints, reactive editor cues, unchanged diagnostic 500/unmatched 404 behavior, the cookie help tip and conditional Logs hint at 390/740/1440px. Use an HTTP-only disposable Compose project with its own volumes and a fresh database for **each** theme. Assert `current_database()` equals that disposable database's name before any reset; never use an operator database. Point the fixture PHP process at the same instance/database, following the fixture conventions below.
+
+```bash
+MOCKDECK_BROWSER_FIXTURE=1 MOCKDECK_BROWSER_THEME=light MOCKDECK_BASE_URL=http://127.0.0.1:YOUR_PORT node tests/Browser/first-run-smoke.mjs
+```
+
+Repeat with `MOCKDECK_BROWSER_THEME=dark` on another fresh disposable database. `MOCKDECK_PHP` selects the fixture's container PHP wrapper; `MOCKDECK_SCREENSHOT_DIR` optionally retains screenshots. Backend coverage is in `FirstRunClarityTest`.
 
 ## Wave 1 browser and runtime checks
 
