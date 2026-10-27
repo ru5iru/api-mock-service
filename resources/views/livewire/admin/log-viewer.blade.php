@@ -196,7 +196,7 @@
                                 @if (($event['_repeat_count'] ?? 1) > 1)
                                     <x-badge>×{{ $event['_repeat_count'] }}</x-badge>
                                 @endif
-                                <button class="copy-row-control" type="button" data-copy-text="{{ $event['_reconstructed_curl'] }}" x-on:click.stop aria-label="Copy request curl">Copy</button>
+                                <button class="copy-row-control" type="button" data-copy-curl="{{ $event['_reconstructed_curl'] }}" data-stop-row-navigation x-on:click.stop x-on:keydown.enter.stop aria-label="Copy request curl">Copy</button>
                             </div>
                         </td>
                         <td>

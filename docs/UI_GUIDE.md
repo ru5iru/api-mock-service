@@ -61,6 +61,8 @@ Tertiary defaults to minimum 40px and 10px horizontal padding. Text defaults to 
 
 **Clipboard commands:** the dashboard shell's delegated `[data-copy-curl]` handler uses the secondary/small Button recipe and native disabled state while copying, then the existing Copied/Copy failed labels and toast feedback. Endpoint rows supply `data-copy-endpoint="{{ $endpoint->id }}"` and an empty `data-copy-curl`; the handler calls that row component's `copyMockCurl` action before writing the clipboard. Resolve secrets at this explicit action boundary, never in row attributes. Static `data-copy-curl` payloads remain supported by the same handler. A null action result leaves the clipboard unchanged and uses the server's specific danger toast. No separate button or loading style is introduced.
 
+Request-log copy buttons use the same handler with the existing reconstructed command as a static payload and retain the compact `.copy-row-control` recipe. Copy delegation runs in capture phase so row controls may stop bubbling without swallowing the command. Keep `data-stop-row-navigation`, `x-on:click.stop` and `x-on:keydown.enter.stop` on the log copy button: native Enter/Space activation must copy without toggling its row. The shared focus ring applies, and delegation survives Livewire list refreshes. Successful writes show Copied and the existing success toast; rejected writes show Copy failed and the danger toast. Secure origins use the Clipboard API; other origins reuse the existing temporary-textarea/`execCommand('copy')` fallback. If that fallback is rejected, report failure rather than success. No new fallback is introduced.
+
 **Examples (all variants and size modifiers):**
 
 ```blade
