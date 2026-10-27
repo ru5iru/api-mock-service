@@ -401,6 +401,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
         <section id="request-log" class="card docs-card">
             <h2>Request log</h2>
             <p>Request event fields are recorded at request time. Endpoint names and nearest configured candidates use current configuration.</p>
+            <p>New request-log URLs replace configured sensitive query values with <code>[REDACTED]</code>; reconstructed cURL uses that logged URL. Matching and serving use the original values. Unlabelled query names such as <code>ref</code>, <code>id</code> and <code>session</code> remain visible unless configured as sensitive. Nginx access logs and older request events are not sanitized by this change.</p>
             <p>Search and filter by path, endpoint, request ID, method, match, status, and time. Expand a row to inspect canonical data and nearest candidates.</p>
             <ul>
                 <li>Templated entries include render time but not the rendered body.</li>

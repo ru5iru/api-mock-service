@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\Callbacks\CallbackDispatcher;
 use App\Services\Curl\CurlHasher;
 use App\Services\Curl\IncomingRequestFactory;
+use App\Services\Curl\RequestCredentialPolicy;
 use App\Services\Environments\EnvironmentContext;
 use App\Services\Logging\MockRequestLogger;
 use App\Services\Matching\EndpointMatch;
@@ -261,7 +262,7 @@ final class MockInvocationController extends Controller
         $context = [
             'request_id' => $requestId,
             'method' => strtoupper($request->method()),
-            'url' => $effectiveUrl,
+            'url' => app(RequestCredentialPolicy::class)->maskUrl($effectiveUrl),
             'matched' => $match !== null,
             'match_tier' => $match?->tier ?? 'none',
             'matched_variant' => $match?->variant,

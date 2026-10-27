@@ -84,6 +84,8 @@ Rotation: generate a new credential with only the required permissions, update t
 
 `McpAuditRedactor` reuses `RequestCredentialPolicy`'s configurable header/query detection and masking plus `EnvironmentVariableWriter::sensitiveName`. It recursively redacts named secrets, header/variable entry values, JSON-encoded metadata, credential-shaped bearer strings and sensitive query parameters; depth/string output is bounded. The `McpInvocation` target setter also applies redaction. Do not put raw request/response bodies or arbitrary free-form payloads into `target`: use compact identifiers. No heuristic can identify every unlabeled secret. Writers apply the helper before persistence, allowlist audit metadata, and must not bypass the model with unredacted query-builder inserts.
 
+cURL text in output is parsed with the shared parser and formatter so custom sensitive header names and named JSON body fields receive the same recursive redaction. Form-style `name=value` strings use that same sensitive-name policy, retaining other fields. Unparseable cURL text is withheld. This projection changes output, cached results and run-history snapshots only; saved request bytes and matching signatures are unchanged. Opaque body text and path segments can still contain secrets.
+
 Credentials and invocation history are operational/security state, excluded from native configuration export/import and revision snapshots. No export-format bump is required. New MCP runtime tables are migrated normally. `McpAuditContractTest` covers schema, no automatic writes, nested/custom secret detection, metadata bounds, enum codes and export exclusion.
 
 ## Fixed error-code taxonomy

@@ -2,8 +2,12 @@
 
 namespace App\Services\Mcp;
 
+use App\Services\Curl\CurlFormatter;
+use App\Services\Curl\CurlParser;
+use App\Services\Curl\ParsedCurl;
 use App\Services\Curl\RequestCredentialPolicy;
 use App\Services\Environments\EnvironmentVariableWriter;
+use InvalidArgumentException;
 
 /** Defense in depth for metadata. It is never permission to persist raw request payloads. */
 final class McpAuditRedactor
@@ -57,10 +61,29 @@ final class McpAuditRedactor
         if (! is_string($value)) {
             return is_scalar($value) || $value === null ? $value : '[REDACTED]';
         }
+        if (preg_match('/^\s*curl(?:\.exe)?\s/i', $value) === 1) {
+            try {
+                $request = app(CurlParser::class)->parse($value);
+                $headers = array_map(fn (array $header): array => [
+                    'name' => $header['name'],
+                    'value' => $this->sensitive($header['name']) ? '[REDACTED]' : $header['value'],
+                ], $request->headers);
+                $value = app(CurlFormatter::class)->format(new ParsedCurl(
+                    $request->method, $request->url, $headers, $this->clean($request->body, $depth + 1),
+                ));
+            } catch (InvalidArgumentException) {
+                // Unparseable command text cannot be safely projected as a request.
+                return '[REDACTED]';
+            }
+        }
         $json = json_decode($value, true);
         if (is_array($json)) {
             return json_encode($this->clean($json, $depth + 1), JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
         }
+        // Also covers the body line in a redacted canonical-request snapshot.
+        $value = (string) preg_replace_callback('/(^|[\r\n&])([A-Za-z0-9_.%+\[\]-]+)=([^&\r\n]*)/', function (array $match): string {
+            return $this->sensitive(urldecode($match[2])) ? $match[1].$match[2].'=[REDACTED]' : $match[0];
+        }, $value);
         $value = $this->credentials->maskCurl($value);
         // The prefixes are credentials issued by this application, regardless of their surrounding field.
         $value = (string) preg_replace('/\bmd[mv]_[a-f0-9]{64}\b/i', '[REDACTED]', $value);

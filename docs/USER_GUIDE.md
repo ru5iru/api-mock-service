@@ -356,6 +356,8 @@ The row's **Copy request curl** control uses the shared clipboard behavior descr
 
 Request event fields are recorded at request time. Endpoint names and nearest configured candidates use current configuration.
 
+New request-log URLs replace configured sensitive query values with `[REDACTED]`; reconstructed cURL uses that logged URL. Matching and serving use the original values. Unlabelled query names such as `ref`, `id` and `session` remain visible unless configured as sensitive. Nginx access logs and older request events are not sanitized by this change.
+
 Logs are flat JSON written to stdout and/or daily files. They are not stored in PostgreSQL. File reading is bounded across current and rotated logs, and malformed/partial lines are skipped.
 
 ## 14. Export and import configuration
