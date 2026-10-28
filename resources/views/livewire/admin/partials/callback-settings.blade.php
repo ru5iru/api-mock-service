@@ -1,5 +1,6 @@
             <div class="callback-fields">
                 <label class="toggle-inline"><input type="checkbox" wire:model.live="callbackEnabled"><span>Enable callback</span></label>
+                <p class="field-help">For a new delivery, URL, headers and body are resolved when the worker runs the job, using the invocation's bound Environment and its current values and the current saved callback settings; retries reuse those resolved values. Disabling a callback stops enqueues from future mock calls but does not cancel a delivery already queued.</p>
                 <h4 class="callback-group-heading">Delivery</h4>
                 <div class="field-row two">
                     <div class="field">

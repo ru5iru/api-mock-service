@@ -146,6 +146,7 @@ final class LogViewer extends Component
                             'target' => $candidateTarget,
                             'method_matches' => $methodMatches,
                             'target_matches' => $candidateTarget === $path,
+                            'path_matches' => $candidate->requestPath() === explode('?', $path, 2)[0],
                             'score' => ($methodMatches ? 0 : 30) + levenshtein(substr($path, 0, 255), substr($candidateTarget, 0, 255)),
                         ];
                     })

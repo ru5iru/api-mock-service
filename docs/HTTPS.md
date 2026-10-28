@@ -8,7 +8,7 @@ Run Bash commands from the repository root in WSL/Linux. Run PowerShell commands
 
 Follow [the setup guide](SETUP.md) for prerequisites and `make setup`. Keep existing credentials when updating. Make is the main entry point in Bash/WSL; direct commands below remain available for native Windows and diagnostics.
 
-For HTTP only: `make setup`, `make up`, `make health`. For both protocols, install mkcert first, then:
+For certificate-free HTTP: run `make setup`, read credentials in `.env`, then `make up` and `make health`. Setup selects HTTP only for a new `.env` without a complete certificate pair. Existing `.env` selections are preserved; run `make http-enable` if needed before startup. Each selection helper and `make help` prints the effective Compose files, APP_URL scheme and next command without secrets. For both protocols, install mkcert first, then:
 
 ```bash
 make setup

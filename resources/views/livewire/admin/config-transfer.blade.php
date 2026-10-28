@@ -235,6 +235,7 @@
                             <select class="ui-select" id="postman-variable-mode" wire:model.live="variableMode">
                                 <option value="exclude">Exclude from matching</option><option value="resolve">Resolve using Environment</option>
                             </select>
+                            <p class="field-help">Exclude keeps the field out of matching. Resolve substitutes the selected Environment's current value into the signature at preview time and does not follow later changes.</p>
                         </div>
                         <div class="field">
                             <label for="postman-variable-environment">Environment for creation / resolution</label>
@@ -244,7 +245,7 @@
                             </select>
                         </div>
                     </div>
-                    <p class="info-note">Exclude ignores the field. Resolve matches today's Environment value literally; a later value change can break matching. Request bodies remain literal.</p>
+                    <p class="info-note">Request bodies remain literal.</p>
                     @if($candidates !== [])
                         <details class="normalized-details" data-disclosure wire:ignore.self wire:key="postman-variable-candidates" open>
                             <summary><x-disclosure-chevron />Review Environment variable candidates</summary>
@@ -410,6 +411,17 @@
                 <h2>Import applied atomically</h2>
                 <p>{{ $summary['endpoints_created'] }} endpoints created, {{ $summary['endpoints_updated'] }} updated, {{ $summary['responses_created'] }} responses created, and {{ $summary['responses_updated'] }} updated.</p>
                 @if (($summary['revision_snapshots'] ?? 0) > 0)
+                    @php($createdEndpoints = $importedEndpoints->whereNotIn('uuid', $importedUpdatedEndpointUuids))
+                    @php($undoScope = 'Undo restores changed existing endpoints and responses to their pre-import state, including responses removed by authoritative replacement. Newly created endpoints and separately created Environment variables are retained. Runtime counters are untouched.')
+                    @php($undoEndpointCount = $undoItems->where('type', 'endpoint')->count())
+                    @php($undoResponseCount = $undoItems->where('type', 'response')->count())
+                    @php($restoreMessage = 'Restore '.$undoEndpointCount.' '.Str::plural('endpoint', $undoEndpointCount).' and '.$undoResponseCount.' '.Str::plural('response', $undoResponseCount).' from '.$summary['revision_snapshots'].' recorded import '.Str::plural('snapshot', $summary['revision_snapshots']).': '.$undoItems->pluck('label')->implode(', ').'.')
+                    @php($retainMessage = 'Retain '.$summary['endpoints_created'].' newly created '.Str::plural('endpoint', $summary['endpoints_created']).($createdEndpoints->isNotEmpty() ? ': '.$createdEndpoints->map->displayName()->implode(', ') : '').'.')
+                    <p class="field-help" data-import-undo-scope>{{ $undoScope }}</p>
+                    <dl class="definition-list" data-import-undo-summary>
+                        <div><dt>Restores</dt><dd>{{ $restoreMessage }}</dd></div>
+                        <div><dt>Retains</dt><dd>{{ $retainMessage }} Separately created Environment variables are retained.</dd></div>
+                    </dl>
                     <p class="import-undo-line">
                         <strong>{{ $summary['revision_snapshots'] }} {{ Str::plural('change', $summary['revision_snapshots']) }} made</strong>
                         @if ($importUndone)
@@ -419,7 +431,7 @@
                                 class="text-button"
                                 type="button"
                                 wire:click="undoImport"
-                                data-confirm-title="Undo import" data-confirm="Undo this import and restore: {{ $undoItems->implode(', ') }}? A new rollback revision will be kept for every restored item."
+                                data-confirm-title="Undo import" data-confirm-danger="true" data-confirm="{{ $restoreMessage }} {{ $retainMessage }} {{ $undoScope }} A new rollback revision will be kept for every restored item."
                             >Undo this import</button>
                         @endif
                     </p>

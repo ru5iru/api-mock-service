@@ -154,6 +154,8 @@ The worker allows up to five attempts, a 30-second initial delay, up to 30 secon
 
 The dashboard can display raw curl, canonical text, request bodies, and headers. Those may contain secrets. Access control and log retention should be treated as deployment requirements before exposing the service beyond a trusted development network.
 
+Primary request events mask values of configured sensitive query names with `[REDACTED]` when building the logged URL, using `RequestCredentialPolicy::sensitive(..., query: true)`. This affects the request-log file, application stdout and the Logs URL/reconstructed cURL; matching and serving still receive the original request. Names and other URL parts are retained. Unlabelled names such as `ref`, `id` and `session` remain visible unless explicitly configured as sensitive. This does not sanitize Nginx access logs or previously written events.
+
 ## Database
 
 Primary domain and history tables are:

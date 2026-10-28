@@ -196,7 +196,7 @@
                                 @if (($event['_repeat_count'] ?? 1) > 1)
                                     <x-badge>×{{ $event['_repeat_count'] }}</x-badge>
                                 @endif
-                                <button class="copy-row-control" type="button" data-copy-text="{{ $event['_reconstructed_curl'] }}" x-on:click.stop aria-label="Copy request curl">Copy</button>
+                                <button class="copy-row-control" type="button" data-copy-curl="{{ $event['_reconstructed_curl'] }}" data-stop-row-navigation x-on:click.stop x-on:keydown.enter.stop aria-label="Copy request curl">Copy</button>
                             </div>
                         </td>
                         <td>
@@ -235,6 +235,8 @@
                                 <div class="log-detail-grid">
                                     <section>
                                         <h3>{{ $event['method'] ?? '—' }} {{ $event['_path'] }}</h3>
+                                        <h4>Recorded request event</h4>
+                                        <p class="field-help">Method, URL, match, status, response ID and Environment are recorded at request time.</p>
                                         <dl class="detail-list">
                                             <div><dt>Request ID</dt><dd><code>{{ $event['request_id'] ?? 'Unavailable' }}</code></dd></div>
                                             <div><dt>Host</dt><dd>{{ $event['_host'] ?: 'Unavailable' }}</dd></div>
@@ -253,15 +255,18 @@
                                                 <div><dt>Grouped</dt><dd>{{ $event['_repeat_count'] }} consecutive identical requests</dd></div>
                                             @endif
                                         </dl>
+                                        <p class="field-help">The reconstructed cURL contains method and URL only; add headers and body before using it.</p>
                                     </section>
                                     <section>
+                                        <h3>Current configuration references</h3>
+                                        <p class="field-help">Endpoint names and nearest configured candidates use current configuration.</p>
                                         @if (in_array($tier, ['none', 'fallback'], true))
                                             {{-- TODO: Add masked headers, body, computed hash, and candidate diffs when the log event contract exposes them. --}}
-                                            <h3>{{ $tier === 'none' ? 'No endpoint accepted this signature' : 'A normalized fallback was used' }}</h3>
+                                            <h4>{{ $tier === 'none' ? 'No endpoint accepted this signature' : 'A normalized fallback was used' }}</h4>
                                             <p>Method and path/query are compared below. Request headers, body, and the computed hash are not present in the current log event, so deeper field-level differences cannot be reconstructed.</p>
                                             @if ($event['_nearest'] !== [])
                                                 <div class="nearest-matches">
-                                                    <strong>Nearest endpoint candidates</strong>
+                                                    <strong>Nearest current configured candidates</strong>
                                                     @foreach ($event['_nearest'] as $candidate)
                                                         <a href="{{ route('dashboard.endpoints.edit', $candidate['id']) }}" wire:navigate>
                                                             <span>{{ $candidate['name'] }}</span>
@@ -273,10 +278,13 @@
                                                     @endforeach
                                                 </div>
                                             @endif
+                                            @if ($tier === 'none' && ($event['_nearest'][0]['method_matches'] ?? false) && ($event['_nearest'][0]['path_matches'] ?? false))
+                                                <p class="info-note" role="note" data-cookie-matching-hint>If this request came from a browser, check whether it carries cookies that this endpoint's signature does not expect (Matching → Ignore cookies).</p>
+                                            @endif
                                             <a class="button button-primary button-small" href="{{ route('dashboard.endpoints.create', ['curl' => $event['_reconstructed_curl']]) }}" wire:navigate>Create mock from this request</a>
                                         @else
-                                            <h3>{{ $event['_endpoint_name'] ?? 'Matched endpoint' }}</h3>
-                                            <p>The stored hash matched this request. Open the endpoint to inspect its canonical signature and response pool.</p>
+                                            <h4>{{ $event['_endpoint_name'] ?? 'Matched endpoint' }}</h4>
+                                            <p>The recorded event reports a hash match. Open the current endpoint to inspect its canonical signature and response pool.</p>
                                             <a class="button button-secondary button-small" href="{{ route('dashboard.endpoints.edit', $event['endpoint_id']) }}" wire:navigate>Open endpoint</a>
                                         @endif
                                     </section>

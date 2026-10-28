@@ -1,5 +1,8 @@
-<div class="response-manager" data-draft-scope="responses" data-draft-baseline="{{ json_encode($this->editorDraftValues($formBaseline)) }}" data-draft-current="{{ json_encode($this->editorDraftValues()) }}" data-server-dirty="{{ $selectionDirty || $otherDraftsDirty ? 'true' : 'false' }}" data-context-catalog="{{ json_encode($contextCatalog) }}">
+<div class="response-manager" data-draft-scope="responses" data-editing-response="{{ $editingId ?? 'new' }}" data-draft-baseline="{{ json_encode($this->editorDraftValues($formBaseline)) }}" data-draft-current="{{ json_encode($this->editorDraftValues()) }}" data-server-dirty="{{ $selectionDirty || $otherDraftsDirty ? 'true' : 'false' }}" data-context-catalog="{{ json_encode($contextCatalog) }}">
 <section id="panel-response" role="tabpanel" aria-labelledby="tab-response" x-show="activeTab === 'response'">
+@if ($responses->isEmpty())
+    <p class="info-note" role="note" id="response-empty-note">No response yet. Add one so this endpoint can answer requests. Until then it returns a diagnostic 500.</p>
+@endif
 <div class="response-grid {{ $bodyMode === 'template' ? 'template-active' : '' }}">
     <div class="response-list">
         <section class="card selection-settings" aria-labelledby="response-selection-title">
@@ -101,6 +104,7 @@
                         <label class="toggle-inline"><x-radio name="fallback-response" value="{{ $response->id }}" wire:click="setFallback({{ $response->id }})" :checked="$fallbackResponseId === $response->id" aria-label="Use response {{ $response->id }} as default fallback" /><span>Default / fallback</span></label>
                         <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="response-conditions-{{ $response->id }}" @if ($fallbackResponseId !== $response->id) open @endif>
                             <summary><x-disclosure-chevron /><strong>Conditions</strong></summary>
+                            <p class="field-help">Rules select after endpoint matching. <span wire:ignore><x-help-tip title="Match before response selection" label="The request must first match this endpoint by method, path/query, retained headers and body; rules then choose among its responses. A rule cannot make a different request match. To vary a header or query value, exclude it in Matching first, then choose the response with a rule." /></span></p>
                             @if ($fallbackResponseId === $response->id)<p class="field-help">Fallback is selected only when no other response matches; its conditions are not evaluated.</p>@endif
                             @foreach ($responseRules[$response->id] ?? [] as $ruleIndex => $condition)
                                 @php
@@ -153,8 +157,8 @@
 
         @endphp
         @if ($responseErrors->isNotEmpty())
-            <div class="validation-panel error-panel" role="alert">
-                <strong>Response changes were not saved.</strong>
+            <div class="validation-panel error-panel" @if (! $globalSaveFailed || $globalSaveAttempt === '') role="alert" @endif>
+                @if (! $globalSaveFailed || $globalSaveAttempt === '')<strong>Response changes were not saved.</strong>@endif
                 @foreach ($responseErrors->flatten()->unique() as $message)<p>{{ $message }}</p>@endforeach
             </div>
         @endif
@@ -422,6 +426,7 @@
 </div>
 </section>
 <section id="panel-callback" role="tabpanel" aria-labelledby="tab-callback" x-show="activeTab === 'callback'" x-cloak>
+    <p class="field-help">New callback deliveries use worker-time values, not a snapshot taken when the mock was called.</p>
     <div class="callback-response-list" aria-label="Response callbacks">
         @forelse ($responses as $responseIndex => $response)
             @php

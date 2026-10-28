@@ -233,7 +233,7 @@
                 button.textContent = originalLabel;
                 button.disabled = false;
             }, 1500);
-        });
+        }, true); // Copy before nested row controls stop click propagation.
 
         document.addEventListener('click', async (event) => {
             const button = event.target.closest('[data-copy-text]');

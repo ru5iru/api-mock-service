@@ -79,9 +79,10 @@ try {
         await openDetails(fixture.first);
         await openDetails(fixture.second);
         await commit(() => row(fixture.second).getByRole('radio', { name: `Use response ${fixture.second} as default fallback` }).check());
-        await row(fixture.first).locator('summary').filter({ hasText: 'Conditions' }).click();
-        await commit(() => row(fixture.first).getByRole('button', { name: 'Add condition', exact: true }).click());
         const disclosure = row(fixture.first).locator('.selection-response-details > details');
+        if (!await disclosure.evaluate(node => node.open)) await disclosure.locator(':scope > summary').click();
+        await poll(() => row(fixture.first).getByRole('button', { name: 'Add condition', exact: true }).isVisible(), 'Add condition is not visible inside the open Conditions disclosure');
+        await commit(() => row(fixture.first).getByRole('button', { name: 'Add condition', exact: true }).click());
         assert.equal(await disclosure.evaluate(node => node.open), true, 'Conditions collapsed after adding a rule');
         const condition = row(fixture.first).locator('.rule-condition-row');
         await condition.getByLabel('Field type').selectOption('header');
@@ -90,7 +91,7 @@ try {
         await poll(() => condition.getByLabel('Value', { exact: true }).isDisabled(), 'Exists operator should disable Value');
         await commit(() => condition.getByLabel('Operator').selectOption('equals'));
         assert.equal(await disclosure.evaluate(node => node.open), true, 'Conditions collapsed after returning to equals');
-        await condition.getByLabel('Field name', { exact: true }).fill('X-Mode');
+        await condition.getByRole('textbox', { name: 'Field name HTTP header name, case-insensitive.', exact: true }).fill('X-Mode');
         await condition.getByLabel('Value', { exact: true }).fill('yes');
         await save();
         await poll(async () => (await settings.locator('.selection-preview').innerText()).includes('X-Mode'), 'Rule preview not updated');
@@ -146,7 +147,10 @@ try {
         await page.locator('#response-body').fill('{"response":"first"}');
         await page.locator('#response-weight').fill('0');
         await page.locator('[data-sticky-action-bar]').getByRole('button', { name: 'Save changes', exact: true }).click();
-        await poll(async () => (await page.locator('.response-form [role="alert"]').innerText()).includes('not saved'), 'Global save failed without visible validation');
+        const saveError = page.locator('.response-form .validation-panel[role="alert"]').filter({ hasText: 'Response changes were not saved.' });
+        await poll(() => saveError.isVisible(), 'Global save failed without visible validation');
+        assert.match(await saveError.innerText(), /Response changes were not saved\./);
+        assert.match(await page.locator('.response-form [data-error-for="weight"]').innerText(), /at least 1/);
         assert.equal(await page.locator('#response-body').inputValue(), '{"response":"first"}', 'Invalid draft was lost');
         await poll(() => page.locator('[data-sticky-action-bar]').getByRole('button', { name: 'Save changes', exact: true }).isEnabled(), 'Global save stayed disabled after validation failure');
         await page.locator('#response-weight').fill('1');

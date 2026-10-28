@@ -284,7 +284,8 @@ final class DashboardTest extends TestCase
             ->assertSee('POST /v1/orders')
             ->assertSeeHtml('endpoint-primary-line')
             ->assertSee('1 header')
-            ->assertSee('No responses – requests will fail');
+            ->assertSee('No response')
+            ->assertSee('Add response');
     }
 
     public function test_duplicate_endpoint_is_created_disabled_with_its_responses(): void

@@ -39,7 +39,7 @@ try {
         await page.getByText('Possible credentials detected', { exact: true }).waitFor();
         await page.getByRole('button', { name: 'Mask detected secrets', exact: true }).click();
         await page.getByText('Detected credentials are masked as REPLACE_ME in this import.', { exact: true }).waitFor();
-        await page.locator('.import-table details > summary').click();
+        await page.locator('.import-table details > summary').filter({ hasText: /^\s*\d+ warnings? for Variable request\s*$/ }).click();
         await page.getByText('Query parameter nonce excluded: contains a Postman variable.', { exact: true }).waitFor();
         assert.ok(await page.getByText('Body is not valid JSON — matched as raw text.', { exact: true }).isVisible());
         assert.ok(await page.getByText('Pre-request script present (1 lines); not imported or executed.', { exact: true }).isVisible());

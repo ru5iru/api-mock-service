@@ -20,6 +20,7 @@ use App\Services\Templates\TemplateRenderException;
 use App\Services\Templates\TemplateSchemaConverter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
@@ -253,47 +254,183 @@ final class ResponseManager extends Component
         $this->publishCallbackValidity();
     }
 
-    #[On('save-response-drafts')]
-    public function savePendingDrafts(int $endpointId): void
+    #[Locked]
+    public array $globalSaveScopes = [];
+
+    #[Locked]
+    public string $globalSaveAttempt = '';
+
+    #[Locked]
+    public string $publishedSaveScopes = '';
+
+    #[Locked]
+    public bool $globalSaveFailed = false;
+
+    #[On('inspect-response-drafts')]
+    public function inspectPendingDrafts(int $endpointId, string $attemptId, bool $uncertain = false): void
     {
         if ($endpointId !== $this->endpointId) {
             return;
         }
+        $this->globalSaveAttempt = $attemptId;
+        $this->globalSaveScopes = $this->draftSaveScopes($this->draftsForAttempt());
+        if ($uncertain) {
+            foreach ($this->globalSaveScopes as &$scope) {
+                if ($scope['state'] !== 'No changes') {
+                    $scope['state'] = 'Needs attention';
+                }
+            }
+            unset($scope);
+        }
+        $this->publishSaveScopes();
+    }
+
+    private function draftsForAttempt(): array
+    {
+        $drafts = $this->pendingFormDrafts;
+        $key = $this->editingId ?? 'new';
+        if ($this->formFingerprint() !== $this->savedFormFingerprint) {
+            $drafts[$key] = ['state' => $this->formState(), 'baseline' => $this->formBaseline, 'fingerprint' => $this->savedFormFingerprint];
+        } else {
+            unset($drafts[$key]);
+        }
+
+        return $drafts;
+    }
+
+    private function draftSaveScopes(array $drafts): array
+    {
+        $scopes = ['selection' => ['label' => 'Response selection', 'state' => $this->selectionFingerprint() === $this->savedSelectionFingerprint ? 'No changes' : 'Not saved', 'owner' => 'responses', 'fields' => array_keys($this->selectionDraft()), 'fingerprint' => $this->selectionFingerprint()]];
+        foreach ($drafts as $id => $draft) {
+            foreach (['response', 'callback'] as $kind) {
+                if ($id === 'new' && $kind === 'callback') {
+                    continue;
+                }
+                $fields = array_values(array_filter([...self::FORM_FIELDS, 'builderSchema', 'callbackBuilderSchema'], fn ($field) => $field !== 'editingId' && ($id === 'new' || str_starts_with($field, 'callback') === ($kind === 'callback'))));
+                $current = array_intersect_key($draft['state'], array_flip($fields));
+                $baseline = array_intersect_key($draft['baseline'], array_flip($fields));
+                $scopes[$kind.':'.$id] = ['label' => $id === 'new' ? 'New response' : ($kind === 'callback' ? 'Callback for response #' : 'Response #').$id,
+                    'state' => $current === $baseline ? 'No changes' : 'Not saved', 'owner' => 'responses', 'fields' => $fields, 'fingerprint' => hash('sha256', json_encode($current))];
+            }
+        }
+
+        return $scopes;
+    }
+
+    public function visibleSaveScopes(): array
+    {
+        return array_filter($this->globalSaveScopes, function ($scope, $key) {
+            if ($key === 'selection') {
+                return $scope['fingerprint'] === $this->selectionFingerprint();
+            }
+            [, $id] = explode(':', $key, 2);
+            $state = (string) ($this->editingId ?? 'new') === $id ? $this->formState() : ($this->pendingFormDrafts[$id]['state'] ?? null);
+
+            return $state === null || $scope['fingerprint'] === hash('sha256', json_encode(array_intersect_key($state, array_flip($scope['fields']))));
+        }, ARRAY_FILTER_USE_BOTH);
+    }
+
+    private function publishSaveScopes(): void
+    {
+        $scopes = $this->visibleSaveScopes();
+        $fingerprint = hash('sha256', json_encode($scopes));
+        if ($fingerprint !== $this->publishedSaveScopes) {
+            $this->publishedSaveScopes = $fingerprint;
+            $this->dispatch('response-drafts-status', endpointId: $this->endpointId, attemptId: $this->globalSaveAttempt, scopes: $scopes)->to(EndpointForm::class);
+        }
+    }
+
+    public function dehydrate(): void
+    {
+        if ($this->globalSaveAttempt !== '') {
+            $this->globalSaveScopes = $this->visibleSaveScopes();
+            $this->publishSaveScopes();
+        }
+    }
+
+    #[On('save-response-drafts')]
+    public function savePendingDrafts(int $endpointId, string $attemptId = ''): void
+    {
+        if ($endpointId !== $this->endpointId || $this->savingDrafts) {
+            return;
+        }
         $this->stashCurrentForm();
         $drafts = $this->pendingFormDrafts;
+        $active = ['state' => $this->formState(), 'baseline' => $this->formBaseline, 'fingerprint' => $this->savedFormFingerprint];
         $selectionDraft = $this->selectionDraft();
         $selectionBaseline = $this->savedSelectionFingerprint;
+        $this->globalSaveAttempt = $attemptId;
+        $this->globalSaveScopes = $this->draftSaveScopes($drafts);
+        $this->globalSaveFailed = false;
         $this->resetValidation();
         $this->savingDrafts = true;
+        $failedScope = 'selection';
         try {
-            DB::transaction(function () use ($drafts): void {
+            $savedIds = DB::transaction(function () use ($drafts, &$failedScope): array {
+                $savedIds = [];
+                $failedScope = 'selection';
                 if ($this->selectionFingerprint() !== $this->savedSelectionFingerprint) {
                     $this->saveSelection();
                 }
-                foreach ($drafts as $draft) {
+                foreach ($drafts as $key => $draft) {
+                    $failedScope = 'response:'.$key;
                     $this->restoreFormDraft($draft);
-                    $this->save();
-                    if ($this->getErrorBag()->isNotEmpty()) {
-                        throw ValidationException::withMessages($this->getErrorBag()->getMessages());
-                    }
+                    $this->validateBuilderDrafts();
+                    $savedIds[$key] = app(ResponseMutationService::class)->save($this->endpointId, $this->mutationInput(), $this->editingId)->id;
                 }
+
+                return $savedIds;
             }, 3);
-        } catch (ValidationException $exception) {
+        } catch (\Throwable $exception) {
+            $this->globalSaveFailed = true;
             $this->pendingFormDrafts = $drafts;
             foreach ($selectionDraft as $key => $value) {
                 $this->{$key} = $value;
             }
             $this->savedSelectionFingerprint = $selectionBaseline;
-            $this->setErrorBag($exception->errors());
-            $tab = collect(array_keys($exception->errors()))->contains(fn ($key) => str_starts_with($key, 'callback')) ? 'callback' : 'response';
-            $this->dispatch('show-editor-tab', tab: $tab)->to(EndpointForm::class);
-            $this->dispatch('response-drafts-save-failed', endpointId: $this->endpointId)->to(EndpointForm::class);
+            $validation = $exception instanceof ValidationException;
+            $failedId = str_contains($failedScope, ':') ? explode(':', $failedScope, 2)[1] : null;
+            $this->restoreFormDraft($validation && $failedId !== null ? $drafts[$failedId] : $active);
+            if ($validation) {
+                $this->setErrorBag($exception->errors());
+                $callback = collect(array_keys($exception->errors()))->contains(fn ($key) => str_starts_with($key, 'callback'));
+                if ($callback && $failedId !== null && $failedId !== 'new') {
+                    $failedScope = 'callback:'.$failedId;
+                }
+                if ($exception instanceof ResponseValidationException && $exception->templateIssues !== null) {
+                    $this->templateIssues = $exception->templateIssues;
+                }
+                $this->dispatch('show-editor-tab', tab: $callback ? 'callback' : 'response')->to(EndpointForm::class);
+            } else {
+                // Exception messages may contain SQL or arbitrary payloads.
+                Log::error('Dashboard response save failed', app(McpAuditRedactor::class)->redact(['exception_class' => $exception::class, 'error_message' => '[REDACTED]']));
+            }
+            if (isset($this->globalSaveScopes[$failedScope])) {
+                $this->globalSaveScopes[$failedScope]['state'] = 'Needs attention';
+            }
+            $this->dispatch('response-drafts-save-failed', endpointId: $this->endpointId, attemptId: $attemptId, scopes: $this->globalSaveScopes, unexpected: ! $validation)->to(EndpointForm::class);
 
             return;
         } finally {
             $this->savingDrafts = false;
         }
-        $this->dispatch('response-drafts-saved', endpointId: $this->endpointId)->to(EndpointForm::class);
+        // Only component bookkeeping happens here, after R has committed.
+        $this->pendingFormDrafts = [];
+        $this->resetForm();
+        $this->loadSelection();
+        $this->globalSaveScopes['selection']['fingerprint'] = $this->selectionFingerprint();
+        if (isset($savedIds['new'], $this->globalSaveScopes['response:new'])) {
+            $this->globalSaveScopes['response:'.$savedIds['new']] = $this->globalSaveScopes['response:new'];
+            $this->globalSaveScopes['response:'.$savedIds['new']]['label'] = 'Response #'.$savedIds['new'];
+            unset($this->globalSaveScopes['response:new']);
+        }
+        foreach ($this->globalSaveScopes as &$scope) {
+            if ($scope['state'] !== 'No changes') {
+                $scope['state'] = 'Saved';
+            }
+        }
+        unset($scope);
+        $this->dispatch('response-drafts-saved', endpointId: $this->endpointId, attemptId: $attemptId, scopes: $this->globalSaveScopes)->to(EndpointForm::class);
     }
 
     private function formState(): array
@@ -415,6 +552,8 @@ final class ResponseManager extends Component
 
     public function save(): void
     {
+        $this->globalSaveFailed = false;
+        unset($this->globalSaveScopes['response:'.($this->editingId ?? 'new')], $this->globalSaveScopes['callback:'.($this->editingId ?? 'new')]);
         $this->resetValidation();
         $this->validateBuilderDrafts();
         try {
@@ -497,6 +636,8 @@ final class ResponseManager extends Component
         if ($this->editingId === null) {
             return;
         }
+        $this->globalSaveFailed = false;
+        unset($this->globalSaveScopes['callback:'.$this->editingId]);
         $this->resetValidation();
         if ($this->callbackEditorView === 'builder') {
             app(TemplateSchemaConverter::class)->validateSchema($this->callbackBuilderSchema, 'callbackBuilderSchema');

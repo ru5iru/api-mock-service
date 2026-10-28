@@ -10,6 +10,7 @@ use App\Services\Curl\CurlHasher;
 use App\Services\Curl\CurlParser;
 use App\Services\Curl\ParsedCurl;
 use App\Services\Matching\PathPattern;
+use App\Services\Mcp\McpAuditRedactor;
 use App\Services\Mutations\EndpointConfigurationValidator;
 use App\Services\Mutations\EndpointInput;
 use App\Services\Mutations\EndpointMutationService;
@@ -17,6 +18,7 @@ use App\Services\Mutations\EndpointRequestService;
 use App\Services\Response\SelectionConfigurationValidator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -105,6 +107,27 @@ final class EndpointForm extends Component
     public bool $savingAll = false;
 
     #[Locked]
+    public array $saveAttempt = [];
+
+    #[Locked]
+    public string $saveSummary = '';
+
+    #[Locked]
+    public array $saveScopes = [];
+
+    public const PREFLIGHT_FAILED = 'Changes were not saved. Correct the highlighted request settings and try again.';
+
+    public const RESPONSES_FAILED = 'Response changes were not saved. Correct the highlighted fields and try again.';
+
+    public const ENDPOINT_FAILED = 'Some changes were saved. Request settings were not saved. Correct the highlighted fields and try again.';
+
+    public const RESPONSES_ERROR = 'Changes were not saved because of an unexpected error. Your edits are still on this page; try again.';
+
+    public const ENDPOINT_ERROR = 'Some changes were saved. Request settings were not saved because of an unexpected error. Your edits are still on this page; try again.';
+
+    public const UNCONFIRMED = 'Save result could not be confirmed. Check the saved configuration before trying again.';
+
+    #[Locked]
     public ?bool $draftResponseReady = null;
 
     #[Locked]
@@ -163,31 +186,140 @@ final class EndpointForm extends Component
         if ($this->endpointId === null) {
             return $this->save($parser, $hasher);
         }
-        if (! $this->savingAll) {
-            $this->savingAll = true;
-            $this->dispatch('save-response-drafts', endpointId: $this->endpointId)->to(ResponseManager::class);
+        if ($this->savingAll) {
+            return null;
         }
+        $input = $this->mutationInput();
+        $this->saveAttempt = ['id' => (string) Str::uuid(), 'input' => $input->values()];
+        $this->saveScopes = $this->parentSaveScopes();
+        $this->saveSummary = '';
+        $this->submitAttempted = true;
+        $this->resetValidation();
+        try {
+            app(EndpointConfigurationValidator::class)->validate($input, $this->endpointId);
+        } catch (ValidationException $exception) {
+            $this->endpointValidationFailed($exception);
+            $this->saveSummary = self::PREFLIGHT_FAILED;
+            $this->saveScopes['request']['state'] = 'Needs attention';
+            $this->dispatch('inspect-response-drafts', endpointId: $this->endpointId, attemptId: $this->saveAttempt['id'])->to(ResponseManager::class);
+
+            return null;
+        }
+        $this->savingAll = true;
+        $this->dispatch('save-response-drafts', endpointId: $this->endpointId, attemptId: $this->saveAttempt['id'])->to(ResponseManager::class);
 
         return null;
     }
 
     #[On('response-drafts-saved')]
-    public function finishSavingAll(int $endpointId, CurlParser $parser, CurlHasher $hasher): mixed
+    public function finishSavingAll(int $endpointId, CurlParser $parser, CurlHasher $hasher, array $scopes = [], string $attemptId = ''): mixed
     {
         if ($endpointId !== $this->endpointId || ! $this->savingAll) {
             return null;
         }
-        $this->savingAll = false;
-
-        return $this->save($parser, $hasher);
+        if ($attemptId !== '' && $attemptId !== ($this->saveAttempt['id'] ?? null)) {
+            return null;
+        }
+        $this->saveScopes = array_replace($this->saveScopes, $scopes);
+        try {
+            return $this->persistEndpoint(new EndpointInput(...$this->saveAttempt['input']), true);
+        } finally {
+            $this->savingAll = false;
+        }
     }
 
     #[On('response-drafts-save-failed')]
-    public function responseDraftsFailed(int $endpointId): void
+    public function responseDraftsFailed(int $endpointId, array $scopes = [], string $attemptId = '', bool $unexpected = false): void
     {
-        if ($endpointId === $this->endpointId) {
+        if ($endpointId === $this->endpointId && ($attemptId === '' || $attemptId === ($this->saveAttempt['id'] ?? null))) {
             $this->savingAll = false;
+            $this->saveScopes = array_replace($this->saveScopes, $scopes);
+            $this->saveSummary = $unexpected ? self::RESPONSES_ERROR : self::RESPONSES_FAILED;
         }
+    }
+
+    #[On('response-drafts-status')]
+    public function responseDraftStatus(int $endpointId, string $attemptId, array $scopes): void
+    {
+        if ($endpointId !== $this->endpointId || $attemptId !== ($this->saveAttempt['id'] ?? null)) {
+            return;
+        }
+        $this->saveScopes = array_filter($this->saveScopes, fn ($scope) => ($scope['owner'] ?? '') === 'request');
+        $this->saveScopes = array_replace($this->saveScopes, $scopes);
+    }
+
+    public function saveResultUnconfirmed(): void
+    {
+        if ($this->endpointId === null) {
+            return;
+        }
+        // A client failure is not evidence that either transaction rolled back.
+        $this->savingAll = false;
+        $this->saveSummary = self::UNCONFIRMED;
+        if ($this->saveAttempt === []) {
+            $this->saveAttempt = ['id' => (string) Str::uuid(), 'input' => $this->mutationInput()->values()];
+            $this->saveScopes = $this->parentSaveScopes();
+        }
+        foreach ($this->saveScopes as &$scope) {
+            if ($scope['state'] !== 'No changes') {
+                $scope['state'] = 'Needs attention';
+            }
+        }
+        unset($scope);
+        $this->dispatch('inspect-response-drafts', endpointId: $this->endpointId, attemptId: $this->saveAttempt['id'], uncertain: true)->to(ResponseManager::class);
+    }
+
+    public function updated(string $property): void
+    {
+        if ($this->savingAll) {
+            return;
+        }
+        foreach ($this->saveScopes as $key => $scope) {
+            if (($scope['owner'] ?? '') === 'request' && in_array(explode('.', $property)[0], $scope['fields'], true)) {
+                unset($this->saveScopes[$key]);
+            }
+        }
+    }
+
+    private function endpointValidationFailed(ValidationException $exception): void
+    {
+        $this->setErrorBag($exception->errors());
+        if (array_key_exists('rawCurl', $exception->errors())) {
+            $this->curlExpanded = true;
+        }
+        $firstField = explode('.', (string) array_key_first($exception->errors()))[0];
+        $this->activeTab = in_array($firstField, ['excludedQueryParams', 'excludedHeaderNames', 'pathPatternEnabled'], true)
+            ? 'matching' : 'request';
+    }
+
+    private function parentSaveScopes(): array
+    {
+        $groups = [
+            'request' => ['Request and matching', ['name', 'enabled', 'priority', 'rawCurl', 'excludeCookies', 'excludeAuth', 'excludeHeaders', 'excludedQueryParams', 'excludedHeaderNames', 'pathPatternEnabled']],
+            'organization' => ['Organization and Environment overrides', ['collectionId', 'tagIds', 'environmentOverrides']],
+        ];
+        $values = $this->mutationInput()->values();
+        $scopes = [];
+        foreach ($groups as $key => [$label, $fields]) {
+            $current = array_intersect_key($values, array_flip($fields));
+            $baseline = array_intersect_key($this->requestBaseline, array_flip($fields));
+            $scopes[$key] = ['label' => $label, 'state' => $current === $baseline ? 'No changes' : 'Not saved', 'owner' => 'request', 'fields' => $fields, 'fingerprint' => hash('sha256', json_encode($current))];
+        }
+
+        return $scopes;
+    }
+
+    public function visibleSaveScopes(): array
+    {
+        $current = $this->parentSaveScopes();
+
+        return array_filter($this->saveScopes, fn ($scope, $key) => ($scope['owner'] ?? '') !== 'request'
+            || ($scope['fingerprint'] ?? '') === ($current[$key]['fingerprint'] ?? null), ARRAY_FILTER_USE_BOTH);
+    }
+
+    private function responsesWereSaved(): bool
+    {
+        return collect($this->saveScopes)->contains(fn ($scope) => ($scope['owner'] ?? '') === 'responses' && $scope['state'] === 'Saved');
     }
 
     public function mount(?MockEndpoint $endpoint = null): void
@@ -462,16 +594,46 @@ final class EndpointForm extends Component
 
     public function save(CurlParser $parser, CurlHasher $hasher): mixed
     {
+        return $this->persistEndpoint($this->mutationInput());
+    }
+
+    private function persistEndpoint(EndpointInput $input, bool $global = false): mixed
+    {
         $this->submitAttempted = true;
         $created = $this->endpointId === null;
         $this->resetValidation();
         try {
-            $endpoint = app(EndpointMutationService::class)->save($this->mutationInput(), $this->endpointId);
+            $endpoint = app(EndpointMutationService::class)->save($input, $this->endpointId);
         } catch (ValidationException $exception) {
-            $this->setErrorBag($exception->errors());
-            $firstField = explode('.', (string) array_key_first($exception->errors()))[0];
-            $this->activeTab = in_array($firstField, ['excludedQueryParams', 'excludedHeaderNames', 'pathPatternEnabled'], true)
-                ? 'matching' : 'request';
+            $this->endpointValidationFailed($exception);
+            if ($global) {
+                $this->saveSummary = $this->responsesWereSaved() ? self::ENDPOINT_FAILED : self::PREFLIGHT_FAILED;
+                $this->saveScopes['request']['state'] = 'Needs attention';
+            }
+
+            return null;
+        } catch (\Throwable $exception) {
+            if (! $global) {
+                throw $exception;
+            }
+            // Treat exception messages as sensitive metadata, never log SQL/bindings.
+            Log::error('Dashboard endpoint save failed', app(McpAuditRedactor::class)->redact(['exception_class' => $exception::class, 'error_message' => '[REDACTED]']));
+            $this->saveSummary = $this->responsesWereSaved() ? self::ENDPOINT_ERROR : self::RESPONSES_ERROR;
+            $this->saveScopes['request']['state'] = 'Needs attention';
+
+            return null;
+        }
+
+        if ($global && $this->mutationInput()->values() !== $input->values()) {
+            foreach ($input->values() as $field => $value) {
+                $this->requestBaseline[$field] = $value;
+            }
+            foreach (['request', 'organization'] as $key) {
+                if ($this->saveScopes[$key]['state'] !== 'No changes') {
+                    $this->saveScopes[$key]['state'] = 'Saved';
+                }
+            }
+            $this->saveSummary = 'Endpoint changes saved.';
 
             return null;
         }

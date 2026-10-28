@@ -44,6 +44,108 @@
         }
         return JSON.stringify(normalized(current)) !== JSON.stringify(normalized(baseline));
     }
+    let saveInFlight = false;
+    let saveRoot;
+    const heldControls = new Map();
+    const invalidatedResults = new Set();
+    let resultAttempt = '';
+    function syncResultRows() {
+        const attempt = document.querySelector('.endpoint-editor')?.dataset.saveAttempt || '';
+        if (attempt !== resultAttempt) {
+            resultAttempt = attempt;
+            invalidatedResults.clear();
+        }
+        document.querySelectorAll('[data-save-scope]').forEach(row => {
+            if (invalidatedResults.has(row.dataset.saveScope)) row.hidden = true;
+        });
+    }
+    const modelPath = control => [...control.attributes].find(attr => attr.name.startsWith('wire:model'))?.value;
+    function holdSaveControls(root) {
+        root.querySelectorAll('input, textarea, select, button:not([role="tab"])').forEach(control => {
+            if (!heldControls.has(control)) heldControls.set(control, control.disabled);
+            control.disabled = true;
+        });
+    }
+    function releaseSaveControls() {
+        const held = heldControls.size > 0;
+        heldControls.forEach((disabled, control) => { if (control.isConnected) control.disabled = disabled; });
+        heldControls.clear();
+        saveInFlight = false;
+        if (held) window.requestAnimationFrame?.(() => {
+            const invalid = [...document.querySelectorAll('[aria-invalid="true"]')].find(control => !control.disabled && control.getClientRects().length);
+            invalid?.focus();
+        });
+    }
+    function invalidateScopeResult(event) {
+        const control = event.target;
+        const scope = control.closest?.('[data-draft-scope]');
+        const path = modelPath(control)?.split('.')[0];
+        if (!scope || !path) return;
+        const owner = scope.dataset.draftScope;
+        const id = scope.dataset.editingResponse;
+        syncResultRows();
+        document.querySelectorAll('[data-save-scope]').forEach(row => {
+            if (row.dataset.saveOwner !== owner || !read(row.dataset.saveFields).includes?.(path)) return;
+            const key = row.dataset.saveScope;
+            if (owner === 'responses' && key !== 'selection' && key.split(':')[1] !== id) return;
+            invalidatedResults.add(key);
+            row.hidden = true;
+        });
+    }
+    for (const type of ['input', 'change']) document.addEventListener(type, invalidateScopeResult);
+    function saveRequest(payload) {
+        if (typeof payload === 'string') { try { payload = JSON.parse(payload); } catch (_) { return false; } }
+        return payload?.components?.some(component => component.calls?.some(call =>
+            ['saveAll', 'finishSavingAll'].includes(call.method)
+            || (call.method === '__dispatch' && ['save-response-drafts', 'response-drafts-saved', 'response-drafts-save-failed'].includes(call.params?.[0]))));
+    }
+    function unconfirmedSave() {
+        const root = document.querySelector('.endpoint-editor[data-global-save-editor]');
+        if (!root) return;
+        releaseSaveControls();
+        const text = 'Save result could not be confirmed. Check the saved configuration before trying again.';
+        const summary = root.querySelector('[data-save-result]');
+        if (summary) {
+            summary.hidden = false;
+            summary.querySelector('strong').textContent = text;
+            summary.querySelectorAll('dd').forEach(value => { if (value.textContent !== 'No changes') value.textContent = 'Needs attention'; });
+        }
+        root.dataset.serverDirty = 'true';
+        const status = document.getElementById('endpoint-action-status');
+        if (status) status.textContent = text;
+        // State acknowledgment only: never replay a mutation or assume rollback.
+        const component = window.Livewire.find(root.getAttribute('wire:id'));
+        component.saveResultUnconfirmed().catch(() => {});
+    }
+    let saveHooksRegistered = false;
+    function registerSaveHooks() {
+        if (saveHooksRegistered) return;
+        saveHooksRegistered = true;
+        window.Livewire.hook('commit', ({ component, commit, succeed, fail }) => {
+            const root = component.el.closest('.endpoint-editor[data-global-save-editor]');
+            if (!root || !saveRequest({ components: [commit] })) return;
+            if (commit.calls.some(call => call.method === 'saveAll')) {
+                saveInFlight = true;
+                saveRoot = root;
+                holdSaveControls(root);
+            }
+            succeed(() => {
+                const current = document.querySelector('.endpoint-editor');
+                if (current?.dataset.savePending === 'true') holdSaveControls(current);
+                else releaseSaveControls();
+            });
+            fail(releaseSaveControls);
+        });
+        window.Livewire.hook('request', ({ payload, fail }) => {
+            if (document.querySelector('.endpoint-editor[data-global-save-editor]') && saveRequest(payload)) fail(({ preventDefault }) => { preventDefault(); unconfirmedSave(); });
+        });
+    }
+    document.addEventListener('livewire:init', registerSaveHooks);
+    if (window.Livewire) registerSaveHooks();
+    new MutationObserver(() => {
+        if (saveInFlight && saveRoot?.isConnected) holdSaveControls(saveRoot);
+        syncResultRows();
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-save-attempt'] });
     const isDirty = () => [...document.querySelectorAll('[data-draft-scope]')].some(scopeDirty);
     const sync = () => { window.MockDeck.formDirty = isDirty(); };
     async function leave(action, trigger) {

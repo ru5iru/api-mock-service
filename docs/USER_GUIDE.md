@@ -15,7 +15,7 @@ make up
 make health
 ```
 
-Setup preserves configured credentials; do not replace an existing `.env` during updates. Migrations run automatically. For HTTP + HTTPS on the same port, install mkcert, run `make https-setup`, then `make up` and `make https-check`. Follow [Local HTTP and HTTPS](HTTPS.md) for Windows/WSL certificate trust. `make help` lists daily commands.
+For a new `.env` without a complete certificate pair, setup selects certificate-free HTTP and generates no certificates. Existing `.env` values and protocol selection are preserved; run `make http-enable` if needed before `make up` to select HTTP only. Read credentials from `.env`; do not replace it during updates. Migrations run automatically. For HTTP + HTTPS on the same port, install mkcert, then run `make https-setup`, `make up`, `make health`, and `make https-check`. Follow [Local HTTP and HTTPS](HTTPS.md) for Windows/WSL certificate trust. `make help` shows effective Compose files, APP_URL scheme and the next command without secrets.
 
 Open `http://localhost:18473/dashboard` (or `https://localhost:18473/dashboard` when enabled). The dashboard uses the username and password configured by:
 
@@ -62,7 +62,13 @@ Keyboard shortcuts are ignored while typing in a form control:
 6. Review the canonical request, signature variant, and SHA-256 hash.
 7. Save the endpoint and configure at least one response.
 
+An endpoint with zero saved responses shows a **No response** badge and an **Add response** link in the registry. The link opens the Response tab, where the persistent note explains the diagnostic 500 until a response is saved. The note and tab cue clear immediately after saving a response, including for imported Postman requests with no saved examples. No placeholder response is created.
+
 Request, Matching, Response, and Callback are separate tabs. Switching keeps unsaved edits in the current editor session and does not scroll the document. Request and Matching share the Signature sidebar; Response and Callback retain a compact method/path strip. The tabs stick below the main navigation, and the save bar stays at the viewport bottom with the scrolling panel ending above it. **Save changes** saves request settings and response/selection/callback drafts, including drafts held for another response. **Cancel edit** discards the selected response draft; navigating away asks before discarding unsaved work. The header's **History** button opens endpoint versions from every tab.
+
+In-app navigation away from a dirty editor opens the shared **Discard unsaved changes?** confirmation. Reload and tab close use the browser's own leave prompt; its wording is browser-controlled and the browser may not show it. Unsaved edits are held in memory only: there is no autosave or draft recovery. Accepting a leave prompt discards unsaved edits; saved changes remain.
+
+After session expiry, the next page load or Livewire action redirects to the login page in the observed runtime checks; no 419 was observed. The browser leave prompt may appear during that navigation. Accepting it loses unsaved edits, while saved changes remain. Cancelling a prompt can retain the old page temporarily; it is not draft recovery.
 
 Authentication is ignored by default for newly created endpoints. Transport metadata such as `Host`, `Content-Length`, `User-Agent`, `Accept`, `Connection`, and `X-Request-ID` is always excluded because clients and proxies can change it.
 
@@ -73,6 +79,8 @@ URL-embedded credentials, relative URLs, non-HTTP schemes, file-backed cURL bodi
 ## 4. Understand request matching
 
 The canonical request contains the uppercase method, normalized path/query, selected lowercase headers, one blank line, and the canonical body. JSON object keys are sorted recursively; JSON array order is retained. Repeated query values keep their order.
+
+For endpoints created in the editor, **Ignore cookies** starts off, including when the saved cURL has no `Cookie` header. An incoming request carrying `Cookie` will not match a saved request without it unless cookies are excluded by the matching policy.
 
 | Variant | Included data | Specificity |
 |---|---|---:|
@@ -120,7 +128,7 @@ Select endpoint rows to expose **Move to collection** and **Add tags** in the bu
 
 ## 6. Environments and variables
 
-The active environment is global to the MockDeck server. The migration creates **Development** as the default and active environment, preserving existing endpoint behavior.
+Selecting an Environment changes the active Environment for the whole instance and applies immediately to ordinary mock traffic. Test runs keep their bound Environment. The migration creates **Development** as the default and active environment, preserving existing endpoint behavior.
 
 1. Open the header environment switcher.
 2. Select an environment to make it active immediately.
@@ -344,6 +352,12 @@ Open **Request log**. Search by path, endpoint, or request ID, and filter by met
 
 Choose local or UTC timestamps and Compact or Comfortable density. Density is stored in the current browser. Expand a row to inspect canonical data, response selection, matching details, and nearest candidates. An unmatched row can be used to start a new endpoint from reconstructed cURL.
 
+The row's **Copy request curl** control uses the shared clipboard behavior described in the [UI guide](UI_GUIDE.md#buttons). The reconstructed cURL contains method and URL only; add headers and body before using it.
+
+Request event fields are recorded at request time. Endpoint names and nearest configured candidates use current configuration.
+
+New request-log URLs replace configured sensitive query values with `[REDACTED]`; reconstructed cURL uses that logged URL. Matching and serving use the original values. Unlabelled query names such as `ref`, `id` and `session` remain visible unless configured as sensitive. Nginx access logs and older request events are not sanitized by this change.
+
 Logs are flat JSON written to stdout and/or daily files. They are not stored in PostgreSQL. File reading is bounded across current and rotated logs, and malformed/partial lines are skipped.
 
 ## 14. Export and import configuration
@@ -368,7 +382,7 @@ Environment-scoped export includes endpoints that inherit their state and endpoi
 4. Review validation errors, exact-signature conflicts, overlap warnings, UUID actions, and redaction warnings.
 5. Acknowledge warnings and apply. Apply rechecks the digest/conflicts under locks and writes atomically.
 
-For **Update by UUID**, preview also reports how many endpoint/response pre-states will receive a revision. Every changed existing entity is snapshotted under one import batch before its imported values replace the live values. The success panel keeps **Undo this import** available; one confirmation lists the affected entities and restores all recorded pre-states atomically. The undo itself appends rollback revisions, so it does not erase evidence of the import.
+For Update by UUID, preview lists the recorded pre-import states. Undo restores changed existing endpoints and responses to their pre-import state, including responses removed by authoritative replacement. Newly created endpoints and separately created Environment variables are retained. Runtime counters are untouched. The confirmation lists the recorded states and retained created endpoints; undo appends rollback revisions.
 
 Update-by-UUID merges responses by UUID. Enable response replacement only when the imported list should delete omitted local responses. Versions 1/1.0/1.1/1.2 remain supported; missing fields use backward-compatible defaults, with Weighted selection and no rules. Current exports use format `1.5`; version 1.3 retains its selection configuration while importing without field exclusions, path patterns, or faults.
 
@@ -403,7 +417,9 @@ Each saved response can send an independent HTTP request after its normal mock r
 
 The callback runs in a dedicated background worker (`docker compose ps callback-worker`); stopped workers leave new jobs queued. Choose a fixed minimum delay, or set a larger maximum for a random range (up to 30 seconds). **Max attempts** includes the first delivery (1–5 total); non-2xx HTTP responses and network errors retry until the first success or this limit, waiting the configured backoff between attempts. Each attempt has a hard 100–10,000 ms timeout. Redirects do not count as success and are not followed automatically.
 
-URL, headers, and JSON body support `{{env.KEY}}` values from the *active environment at invocation time* plus `$request.method`, `$request.url`, `$request.body`, `$request.id`, `$request.json.field`, and `{{$request.method}}` interpolation. The JSON body also supports the same `$module.method`, `$repeat`, `$pick`, and other directives as response templating. Choose **Builder** for representable field-based JSON or **JSON** for context tokens and advanced directives; switching to JSON does not erase the body, and Builder is disabled when the body cannot be represented faithfully. The editor's JSON autocomplete and **Preview callback body** use the same shared Faker compiler/renderer. Request tokens are also available in ordinary response templates through their JSON editor. The preview uses synthetic request data, and a missing environment variable fails the callback attempt without changing the primary reply.
+URL, headers, and JSON body support `{{env.KEY}}` plus `$request.method`, `$request.url`, `$request.body`, `$request.id`, `$request.json.field`, and `{{$request.method}}` interpolation. The JSON body also supports the same `$module.method`, `$repeat`, `$pick`, and other directives as response templating. Choose **Builder** for representable field-based JSON or **JSON** for context tokens and advanced directives; switching to JSON does not erase the body, and Builder is disabled when the body cannot be represented faithfully. The editor's JSON autocomplete and **Preview callback body** use the same shared Faker compiler/renderer. Request tokens are also available in ordinary response templates through their JSON editor. The preview uses synthetic request data, and a missing environment variable fails the callback attempt without changing the primary reply.
+
+The Environment ID and request context are bound when the request is served. When the callback worker handles the job, it reloads the saved callback configuration and reads that Environment's current values. It resolves URL, headers and body once, before the initial delay and retries; retries reuse those resolved values. Disabling a callback stops enqueues from future mock calls but does not cancel delivery already queued, including when disabled through the shared save service. If the source response is deleted before the worker loads it, the job returns without delivery.
 
 For example, set URL to `https://{{env.WEBHOOK_HOST}}/events`, header `X-Request: {{$request.method}}`, and body:
 
@@ -413,7 +429,7 @@ For example, set URL to `https://{{env.WEBHOOK_HOST}}/events`, header `X-Request
 
 To sign requests, enable **Sign requests**, set a secret (write-only after saving), and choose the header name (default `X-MockDeck-Signature`). MockDeck calculates a lowercase hexadecimal **HMAC-SHA256 of the exact raw resolved body bytes**, with your signing secret as the HMAC key, and sends the digest as that header's value. A receiver can verify with PHP `hash_equals(hash_hmac('sha256', $rawBody, $secret), $header)`. Do not re-encode parsed JSON before checking the signature. Disabling signing removes the signature header entirely, including a similarly named user-configured header; it does not send an empty signature.
 
-Save callback changes before selecting **Test saved callback**. The action is blocked while callback settings are unsaved and shows the redacted saved target; it never silently saves a draft. This uses a synthetic request even when no matching request has ever been received. The inline result updates from Queued/Pending to status, HTTP code, and duration. Open **Callback log** to filter attempts by method, status, time, request ID, or target. A callback log row links to its triggering request; the request detail links back to callback attempts. **Resend** creates a new attempt using the original resolved target, headers, and body, signing them anew using the current secret. It never mutates the original row or replays the primary response.
+Save callback changes before selecting **Test saved callback**. The action is blocked while callback settings are unsaved and shows the redacted saved target; it never silently saves a draft. This uses a synthetic request even when no matching request has ever been received. The inline result updates from Queued/Pending to status, HTTP code, and duration. Open **Callback log** to filter attempts by method, status, time, request ID, or target. A callback log row links to its triggering request; the request detail links back to callback attempts. **Resend** creates a new attempt using the stored resolved target, method, headers and body, signing with the current settings rather than re-resolving Environment values. It never mutates the original row or replays the primary response.
 
 Attempt payloads, URLs, and job context may contain environment secrets: MockDeck encrypts stored resolved fields, omits them from callback-log API reads and portable exports, and protects callback endpoints with dashboard access. Keep `APP_KEY` private. The callback target is intentionally allowed to reach any well-formed HTTP(S) URL, including local network targets: MockDeck is a localhost-oriented test tool, **not** an SSRF-hardened publicly exposed proxy.
 
@@ -443,10 +459,12 @@ The dashboard uses the following protected template endpoints and organization A
 | `POST /api/imports/{batch_id}/undo` | Restore every recorded pre-import state atomically. |
 | `GET/PATCH /api/responses/{id}/callback` | Read masked callback config or save changes as a new response revision. |
 | `POST /api/responses/{id}/callback/test` | Queue a synthetic test delivery. |
-| `GET /api/callback-attempts` | Filter recent attempt metadata; resolved payloads stay private. |
+| `GET /api/callback-attempts` | Filter recent attempt metadata; `target` is the response's current saved callback URL or `[response deleted]`, not the recorded destination. |
 | `POST /api/callback-attempts/{id}/resend` | Queue a new attempt using that attempt's resolved request. |
 
 They require dashboard access and are intended for the built-in editor, not as unauthenticated public APIs.
+
+The callback-attempt API's `target` can still contain Environment tokens because it is the response's current saved callback URL. The dashboard's **Recorded target** instead shows the attempt's stored destination through the existing redactor. The API never returns resolved headers or body; its `target` is not historical resolved-request evidence.
 
 ## 18. Operations and validation
 
@@ -511,6 +529,8 @@ Runtime state is independent per endpoint and environment. The readout shows the
 
 ### Rule-based
 
+The request must first match this endpoint by method, path/query, retained headers and body; rules then choose among its responses. A rule cannot make a different request match. To vary a header or query value, exclude it in Matching first, then choose the response with a rule.
+
 Choose Rule-based and expand Conditions on a response. A condition chooses Header, Query, or Body JSON path, a field name, an operator, and a value. Body paths use dotted syntax such as `user.id`. Header matching is case-insensitive by name. Operators are Equals (exact scalar text), Contains (substring), Regex (PHP regular expression with delimiters such as `/approved/i`), and Exists (no value needed). JSON booleans compare as `true` or `false`; missing fields do not match except that Exists reports their absence as false.
 
 All conditions on one response are combined with AND. Rule-bearing responses are tried by their lowest condition priority, lower first. Dragging responses renumbers their condition priorities globally; priorities can also be edited directly. Ties use existing response weight descending, then stable UUID. The first full match wins. Unruled responses are not competing conditions. Exactly one **Default / fallback** response is required; selecting one clears the other draft default, and saving updates the pool atomically. The fallback's own conditions are not evaluated.
@@ -525,7 +545,13 @@ Current native exports use 1.5 and include modes, order, default flags, conditio
 
 ### Saving endpoint and response drafts
 
-On an existing endpoint, **Save changes** saves edited response fields and selection drafts before saving the endpoint and navigating. An untouched Add response form does not create another response. **Add response** / **Update response** and **Save selection** remain available to save their respective sections directly. Validation errors keep the page and drafts visible; correct the inline message and retry. Response/selection saves occur before the endpoint save, so an endpoint validation error can leave those sections saved while the endpoint still needs correction.
+On an existing endpoint, **Save changes** validates request, matching and organization settings before saving response/selection/callback drafts. A preflight rejection leaves all drafts unsaved. The response drafts then commit in their own transaction, followed by the endpoint save with validation again. These saves are not atomic across both components: another editor can create a conflict between preflight and the endpoint save, leaving the response changes saved and the request settings unsaved.
+
+The save result lists **Request and matching**, **Organization and Environment overrides**, **Response selection**, each changed **Response #&lt;id&gt;** and **Callback for response #&lt;id&gt;**, or **New response**, with **Saved**, **Not saved**, **Needs attention** or **No changes**. Only committed scopes are marked Saved; later edits invalidate their previous result. Correct highlighted fields and retry. A missing acknowledgement shows **Save result could not be confirmed. Check the saved configuration before trying again.** Check saved configuration first: retrying a new response after an unacknowledged commit can create another response.
+
+Inline title rename and collection/tag creation commit immediately outside global Save; assigning the collection or tags remains an endpoint draft. There is still no autosave or draft recovery. Unsaved edits remain in memory only.
+
+An untouched Add response form does not create another response. **Add response** / **Update response** and **Save selection** remain available to save their respective sections directly. Validation errors keep the page and remaining drafts visible; correct the inline message and retry.
 
 ### Finding callback configuration
 
@@ -577,7 +603,7 @@ Open **Import / export → Postman** and upload a **v2.1** collection JSON file.
 
 Create only skips existing correlation keys; Update matching replaces the matched request and response pool with one undoable revision batch; Clone always creates another endpoint. Folder names flatten with ` / `; root requests use the collection title. Whole path variables become `{name}` parameters; request-body variables remain literal. Saved examples become equal-weight responses (Template when supported response variables are present), with their imported names in **Details**. Zero examples means zero responses until you add one.
 
-Renaming/moving an item or changing its method/path breaks future correlation. Update replaces local response templates, rules, callbacks and faults; runtime counters are preserved. **Undo this import** restores updated configuration and the prior response pool, but does not remove newly created endpoints. Postman export is not included. Expand the optional Environment-file upload to supply candidate values, review/create missing variables in a chosen Environment, then choose Exclude (default) or Resolve for matching fields. Resolve freezes current Environment values into the signature; it does not follow later changes. Saved response `{{name}}` tokens use active-Environment `{{env.name}}` interpolation, and supported Postman dynamic variables use the shared Faker catalog. See [Postman import](POSTMAN_IMPORT.md) for auth/body support and all mapping boundaries.
+Renaming/moving an item or changing its method/path breaks future correlation. Update replaces local response templates, rules, callbacks and faults; runtime counters are preserved. **Undo this import** follows the restoration and retention boundaries in [Export and import configuration](#14-export-and-import-configuration). Postman export is not included. Expand the optional Environment-file upload to supply candidate values, review/create missing variables in a chosen Environment, then choose Exclude (default) or Resolve for matching fields. Exclude keeps the field out of matching. Resolve substitutes the selected Environment's current value into the signature at preview time and does not follow later changes. Saved response `{{name}}` tokens use active-Environment `{{env.name}}` interpolation, and supported Postman dynamic variables use the shared Faker catalog. See [Postman import](POSTMAN_IMPORT.md) for auth/body support and all mapping boundaries.
 
 
 ## MCP server and isolated agent tests

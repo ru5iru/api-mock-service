@@ -51,7 +51,7 @@
 make up
 make health
 make status</code></pre></div>
-            <p>Setup creates a missing <code>.env</code> and generates missing placeholder secrets, preserving configured credentials and settings. Read <code>MOCK_DASHBOARD_USERNAME</code> and <code>MOCK_DASHBOARD_PASSWORD</code> in that file to sign in. Keep existing secrets when updating. Migrations run automatically. Open <code>http://localhost:18473/dashboard</code>, create/import an endpoint and add a response before calling it.</p>
+            <p>Setup creates a missing <code>.env</code> and generates missing placeholder secrets. For a new file without a complete certificate pair it selects certificate-free HTTP and generates no certificates. Existing <code>.env</code> values and protocol selection are preserved; run <code>make http-enable</code> if needed before <code>make up</code> to select HTTP only. Read <code>MOCK_DASHBOARD_USERNAME</code> and <code>MOCK_DASHBOARD_PASSWORD</code> in that file to sign in. Setup and help output show the effective Compose files, APP_URL scheme and next command without secrets. Keep existing secrets when updating. Migrations run automatically. Open <code>http://localhost:18473/dashboard</code>, create/import an endpoint and add a response before calling it.</p>
             <p>For a custom port, edit both <code>APP_PORT</code> and <code>APP_URL</code> before startup. Health checks use the configured origin. Run <code>make help</code> for the command menu. Use <code>make up</code> after source changes, <code>make restart</code> after environment changes, <code>make logs</code> to inspect failures, and <code>make down</code> to stop while retaining data.</p>
             <p>For release checks, install Node.js 22 and run <code>make validate</code>. Run <code>make browser-install</code>, then <code>MOCKDECK_BASE_URL=http://localhost:18473 make browser-test</code> against an accessible test dashboard. These checks cover both themes; they require dashboard access.</p>
             <p>Direct Compose remains available for advanced diagnostics; the startup equivalent is:</p>
@@ -141,7 +141,15 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <li>Copy the MockDeck cURL from the endpoint list and call it to verify the result.</li>
             </ol>
             <h3>Endpoint state and priority</h3>
+            <p>An endpoint with zero saved responses shows a <strong>No response</strong> badge and an <strong>Add response</strong> link in the registry. The link opens the Response tab, where the note explains the diagnostic 500 until a response is saved. The note and tab cue clear after saving, including for imported Postman requests with no saved examples. No placeholder response is created.</p>
             <p>Disabled endpoints never participate in matching. When multiple enabled endpoints could match, the highest priority wins. If priorities are equal, the more specific signature wins.</p>
+            <h3>Saving endpoint and response drafts</h3>
+            <p>On an existing endpoint, <strong>Save changes</strong> validates request, matching and organization settings before saving response/selection/callback drafts. A preflight rejection leaves all drafts unsaved. The response drafts then commit in their own transaction, followed by the endpoint save with validation again. These saves are not atomic across both components: another editor can create a conflict between preflight and the endpoint save, leaving the response changes saved and the request settings unsaved.</p>
+            <p>The save result lists <strong>Request and matching</strong>, <strong>Organization and Environment overrides</strong>, <strong>Response selection</strong>, each changed <strong>Response #&lt;id&gt;</strong> and <strong>Callback for response #&lt;id&gt;</strong>, or <strong>New response</strong>, with <strong>Saved</strong>, <strong>Not saved</strong>, <strong>Needs attention</strong> or <strong>No changes</strong>. Only committed scopes are marked Saved; later edits invalidate their previous result. Correct highlighted fields and retry. A missing acknowledgement shows <strong>Save result could not be confirmed. Check the saved configuration before trying again.</strong> Check saved configuration first: retrying a new response after an unacknowledged commit can create another response.</p>
+            <p>Inline title rename and collection/tag creation commit immediately outside global Save; assigning the collection or tags remains an endpoint draft. There is still no autosave or draft recovery. Unsaved edits remain in memory only.</p>
+            <p>An untouched Add response form does not create another response. <strong>Add response</strong> / <strong>Update response</strong> and <strong>Save selection</strong> remain available to save their respective sections directly. Validation errors keep the page and remaining drafts visible; correct the inline message and retry.</p>
+            <p>In-app navigation away from a dirty editor opens the shared <strong>Discard unsaved changes?</strong> confirmation. Reload and tab close use the browser's own leave prompt; its wording is browser-controlled and the browser may not show it. Unsaved edits are held in memory only: there is no autosave or draft recovery. Accepting a leave prompt discards unsaved edits; saved changes remain.</p>
+            <p>After session expiry, the next page load or Livewire action redirects to the login page in the observed runtime checks; no 419 was observed. The browser leave prompt may appear during that navigation. Accepting it loses unsaved edits, while saved changes remain. Cancelling a prompt can retain the old page temporarily; it is not draft recovery.</p>
         </section>
 
         <section id="endpoint-registry" class="card docs-card docs-wide">
@@ -166,6 +174,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <div><dt>Fallback</dt><dd>A normalized stored signature matched after the hash did not. Inspect the request log for drift.</dd></div>
                 <div><dt>None</dt><dd>No enabled endpoint matched the request.</dd></div>
             </dl>
+            <p>For endpoints created in the editor, <strong>Ignore cookies</strong> starts off, including when the saved cURL has no <code>Cookie</code> header. An incoming request carrying <code>Cookie</code> will not match a saved request without it unless cookies are excluded by the matching policy.</p>
         </section>
 
         <section id="environments" class="card docs-card docs-wide">
@@ -178,6 +187,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <li>Add variables. Secret values are write-only after saving and always masked or redacted.</li>
                 <li>Use the endpoint editor's Environment availability table for explicit overrides. Inherit stores no override.</li>
             </ol>
+            <p>Selecting an Environment changes the active Environment for the whole instance and applies immediately to ordinary mock traffic. Test runs keep their bound Environment.</p>
             <p>An endpoint matches only when it is enabled and the active environment has no override or an enabled override. This eligibility check does not change request hashes or precedence. New request-log entries show the active environment.</p>
         </section>
 
@@ -194,16 +204,19 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
             </ul>
             <p>Choose <strong>Weighted</strong>, <strong>Sequence</strong>, or <strong>Rule-based</strong> above the configured response list, then select <strong>Save selection</strong>. Sequence uses the existing row drag handles (or up/down controls); choose Repeat last, Loop, or Not found on exhaustion. The next-call readout and confirmed Reset sequence are scoped to the active environment.</p>
             <p>Rule-based selection combines each response's Conditions with AND, tries responses in ascending condition priority, and requires exactly one Default / fallback. Drag responses to change global rule priority. The saved fallback cannot be deleted until a replacement has been selected and saved. Selection preview shows the next response or ordered conditions without advancing runtime state.</p>
+            <p>The request must first match this endpoint by method, path/query, retained headers and body; rules then choose among its responses. A rule cannot make a different request match. To vary a header or query value, exclude it in Matching first, then choose the response with a rule.</p>
         </section>
 
         <section id="async-callbacks" class="card docs-card docs-wide">
             <h2>Asynchronous callbacks</h2>
             <p>Open a response's <strong>Callback</strong> disclosure, enable it, and enter an HTTP(S) URL, method, header JSON, and a JSON body template. Save the response. The separate callback worker runs after the mock response is sent, so network failures and configured delay never hold up the caller.</p>
-            <p>Use <code>@verbatim{{env.KEY}}@endverbatim</code> for values from the active environment and <code>$request.method</code>, <code>$request.id</code>, <code>$request.body</code>, or <code>$request.json.field</code> for the triggering request. The callback body reuses the response Faker template renderer. Choose Builder for field-based JSON or JSON for context tokens and advanced directives; switching views does not discard the body. Maximum delay is 30 seconds; Max attempts includes the first try (1–5), non-2xx responses retry after the configured backoff, and each attempt has a bounded timeout.</p>
+            <p>Use <code>@verbatim{{env.KEY}}@endverbatim</code> for Environment values and <code>$request.method</code>, <code>$request.id</code>, <code>$request.body</code>, or <code>$request.json.field</code> for the triggering request. The callback body reuses the response Faker template renderer. Choose Builder for field-based JSON or JSON for context tokens and advanced directives; switching views does not discard the body. Maximum delay is 30 seconds; Max attempts includes the first try (1–5), non-2xx responses retry after the configured backoff, and each attempt has a bounded timeout.</p>
+            <p>The Environment ID and request context are bound when the request is served. When the callback worker handles the job, it reloads the saved callback configuration and reads that Environment's current values. It resolves URL, headers and body once, before the initial delay and retries; retries reuse those resolved values. Disabling a callback stops enqueues from future mock calls but does not cancel delivery already queued, including when disabled through the shared save service. If the source response is deleted before the worker loads it, the job returns without delivery.</p>
             <h3>Signature verification</h3>
             <p>When <strong>Sign requests</strong> is enabled, MockDeck computes lowercase hex HMAC-SHA256 over the <strong>exact raw resolved body bytes</strong> using the write-only signing secret, then places the digest in the configured header (default <code>X-MockDeck-Signature</code>). Verify it against raw bytes before parsing or re-encoding JSON. With signing disabled, the signature header is omitted entirely.</p>
-            <p>Save callback changes, then choose <strong>Test saved callback</strong> even without a previous request. Testing is blocked while callback settings are unsaved; the redacted saved target is shown beside the action. The inline result shows status, HTTP code, and duration. Open <a href="{{ route('dashboard.logs.index', ['type' => 'callbacks']) }}" wire:navigate>Logs → Callbacks</a> to filter attempts and select <strong>Resend</strong>, which creates a fresh attempt with the original resolved URL, headers, and body and the current signing secret. The original attempt and primary response stay unchanged.</p>
+            <p>Save callback changes, then choose <strong>Test saved callback</strong> even without a previous request. Testing is blocked while callback settings are unsaved; the redacted saved target is shown beside the action. The inline result shows status, HTTP code, and duration. Open <a href="{{ route('dashboard.logs.index', ['type' => 'callbacks']) }}" wire:navigate>Logs → Callbacks</a> to filter attempts and select <strong>Resend</strong>, which creates a fresh attempt using the stored resolved target, method, headers and body, signing with the current settings rather than re-resolving Environment values. The original attempt and primary response stay unchanged.</p>
             <p>Resolved fields may contain secret environment values, so callback API reads and exports do not reveal them. Callback targets are only checked for well-formed HTTP(S) URLs; localhost/internal targets are intentionally allowed for testing. Do not expose this capability to untrusted users.</p>
+            <p>The callback-attempt API's <code>target</code> is the response's current saved callback URL, possibly containing Environment tokens, or <code>[response deleted]</code>. The dashboard's <strong>Recorded target</strong> instead shows the attempt's stored destination through the existing redactor. The API never returns resolved headers or body; its <code>target</code> is not historical resolved-request evidence.</p>
         </section>
 
         <section id="response-templating" class="card docs-card docs-wide">
@@ -359,7 +372,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <li>Confirm to apply atomically. Version 1 files remain supported and missing template fields become static responses.</li>
                 <li>Update-by-UUID preview shows how many endpoint/response pre-states will be versioned. After apply, Undo this import restores the complete recorded batch.</li>
             </ol>
-        <p><strong>Postman v2.1:</strong> choose Postman in the Import panel. Preview flattened folders, variable exclusions and saved examples before confirmation. Whole path variables become parameters; body variables stay literal. Scripts are never executed. Create only skips matching correlation keys; Update matching replaces the saved response pool with an undoable revision batch. Renaming or moving items breaks correlation. Companion Environment files and Postman export are not included.</p>
+        <p><strong>Postman v2.1:</strong> choose Postman in the Import panel. Preview flattened folders, variable exclusions and saved examples before confirmation. Whole path variables become parameters; body variables stay literal. Scripts are never executed. Create only skips matching correlation keys; Update matching replaces the saved response pool with an undoable revision batch. Renaming or moving items breaks correlation. Postman export is not included. Exclude keeps the field out of matching. Resolve substitutes the selected Environment's current value into the signature at preview time and does not follow later changes.</p>
         </section>
 
         <section id="wave-two" class="card docs-card">
@@ -385,15 +398,18 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <li>Review canonical request, JSON body/template, and organization changes in the shared before/after viewer.</li>
                 <li>Choose <strong>Restore</strong> and confirm the named version. Restore changes live values and appends a new rollback revision; it never rewrites existing history.</li>
             </ol>
-            <p>An Update-by-UUID import groups all changed entity pre-states under one batch. Its success panel keeps <strong>Undo this import</strong> available and lists every affected endpoint/response before restoring them atomically.</p>
+            <p>For Update by UUID, preview lists the recorded pre-import states. Undo restores changed existing endpoints and responses to their pre-import state, including responses removed by authoritative replacement. Newly created endpoints and separately created Environment variables are retained. Runtime counters are untouched. The confirmation lists the recorded states and retained created endpoints; undo appends rollback revisions.</p>
         </section>
 
         <section id="request-log" class="card docs-card">
             <h2>Request log</h2>
+            <p>Request event fields are recorded at request time. Endpoint names and nearest configured candidates use current configuration.</p>
+            <p>New request-log URLs replace configured sensitive query values with <code>[REDACTED]</code>; reconstructed cURL uses that logged URL. Matching and serving use the original values. Unlabelled query names such as <code>ref</code>, <code>id</code> and <code>session</code> remain visible unless configured as sensitive. Nginx access logs and older request events are not sanitized by this change.</p>
             <p>Search and filter by path, endpoint, request ID, method, match, status, and time. Expand a row to inspect canonical data and nearest candidates.</p>
             <ul>
                 <li>Templated entries include render time but not the rendered body.</li>
                 <li>Create an endpoint directly from an unmatched request's reconstructed cURL.</li>
+                <li><strong>Copy request curl</strong> uses the shared clipboard handler. The reconstructed cURL contains method and URL only; add headers and body before using it.</li>
                 <li>Filter by method, match, status, endpoint, time range, row limit, or unmatched-only.</li>
                 <li>Group consecutive repeats and choose local/UTC clock plus Compact/Comfortable density.</li>
                 <li>Density persists in the current browser; the Local/UTC clock choice applies to the current log view.</li>
@@ -444,6 +460,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <div><dt><kbd>?</kbd></dt><dd>Open shortcut help</dd></div>
                 <div><dt><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>Enter</kbd></dt><dd>Save the endpoint form</dd></div>
             </dl>
+            <p><strong>Known gaps:</strong> the single-character shortcuts <kbd>N</kbd>, <kbd>/</kbd> and <kbd>?</kbd> have no disable or remap option. Tooltip content cannot be hovered onto, and Escape does not dismiss a tooltip opened by hover only.</p>
         </section>
         <section id="licensing" class="card docs-card docs-wide">
             <h2>License and third-party notices</h2>

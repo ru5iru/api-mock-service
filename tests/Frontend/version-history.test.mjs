@@ -29,5 +29,7 @@ test('diff viewer reuses code surfaces and has responsive before-after columns',
 test('import preview and completion expose grouped version snapshots and undo', () => {
     assert.match(transferView, /will get a version snapshot before this update/);
     assert.match(transferView, /Undo this import/);
-    assert.match(transferView, /data-confirm="Undo this import and restore:/);
+    assert.match(transferView, /data-confirm="{{ \$restoreMessage }} {{ \$retainMessage }} {{ \$undoScope }}/);
+    assert.match(transferView, /data-confirm-danger="true"/);
+    assert.match(transferView, /Runtime counters are untouched/);
 });

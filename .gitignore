@@ -25,3 +25,15 @@ Thumbs.db
 
 # Python setup helper/test bytecode
 __pycache__/
+
+# Local verification and diagnosis reports
+/docs/PHASE0-VERIFICATION.md
+/docs/PHASE0-RUNTIME.md
+/docs/T01-BROWSER-DIAGNOSIS.md
+/docs/B01-LOGS-COPY.md
+/docs/D01-DOCS-CORRECTIONS.md
+/docs/Q03-FIRST-RUN.md
+/docs/Q02-HONEST-LABELS.md
+/docs/S01-SECURITY-AUDIT.md
+/docs/Q01-SAVE-INVESTIGATION.md
+/docs/Q01-STEP2.md

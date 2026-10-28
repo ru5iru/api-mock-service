@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 const require = createRequire(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES ? `${process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES}/package.json` : import.meta.url);
-const { chromium } = require('playwright');
+const { chromium, request } = require('playwright');
 const base = process.env.MOCKDECK_BASE_URL;
 if (!base || process.env.MOCKDECK_BROWSER_FIXTURE !== '1') throw new Error('Use a dedicated fixture database.');
 const shots = resolve(process.env.MOCKDECK_SCREENSHOT_DIR ?? 'tests/Browser/screenshots', 'wave2');
@@ -68,9 +68,13 @@ try {
         await commit(() => page.locator('#save-actions button[type=submit]').click());
         await poll(async () => (await page.locator('.endpoint-editor').getAttribute('wire:id')) !== editorId, 'Global save did not finish');
         await page.reload();
-        const served = await page.request.get(`${base}/wave2-browser/users/abc?keep=1&noise=new`, { headers: { 'X-Trace': 'new' } });
-        assert.equal(served.status(), 200);
-        assert.equal(await served.text(), '{"mockdeck_fault":');
+        // Mock traffic must not inherit dashboard session cookies: this fixture retains Cookie.
+        const mockClient = await request.newContext({ storageState: { cookies: [], origins: [] } });
+        try {
+            const served = await mockClient.get(`${base}/wave2-browser/users/abc?keep=1&noise=new`, { headers: { 'X-Trace': 'new' } });
+            assert.equal(served.status(), 200);
+            assert.equal(await served.text(), '{"mockdeck_fault":');
+        } finally { await mockClient.dispose(); }
         const api = `${base}/api/v1/verify/endpoints/${fixture.uuid}`;
         assert.equal((await page.request.get(`${api}/calls?environment=${encodeURIComponent(fixture.environment)}`)).status(), 401);
         const verified = await page.request.get(`${api}/calls?environment=${encodeURIComponent(fixture.environment)}`, { headers: { Authorization: `Bearer ${fixture.token}` } });

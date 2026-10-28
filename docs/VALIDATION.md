@@ -35,11 +35,13 @@ Follow [SETUP.md](SETUP.md), then run:
 
 ```bash
 make setup
+# A new .env without certificates selects HTTP; otherwise run make http-enable if needed.
+# Read dashboard credentials from .env before starting.
 make up
 make health
 ```
 
-Setup creates a missing `.env`, generates missing placeholder credentials, and preserves configured secrets. Read the dashboard username/password from `.env` to sign in. Install mkcert and follow [HTTPS.md](HTTPS.md) before running `make https-setup` if dual HTTP/HTTPS is required.
+Setup creates a missing `.env`, generates missing placeholder credentials, and selects HTTP only for a new `.env` without a complete certificate pair. Existing `.env` settings are preserved: run `make http-enable` if needed for certificate-free HTTP before `make up`. Read credentials from `.env`. For dual HTTP/HTTPS, install mkcert, then run `make https-setup`, `make up`, `make health`, and `make https-check`; see [HTTPS.md](HTTPS.md).
 
 ## Complete automated validation
 
@@ -58,6 +60,10 @@ make validate
 7. `php artisan test` against in-memory SQLite in the app image
 
 The validation containers disable entrypoint migrations because an in-memory SQLite database exists only for one PHP process. Database-dependent tests use Laravel's `RefreshDatabase` trait so their schema is created inside the PHPUnit process that executes the assertions.
+
+`EndpointSaveCharacterizationTest` is excluded from the default SQLite suite and runs explicitly in the container CI job on a fresh disposable PostgreSQL database. It is not skipped: its pre-migration guard requires `DB_CONNECTION=pgsql` and asserts that `current_database()` equals the supplied `AUDIT_DB`. On a disposable Compose project only, create a fresh test database, then run `php artisan test tests/Feature/EndpointSaveCharacterizationTest.php` in the app container with `DB_DATABASE` and `AUDIT_DB` set to that database and `RUN_MIGRATIONS=false`. Never point this test at an operator database. Selecting only `--filter` against the default suite does not include this excluded file; pass its path explicitly.
+
+The primary-log sensitive-data test configures a private temporary file channel and storage directory for the real request logger and tailer, then restores configuration and removes that directory. It does not depend on `MOCK_LOG_FILE` being enabled for the suite or read existing instance request logs.
 
 Run individual checks while iterating:
 
@@ -118,7 +124,7 @@ Open `http://localhost:18473/dashboard`. Verify:
 Import/export smoke check:
 
 1. Export one endpoint with secret redaction enabled.
-2. Confirm the JSON has `format: "mockdeck"`, a supported `format_version` (`1`, `"1.0"`, `"1.1"`, `"1.2"`, `"1.3"`, or `"1.4"`), and no numeric database IDs or derived hashes.
+2. Confirm a fresh export has `format: "mockdeck"`, exact string `format_version: "1.5"`, `$schema: "https://mockdeck.dev/schemas/config-v1.5.json"`, and no numeric database IDs or derived hashes. Legacy import versions accepted are integer `1` and strings `"1.0"`, `"1.1"`, `"1.2"`, `"1.3"`, `"1.4"` and `"1.5"`.
 3. If the source curl contained auth, cookies, an API-key header, or a configured sensitive query key, confirm the value is absent and the endpoint is disabled with `requires_secret_replacement: true`.
 4. Preview the file in `clone` mode; confirm no rows are written before **Apply import**.
 5. Review and acknowledge warnings, apply, and confirm endpoint/response counts.
@@ -151,6 +157,16 @@ Callback smoke check (use a local disposable receiver):
 6. Verify a non-2xx response is retried only up to Max attempts, a stalled receiver times out, and neither affects the mock response or subsequent requests.
 7. Export even with `--include-sensitive`; check that the signing secret, secret environment values, resolved callback payloads, and attempts are absent. Import a signed callback and confirm signing remains disabled until a new secret is entered.
 8. Check the editor and callback log at 1440px, 1024px, and 390px in both themes; run axe on each view and resolve any accessibility findings before release.
+
+## First-run clarity checks
+
+`tests/Browser/first-run-smoke.mjs` checks created and imported zero-response endpoints, reactive editor cues, unchanged diagnostic 500/unmatched 404 behavior, the cookie help tip and conditional Logs hint at 390/740/1440px. Use an HTTP-only disposable Compose project with its own volumes and a fresh database for **each** theme. Assert `current_database()` equals that disposable database's name before any reset; never use an operator database. Point the fixture PHP process at the same instance/database, following the fixture conventions below.
+
+```bash
+MOCKDECK_BROWSER_FIXTURE=1 MOCKDECK_BROWSER_THEME=light MOCKDECK_BASE_URL=http://127.0.0.1:YOUR_PORT node tests/Browser/first-run-smoke.mjs
+```
+
+Repeat with `MOCKDECK_BROWSER_THEME=dark` on another fresh disposable database. `MOCKDECK_PHP` selects the fixture's container PHP wrapper; `MOCKDECK_SCREENSHOT_DIR` optionally retains screenshots. Backend coverage is in `FirstRunClarityTest`.
 
 ## Wave 1 browser and runtime checks
 
@@ -362,6 +378,8 @@ Container CI additionally runs `ConcurrentMcpMutationTest` with `MOCKDECK_MCP_CO
 `make browser-test` remains a read-only layout/documentation smoke check. For a **disposable test database only**, run `MOCKDECK_BROWSER_FIXTURE=1 make browser-regression-test` with the same database environment as the running test server and `MOCKDECK_BASE_URL` set. This writes isolated fixture endpoints, Environments, responses, revisions and callback attempts. Never enable it against an operator database.
 
 The CI browser job runs this suite after its normal smoke checks. It covers light/dark themes at 390/740/1440px, reachable Environment actions and error focus, retained drafts, History readability/focus return, nested Copy keyboard behavior, response identity/draft status, autocomplete through a Livewire morph, tooltip Escape, callback historical evidence/redaction, documentation search/jump, and Native/Postman prospective changes. Browser captures go to the existing CI artifact directory. Physical-device gestures and screen-reader speech still require manual testing.
+
+The critique and endpoint-editor suites' zoom check is 200% **CSS zoom**, not real browser zoom. These maintained regression suites do not yet cover 320px, real browser zoom at 400%, axe scans or screen readers. Phase 0 findings are **known issues** documented separately in [PHASE0-RUNTIME.md](PHASE0-RUNTIME.md); they are not additional coverage in these scripts.
 
 ## Endpoint Create/Edit regression coverage
 

@@ -1,5 +1,6 @@
 <div class="environment-management-grid">
     <aside class="card environment-list" aria-label="Environments">
+        <p class="field-help">Active means instance-wide for ordinary mock traffic; test runs keep their bound Environment. Use the header switcher to change the active Environment.</p>
         <form wire:submit="createEnvironment" class="compact-create-row">
             <label class="sr-only" for="new-environment">New environment name</label>
             <input id="new-environment" type="text" wire:model="newEnvironmentName" placeholder="New environment">

@@ -39,4 +39,21 @@ final class RequestCredentialPolicy
 
         return $curl;
     }
+
+    /** Mask a display/log URL only; never use this value for matching or serving. */
+    public function maskUrl(string $url): string
+    {
+        [$url, $fragment] = array_pad(explode('#', $url, 2), 2, null);
+        [$base, $query] = array_pad(explode('?', $url, 2), 2, null);
+        if ($query !== null) {
+            $query = implode('&', array_map(function (string $parameter): string {
+                [$name, $value] = array_pad(explode('=', $parameter, 2), 2, null);
+
+                return $value !== null && $this->sensitive(urldecode($name), urldecode($value), query: true)
+                    ? $name.'=[REDACTED]' : $parameter;
+            }, explode('&', $query)));
+        }
+
+        return $base.($query === null ? '' : '?'.$query).($fragment === null ? '' : '#'.$fragment);
+    }
 }
