@@ -151,6 +151,15 @@ jobs:
       - name: Verify Nginx recovers after the app receives a new IP
         run: python3 scripts/smoke_upstream_recreation.py
 
+      - name: Characterize global saves on guarded PostgreSQL
+        run: |
+          docker compose exec -T db sh -c 'createdb -U "$POSTGRES_USER" mockdeck_save_characterization_test'
+          docker compose run --rm -e APP_ENV=testing -e RUN_MIGRATIONS=false \
+            -e DB_CONNECTION=pgsql -e DB_DATABASE=mockdeck_save_characterization_test \
+            -e AUDIT_DB=mockdeck_save_characterization_test -e CACHE_STORE=array -e SESSION_DRIVER=array \
+            -e MOCK_DASHBOARD_AUTH_ENABLED=false -e MOCK_LOG_STDOUT=false -e MOCK_LOG_FILE=false \
+            app php artisan test tests/Feature/EndpointSaveCharacterizationTest.php
+
       - name: Prove concurrent run routing on PostgreSQL
         run: |
           docker compose exec -T db sh -c 'createdb -U "$POSTGRES_USER" mockdeck_run_isolation_test'

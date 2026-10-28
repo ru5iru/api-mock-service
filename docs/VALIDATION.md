@@ -61,6 +61,10 @@ make validate
 
 The validation containers disable entrypoint migrations because an in-memory SQLite database exists only for one PHP process. Database-dependent tests use Laravel's `RefreshDatabase` trait so their schema is created inside the PHPUnit process that executes the assertions.
 
+`EndpointSaveCharacterizationTest` is excluded from the default SQLite suite and runs explicitly in the container CI job on a fresh disposable PostgreSQL database. It is not skipped: its pre-migration guard requires `DB_CONNECTION=pgsql` and asserts that `current_database()` equals the supplied `AUDIT_DB`. On a disposable Compose project only, create a fresh test database, then run `php artisan test tests/Feature/EndpointSaveCharacterizationTest.php` in the app container with `DB_DATABASE` and `AUDIT_DB` set to that database and `RUN_MIGRATIONS=false`. Never point this test at an operator database. Selecting only `--filter` against the default suite does not include this excluded file; pass its path explicitly.
+
+The primary-log sensitive-data test configures a private temporary file channel and storage directory for the real request logger and tailer, then restores configuration and removes that directory. It does not depend on `MOCK_LOG_FILE` being enabled for the suite or read existing instance request logs.
+
 Run individual checks while iterating:
 
 ```bash

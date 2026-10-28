@@ -7,6 +7,7 @@ use App\Livewire\Admin\CallbackLog;
 use App\Livewire\Admin\ConfigTransfer;
 use App\Livewire\Admin\EndpointForm;
 use App\Livewire\Admin\RevisionHistory;
+use App\Logging\FlatJsonFormatter;
 use App\Models\ApiToken;
 use App\Models\McpUnmatchedRequest;
 use App\Services\Config\ConfigExporter;
@@ -22,6 +23,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\Support\SensitiveDataFixture;
 use Tests\TestCase;
@@ -196,15 +200,36 @@ final class SensitiveDataAuditTest extends TestCase
         $f = SensitiveDataFixture::create();
         $c = SensitiveDataFixture::canaries();
         $signature = $f['endpoint']->only(['raw_curl', 'normalized_curl', 'curl_hash', 'signature_version']);
-        $request = $this->call('POST', str_replace('http://localhost', '', $f['url']), [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => $f['headers']['Authorization'], 'HTTP_X_INTERNAL_TOKEN' => $c['HDR-INTERNAL'], 'HTTP_COOKIE' => $f['headers']['Cookie']], $f['body'])->assertOk()->assertContent($c['TEMPLATE']);
-        $missing = $this->get('/audit/missing?token='.$c['QRY-TOKEN'].'&ref='.$c['QRY-PLAIN'])->assertNotFound();
-        foreach ([$request, $missing] as $response) {
-            $event = collect(app(LogTailer::class)->recent(100))->firstWhere('request_id', $response->headers->get('X-Request-ID'));
-            self::assertNotNull($event);
-            $text = $this->capture('request-file-'.($event['matched'] ? 'matched' : 'unmatched'), $event);
-            $this->absent($text, ['QRY-TOKEN', 'HDR-AUTH', 'BODY-JSON']);
-            self::assertStringContainsString('token=[REDACTED]', $event['url']);
-            self::assertStringContainsString('ref='.$c['QRY-PLAIN'], $event['url']);
+        // CI disables request logging. Exercise the real logger/tailer with a
+        // private file, without enabling or reading the instance's log files.
+        $storage = storage_path();
+        $channel = config('logging.channels.mock_requests');
+        $temporary = sys_get_temp_dir().'/mockdeck-log-audit-'.Str::uuid();
+        File::ensureDirectoryExists($temporary.'/logs');
+        $this->app->useStoragePath($temporary);
+        config(['logging.channels.mock_requests' => [
+            'driver' => 'single',
+            'path' => $temporary.'/logs/mock-requests.log',
+            'formatter' => FlatJsonFormatter::class,
+        ]]);
+        Log::forgetChannel('mock_requests');
+        try {
+            $request = $this->call('POST', str_replace('http://localhost', '', $f['url']), [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => $f['headers']['Authorization'], 'HTTP_X_INTERNAL_TOKEN' => $c['HDR-INTERNAL'], 'HTTP_COOKIE' => $f['headers']['Cookie']], $f['body'])->assertOk()->assertContent($c['TEMPLATE']);
+            $missing = $this->get('/audit/missing?token='.$c['QRY-TOKEN'].'&ref='.$c['QRY-PLAIN'])->assertNotFound();
+            foreach ([$request, $missing] as $response) {
+                $event = collect(app(LogTailer::class)->recent(100))->firstWhere('request_id', $response->headers->get('X-Request-ID'));
+                self::assertNotNull($event);
+                $text = $this->capture('request-file-'.($event['matched'] ? 'matched' : 'unmatched'), $event);
+                $this->absent($text, ['QRY-TOKEN', 'HDR-AUTH', 'BODY-JSON']);
+                self::assertStringContainsString('token=[REDACTED]', $event['url']);
+                self::assertStringContainsString('ref='.$c['QRY-PLAIN'], $event['url']);
+            }
+        } finally {
+            Log::channel('mock_requests')->getLogger()->close();
+            Log::forgetChannel('mock_requests');
+            config(['logging.channels.mock_requests' => $channel]);
+            $this->app->useStoragePath($storage);
+            File::deleteDirectory($temporary);
         }
         self::assertSame($signature, $f['endpoint']->fresh()->only(array_keys($signature)));
         $token = 'mdv_'.str_repeat('b', 64);

@@ -9,6 +9,8 @@
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
+            <!-- Run explicitly on guarded PostgreSQL in the container CI job. -->
+            <exclude>tests/Feature/EndpointSaveCharacterizationTest.php</exclude>
         </testsuite>
     </testsuites>
     <source>
