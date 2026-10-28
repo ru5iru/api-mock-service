@@ -922,6 +922,12 @@ Field errors carry `data-error-for` with the validation/model path. Shared `publ
 
 Environment name, variable and new-variable drafts survive switching Environments within the page. Saving/deleting one variable updates only that row, preserving other drafts. Stored secret values remain write-only; successful secret saves clear their replacement input. A row's Unsaved indicator uses `wire:dirty`, rather than claiming every row is dirty.
 
+### Global save scope results
+
+The existing editor viewport places one persistent `.validation-panel.error-panel[data-save-result]` above the active panel content, with a `.definition-list` of real attempt scope labels and Saved / Not saved / Needs attention / No changes states. Its single polite status announcement carries the approved result copy; field errors retain their existing associations and focus behavior. Do not redefine tab readiness ticks as persistence indicators or emit per-response success toasts during a global batch. The existing sticky action note carries Needs attention while the detailed result remains in the panel viewport.
+
+Request/matching/organization and response/selection/callback are separate transaction groups. Publish response batch success and reset its baselines only after commit; restore all cached baselines on rollback. A later edit hides its stale scope result. During a global save, editable controls are held until the attempt completes; standalone section saves retain their behavior. Lost acknowledgements use the existing Livewire request hook and the same result panel with Needs attention, keep the leave guard dirty, and never automatically replay a mutation. There is no new alert system, autosave or browser draft store.
+
 ### History width and row activation
 
 `.ui-dialog.history-dialog` owns the wide History variant so generic dialog styles cannot shrink it. `.revision-history-panel` is a size container: at 640px or less, version actions and diff columns stack according to available component width, including inline response History. Reading order remains version, actions, comparison.

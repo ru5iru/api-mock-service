@@ -1,4 +1,4 @@
-<div class="response-manager" data-draft-scope="responses" data-draft-baseline="{{ json_encode($this->editorDraftValues($formBaseline)) }}" data-draft-current="{{ json_encode($this->editorDraftValues()) }}" data-server-dirty="{{ $selectionDirty || $otherDraftsDirty ? 'true' : 'false' }}" data-context-catalog="{{ json_encode($contextCatalog) }}">
+<div class="response-manager" data-draft-scope="responses" data-editing-response="{{ $editingId ?? 'new' }}" data-draft-baseline="{{ json_encode($this->editorDraftValues($formBaseline)) }}" data-draft-current="{{ json_encode($this->editorDraftValues()) }}" data-server-dirty="{{ $selectionDirty || $otherDraftsDirty ? 'true' : 'false' }}" data-context-catalog="{{ json_encode($contextCatalog) }}">
 <section id="panel-response" role="tabpanel" aria-labelledby="tab-response" x-show="activeTab === 'response'">
 @if ($responses->isEmpty())
     <p class="info-note" role="note" id="response-empty-note">No response yet. Add one so this endpoint can answer requests. Until then it returns a diagnostic 500.</p>
@@ -157,8 +157,8 @@
 
         @endphp
         @if ($responseErrors->isNotEmpty())
-            <div class="validation-panel error-panel" role="alert">
-                <strong>Response changes were not saved.</strong>
+            <div class="validation-panel error-panel" @if (! $globalSaveFailed || $globalSaveAttempt === '') role="alert" @endif>
+                @if (! $globalSaveFailed || $globalSaveAttempt === '')<strong>Response changes were not saved.</strong>@endif
                 @foreach ($responseErrors->flatten()->unique() as $message)<p>{{ $message }}</p>@endforeach
             </div>
         @endif

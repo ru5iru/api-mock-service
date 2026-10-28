@@ -545,7 +545,11 @@ Current native exports use 1.5 and include modes, order, default flags, conditio
 
 ### Saving endpoint and response drafts
 
-On an existing endpoint, **Save changes** commits response/selection/callback drafts first, in their own transaction, then validates and saves the endpoint. These saves are not atomic across both components. If the endpoint is then rejected, for example because another tab created a duplicate signature, the response changes remain saved while the endpoint stays unsaved. Browser validation, such as an out-of-range priority, normally prevents submission before those saves begin.
+On an existing endpoint, **Save changes** validates request, matching and organization settings before saving response/selection/callback drafts. A preflight rejection leaves all drafts unsaved. The response drafts then commit in their own transaction, followed by the endpoint save with validation again. These saves are not atomic across both components: another editor can create a conflict between preflight and the endpoint save, leaving the response changes saved and the request settings unsaved.
+
+The save result lists **Request and matching**, **Organization and Environment overrides**, **Response selection**, each changed **Response #&lt;id&gt;** and **Callback for response #&lt;id&gt;**, or **New response**, with **Saved**, **Not saved**, **Needs attention** or **No changes**. Only committed scopes are marked Saved; later edits invalidate their previous result. Correct highlighted fields and retry. A missing acknowledgement shows **Save result could not be confirmed. Check the saved configuration before trying again.** Check saved configuration first: retrying a new response after an unacknowledged commit can create another response.
+
+Inline title rename and collection/tag creation commit immediately outside global Save; assigning the collection or tags remains an endpoint draft. There is still no autosave or draft recovery. Unsaved edits remain in memory only.
 
 An untouched Add response form does not create another response. **Add response** / **Update response** and **Save selection** remain available to save their respective sections directly. Validation errors keep the page and remaining drafts visible; correct the inline message and retry.
 

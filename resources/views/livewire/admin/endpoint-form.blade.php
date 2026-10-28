@@ -1,4 +1,4 @@
-<div class="endpoint-editor" data-unsaved-form data-draft-scope="request" data-draft-baseline="{{ json_encode($requestBaseline) }}" data-draft-current="{{ json_encode($this->requestDraftValues()) }}" x-data="{ activeTab: $wire.entangle('activeTab'), switchTab(tab) { this.activeTab = tab; $wire.touchSection(tab); } }">
+<div class="endpoint-editor" data-unsaved-form @if ($endpointId) data-global-save-editor @endif data-save-attempt="{{ $saveAttempt['id'] ?? '' }}" data-save-pending="{{ $savingAll ? 'true' : 'false' }}" data-server-dirty="{{ $saveSummary === \App\Livewire\Admin\EndpointForm::UNCONFIRMED ? 'true' : 'false' }}" data-draft-scope="request" data-draft-baseline="{{ json_encode($requestBaseline) }}" data-draft-current="{{ json_encode($this->requestDraftValues()) }}" x-data="{ activeTab: $wire.entangle('activeTab'), switchTab(tab) { this.activeTab = tab; $wire.touchSection(tab); } }">
     <header class="page-header">
         <div class="page-header-copy">
             <h1 class="page-breadcrumbs"><a href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Endpoints</a><span aria-hidden="true">/</span><x-inline-title :name="$name" :placeholder="$preview ? $derivedName : 'New endpoint'" /></h1>
@@ -40,6 +40,16 @@
     </nav>
 
     <div class="endpoint-panel-viewport" data-editor-viewport>
+        <div class="validation-panel error-panel" role="status" aria-live="polite" aria-atomic="true" data-save-result @if ($saveSummary === '') hidden @endif>
+            <strong>{{ $saveSummary }}</strong>
+            <dl class="definition-list">
+                @foreach ($this->visibleSaveScopes() as $key => $scope)
+                    <div data-save-scope="{{ $key }}" data-save-owner="{{ $scope['owner'] }}" data-save-fields="{{ json_encode($scope['fields'] ?? []) }}">
+                        <dt>{{ $scope['label'] }}</dt><dd>{{ $scope['state'] }}</dd>
+                    </div>
+                @endforeach
+            </dl>
+        </div>
     <form id="endpoint-settings" wire:submit="saveAll" data-endpoint-save-form x-show="['request', 'matching'].includes(activeTab)">
     <div class="editor-grid">
         <div class="editor-main">
@@ -429,7 +439,7 @@
     @teleport('body')
     <div id="save-actions" class="sticky-action-bar" data-sticky-action-bar>
         <div>
-            <p id="endpoint-action-status" class="action-note">{{ $statusMessage }}</p>
+            <p id="endpoint-action-status" class="action-note">{{ $saveSummary !== '' ? 'Needs attention' : $statusMessage }}</p>
         </div>
         <div>
             <a class="button button-secondary" href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Cancel</a>

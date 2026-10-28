@@ -99,6 +99,10 @@ trait EditsResponseSelection
 
     public function saveSelection(): void
     {
+        if (! $this->savingDrafts) {
+            $this->globalSaveFailed = false;
+            unset($this->globalSaveScopes['selection']);
+        }
         try {
             app(ResponsePoolMutationService::class)->save($this->endpointId, $this->selectionInput());
         } catch (ValidationException $exception) {
@@ -122,9 +126,9 @@ trait EditsResponseSelection
             }
             throw ValidationException::withMessages($errors);
         }
-        $this->loadSelection();
-        $this->resetValidation();
         if (! $this->savingDrafts) {
+            $this->loadSelection();
+            $this->resetValidation();
             $this->dispatch('toast', message: 'Response selection saved. Runtime counters were retained.');
         }
     }
