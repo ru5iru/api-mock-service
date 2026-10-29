@@ -1312,3 +1312,69 @@ body.workbench { --workbench-offset: calc(var(--shell-rail-width) + var(--shell-
 @media (max-width: 440px) {
     .workbench .registry-toolbar .toolbar-controls { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Endpoint workbench: one mounted response manager and explicit task ownership. */
+.endpoint-workspace-tabs { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; margin-bottom: 0; }
+.endpoint-invocation-actions { display: flex; gap: var(--space-1); align-items: center; padding-block: var(--space-1); }
+.workbench .endpoint-workspace-viewport { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.endpoint-workspace-viewport > [data-save-result] { flex-shrink: 0; max-height: 40%; overflow-y: auto; }
+.endpoint-authoring-grid { flex: 1 1 auto; min-height: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); border: 1px solid var(--border); }
+.endpoint-authoring-grid.is-single-pane { grid-template-columns: minmax(0, 1fr); }
+.endpoint-request-workspace, .endpoint-response-workspace { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; background: var(--surface); }
+.endpoint-request-workspace { container-type: inline-size; }
+.endpoint-response-workspace { border-left: 1px solid var(--border); container-type: inline-size; }
+.endpoint-authoring-grid.is-single-pane .endpoint-response-workspace { border-left: 0; }
+.editor-pane-heading { min-height: 44px; padding: var(--space-3); display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.editor-pane-heading h2 { margin: 0; font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); }
+.editor-request-tabs { display: flex; gap: var(--space-2); padding-inline: var(--space-3); border-bottom: 1px solid var(--border); }
+.editor-request-tabs [role="tab"] { min-height: 44px; padding: var(--space-2); display: flex; align-items: center; gap: var(--space-2); border: 0; border-bottom: 2px solid transparent; color: var(--text-muted); background: transparent; cursor: pointer; font-weight: var(--font-weight-semibold); }
+.editor-request-tabs [role="tab"][aria-selected="true"] { border-bottom-color: var(--accent); color: var(--text); }
+.endpoint-authoring-grid .form-card, .endpoint-authoring-grid .preview-card { border: 0; margin: 0; padding: var(--space-3); }
+.endpoint-authoring-grid .preview-column { min-width: 0; border-top: 1px solid var(--border); }
+.endpoint-authoring-grid .preview-column .dismissible-note { margin: var(--space-3); }
+.endpoint-authoring-grid .card-heading h2 { font-size: var(--font-size-base); }
+.endpoint-authoring-grid .curl-summary { flex-wrap: wrap; }
+.endpoint-authoring-grid .curl-summary code { min-width: 0; overflow-wrap: anywhere; }
+.endpoint-settings-workspace { max-width: 980px; padding: var(--space-3); }
+.endpoint-settings-workspace > .editor-pane-heading { padding-inline: 0; margin-bottom: var(--space-3); }
+.endpoint-settings-workspace .organization-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.endpoint-response-workspace .response-grid, .endpoint-response-workspace .response-grid.template-active { display: flex; flex-direction: column; gap: 0; }
+.endpoint-response-workspace .response-form, .endpoint-response-workspace .response-list { width: 100%; min-width: 0; }
+.endpoint-response-workspace .response-form { border: 0; border-bottom: 1px solid var(--border); padding: var(--space-3); }
+.response-draft-picker { width: 100%; min-width: 0; padding: var(--space-3); border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.response-draft-picker > label { display: block; margin-bottom: var(--space-1); color: var(--text-muted); font-size: var(--font-size-sm); }
+.response-draft-picker > div { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.response-draft-picker select { flex: 1 1 180px; min-width: 0; }
+.response-draft-picker p { margin-bottom: 0; }
+.endpoint-response-workspace .selection-settings { border: 0; border-bottom: 1px solid var(--border); }
+.endpoint-response-workspace .selection-settings .segmented-control { flex-wrap: wrap; }
+.endpoint-response-workspace .response-card { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; padding: var(--space-3); }
+.endpoint-response-workspace .response-list { gap: 0; }
+.endpoint-response-workspace .callback-response-list, .endpoint-response-workspace .callback-form { margin: var(--space-3); }
+.endpoint-response-workspace #panel-callback > .field-help { padding: var(--space-3); }
+.endpoint-authoring-grid .editor-create-response { padding: var(--space-10) var(--space-4); }
+@container (max-width: 640px) {
+    .endpoint-authoring-grid .curl-summary code { flex-basis: 100%; order: 1; }
+    .endpoint-authoring-grid .curl-summary button { margin-left: auto; }
+    .endpoint-response-workspace .template-toolbar, .endpoint-response-workspace .builder-root-count { align-items: stretch; flex-direction: column; }
+    .endpoint-response-workspace .template-options { grid-template-columns: minmax(0, 1fr); }
+    .endpoint-response-workspace .schema-row-main { grid-template-columns: auto minmax(0, 1fr); }
+    .endpoint-response-workspace .schema-key, .endpoint-response-workspace .schema-type, .endpoint-response-workspace .schema-config, .endpoint-response-workspace .schema-nullable, .endpoint-response-workspace .schema-row-actions { grid-column: 2; }
+    .endpoint-response-workspace .schema-row-actions { justify-content: flex-start; }
+    .endpoint-response-workspace .rule-condition-row .field-row { grid-template-columns: minmax(0, 1fr); }
+    .endpoint-response-workspace .response-card { display: flex; flex-wrap: wrap; }
+    .endpoint-response-workspace .response-row-details { flex-basis: 100%; }
+}
+@media (max-width: 1100px) {
+    .workbench .endpoint-workspace-viewport { overflow-y: auto; display: block; }
+    .endpoint-authoring-grid { display: block; }
+    .endpoint-request-workspace, .endpoint-response-workspace { overflow: visible; min-height: 0; }
+    .endpoint-response-workspace { border-left: 0; border-top: 1px solid var(--border); }
+}
+@media (max-width: 740px) {
+    .endpoint-settings-workspace .organization-grid { grid-template-columns: minmax(0, 1fr); }
+    .endpoint-workspace-tabs { align-items: flex-start; }
+    .endpoint-invocation-actions { flex-wrap: wrap; }
+    .endpoint-authoring-grid .request-summary { flex-wrap: wrap; }
+    .endpoint-authoring-grid .request-summary code { min-width: 0; overflow-wrap: anywhere; }
+}

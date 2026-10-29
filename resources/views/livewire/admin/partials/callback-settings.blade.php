@@ -23,7 +23,7 @@
                     @error('callbackHeadersJson') <p class="field-error" data-error-for="{{ 'callbackHeadersJson' }}">{{ $message }}</p> @enderror
                 </div>
                 <div class="field">
-                    <p class="field-help">Callback generation shares the response's Locale and Seed settings in the Response tab.</p>
+                    <p class="field-help">Callback generation shares the response's Locale and Seed settings in the Responses pane in Editor.</p>
                     <div class="template-toolbar">
                         <div class="segmented-control" role="group" aria-label="Callback body editor view">
                             <span class="disabled-tooltip" @if (! $callbackBuilderSupported) tabindex="0" aria-label="Builder unavailable. This callback body uses features the builder cannot show; continue editing JSON." title="This callback body uses features the builder cannot show; continue editing JSON." @endif>

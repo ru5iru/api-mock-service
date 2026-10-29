@@ -81,10 +81,10 @@ final class EndpointTabsTest extends TestCase
         $this->assertFalse($a->fresh()->callback_enabled);
     }
 
-    public function test_switching_tasks_keeps_request_drafts_and_renders_four_linked_tabs(): void
+    public function test_switching_tasks_keeps_request_drafts_and_renders_linked_workspace_tabs(): void
     {
         $form = Livewire::test(EndpointForm::class)->set('priority', 77)->set('rawCurl', "curl 'https://example.test/draft'");
-        foreach (['matching', 'response', 'callback', 'request'] as $tab) {
+        foreach (['matching', 'response', 'callback', 'settings', 'request'] as $tab) {
             $form->set('activeTab', $tab)->call('touchSection', $tab)->assertSet('priority', 77)->assertSet('rawCurl', "curl 'https://example.test/draft'");
         }
         $form->assertSeeHtml('role="tablist"')->assertSeeHtml('aria-controls="panel-callback"')->assertSeeHtml('data-editor-viewport');

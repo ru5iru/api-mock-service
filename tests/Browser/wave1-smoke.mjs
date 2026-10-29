@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Dedicated database only: seed fixtures, then exercise Wave 1 controls in both themes.
 // MOCKDECK_BROWSER_FIXTURE=1 MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/wave1-smoke.mjs
 import assert from 'node:assert/strict';
@@ -29,7 +30,7 @@ try {
         await page.goto(`${base}/dashboard/endpoints/${fixture.endpoint}/edit`);
         await page.evaluate(value => localStorage.setItem('mockdeck-theme', value), theme);
         await page.reload();
-        await page.getByRole('tab', { name: /^Response/ }).click();
+        await openEditorSection(page, 'Response');
         const settings = page.locator('.selection-settings');
         const rows = page.locator('.selection-response-card');
         const row = id => page.locator(`[wire\\:key="response-${id}"]`);
@@ -65,7 +66,7 @@ try {
         assert.equal(served.status(), 200);
         assert.deepEqual(await served.json(), { response: 'first' });
         await page.reload();
-        await page.getByRole('tab', { name: /^Response/ }).click();
+        await openEditorSection(page, 'Response');
         await poll(async () => (await settings.innerText()).includes('Next response: 2 of 2'), 'Live request did not advance sequence readout');
         await settings.getByRole('button', { name: 'Reset sequence', exact: true }).click();
         const confirm = page.locator('#confirm-dialog');
@@ -139,7 +140,7 @@ try {
         };
         await globalSave();
         await page.reload();
-        await page.getByRole('tab', { name: /^Response/ }).click();
+        await openEditorSection(page, 'Response');
         assert.equal(await rows.count(), 2, 'Global save created an unwanted response');
         await commit(() => row(fixture.first).getByRole('button', { name: 'Edit', exact: true }).click());
         await poll(async () => (await page.locator('.response-form h3').innerText()).includes(`#${fixture.first}`), 'Saved response edit did not finish');

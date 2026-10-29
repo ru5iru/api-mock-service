@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Disposable database only. Never sends an outbound callback.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -26,11 +27,12 @@ try {
         await wait(() => page.evaluate(() => Boolean(window.MockDeckEditor)), 'Draft controller did not initialize');
         assert.equal(await page.evaluate(() => window.MockDeckEditor.isDirty()), false, 'Fresh editor must be clean');
         for (const item of await page.getByRole('tab').all()) assert.ok((await item.boundingBox()).height >= 44);
+        await openEditorSection(page, 'Settings');
         const tip = page.locator('.help-tip[aria-label="Priority"]'); await tip.focus();
         const description = await tip.getAttribute('aria-describedby');
         assert.ok(description); assert.equal(await page.locator(`[id="${description}"]`).getAttribute('role'), 'tooltip');
         await page.keyboard.press('Escape');
-        const tab = name => page.getByRole('tab', { name: new RegExp(`^${name}`) }).click();
+        const tab = name => openEditorSection(page, name);
         await tab('Response'); await page.getByRole('button', { name: 'Sequence', exact: true }).click();
         await wait(async () => (await page.locator('.selection-settings').innerText()).includes('Unsaved selection changes.'), 'Selection did not become dirty');
         await page.locator('#sequence-on-exhaust').selectOption('loop');

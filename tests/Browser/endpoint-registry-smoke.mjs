@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Use a dedicated fixture database: this test creates endpoints/tags and changes assignments.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -76,6 +77,7 @@ try {
 
         await page.setViewportSize({ width: 1440, height: 1000 });
         await page.goto(`${base}/dashboard/endpoints/${fixture.endpoints[0]}/edit`);
+        await openEditorSection(page, 'Settings');
         const chip = page.locator('.tag-input .tag-chip').filter({ has: page.locator(`input[value="${fixture.tag}"]`) });
         const checkbox = chip.locator('input');
         assert.equal(await checkbox.isChecked(), true);

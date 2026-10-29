@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Fresh disposable PostgreSQL database per theme; fixture PHP must target the same instance.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -79,7 +80,7 @@ try {
     for (const phrase of ['Recorded request event', 'Current configuration', 'Nearest current configured candidates', 'Q02 before import', 'The reconstructed cURL contains method and URL only; add headers and body before using it.']) assert.ok((await detail.innerText()).includes(phrase));
     await fits('recorded-and-current');
     await page.goto(`${base}/dashboard/endpoints/${fixture.editor}/edit?tab=response`);
-    await page.getByRole('tab', { name: /^Response/ }).click();
+    await openEditorSection(page, 'Response');
     const outer = page.locator(`[wire\\:key="response-${fixture.rule}"] > details`);
     if (!await outer.evaluate(node => node.open)) await outer.locator(':scope > summary').click();
     const tip = outer.getByRole('button', { name: 'Match before response selection', exact: true });

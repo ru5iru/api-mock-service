@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Dedicated fixture database only. Exercises actual Livewire saves and serving in both themes.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -36,7 +37,7 @@ try {
         await poll(async () => (await page.locator('.response-manager').getAttribute('data-context-catalog')).includes('request.path.id'), 'Unsaved path context did not reach response preview');
         await page.getByLabel('Parameter name for segment 3', { exact: true }).scrollIntoViewIfNeeded();
         await page.screenshot({ path: resolve(shots, `${theme}-path-editor.png`) });
-        await page.getByRole('tab', { name: /^Matching/ }).click();
+        await openEditorSection(page, 'Matching');
         await commit(() => page.getByLabel('Exclude query noise', { exact: true }).check());
         const headerDetails = page.locator('details').filter({ has: page.getByLabel('Exclude header X-Trace', { exact: true }) });
         await headerDetails.locator(':scope > summary').click();
@@ -47,7 +48,7 @@ try {
         await poll(() => page.getByLabel('Exclude header X-Trace', { exact: true }).isDisabled(), 'Coarse policy did not disable individual header controls');
         assert.match(await headerDetails.innerText(), /redundant/);
         await commit(() => page.getByLabel('Ignore all headers', { exact: false }).uncheck());
-        await page.getByRole('tab', { name: /^Response/ }).click();
+        await openEditorSection(page, 'Response');
         await commit(() => page.locator('.selection-response-card').getByRole('button', { name: 'Edit', exact: true }).click());
         const form = page.locator('.response-form');
         await poll(async () => (await form.locator('h3').innerText()).includes(`#${fixture.response}`), 'Response not selected');
@@ -80,7 +81,7 @@ try {
         const verified = await page.request.get(`${api}/calls?environment=${encodeURIComponent(fixture.environment)}`, { headers: { Authorization: `Bearer ${fixture.token}` } });
         assert.equal(verified.status(), 200);
         assert.equal((await verified.json()).total_match_count, 1);
-        await page.getByRole('tab', { name: /^Response/ }).click();
+        await openEditorSection(page, 'Response');
         await commit(() => page.locator('.selection-response-card').getByRole('button', { name: 'Edit', exact: true }).click());
         await form.locator('details').filter({ has: page.locator('#response-fault-type') }).locator(':scope > summary').click();
         assert.equal(await page.locator('#response-fault-type').inputValue(), 'malformed_body');

@@ -94,6 +94,8 @@ The endpoint registry searches name, method, path, and raw cURL; filters by meth
 
 Collections and tags organize the registry without affecting request signatures. Filter by collection or multiple tag chips, show tags on endpoint rows, and use the bulk bar to move endpoints or attach tags. Deleting a collection keeps every endpoint and clears only its collection assignment.
 
+The endpoint workbench uses **Editor**, **Callback** and **Settings**. Editor shows request/matching and response panes side by side on desktop and stacked on narrow screens. Settings holds organization and availability controls. Existing tab deep links remain supported, and switching panes preserves drafts.
+
 Each endpoint has a response pool. A response stores status, header JSON, bounded delay, positive weight, and either an exact static body or a JSON template. Selection probability is proportional to response weight.
 
 Saved edits are versioned without changing runtime matching. Open **History** on an endpoint or response to compare any two stored versions, compare one version with the current live entity, or restore an older state. Restore always appends a new rollback revision; existing history remains immutable.

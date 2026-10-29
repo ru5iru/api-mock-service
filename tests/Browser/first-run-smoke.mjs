@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Run each theme against its own fresh disposable database.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -64,9 +65,9 @@ try {
     const cue = page.locator('#response-empty-note');
     await cue.waitFor();
     assert.equal(await cue.innerText(), 'No response yet. Add one so this endpoint can answer requests. Until then it returns a diagnostic 500.');
-    assert.equal(await page.locator('#tab-response').getAttribute('aria-describedby'), 'response-empty-note');
+    assert.equal(await page.locator('#response-pane-heading').getAttribute('aria-describedby'), 'response-empty-note');
     await fits('response empty');
-    await page.getByRole('tab', { name: /^Matching/ }).click();
+    await openEditorSection(page, 'Matching');
     assert.equal(await page.getByRole('checkbox', { name: /^Ignore cookies/ }).isChecked(), false);
     const tip = page.getByRole('button', { name: 'Browser cookies and matching', exact: true });
     await tip.focus();
@@ -74,11 +75,11 @@ try {
     assert.match(await tip.getByRole('tooltip').innerText(), /Cookie header does not match an endpoint saved without one/);
     await fits('matching');
     await page.keyboard.press('Escape');
-    await page.getByRole('tab', { name: /^Response/ }).click();
+    await openEditorSection(page, 'Response');
     await page.evaluate(() => { window.q03DocumentMarker = 'same document'; });
     await page.locator('#response-body').fill('{"ok":true}');
     await page.locator('.response-form').getByRole('button', { name: 'Add response', exact: true }).click();
-    await poll(async () => await cue.count() === 0 && await page.locator('#tab-response').getAttribute('aria-describedby') === null, 'Saved response did not clear child and parent cues');
+    await poll(async () => await cue.count() === 0 && await page.locator('#response-pane-heading').getAttribute('aria-describedby') === null, 'Saved response did not clear child and parent cues');
     assert.equal(await page.evaluate(() => window.q03DocumentMarker), 'same document');
     const success = await client.get(`${base}/q03/first-${theme}`);
     assert.equal(success.status(), 200); assert.deepEqual(await success.json(), { ok: true });
