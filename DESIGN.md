@@ -202,9 +202,9 @@ components:
 
 ## Overview
 
-The supplied desktop workbench is the visual authority: warm surfaces, compact typography, continuous working areas and restrained elevation. The current implementation captures its shared frame, registry treatment and bounded endpoint workspace while retaining the application's existing feature controllers and interaction contracts.
+The supplied desktop workbench is the visual authority: warm surfaces, compact typography, continuous working areas and restrained elevation. The current implementation captures its shared frame, registry treatment, bounded endpoint workspace and response authoring while retaining the application's existing feature controllers and interaction contracts.
 
-This is a source-derived record of the bounded foundation, registry and endpoint workspace implementation, not evidence that the full upgrade checklist is complete. The delivered frame comprises the topbar, navigation rail, contextual sidebar and statusbar; the editor sidebar adds a paginated endpoint explorer. The registry adds explicit filter captions, contextual selection actions and a secondary Recent requests disclosure. Endpoint editing now uses Editor / Callback / Settings, with Request and Matching subtabs plus Signature in the left pane and Responses in the right pane on wide screens. Advanced template, selection and callback design migrations remain pending in `docs/UI_UPGRADE.md`; their existing controls remain available.
+This is a source-derived record of the bounded foundation, registry and endpoint workspace implementation, not evidence that the full upgrade checklist is complete. The delivered frame comprises the topbar, navigation rail, contextual sidebar and statusbar; the editor sidebar adds a paginated endpoint explorer. The registry adds explicit filter captions, contextual selection actions and a secondary Recent requests disclosure. Endpoint editing now uses Editor / Callback / Settings, with Request and Matching subtabs plus Signature in the left pane and Responses in the right pane on wide screens. The response form now delivers compact parameters, a continuous Body canvas, Builder / JSON editing and an explicitly labelled sample preview. Selection, fault and Callback visual migrations remain pending in `docs/UI_UPGRADE.md`; their existing controls remain available.
 
 Key characteristics:
 
@@ -213,7 +213,7 @@ Key characteristics:
 - Flat work surfaces separated by fine borders.
 - Existing native and Livewire behavior retained behind shared chrome.
 
-The normative implementation is `public/css/tokens.css` plus the Workbench foundation, Registry workspace and Endpoint workbench blocks in `public/css/app.css`; `docs/UI_GUIDE.md` documents its current migration stage. Frontmatter keys prefixed `light-` and `dark-` are the resolved values of the same CSS token in each theme; they are paired alternatives, not an expanded set of unrelated colors. Component frontmatter records the default light mapping; actual components resolve theme-aware CSS variables. `.impeccable/design.json` carries motion, elevation, breakpoints and isolated component previews.
+The normative implementation is `public/css/tokens.css` plus the Workbench foundation, Registry workspace, Endpoint workbench and Response authoring blocks in `public/css/app.css`; `docs/UI_GUIDE.md` documents its current migration stage. Frontmatter keys prefixed `light-` and `dark-` are the resolved values of the same CSS token in each theme; they are paired alternatives, not an expanded set of unrelated colors. Component frontmatter records the default light mapping; actual components resolve theme-aware CSS variables. `.impeccable/design.json` carries motion, elevation, breakpoints and isolated component previews.
 
 ## Colors
 
@@ -287,9 +287,17 @@ Primary navigation is Editor / Callback / Settings. Editor owns the Request / Ma
 
 The original endpoint-settings form owns Request, Matching and Settings, including enabled state, priority, collection and tags. Its save target, scoped validation and draft baseline remain intact; title rename stays a separate mutation. One ResponseManager is mounted as the sibling response workspace and serves both Responses and Callback. Switching tasks never duplicates the manager or nests its forms inside the endpoint form.
 
-Responses begins with the native Response to edit picker and New response action, followed by the response form, selection settings and the full configured pool. The picker invokes the existing edit action; New response uses the existing create action. Switching preserves each response's draft, and Cancel edit discards only the current draft. Picker labels expose response identity and unsaved state, and selected state follows the active editing ID after updates. Existing Static/Template, builder, selection, fault, History and callback controls remain available; their full visual migrations remain pending. Container-width rules stack dense builder and condition rows to fit the pane.
+Responses begins with the native Response to edit picker and New response action, followed by the response form, selection settings and the full configured pool. The picker invokes the existing edit action; New response uses the existing create action. Switching preserves each response's draft, and Cancel edit discards only the current draft. Picker labels expose response identity and unsaved state, and selected state follows the active editing ID after updates. Static / Template, Builder / JSON and sample preview now share the delivered response-authoring canvas described below. Selection, fault, History and callback controls retain their existing behavior; selection, fault and Callback visual migrations remain pending. Container-width rules continue to stack condition rows to fit the pane.
 
 Saved endpoints expose Copy mock curl and an endpoint-filtered Logs link beside the primary tabs. Copy resolves saved configuration and the active Environment on the server at action time through the existing shared copy path; unsaved request changes are excluded and resolved values are not embedded in a new page attribute. Signature explicitly labels the Source URL and draft canonical preview, keeping source identity distinct from the actual mock invocation. New endpoints retain create-before-response guidance, and endpoints without a saved response retain the existing informational diagnostic state.
+
+### Response authoring
+
+The response form begins with compact Status / Weight / Delay parameters, followed by the full-width Weighted-only explanation and Headers with a three-row editable viewport. One Body canvas, separated by fine block borders rather than a nested card, groups Static / Template, the active editor and the sample. Static retains its nine-row body field. Template adds a wrapping Builder / JSON toolbar with Example, followed by Locale and Seed in two minimum-zero columns; the generation settings become one column at a container width of 380px or less. Fixed seed places its existing Seed value field across the row with a 180px input maximum.
+
+Builder is a continuous schema workspace with border-separated rows. A row places its drag handle beside key and type, configuration beneath, and nullable controls with reorder/delete actions below. Each row is an inline-size container: deeply nested rows adapt to their own available width, not the viewport. At 380px or less, fields/configuration/actions stack and action targets become 44px. Nested groups use the existing 8px spacing step to retain usable input width. These overrides are scoped to `.endpoint-response-workspace .response-form`; Callback Builder keeps its existing recipe.
+
+JSON starts with 12 rows and a minimum height of 220px. The sample uses the existing code surface and overflow behavior with a 300px maximum for its preformatted output. Its heading explicitly says Sample data, its region retains `aria-describedby` pointing to the existing synthetic request-context notice, and the pending Regenerate action announces Rendering sample. Structured validation and quick fixes remain between the editor and preview. Preserve the existing catalog, Builder converter, rendering, locale/seed, validation and save services; unsupported structures and context tokens remain JSON-only. A preview does not persist configuration or advance runtime selection.
 
 ### Tags, notices and code
 
@@ -307,7 +315,7 @@ Only sidebar collapse and single-key shortcut enablement are stored as workbench
 - **Do** preserve full identities, real active/selected state, native controls and accessible names.
 - **Do** retain the continuous registry treatment and measured sticky offsets.
 - **Do** distinguish delivered foundations from unchecked feature migrations in `docs/UI_UPGRADE.md`.
-- **Don't** treat the delivered Editor / Callback / Settings arrangement and responsive split panes as completion of the advanced template, selection or callback migrations.
+- **Don't** treat the delivered endpoint workspace and response authoring as completion of the selection, fault or Callback visual migrations.
 - **Don't** turn parser/preview readiness into a saved or callable-state claim.
 - **Don't** add decorative card shadows, hover translation or prototype-only features to workbench surfaces.
 - **Don't** change mutation, matching, import, credential or isolated-run contracts as a visual side effect.

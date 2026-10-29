@@ -19,7 +19,7 @@ A checkbox means the named scope is implemented and has **two recorded successfu
 
 ## Current delivery boundary
 
-Delivered scope: shared workbench foundations, registry presentation/interactions, and the first endpoint-workspace milestone (dated verification ledgers below). Create/edit now use Editor / Callback / Settings with Request / Matching subtabs and a Responses pane. Legacy Request / Matching / Response / Callback URL links remain supported. Advanced response/callback, Logs, Environments and transfer redesigns remain unchecked. The source, matching, mutation, import, credential and run-isolation contracts remain authoritative.
+Delivered scope: shared workbench foundations, registry presentation/interactions, and the first endpoint-workspace milestone (dated verification ledgers below). Create/edit now use Editor / Callback / Settings with Request / Matching subtabs and a Responses pane. Legacy Request / Matching / Response / Callback URL links remain supported. Response body/template authoring is now delivered; selection/fault/Callback, Logs, Environments and transfer redesigns remain unchecked. The source, matching, mutation, import, credential and run-isolation contracts remain authoritative.
 
 ## Checklist
 
@@ -70,9 +70,9 @@ Delivered scope: shared workbench foundations, registry presentation/interaction
 
 - [x] **S01** Implement response identity/selector/list without losing drafts held for other responses.
 - [ ] **S02** Preserve status range, JSON headers, raw Static body, weight, delay and Delete safeguards.
-- [ ] **S03** Migrate Template/Static and Builder/JSON with the existing catalog and schema controls.
-- [ ] **S04** Preserve nested builder fields, argument inputs, reorder alternatives and unsupported-builder fallback.
-- [ ] **S05** Migrate preview, issues/quick fixes, locale and all seed modes; label synthetic samples accurately.
+- [x] **S03** Migrate Template/Static and Builder/JSON with the existing catalog and schema controls.
+- [x] **S04** Preserve nested builder fields, argument inputs, reorder alternatives and unsupported-builder fallback.
+- [x] **S05** Migrate preview, issues/quick fixes, locale and all seed modes; label synthetic samples accurately.
 - [ ] **S06** Preserve Weighted default and probability summaries.
 - [ ] **S07** Migrate Sequence order/exhaustion/preview/reset with explicit active-environment scope.
 - [ ] **S08** Migrate Rule conditions/priorities/default validation without changing grammar or order.
@@ -146,7 +146,7 @@ Delivered scope: shared workbench foundations, registry presentation/interaction
 
 ## Feature parity inventory
 
-The following target mapping is carried forward from the approved plan after reconciling recent master. It is an inventory of preserved features and intended destinations, **not** a claim that each proposed screen has shipped. The checklist above is the completion authority. **17 of 72 items are verified complete; 55 remain unchecked.**
+The following target mapping is carried forward from the approved plan after reconciling recent master. It is an inventory of preserved features and intended destinations, **not** a claim that each proposed screen has shipped. The checklist above is the completion authority. **20 of 72 items are verified complete; 52 remain unchecked.**
 
 
 **Coverage labels:** Shown = present in the prototype; Partial = a simplified illustration exists; Missing = a production design must be supplied. All proposed routes below retain their current URL unless explicitly stated otherwise.
@@ -359,7 +359,7 @@ The title retains the existing inline rename boundary. C06/C07 therefore remain 
 | E09 drafts / global save integration | EndpointWorkspaceTest, GlobalSaveResultsTest and existing save/draft suites verify scoped preflight, error destination, preservation and reconciliation | Real browser invalid weight blocks save; corrected global save independently re-reads persisted response bodies, callback, priority, collection/tag; dirty navigation cancellation retains state | PASS locally; PostgreSQL guarded audit BLOCKED |
 | S01 response identity and drafts | Direct Livewire selector/createNew tests preserve other saved-response and new-response drafts | Real browser switches responses and tasks, revisits new draft and checks selected callback identity in both themes | PASS |
 
-All other unchecked editor/response/callback items remain pending even where the original feature still functions. Current completion: **17/72**, **55 unchecked**.
+All other unchecked editor/response/callback items remained pending at the close of this endpoint milestone, even where the original feature still functioned. Historical completion at that point: **17/72**, **55 unchecked**. See the later response-authoring ledger for the current total.
 
 Environment: PHP8.3.6, Laravel13.32.0, Livewire4.4.5, Chromium150.0.7871.100, Playwright1.62.1, Node24.22.1. Real Laravel was served through native PHP against an external disposable SQLite file; PHPUnit uses in-memory SQLite. No operator database or application .env was changed.
 
@@ -427,3 +427,59 @@ Files changed in this endpoint increment (relative to its500-file before-editor 
 - `tests/Frontend/editor-recovery.test.mjs`
 
 No Git commit was created or staged by this task. Release archives exclude local environment values, dependencies, databases, screenshots and runtime logs.
+
+
+### Response body and template authoring — 29 October 2026
+
+This increment follows the delivered17/72 endpoint workspace milestone. The before-response SHA-256 manifest outside source contains504 files; imported master, foundation, registry and endpoint changes remain intact. Scope is S03/S04/S05 (body modes, Builder/JSON, nested fields/catalog and sample preview), with compact parameter presentation. Weighted/Sequence/Rule, fault and Callback redesigns remain separate pending milestones. Existing controls and mutation/rendering services are reused.
+
+Implemented: a compact Status/Weight/Delay row with full-width Weight explanation; a three-row Headers viewport; one Body canvas with the existing Static/Template and Builder/JSON controls; Locale/Seed grouping; lossless JSON-only fallback; continuous Builder rows with key/type, configuration and nullable/actions; per-row width containment so deeply nested content stacks; a bounded300px sample preview labelled Sample data, retaining the exact existing synthetic-context notice and structured issues/quick fixes. Regenerate reports Rendering sample and retains its existing pending guard. All new overrides are scoped to `.endpoint-response-workspace .response-form`; Callback Builder and preview styling are not migrated by this change.
+
+No application PHP/service, JavaScript controller, route, migration, package, native format, canonicalization, matching or run-isolation rule changed. Preview, seed, locale, converter, catalog, reorder, save and validation actions still call the existing ResponseManager/shared services. Native format1.5 remains unchanged.
+
+| Scope | First verification | Second verification | Completion |
+|---|---|---|---|
+| S03 Static/Template + Builder/JSON | ResponseAuthoringWorkspaceTest verifies raw Static text retention, no persisted changes on view switching and exact unsupported JSON retention; existing DashboardTest saves/blocks template responses | Real browser workflow and independent before/after persisted snapshots; fresh finish review inspects both modes/views in both themes | Verified twice; bounded ship |
+| S04 nested fields/catalog/reorder | New Livewire test exercises nested conversion/reorder/render; existing DashboardTest covers add/remove, catalog argument defaults and reorder | Real browser exercises keyboard move and native desktop drag, catalog method/argument selection and narrow/deep rows; finish reviewer inspects responsive Builder/catalog | Verified twice; bounded ship |
+| S05 preview/issues/locale/seeds | New fixed-seed/no-persistence test, existing compiler/API/context/quick-fix coverage, no call-state/revisions created | Real browser exercises locale, Random/Fixed/Request-signature preview, errors/warnings and JSON-only request samples; finish review checks notices/controls/issues | Verified twice; bounded ship |
+
+Verification environment remains native PHP8.3.6/Laravel13.32.0/Livewire4.4.5, Chromium150.0.7871.100/Playwright1.62.1/Node24.22.1. Browser runs use a new external disposable SQLite database; PHPUnit uses in-memory SQLite. No operator database or application .env was changed.
+
+| Executed check | Actual result |
+|---|---|
+| Full configured PHPUnit | PASS:457 tests,4525 assertions,zero skipped,50.49s. Guarded PostgreSQL characterization remains outside this suite. |
+| Focused ResponseAuthoringWorkspaceTest | PASS:3 tests,27 assertions, including real renderer/converter and independently unchanged persistence. |
+| Node/setup/tokens/Pint | PASS:84 frontend tests;16 setup tests; paired-theme token/contrast validator; whole-project Pint --test. |
+| make browser-response-test | PASS:both themes; real renderer/converter, Static retention, three seed modes, locale, issues, keyboard move/native desktop drag, catalog arguments, unchanged persisted snapshot and1440/1024/390/320 geometry. Final repeat adds visible template-toolbar captures at1440/320 in both themes. |
+| Editor/workbench/layout/documentation/regression browser suites | PASS:editor/workbench/layout/documentation in both themes; fresh-harness make browser-regression-test completed exit0 (critique and endpoint-editor scripts, both themes). |
+| CI wiring/source hygiene | CI YAML parses; new browser-response-test is invoked after browser-editor-test in existing disposable-browser job. JS syntax and diff whitespace checks pass; no remote CI execution claimed. |
+| make validate | BLOCKED:docker compose config --quiet stops with make:docker:No such file or directory, error127 (Make exit2). Docker image/Composer/container/PostgreSQL validation not claimed passed. |
+| Impeccable detector | BLOCKED:Permission denied,exit126. No detector pass claimed. |
+
+Development checks corrected three test-fixture assumptions without changing application behavior: the shipped locale picker exposes fr_FR rather than fr; the shared non-pattern synthetic request method is POST rather than the saved endpoint's GET; and primitive literal arrays are not representable by Builder (the nested test uses its supported `$repeat` directive). Native drag is exercised in the wide layout where both rows are visible. Browser geometry is read atomically from one DOM snapshot; reopening a catalog is deliberate, and menu measurement precedes capture rather than reading a potentially refreshed disclosure afterward. Captures disable finite animations so an in-progress disclosure fade is not mistaken for transparent panel styling. None of these failed attempts is recorded as a passing suite.
+
+Remaining release/manual checks: Docker/PostgreSQL validation and guarded browser audits; remote CI; screen-reader announcements, actual400% browser zoom, forced-colors and physical touch. Seeded samples and responsive geometry are not an accessibility certification. Selection, faults and Callback redesigns remain unchecked.
+
+One combined browser run stopped before the older critique assertions because the local Chromium process failed at launch with SIGSEGV. A fresh external harness restored its runtime files; the response smoke and both regression scripts then completed with exit0. The launch failure is not an application pass or an application defect classification. Test/runtime logs and screenshots stay outside tracked source.
+
+Fresh finish review returned **ship for the bounded S03/S04/S05 milestone** after inspecting all28 current actual-app captures in both themes at1440/1024/390/320px and the matching source. No implementation correction was requested. Design documentation was independently reconciled afterward, preserving existing tokens and distinguishing completed response authoring from pending selection/fault/Callback work. Current completion is **20/72**, with **52 unchecked** items. No whole-application completion, remote CI pass or assistive-technology certification is claimed.
+
+Files changed in this response-authoring increment (relative to its504-file before-response manifest):
+
+- `.github/workflows/ci.yml`
+- `.impeccable/design.json`
+- `DESIGN.md`
+- `Makefile`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/UI_GUIDE.md`
+- `docs/UI_UPGRADE.md`
+- `docs/USER_GUIDE.md`
+- `docs/VALIDATION.md`
+- `public/css/app.css`
+- `resources/views/admin/docs.blade.php`
+- `resources/views/livewire/admin/response-manager.blade.php`
+- `tests/Browser/response-authoring-smoke.mjs`
+- `tests/Feature/ResponseAuthoringWorkspaceTest.php`
+
+Source archive verification compares every payload byte with the final workspace. It excludes local .env values, vendor/node dependencies, databases, screenshots and runtime logs. No Git commit was staged or created.

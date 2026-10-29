@@ -39,7 +39,7 @@
 
 
 
-        <div class="field-row three">
+        <div class="field-row three response-properties">
             <div class="field">
                 <label for="status-code">Status</label>
                 <input id="status-code" type="number" min="100" max="599" wire:model="statusCode">
@@ -48,7 +48,6 @@
             <div class="field">
                 <label for="response-weight">Weight</label>
                 <input id="response-weight" type="number" min="1" wire:model="weight" aria-describedby="response-weight-help">
-                <small id="response-weight-help" class="field-help">Used only by Weighted selection. Sequence and rule-based selection ignore this value.</small>
                 @error('weight') <p class="field-error" data-error-for="{{ 'weight' }}">{{ $message }}</p> @enderror
             </div>
             <div class="field">
@@ -58,13 +57,16 @@
             </div>
         </div>
 
-        <div class="field">
+        <p id="response-weight-help" class="field-help response-weight-note">Used only by Weighted selection. Sequence and rule-based selection ignore this value.</p>
+
+        <div class="field response-headers-field">
             <label for="response-headers">Headers <span>JSON object</span></label>
-            <textarea id="response-headers" class="code-input compact" rows="5" spellcheck="false" wire:model="headersJson"></textarea>
+            <textarea id="response-headers" class="code-input compact" rows="3" spellcheck="false" wire:model="headersJson"></textarea>
             @error('headersJson') <p class="field-error" data-error-for="{{ 'headersJson' }}">{{ $message }}</p> @enderror
         </div>
 
-        <fieldset class="field option-group" aria-labelledby="body-mode-label">
+        <div class="response-body-workspace">
+        <fieldset class="field option-group response-body-toolbar" aria-labelledby="body-mode-label">
             <legend id="body-mode-label">Body</legend>
             <div class="segmented-control" role="group" aria-label="Response body mode">
                 <button type="button" wire:click="setBodyMode('static')" aria-pressed="{{ $bodyMode === 'static' ? 'true' : 'false' }}">Static</button>
@@ -97,7 +99,7 @@
                 </div>
             @endif
 
-            <div class="template-toolbar">
+            <div class="template-toolbar response-template-toolbar">
                 <div class="segmented-control" role="group" aria-label="Template editor view">
                     <span class="disabled-tooltip" @if (! $builderSupported) tabindex="0" aria-label="{{ $builderUnavailableMessage }}" title="{{ $builderUnavailableMessage }}" @endif>
                         <button type="button" wire:click="setEditorView('builder')" aria-pressed="{{ $editorView === 'builder' ? 'true' : 'false' }}" @disabled(! $builderSupported)>Builder</button>
@@ -107,7 +109,7 @@
                 <button class="text-button" type="button" wire:click="insertExample">Example</button>
             </div>
 
-            <div class="field-row three template-options">
+            <div class="field-row three template-options" role="group" aria-label="Template generation settings">
                 <div class="field">
                     <label for="template-locale">Locale</label>
                     <select class="ui-select ui-select-dense" id="template-locale" wire:model.live="locale">
@@ -138,7 +140,7 @@
             </div>
 
             @if ($editorView === 'builder')
-                <section class="schema-builder" aria-labelledby="schema-builder-title">
+                <section class="schema-builder response-schema-workspace" aria-labelledby="schema-builder-title">
                     <div class="section-heading section-heading-inline">
                         <div>
                             <h3 id="schema-builder-title">Schema</h3>
@@ -191,7 +193,7 @@
                     <textarea
                         id="response-template"
                         class="code-input template-json-editor"
-                        rows="18"
+                        rows="12"
                         spellcheck="false"
                         wire:model.live.debounce.400ms="template"
                         data-template-editor
@@ -208,6 +210,7 @@
                 </div>
             @endif
 
+            <div class="template-validation" id="response-template-validation">
             @if ($errorIssues->isNotEmpty())
                 <div class="validation-panel error-panel" role="alert" data-error-for="template">
                     <strong>Fix template errors before saving</strong>
@@ -239,12 +242,15 @@
                 </div>
             @endif
 
-            <section class="template-preview code-block-wrap" aria-labelledby="template-preview-title">
+            </div>
+
+            <section class="template-preview code-block-wrap" aria-labelledby="template-preview-title" aria-describedby="response-preview-notice">
+                <div class="template-preview-status" role="status" wire:loading wire:target="previewTemplate">Rendering sample…</div>
                 <div class="code-block-heading">
-                    <span id="template-preview-title">Preview</span>
+                    <span id="template-preview-title">Preview <span class="template-sample-label">Sample data</span></span>
                     <button type="button" wire:click="previewTemplate" wire:loading.attr="disabled" wire:target="previewTemplate">Regenerate</button>
                 </div>
-                <p class="info-note">{{ \App\Services\Templates\TemplateContext::PREVIEW_NOTICE }} Context tokens require the JSON editor.</p>
+                <p class="info-note" id="response-preview-notice">{{ \App\Services\Templates\TemplateContext::PREVIEW_NOTICE }} Context tokens require the JSON editor.</p>
                 @if ($previewOutput !== '')
                     <pre>{{ $previewOutput }}</pre>
                     <div class="template-preview-meta"><span>{{ $previewBytes }} B</span><span>{{ number_format($previewRenderMs, 2) }} ms</span></div>
@@ -253,8 +259,7 @@
                 @endif
             </section>
         @endif
-
-
+        </div>
 
         <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="response-fault-{{ $editingId ?? 'new' }}">
             <summary><x-disclosure-chevron /><strong>Fault injection</strong>@if ($faultEnabled)<x-badge variant="warning">Enabled</x-badge>@endif</summary>

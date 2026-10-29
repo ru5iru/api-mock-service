@@ -58,7 +58,7 @@ Keyboard shortcuts are ignored while typing in a form control:
 1. Select **New endpoint**.
 2. Replace the example with one complete absolute HTTP or HTTPS cURL command.
 3. Review the parsed method, URL, query, headers, cookies, and body. MockDeck parses text and never executes the pasted command.
-4. Click the page title to set an optional name; Enter or blur accepts, Escape cancels, and clearing it restores the derived method/path. Set enabled state and integer priority in **Request**.
+4. Click the page title to set an optional name; Enter or blur accepts, Escape cancels, and clearing it restores the derived method/path. Set enabled state and integer priority in **Settings**.
 5. Open **Matching** and choose a matching policy:
    - include meaningful headers;
    - ignore `Cookie`;
@@ -181,6 +181,10 @@ Static text is returned exactly as stored. `$`, `{{`, and JSON-looking content h
 Template mode parses JSON and renders it for every request. Successful templated responses default to `Content-Type: application/json` when that header is not configured. Preview and live serving share the same compiler and renderer.
 
 ## 8. Build a response template
+
+In **Editor → Responses**, the Body mode control sits above the body canvas. Static text is sent as-is; switching to Template and back preserves its separate draft. Template keeps **Builder / JSON**, **Example**, Locale and Seed together. The compact Builder puts field identity/type first, configuration below, and nullable/reorder/delete controls last; nested objects and arrays retain the same controls. Use the drag handle or focus Move field up/down and press Enter. Narrow or deeply nested rows stack instead of widening the pane.
+
+The **Preview — Sample data** surface is a generated sample. Its existing synthetic-context notice explains that request-context values are not captured traffic. **Regenerate** uses the current locale and seed: Fixed needs a value, Random generates fresh values and Request signature is deterministic for the supplied preview context. Rendering sample appears while it is pending. Byte count, render time, structured errors/warnings and quick fixes remain available. Previewing and switching views do not save a response or advance call/sequence state. A structure that Builder cannot represent keeps its JSON source and disables Builder.
 
 Choose **Body → Template**. Set:
 

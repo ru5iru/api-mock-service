@@ -115,7 +115,9 @@ Environment-scoped exports include endpoints with no override for that environme
 
 ## Use response templates
 
-Choose **Body → Template** in a response editor:
+Choose **Body → Template** in the **Editor → Responses** pane. Its compact Builder/JSON toolbar, locale/seed controls and labelled Sample data preview share the existing renderer; preview and view switching never save configuration. Nested Builder rows adapt to their available width.
+
+To configure a template:
 
 1. Use **Builder** for representable object/list schemas or **JSON** for the complete language.
 2. Choose Random, Fixed, or Request signature seed mode and a supported locale.

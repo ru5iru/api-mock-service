@@ -222,7 +222,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
 
         <section id="response-templating" class="card docs-card docs-wide">
             <h2>Response templating</h2>
-            <p>Choose <strong>Body → Template</strong> to generate response JSON with Faker data. Templating is opt-in per response; existing static responses are unchanged. Preview and live serving use the same server-side parser and renderer.</p>
+            <p>In <strong>Editor → Responses</strong>, choose <strong>Body → Template</strong> to generate response JSON with Faker data. Templating is opt-in per response; existing static responses are unchanged. Preview and live serving use the same server-side parser and renderer.</p>
             <p>The backend maps supported Faker.js-shaped method names to FakerPHP 1.24. No Faker runtime or template evaluator is shipped to the browser. Successful templates default to <code>application/json</code> when the response does not define Content-Type.</p>
             <p>In the JSON editor, use <code>$request.method</code>, <code>$request.url</code>, <code>$request.id</code>, <code>$request.body</code>, <code>$request.json.user.name</code>, and <code>@verbatim{{env.KEY}}@endverbatim</code>. Inline text such as <code>@verbatimHello {{$request.method}}@endverbatim</code> works too. Preview labels its synthetic request samples. Missing JSON paths resolve to null; bodies over 64 KiB omit body/JSON context and produce a visible warning in Logs. Request/environment tokens require the JSON editor in this wave.</p>
             <h3>Workflow</h3>
@@ -230,7 +230,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <li>Choose <strong>Builder</strong> for a simple schema or <strong>JSON</strong> for the complete language.</li>
                 <li>Select a locale and seed mode. Fixed and request-signature seeds make output repeatable.</li>
                 <li>Build or type the template. Validation identifies errors by JSON pointer, line, and column.</li>
-                <li>Review the preview, byte count, render time, warnings, and errors. Use <strong>Regenerate</strong> to render again.</li>
+                <li>Review the preview, byte count, render time, warnings, and errors. Use <strong>Regenerate</strong> to render again. The <strong>Sample data</strong> label and synthetic-context notice distinguish this output from captured traffic; previewing does not save configuration or advance counters.</li>
                 <li>Save when no error issues remain. Warnings do not block saving.</li>
             </ol>
             <h3>Complete example</h3>
