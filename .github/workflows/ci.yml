@@ -73,15 +73,42 @@ jobs:
           SESSION_DRIVER: file
           MOCK_DASHBOARD_AUTH_ENABLED: 'false'
           MOCK_LOG_STDOUT: 'false'
-          MOCK_LOG_FILE: 'false'
+          # Logs inspector smoke checks read real requests from this disposable server.
+          MOCK_LOG_FILE: 'true'
+          APP_URL: http://127.0.0.1:18476
           MOCKDECK_BASE_URL: http://127.0.0.1:18476
         run: |
           touch "$DB_DATABASE"
           php artisan migrate --force --no-interaction
           php artisan serve --host=127.0.0.1 --port=18476 > "$RUNNER_TEMP/browser-server.log" 2>&1 &
           server_pid=$!
-          trap 'kill "$server_pid" || true' EXIT
-          curl --fail --silent --show-error --retry 20 --retry-delay 1 --retry-connrefused "$MOCKDECK_BASE_URL/up"
+          cleanup() {
+            status=$?
+            trap - EXIT
+            kill "$server_pid" 2>/dev/null || true
+            if [ "$status" -ne 0 ]; then
+              echo "Browser checks failed (exit $status). Recent server output:"
+              tail -n 160 "$RUNNER_TEMP/browser-server.log"
+            fi
+            exit "$status"
+          }
+          trap cleanup EXIT
+          ready=false
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --output /dev/null --max-time 2 "$MOCKDECK_BASE_URL/up"; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              echo "Laravel browser server exited before becoming ready."
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            echo "Laravel browser server was not healthy within the startup window."
+            exit 1
+          fi
           MOCKDECK_BROWSER_FIXTURE=1 make browser-registry-test
           MOCKDECK_BROWSER_FIXTURE=1 make browser-editor-test
           MOCKDECK_BROWSER_FIXTURE=1 make browser-response-test
