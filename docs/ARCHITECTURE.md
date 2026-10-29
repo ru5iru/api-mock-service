@@ -211,3 +211,10 @@ The dashboard and API use `ResponseTemplateEngine::preview(template, locale, see
 ## Workbench presentation layer
 
 The shared dashboard shell composes a persistent topbar, navigation rail, route-specific context sidebar and status bar. `EndpointIndex` supports a locked explorer presentation with its own 15-item paginator and current endpoint identity; it reuses the normal scoped endpoint query and does not render raw requests or resolve clipboard credentials. No matching/mutation service, schema or route contract changes are introduced by this presentation mode. `public/js/workbench.js` stores only sidebar and shortcut preferences. The existing draft, save-attempt, clipboard and server redaction controllers remain authoritative. See [UI upgrade](UI_UPGRADE.md) for migration boundaries and evidence.
+
+
+## Endpoint workspace presentation
+
+Editor / Callback / Settings is a presentation mapping over EndpointForm's existing URL-backed activeTab; legacy request/matching/response sections remain accepted. One mounted ResponseManager retains every response/callback draft. Request and response forms are siblings; Settings stays inside the endpoint form. The response picker delegates to edit/createNew and does not create records. Existing save attempt IDs, events, per-scope results, transactions and validation services are unchanged; metadata errors now reveal Settings.
+
+CopiesMockCurl is the shared Livewire explicit-copy action used by EndpointIndex and EndpointForm. It reuses CurlParser, MockCurlEnvironmentResolver and MockCurlBuilder with the same saved-record lookup/error handling. This is action-time resolution, not render-time environment-secret expansion. No matching, revision, import, native1.5 or run-isolation service changed.

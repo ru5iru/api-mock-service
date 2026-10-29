@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Admin\Concerns\CopiesMockCurl;
 use App\Models\Collection;
 use App\Models\Environment;
 use App\Models\MockEndpoint;
@@ -29,6 +30,8 @@ use Livewire\Component;
 
 final class EndpointForm extends Component
 {
+    use CopiesMockCurl;
+
     private const EXAMPLE_CURL = EndpointRequestService::EXAMPLE_CURL;
 
     private ?array $importVariableProvenance = null;
@@ -144,7 +147,10 @@ final class EndpointForm extends Component
     #[On('show-editor-tab')]
     public function showEditorTab(string $tab): void
     {
-        if (in_array($tab, ['request', 'matching', 'response', 'callback'], true)) {
+        if ($tab === 'editor') {
+            $tab = 'request';
+        }
+        if (in_array($tab, ['request', 'matching', 'response', 'callback', 'settings'], true)) {
             $this->activeTab = $tab;
         }
     }
@@ -289,7 +295,8 @@ final class EndpointForm extends Component
         }
         $firstField = explode('.', (string) array_key_first($exception->errors()))[0];
         $this->activeTab = in_array($firstField, ['excludedQueryParams', 'excludedHeaderNames', 'pathPatternEnabled'], true)
-            ? 'matching' : 'request';
+            ? 'matching'
+            : (in_array($firstField, ['name', 'enabled', 'priority', 'collectionId', 'tagIds', 'environmentOverrides'], true) ? 'settings' : 'request');
     }
 
     private function parentSaveScopes(): array
@@ -324,8 +331,11 @@ final class EndpointForm extends Component
 
     public function mount(?MockEndpoint $endpoint = null): void
     {
+        if ($this->activeTab === 'editor') {
+            $this->activeTab = 'request';
+        }
         $this->showExclusionHint = ! DB::table('app_settings')->where('key', 'field_exclusion_hint_seen')->exists();
-        if (! in_array($this->activeTab, ['request', 'matching', 'response', 'callback'], true)) {
+        if (! in_array($this->activeTab, ['request', 'matching', 'response', 'callback', 'settings'], true)) {
             $this->activeTab = 'request';
         }
         if ($endpoint === null) {
@@ -535,7 +545,7 @@ final class EndpointForm extends Component
 
     public function touchSection(string $section): void
     {
-        if (in_array($section, ['request', 'matching', 'response', 'callback'], true)
+        if (in_array($section, ['request', 'matching', 'response', 'callback', 'settings'], true)
             && ! in_array($section, $this->touchedSections, true)) {
             $this->touchedSections[] = $section;
         }

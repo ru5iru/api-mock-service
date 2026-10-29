@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Dedicated fixture database only. Exercise the endpoint's true-tab contract in both themes.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -33,10 +34,12 @@ try {
         };
         const tab = async name => {
             const scroll = await page.evaluate(() => scrollY);
-            await page.getByRole('tab', { name: new RegExp('^' + name) }).click();
-            await poll(async () => (await page.locator(`#tab-${name.toLowerCase()}`).getAttribute('aria-selected')) === 'true', `${name} did not activate`);
-            assert.equal(await page.evaluate(() => scrollY), scroll, 'Tab switching scrolled the document');
-            assert.equal(await page.locator('[role=tabpanel]:visible').count(), 1);
+            await openEditorSection(page, name);
+            const workspace = ['Request', 'Matching', 'Response'].includes(name) ? 'Editor' : name;
+            await poll(async () => (await page.locator('[data-endpoint-tabs]').getByRole('tab', { name: new RegExp('^' + workspace) }).getAttribute('aria-selected')) === 'true', 'Workspace did not activate');
+            assert.equal(await page.evaluate(() => scrollY), scroll, 'Task switching scrolled the document');
+            assert.equal(await page.locator('#panel-editor:visible, #panel-settings:visible, #panel-callback:visible').count(), 1, 'Exactly one primary task panel must be visible');
+            assert.equal(await page.locator('#panel-response').isVisible(), workspace === 'Editor');
         };
         const title = page.getByRole('button', { name: 'Edit endpoint name', exact: true });
         await title.click();
@@ -50,11 +53,12 @@ try {
         assert.match(await title.innerText(), /^Inline title/);
         await title.click();
         await page.getByRole('textbox', { name: 'Endpoint name', exact: true }).fill('');
-        await commit(() => page.locator('#endpoint-priority').click());
+        await commit(() => page.locator('#tab-settings').click());
         await poll(async () => (await title.innerText()).includes('GET /wave1-browser'), 'Cleared title did not restore the derived name');
         await page.reload();
         assert.match(await title.innerText(), /GET \/wave1-browser/);
         assert.equal(await page.locator('#endpoint-name').count(), 0, 'Standalone Name field remains');
+        await tab('Settings');
         await page.locator('#endpoint-priority').fill('77');
         await tab('Response');
         await commit(() => page.locator('.selection-response-card').first().getByRole('button', { name: 'Edit', exact: true }).click());
@@ -64,7 +68,7 @@ try {
         await commit(() => page.locator('.callback-response-row').first().getByRole('button').click());
         await page.locator('#callback-url').fill('https://receiver.test/tab-draft');
         await tab('Matching');
-        await tab('Request');
+        await tab('Settings');
         assert.equal(await page.locator('#endpoint-priority').inputValue(), '77');
         await tab('Response');
         assert.equal(await page.locator('#response-body').inputValue(), '{"draft":"kept"}');
@@ -80,24 +84,25 @@ try {
                 await poll(async () => {
                     const bar = await page.locator('#save-actions').boundingBox();
                     const stage = await pane.boundingBox();
-                    return Math.abs(bar.y + bar.height - 600) < 1 && stage.y + stage.height <= bar.y - 15;
+                    return Math.abs(bar.y + bar.height + 28 - 600) < 1 && stage.y + stage.height <= bar.y - 15;
                 }, `${theme}/${width}/${name}: action bar obstructs scrollable content`);
                 assert.equal(await page.locator('#save-actions').evaluate(el => el.parentElement.tagName), 'BODY');
                 const signature = page.locator('.preview-column');
-                assert.equal(await signature.isVisible(), name === 'Request' || name === 'Matching');
+                assert.equal(await signature.isVisible(), ['Request', 'Matching', 'Response'].includes(name));
                 assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).overflowY), 'clip');
                 assert.equal(await page.evaluate(() => scrollY), 0, 'Outer page scrolled beside the tab viewport');
                 if (await signature.isVisible()) {
                     assert.equal(await signature.locator('.sticky-card').evaluate(el => getComputedStyle(el).overflowY), 'visible');
                     await poll(async () => {
-                        await pane.evaluate(el => el.scrollTop = el.scrollHeight);
+                        const owner = width > 1100 ? page.locator('.endpoint-request-workspace') : pane;
+                        await owner.evaluate(el => el.scrollTop = el.scrollHeight);
                         const card = await signature.boundingBox();
                         const bounds = await pane.boundingBox();
                         return card.y + card.height <= bounds.y + bounds.height + 1;
                     }, `${theme}/${width}/${name}: Signature end is unreachable`);
                     await pane.evaluate(el => el.scrollTop = 0);
                 }
-                assert.equal(await page.locator('.endpoint-context-strip').isVisible(), name === 'Response' || name === 'Callback');
+                assert.equal(await page.locator('.endpoint-invocation-actions').isVisible(), true, 'Saved invocation actions must stay reachable');
                 assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, `${theme}/${width}/${name}: horizontal overflow`);
                 await page.getByRole('button', { name: 'Endpoint history', exact: true }).click();
                 assert.equal(await page.locator('#endpoint-history-dialog').evaluate(el => el.open), true);
@@ -113,7 +118,7 @@ try {
                 await poll(async () => {
                     const bar = await page.locator('#save-actions').boundingBox();
                     const pane = await page.locator('[data-editor-viewport]').boundingBox();
-                    return Math.abs(bar.y + bar.height - 450) < 1 && pane.y + pane.height <= bar.y - 15;
+                    return Math.abs(bar.y + bar.height + 28 - 450) < 1 && pane.y + pane.height <= bar.y - 15;
                 }, `${theme}/${width}/450/${name}: short viewport content is obstructed`);
             }
         }
@@ -150,7 +155,7 @@ try {
         await page.locator('#save-actions button[type=submit]').click();
         await poll(async () => (await page.locator('.endpoint-editor').getAttribute('wire:id')) !== editorId, 'Global save did not complete its navigation');
         await page.reload();
-        await tab('Request');
+        await tab('Settings');
         assert.equal(await page.locator('#endpoint-priority').inputValue(), '77', 'Global save lost Request draft');
         await tab('Response');
         await commit(() => page.locator('.selection-response-card').first().getByRole('button', { name: 'Edit', exact: true }).click());
@@ -163,7 +168,7 @@ try {
         await page.goto(`${base}/dashboard/endpoints`);
         assert.notEqual(await page.evaluate(() => getComputedStyle(document.documentElement).overflowY), 'clip', 'Editor scroll containment leaked onto the endpoint list');
         await page.close();
-        console.log(`${theme}: inline title, four tabs, retained drafts/global save, history, confirm/cancel, all-tab action bounds at 999/1000/1001/1440/390px pass`);
+        console.log(`${theme}: inline title, workspace tasks/panes, retained drafts/global save, history, confirm/cancel, all-tab action bounds at 999/1000/1001/1440/390px pass`);
     }
     assert.deepEqual(errors, []);
 } finally { await browser.close(); }

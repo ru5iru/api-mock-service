@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Dedicated database only. Run with MOCKDECK_BROWSER_FIXTURE=1 and MOCKDECK_BASE_URL.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -29,14 +30,16 @@ try {
         const commit = action => Promise.all([page.waitForResponse(r => r.url().includes('/update') && r.request().method() === 'POST'), action()]);
         const tab = async name => {
             const scroll = await page.evaluate(() => scrollY);
-            await page.getByRole('tab', { name: new RegExp('^' + name) }).click();
-            await poll(async () => (await page.getByRole('tab', { name: new RegExp('^' + name) }).getAttribute('aria-selected')) === 'true', 'Tab did not activate');
-            assert.equal(await page.evaluate(() => scrollY), scroll, 'Tab switch scrolled the page');
-            assert.equal(await page.locator('[role=tabpanel]:visible').count(), 1, 'More than one panel is visible');
+            await openEditorSection(page, name);
+            const workspace = ['Request', 'Matching', 'Response'].includes(name) ? 'Editor' : name;
+            await poll(async () => (await page.locator('[data-endpoint-tabs]').getByRole('tab', { name: new RegExp('^' + workspace) }).getAttribute('aria-selected')) === 'true', 'Workspace did not activate');
+            assert.equal(await page.evaluate(() => scrollY), scroll, 'Task switching scrolled the document');
+            assert.equal(await page.locator('#panel-editor:visible, #panel-settings:visible, #panel-callback:visible').count(), 1, 'Exactly one primary task panel must be visible');
+            assert.equal(await page.locator('#panel-response').isVisible(), workspace === 'Editor');
         };
         await tab('Response');
         const settings = page.locator('.selection-settings');
-        const step = page.locator('#tab-response').locator('.section-status');
+        const step = page.locator('[data-response-state]');
         await commit(() => settings.getByRole('button', { name: 'Rule-based', exact: true }).click());
         await poll(async () => (await step.getAttribute('class')).includes('attention'), 'Rule draft without fallback shows a checkmark');
         const checkToastOffset = async () => {
@@ -73,7 +76,7 @@ try {
             await page.locator('#panel-matching').scrollIntoViewIfNeeded();
             await page.waitForTimeout(80);
             const bar = await page.locator('#save-actions').boundingBox();
-            assert.ok(Math.abs(bar.y + bar.height - 600) < 1, `${theme}/${width}: action bar not viewport pinned`);
+            assert.ok(Math.abs(bar.y + bar.height + 28 - 600) < 1, `${theme}/${width}: action bar not viewport pinned`);
             if (width > 1000) {
                 const pane = await page.locator('[data-editor-viewport]').boundingBox();
                 assert.ok(pane.y + pane.height <= bar.y - 15, `${theme}/${width}: Signature viewport obstructed by actions`);

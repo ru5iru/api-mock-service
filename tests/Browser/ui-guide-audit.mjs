@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Full dashboard/standalone UI contract sweep. Use an isolated database only.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -290,7 +291,7 @@ try {
                 await page.getByRole('tab', { name: new RegExp('^' + tab) }).click();
                 await inspect(page, `${theme}-${width}-editor-${tab.toLowerCase()}`);
             }
-            await page.getByRole('tab', { name: /^Response/ }).click();
+            await openEditorSection(page, 'Response');
             await page.locator('.selection-response-card').first().getByRole('button', { name: 'Edit', exact: true }).click();
             await page.waitForSelector('.response-form');
             await page.locator('.response-form').getByRole('button', { name: 'Template', exact: true }).click();

@@ -158,7 +158,7 @@ final class GlobalSaveResultsTest extends TestCase
 
     public static function invalidEndpoints(): array
     {
-        return [['rawCurl', 'not curl', 'rawCurl', 'request'], ['priority', 1001, 'priority', 'request'], ['excludedHeaderNames', ['bad header'], 'excludedHeaderNames', 'matching']];
+        return [['rawCurl', 'not curl', 'rawCurl', 'request'], ['priority', 1001, 'priority', 'settings'], ['excludedHeaderNames', ['bad header'], 'excludedHeaderNames', 'matching']];
     }
 
     #[DataProvider('invalidEndpoints')]

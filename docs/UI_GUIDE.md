@@ -16,7 +16,7 @@ The shared shell is implemented in `resources/views/components/workbench-navigat
 - At <=1100px, the context sidebar is an overlay, closed by default. At <=767px, the rail is replaced by the existing labelled mobile Menu, and page/action-bar left offsets become zero. Sidebar toggle uses aria-controls/aria-expanded; hidden content is inert. Escape closes an open overlay and returns focus. Sticky action bars end above the status bar and retain measured content clearance.
 - `public/js/workbench.js` remembers only desktop sidebar visibility and single-character-shortcut opt-in. The shortcut control lives in the shared Shortcuts dialog, always reachable through the footer Shortcuts button even when ? is disabled; existing input/dialog exclusions and modified save shortcut remain unchanged. Storage failures degrade to usable page-local choices.
 - Page headers wrap their actions at <=440px to prevent title/count collisions. Footer Shortcuts uses a 24px target inside the status bar. Help-tip clickable boxes are 24x24px; bubbles accept pointer input, use per-anchor delayed closing to allow crossing the anchor gap, close after normal pointer departure, and Escape dismisses hover-only as well as focused bubbles. Existing top-layer positioning remains in `public/js/panels.js`.
-- All old Request/Matching/Response/Callback tabs, mutation actions, server save-result scopes, template builders and import/secret contracts are retained in this stage. Editor / Callback / Settings is not shipped yet.
+- Editor / Callback / Settings is the current endpoint workspace. Legacy Request/Matching/Response URL sections map into Editor; Callback links stay intact. Mutation actions, server save-result scopes, template builders and import/secret contracts are retained.
 
 ## Contents
 
@@ -461,22 +461,17 @@ Server equivalent: `$this->dispatch('toast', message: 'Response updated.');`. Do
 
 **Purpose:** true tabs swap the active task while preserving the editor session. Completeness indicators are independent of the active tab.
 
-**Anatomy:** EndpointForm owns `.flow-nav > [role=tablist][data-endpoint-tabs] > button[role=tab]` and matching `[role=tabpanel][aria-labelledby]` IDs. Alpine activeTab is entangled with the existing Livewire component; tab panels remain mounted and use x-show. Switching has no anchor scrolling or component remount. The URL tab parameter supports direct links; new endpoints redirect to tab=response after creation. Signature is shared on Request/Matching; Response/Callback use `.endpoint-context-strip`.
+**Anatomy:** EndpointForm owns the primary `.flow-nav > [role=tablist][data-endpoint-tabs]` with Editor / Callback / Settings. Alpine derives workspaceTab from the existing URL-backed activeTab: request/matching/response map to Editor, callback stays Callback, settings stays Settings, and editor normalizes to request. Unknown values normalize to request. Request/Matching subtabs use the same roving keyboard handler via data-editor-subtabs. Editor controls both left panel-editor and right panel-response using an aria-controls ID list; nested Request/Matching tabpanels are labelled independently. Responses is a labelled region, not a fourth primary tab.
 
-**Classes/tokens:** tab bar sticky at `--site-nav-height` (measured main nav height;65px fallback), z30, `--bg`, 1px `--border` bottom,16px bottom margin. Buttons retain minimum44px,6px 12px padding,7px gap,12px/600, `--text-muted`, transparent fill,2px transparent underline. aria-selected=true uses `--text` / `--accent` underline. Status circle18px: neutral muted/surface/border; valid success tokens/✓; attention warning tokens/!. Geometry is theme-independent.
+The `.endpoint-authoring-grid` contains the endpoint-settings form and one response-workspace sibling. The ResponseManager mounts exactly once for responses/callbacks; it is never duplicated between views. Settings controls remain inside the original endpoint-settings form. Save event names, scope identifiers, request baselines and child atomic-save behavior remain unchanged. Metadata validation opens Settings; signature-policy errors open Matching; raw source errors open Request. Callback errors retain the existing callback destination. The inline title's rename is still a separate mutation.
 
-**States:** click or arrow/Home/End selects, updates aria-selected and roving tabindex; focus does not scroll. Hidden panels are display:none and have no accessible/focusable content. Drafts remain in the same Livewire components until saved, cancelled or navigation. Request/Matching/Response completeness retains its validators, including exactly one fallback in rule mode. No hover/loading/disabled tab skin beyond button hover text and global focus ring; tabs do not submit the form.
+**Geometry:** two minmax(0, ...) columns above1100px, with independent overflow-y:auto on the request form and response workspace and overflow:hidden on the measured outer viewport. At <=1100px stack columns, let the outer viewport scroll and remove pane scrolling. The height calculation subtracts the actual header/tabs, measured save bar, status footer and16px breathing room. Do not introduce a third Signature scroller. Settings/Callback use one full column. Pane boundaries, headers and fields use existing semantic tokens, not new palettes or shadows.
 
-**Example:**
+**Response picker:** Response to edit calls the existing edit action; New response calls createNew, which stashes/restores pending drafts. Native selected state follows editingId after morphing. DOM/reading order is picker, response form, selection/settings and full configured pool. Labels identify real response IDs and draft state. Cancel edit retains its discard-only-current-draft meaning. Status, weight, delay, headers, Static/Template, builder, selection rules/order, faults, History and callback configuration are unchanged services. Container queries adapt builder/condition rows to pane width, even on a wide viewport.
 
-```blade
-<button id="tab-response" type="button" role="tab" aria-controls="panel-response" x-bind:aria-selected="activeTab === 'response'" x-bind:tabindex="activeTab === 'response' ? 0 : -1" x-on:click="switchTab('response')">Response</button>
-<section id="panel-response" role="tabpanel" aria-labelledby="tab-response" x-show="activeTab === 'response'">Response settings</section>
-```
+**Invocation:** saved-endpoint Copy mock curl reuses the same CopiesMockCurl concern as EndpointIndex; it calls the existing parser, Environment resolver and builder on the server at action time. It copies saved configuration only; no resolved values are embedded in a new data attribute. A separate Logs link carries the endpoint filter. The left Signature area labels Source URL and draft canonical data, preventing it from being mistaken for the actual mock invocation.
 
-Logs retain route tabs via `.log-type-tabs > a[aria-current=page]`; they are not endpoint in-session panels.
-
-**Do/Don't:** keep panels mounted to preserve drafts; don't conditionally destroy a nested editor during tab switching. Keep indicator validity separate from selection; don't grant a checkmark to the active tab. Use roles and linked IDs; don't retain scroll-spy aria-current=location on true tabs. Keep secondary canonical/header/body data in disclosures; don't duplicate Signature on every tab.
+**States:** primary and nested tabs use x-show, linked IDs, aria-selected and roving tabindex; click/arrow/Home/End never submit a form. Inactive task content is display:none. Readiness warnings stay tied to actual validation/saved response count; response-empty-note describes the Responses heading until the first response is saved. The new endpoint's right pane says Create the endpoint first. Legacy response deep links open the same Editor/response region; no duplicate editor or new route is introduced.
 
 ## Tooltips
 
@@ -535,7 +530,7 @@ Static help tips inside Livewire-rendered regions can use a scoped `wire:ignore`
 
 **States/lifecycle:** syncStickyActionBar sets measured `--sticky-action-bar-height` on document.documentElement and page-shell and retains direct toast positioning. ResizeObserver handles action content changes. syncEditorGeometry measures nav/panel geometry on mutation, resize and page scroll. The root property also supplies CSS fallback to toast-region. No-bar routes clear action offsets. Panels are not transformed/contained to simulate transitions. There is no additional sticky hover/disabled/loading skin.
 
-Dashboard's delegated behavior script uses `data-navigate-once`: register observers/handlers once, then reacquire current page elements during `livewire:navigated` and geometry sync. Do not redeclare its top-level constants on navigation or retain a removed shortcut-dialog node. Layout smoke covers both themes; endpoint tab smoke additionally checks all four panels at 999/1000/1001px, desktop and mobile.
+Dashboard's delegated behavior script uses `data-navigate-once`: register observers/handlers once, then reacquire current page elements during `livewire:navigated` and geometry sync. Do not redeclare its top-level constants on navigation or retain a removed shortcut-dialog node. Layout smoke covers both themes; endpoint tab smoke additionally checks legacy URL sections plus the current task/pane mapping at desktop and mobile widths.
 
 **Example:**
 
@@ -900,7 +895,7 @@ The application-wide audit checks registry/pagination, logs and details, import 
 
 ## Path segment editor
 
-**Purpose:** turn individual path segments into named parameters within the Request tab. This is an inline configuration editor; selection/rule controls remain separate.
+**Purpose:** turn individual path segments into named parameters within Editor → Matching. This is an inline configuration editor; selection/rule controls remain separate.
 
 **Anatomy:** `resources/views/livewire/admin/endpoint-form.blade.php`: the existing `.toggle-row` enables path parameters, followed by `.path-segment-editor > .path-segment-chip` and slash separators. Each chip contains a secondary/small button and, for parameters, a labelled `.path-parameter-name` input. The button exposes `aria-pressed`; activating it converts between literal and parameter. Names are unique identifiers, validated by `FieldMatchingConfiguration` and `PathPattern`. The editor modifies the existing cURL path; it introduces no separate stored path field.
 

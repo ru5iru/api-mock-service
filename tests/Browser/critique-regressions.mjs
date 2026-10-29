@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // This suite writes fixtures: run only against an explicitly disposable database.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -84,7 +85,7 @@ try {
         const tip = page.locator('.help-tip[aria-label="Priority"]');
         await tip.focus(); await page.keyboard.press('Escape'); await page.waitForTimeout(200);
         assert.equal(await tip.locator('.help-tip-content').isVisible(), false);
-        await page.getByRole('tab', { name: /^Response/ }).click();
+        await openEditorSection(page, 'Response');
         assert.ok((await page.locator('#panel-response').innerText()).includes('Distinct saved example'));
         assert.ok((await page.locator('.selection-settings').innerText()).includes('Selection saved.'));
         await page.getByRole('button', { name: 'Sequence', exact: true }).click();
@@ -104,7 +105,11 @@ try {
         await editor.press('Escape');
         assert.equal(await editor.getAttribute('aria-activedescendant'), null);
         await page.goto(`${base}/dashboard/endpoints/create`);
-        assert.ok(await page.locator('#raw-curl').evaluate(n => n.getBoundingClientRect().top < document.querySelector('#endpoint-priority').getBoundingClientRect().top));
+        assert.equal(await page.locator('#raw-curl').isVisible(), true);
+        assert.equal(await page.locator('#endpoint-priority').isVisible(), false, 'Optional metadata belongs under Settings');
+        await openEditorSection(page, 'Settings');
+        assert.equal(await page.locator('#endpoint-priority').isVisible(), true);
+        assert.equal(await page.locator('#raw-curl').isVisible(), false);
 
         await page.goto(`${base}/dashboard/logs?type=callbacks&time_range=all&request_log_id=critique-regression-request`);
         assert.ok((await page.locator('.callback-log thead th').first().innerText()).toLowerCase().includes('status'));

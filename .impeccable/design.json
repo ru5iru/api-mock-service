@@ -211,7 +211,7 @@
       "kind": "input",
       "refersTo": "field",
       "description": "Existing ordinary field geometry, used by explorer search.",
-      "html": "<label class=\"ds-field\"><span>Find an endpoint</span><input type=\"search\" placeholder=\"Name, method or path…\"></label>",
+      "html": "<label class=\"ds-field\"><span>Find an endpoint</span><input type=\"search\" placeholder=\"Name, method or path\u2026\"></label>",
       "css": ".ds-field{display:block;color:var(--text);font-family:var(--font-ui);font-size:var(--font-size-base);}.ds-field span{display:block;margin-bottom:7px;font-weight:600;}.ds-field input{width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--border-strong);border-radius:6px;outline:none;color:var(--text);background:transparent;font-family:var(--font-ui);font-size:var(--font-size-base);transition:border-color var(--motion-fast),box-shadow var(--motion-fast),background-color var(--motion-fast);}.ds-field input:hover:not(:disabled){border-color:var(--accent-border);}.ds-field input:focus{border-color:var(--accent);background:var(--surface);box-shadow:var(--shadow-focus);}.ds-field input:disabled{color:var(--disabled-fg);border-color:var(--border);background:var(--disabled-bg);cursor:not-allowed;}"
     },
     {
@@ -243,7 +243,7 @@
       "kind": "custom",
       "refersTo": "explorer-row",
       "description": "Flat identity row; current page and hover use subtle accent.",
-      "html": "<a class=\"ds-explorer-row\" href=\"#endpoint\" aria-current=\"page\"><span class=\"ds-method\">GET</span><span><strong>Endpoint identity</strong><small>1 response · Enabled</small></span></a>",
+      "html": "<a class=\"ds-explorer-row\" href=\"#endpoint\" aria-current=\"page\"><span class=\"ds-method\">GET</span><span><strong>Endpoint identity</strong><small>1 response \u00b7 Enabled</small></span></a>",
       "css": ".ds-explorer-row{display:flex;gap:var(--space-2);padding:var(--space-3) var(--space-2);border-bottom:1px solid var(--border);color:var(--text);text-decoration:none;font-family:var(--font-ui);font-size:var(--font-size-base);}.ds-explorer-row:hover,.ds-explorer-row[aria-current=\"page\"]{background:var(--accent-subtle);}.ds-explorer-row:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-explorer-row>span:last-child{min-width:0;}.ds-explorer-row strong{display:block;overflow-wrap:anywhere;font-size:var(--font-size-sm);font-weight:500;}.ds-explorer-row small{display:block;margin-top:var(--space-1);color:var(--text-muted);}.ds-method{align-self:start;min-width:36px;min-height:28px;padding:var(--space-1);border:1px solid var(--method-get-border);border-radius:5px;display:inline-flex;align-items:center;justify-content:center;color:var(--method-get-fg);background:var(--method-get-bg);font:500 var(--font-size-xs) var(--font-code);letter-spacing:.06em;}"
     },
     {
@@ -256,7 +256,7 @@
   ],
   "narrative": {
     "northStar": "Supplied desktop workbench",
-    "overview": "Warm surfaces, compact typography, continuous working areas and restrained elevation. This source-derived foundation record covers shared chrome, the paginated editor explorer and registry presentation. Existing endpoint tabs remain; the complete feature-workspace migration is future work.",
+    "overview": "Warm surfaces, compact typography, continuous working areas and restrained elevation. This source-derived record covers shared chrome, the paginated editor explorer, registry presentation and the bounded endpoint workspace. Editor / Callback / Settings and responsive request/response panes are delivered; full advanced template, selection and callback design migrations remain pending.",
     "keyCharacteristics": [
       "Paired warm light/dark mappings",
       "Flat continuous operating surfaces",
@@ -283,7 +283,7 @@
       "Do keep the visible footer Shortcuts opener available after single-key opt-out."
     ],
     "donts": [
-      "Do not present Editor / Callback / Settings or split request/response panes as shipped.",
+      "Don't treat the delivered Editor / Callback / Settings arrangement and responsive split panes as completion of the advanced template, selection or callback migrations.",
       "Do not store configuration drafts or secrets in workbench preferences.",
       "Do not alter matching, import, mutation or run-isolation behavior as a visual side effect."
     ]

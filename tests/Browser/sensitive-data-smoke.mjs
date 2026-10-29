@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Named, guarded, fresh disposable PostgreSQL database only. Artifacts contain FAKE canaries.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -51,7 +52,7 @@ try {
     await capture('endpoint-history-dialog', await page.content());
     await capture('endpoint-history-panel', await page.locator('#endpoint-history-dialog').evaluate(node => node.outerHTML));
     await page.getByRole('button', { name: 'Close endpoint history', exact: true }).click();
-    await page.getByRole('tab', { name: /^Response/ }).click();
+    await openEditorSection(page, 'Response');
     const details = page.locator('.response-row-details');
     if (!await details.evaluate(node => node.open)) await details.locator(':scope > summary').click();
     const history = details.locator('.response-history');

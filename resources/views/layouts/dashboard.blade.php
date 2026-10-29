@@ -461,13 +461,13 @@
             if (viewport && tabs) {
                 const actionHeight = Math.ceil(document.querySelector('[data-sticky-action-bar]')?.getBoundingClientRect().height ?? 0);
                 const top = Math.max(viewport.getBoundingClientRect().top, navHeight + tabs.getBoundingClientRect().height);
-                const height = Math.max(0, innerHeight - top - actionHeight - 16);
+                const height = Math.max(0, innerHeight - top - actionHeight - (document.querySelector('.footer')?.getBoundingClientRect().height ?? 0) - 16);
                 viewport.style.setProperty('--editor-viewport-height', `${height}px`);
             }
         };
 
         document.addEventListener('keydown', event => {
-            const tab = event.target.closest?.('[data-endpoint-tabs] [role="tab"]');
+            const tab = event.target.closest?.('[data-endpoint-tabs] [role="tab"], [data-editor-subtabs] [role="tab"]');
             if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
             event.preventDefault();
             const buttons = [...tab.parentElement.querySelectorAll('[role="tab"]')];

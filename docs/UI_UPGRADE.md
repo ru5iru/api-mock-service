@@ -19,7 +19,7 @@ A checkbox means the named scope is implemented and has **two recorded successfu
 
 ## Current delivery boundary
 
-Delivered scope: shared workbench foundations, registry presentation and registry interactions/secondary activity (dated verification ledgers below). Existing Request / Matching / Response / Callback tabs stay until the separate endpoint-workbench migration; no premature Editor / Settings labels. The source, matching, mutation, import, credential and run-isolation contracts remain authoritative.
+Delivered scope: shared workbench foundations, registry presentation/interactions, and the first endpoint-workspace milestone (dated verification ledgers below). Create/edit now use Editor / Callback / Settings with Request / Matching subtabs and a Responses pane. Legacy Request / Matching / Response / Callback URL links remain supported. Advanced response/callback, Logs, Environments and transfer redesigns remain unchecked. The source, matching, mutation, import, credential and run-isolation contracts remain authoritative.
 
 ## Checklist
 
@@ -54,21 +54,21 @@ Delivered scope: shared workbench foundations, registry presentation and registr
 
 ### P1 — endpoint create/edit: Request and Matching
 
-- [ ] **E01** Migrate create/edit into a shared Editor / Callback / Settings layout; preserve old tab deep links through an explicit compatibility mapping.
-- [ ] **E02** Implement create-before-response guidance and accurate serving-readiness states.
+- [x] **E01** Migrate create/edit into a shared Editor / Callback / Settings layout; preserve old tab deep links through an explicit compatibility mapping.
+- [x] **E02** Implement create-before-response guidance and accurate serving-readiness states.
 - [ ] **E03** Move cURL import/source editing to the shared dialog/pane flow while preserving parser validation/warnings.
-- [ ] **E04** Display source URL separately from real mock invocation instructions.
+- [x] **E04** Display source URL separately from real mock invocation instructions.
 - [ ] **E05** Preserve coarse header policies, subordinate-choice memory and real defaults.
 - [ ] **E06** Preserve field exclusions, Postman token provenance and path-segment editing.
 - [ ] **E07** Keep complete live canonical preview, variant, hash copy and duplicate detection.
 - [ ] **E08** Preserve credential warnings, Mask detected secrets and explicit-copy resolution/error behavior.
-- [ ] **E09** Preserve dirty drafts, action scoping, first-error focus and failed/partial-save reconciliation.
+- [x] **E09** Preserve dirty drafts, action scoping, first-error focus and failed/partial-save reconciliation.
 
 **Acceptance:** equivalent configurations produce byte-identical canonical strings/hashes and native exports; source and copied cURL remain valid without escaping regressions; no new request is executed by parsing or previewing.
 
 ### P1 — responses, templates and selection
 
-- [ ] **S01** Implement response identity/selector/list without losing drafts held for other responses.
+- [x] **S01** Implement response identity/selector/list without losing drafts held for other responses.
 - [ ] **S02** Preserve status range, JSON headers, raw Static body, weight, delay and Delete safeguards.
 - [ ] **S03** Migrate Template/Static and Builder/JSON with the existing catalog and schema controls.
 - [ ] **S04** Preserve nested builder fields, argument inputs, reorder alternatives and unsupported-builder fallback.
@@ -146,7 +146,7 @@ Delivered scope: shared workbench foundations, registry presentation and registr
 
 ## Feature parity inventory
 
-The following target mapping is carried forward from the approved plan after reconciling recent master. It is an inventory of preserved features and intended destinations, **not** a claim that each proposed screen has shipped. The checklist above is the completion authority. **12 of 72 items are verified complete; 60 remain unchecked.**
+The following target mapping is carried forward from the approved plan after reconciling recent master. It is an inventory of preserved features and intended destinations, **not** a claim that each proposed screen has shipped. The checklist above is the completion authority. **17 of 72 items are verified complete; 55 remain unchecked.**
 
 
 **Coverage labels:** Shown = present in the prototype; Partial = a simplified illustration exists; Missing = a production design must be supplied. All proposed routes below retain their current URL unless explicitly stated otherwise.
@@ -340,4 +340,90 @@ Final executed checks for the registry increment:
 | Independent finish / design documentation | PASS at bounded registry scope:both material findings resolved; all ten current recaptures reviewed; actual anatomy documented without changing theme tokens. |
 | make validate / Docker / PostgreSQL | BLOCKED:docker executable unavailable; no container validation or guarded PostgreSQL browser result claimed. |
 
-Remaining manual work: Docker/PostgreSQL validation and guarded suites; actual400% browser zoom, screen-reader announcements and physical touch; deleted-current-editor recovery (R06). Next feature milestone remains the endpoint workbench migration; do not rename its existing four tabs before its compatibility/save-scope work is implemented. Current completion:12/72;60 pending.
+Remaining manual work: Docker/PostgreSQL validation and guarded suites; actual400% browser zoom, screen-reader announcements and physical touch; deleted-current-editor recovery (R06). At the close of this registry milestone, the next feature milestone was the endpoint workbench migration. Historical completion at that point:12/72;60 pending. The current boundary/count above incorporates the subsequent editor ledger.
+
+
+### Endpoint workspace — 29 October 2026
+
+This increment builds on the delivered registry workspace; uploaded master `8622ec7` is preserved and local Git ancestry remains `44a00e30cac673decf93dae3b503abc9c35c5e3d`. The source inventory was compared with a 500-file before-editor SHA-256 manifest outside the repository. The list below attributes only this increment, rather than treating imported master changes as UI work.
+
+Implemented: Editor / Callback / Settings task navigation; a left request/matching/signature pane and right Responses pane on wide desktops; one stacked scroll owner at <=1100px; response form before the configured pool; a saved-response picker and New response using existing draft methods; metadata in Settings with its original endpoint form/save boundary; legacy deep links; Copy mock curl / Logs beside tasks; source URL versus saved invocation copy; metadata validation routed to Settings; existing callback selection and draft handling. `CopiesMockCurl` extracts the former registry action unchanged for both callers, resolving only saved requests and current Environment values on the server when explicitly copied. No route, migration, dependency, canonicalization, matcher, native format or mutation service changed.
+
+The title retains the existing inline rename boundary. C06/C07 therefore remain partial rather than claiming every proposed Settings rearrangement is complete. Existing advanced template/selection/fault/callback controls remain reachable through their existing forms; their full design migrations are not checked off by this milestone. E03's source-import dialog, advanced response/callback design and later feature work remain pending.
+
+| Checked scope | First verification | Second verification | Result |
+|---|---|---|---|
+| E01 task/pane migration + compatibility | EndpointWorkspaceTest covers seven deep-link cases, one manager and sibling forms; configuration/signature/native export remain unchanged by navigation | Real browser exercises legacy/new links, tasks/subtabs, keyboard and one mounted manager in both themes | PASS at this bounded scope |
+| E02 first-save / serving readiness | FirstRunClarityTest and existing invocation characterization retain diagnostic/no-match contracts | Real browser creates request, calls with no response (existing diagnostic500), saves literal response and receives201 | PASS |
+| E04 source versus invocation | Shared copy action test verifies saved request, action-time Environment resolution, ignored unsaved source and no injected secret attribute | Real browser copies actual mock invocation through existing delegated clipboard handler; source/signature visibly distinguished | PASS |
+| E09 drafts / global save integration | EndpointWorkspaceTest, GlobalSaveResultsTest and existing save/draft suites verify scoped preflight, error destination, preservation and reconciliation | Real browser invalid weight blocks save; corrected global save independently re-reads persisted response bodies, callback, priority, collection/tag; dirty navigation cancellation retains state | PASS locally; PostgreSQL guarded audit BLOCKED |
+| S01 response identity and drafts | Direct Livewire selector/createNew tests preserve other saved-response and new-response drafts | Real browser switches responses and tasks, revisits new draft and checks selected callback identity in both themes | PASS |
+
+All other unchecked editor/response/callback items remain pending even where the original feature still functions. Current completion: **17/72**, **55 unchecked**.
+
+Environment: PHP8.3.6, Laravel13.32.0, Livewire4.4.5, Chromium150.0.7871.100, Playwright1.62.1, Node24.22.1. Real Laravel was served through native PHP against an external disposable SQLite file; PHPUnit uses in-memory SQLite. No operator database or application .env was changed.
+
+| Executed check | Actual result |
+|---|---|
+| Full configured PHPUnit suite | PASS:454 tests,4498 assertions,zero skipped (46.00s). Guarded PostgreSQL-only characterization remains outside this local configured suite. |
+| Node frontend / setup | PASS:84 frontend tests;16 setup tests. |
+| Tokens / Pint / source hygiene | PASS:paired-theme contrast and forbidden-literal validator; whole-project Pint --test; changed-JavaScript syntax; git diff --check. |
+| make browser-editor-test | PASS:both themes, real create/call/save, drafts, clipboard, validation, successful global save + independent DB reads, keyboard, legacy URLs; geometry/screenshots1440/1024/390/320. |
+| make browser-test | PASS:workbench/layout/documentation scripts in both themes. |
+| make browser-regression-test | PASS:critique and endpoint-editor scripts completed with exit0 in both themes. The earlier timing-assumption failure is recorded below, not counted as a pass. |
+| CI wiring | Source confirms browser-editor-test after registry fixture smoke; no remote CI run claimed. |
+| make validate | BLOCKED:stops at docker compose config --quiet; make:docker:No such file or directory, compose-config error127, Make exit2. Container build/composer/PostgreSQL checks not run. |
+| Impeccable detector | BLOCKED:launcher Permission denied,exit126. Source context and independent finish review substitute for neither a detector pass nor a complete accessibility audit. |
+
+The final editor smoke was repeated after the navigation helper change and passed in both themes (exit0). One repeat first tried to focus the Request subtab immediately after Home changed the main selected tab, before Alpine displayed the subtab. The test now waits for the visible Request subtab and asserts actual focus before sending ArrowRight; the keyboard expectation itself is unchanged. This transient test failure is not counted as a passing run.
+
+An initial older critique browser assertion read Settings immediately after clicking its task tab. The shared browser helper now waits for the visible destination panel before assertions. This changes test synchronization only; the original visibility, draft and validation assertions remain. Other older scripts were adjusted to operate the new visible navigation through this helper rather than removed. Scripts not executed in this milestone are not claimed green merely because their syntax passes.
+
+Remaining manual/release checks: Docker/PostgreSQL make validate and guarded characterization/global-save/sensitive-output browser suites; remote GitHub Actions; real400% browser zoom, screen-reader announcements, physical touch and forced-colors. Responsive captures are geometry evidence, not a substitute for those checks. Full redesigned advanced response/callback forms are next; no whole-application redesign completion is claimed.
+
+Independent finish review returned **ship for the bounded endpoint workspace milestone**, after inspecting14 actual captures spanning both themes, all four widths and Request/Matching/Settings/Callback/validation states plus implementation source. No material finding was raised within that scope. This is not approval of the advanced response/callback redesign or a claim of assistive-technology verification. DESIGN.md and its sidecar were reconciled separately without changing theme values.
+
+Files changed in this endpoint increment (relative to its500-file before-editor manifest; imported master and earlier UI work remain intact):
+
+- `.github/workflows/ci.yml`
+- `.impeccable/design.json`
+- `DESIGN.md`
+- `Makefile`
+- `README.md`
+- `app/Livewire/Admin/Concerns/CopiesMockCurl.php`
+- `app/Livewire/Admin/EndpointForm.php`
+- `app/Livewire/Admin/EndpointIndex.php`
+- `docs/ARCHITECTURE.md`
+- `docs/UI_GUIDE.md`
+- `docs/UI_UPGRADE.md`
+- `docs/USER_GUIDE.md`
+- `docs/VALIDATION.md`
+- `public/css/app.css`
+- `resources/views/admin/docs.blade.php`
+- `resources/views/layouts/dashboard.blade.php`
+- `resources/views/livewire/admin/endpoint-form.blade.php`
+- `resources/views/livewire/admin/partials/callback-settings.blade.php`
+- `resources/views/livewire/admin/response-manager.blade.php`
+- `tests/Browser/critique-regressions.mjs`
+- `tests/Browser/dialog-smoke.mjs`
+- `tests/Browser/editor-consistency-smoke.mjs`
+- `tests/Browser/editor-navigation.mjs`
+- `tests/Browser/endpoint-editor-regressions.mjs`
+- `tests/Browser/endpoint-registry-smoke.mjs`
+- `tests/Browser/endpoint-tabs-smoke.mjs`
+- `tests/Browser/endpoint-workspace-smoke.mjs`
+- `tests/Browser/first-run-smoke.mjs`
+- `tests/Browser/global-save-results.mjs`
+- `tests/Browser/honest-labels-smoke.mjs`
+- `tests/Browser/response-save-smoke.mjs`
+- `tests/Browser/sensitive-data-smoke.mjs`
+- `tests/Browser/ui-guide-audit.mjs`
+- `tests/Browser/wave1-smoke.mjs`
+- `tests/Browser/wave2-smoke.mjs`
+- `tests/Browser/workbench-smoke.mjs`
+- `tests/Feature/EndpointTabsTest.php`
+- `tests/Feature/EndpointWorkspaceTest.php`
+- `tests/Feature/GlobalSaveResultsTest.php`
+- `tests/Frontend/editor-recovery.test.mjs`
+
+No Git commit was created or staged by this task. Release archives exclude local environment values, dependencies, databases, screenshots and runtime logs.

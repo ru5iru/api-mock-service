@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Dedicated database only: verify global response saves through the true-tab editor.
 // MOCKDECK_BROWSER_FIXTURE=1 MOCKDECK_BASE_URL=http://localhost:18473 node tests/Browser/response-save-smoke.mjs
 import assert from 'node:assert/strict';
@@ -29,7 +30,7 @@ try {
         await page.goto(`${base}/dashboard/endpoints/${fixture.endpoint}/edit`);
         await page.evaluate(value => localStorage.setItem('mockdeck-theme', value), theme);
         await page.reload();
-        await page.getByRole('tab', { name: /^Response/ }).click();
+        await openEditorSection(page, 'Response');
         const settings = page.locator('.selection-settings');
         const rows = page.locator('.selection-response-card');
         const row = id => page.locator(`[wire\\:key="response-${id}"]`);
@@ -47,7 +48,7 @@ try {
         };
         await globalSave();
         await page.reload();
-        await page.getByRole('tab', { name: /^Response/ }).click();
+        await openEditorSection(page, 'Response');
         assert.equal(await rows.count(), 2, 'Global save created an unwanted response');
         await commit(() => row(fixture.first).getByRole('button', { name: 'Edit', exact: true }).click());
         await poll(async () => (await page.locator('.response-form h3').innerText()).includes(`#${fixture.first}`), 'Saved response edit did not finish');

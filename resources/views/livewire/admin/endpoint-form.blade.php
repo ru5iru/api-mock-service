@@ -1,4 +1,4 @@
-<div class="endpoint-editor" data-unsaved-form @if ($endpointId) data-global-save-editor @endif data-save-attempt="{{ $saveAttempt['id'] ?? '' }}" data-save-pending="{{ $savingAll ? 'true' : 'false' }}" data-server-dirty="{{ $saveSummary === \App\Livewire\Admin\EndpointForm::UNCONFIRMED ? 'true' : 'false' }}" data-draft-scope="request" data-draft-baseline="{{ json_encode($requestBaseline) }}" data-draft-current="{{ json_encode($this->requestDraftValues()) }}" x-data="{ activeTab: $wire.entangle('activeTab'), switchTab(tab) { this.activeTab = tab; $wire.touchSection(tab); } }">
+<div class="endpoint-editor" data-unsaved-form @if ($endpointId) data-global-save-editor @endif data-save-attempt="{{ $saveAttempt['id'] ?? '' }}" data-save-pending="{{ $savingAll ? 'true' : 'false' }}" data-server-dirty="{{ $saveSummary === \App\Livewire\Admin\EndpointForm::UNCONFIRMED ? 'true' : 'false' }}" data-draft-scope="request" data-draft-baseline="{{ json_encode($requestBaseline) }}" data-draft-current="{{ json_encode($this->requestDraftValues()) }}" x-data="{ activeTab: $wire.entangle('activeTab'), get workspaceTab() { return ['callback', 'settings'].includes(this.activeTab) ? this.activeTab : 'editor'; }, switchTab(tab) { this.activeTab = tab === 'editor' ? 'request' : tab; $wire.touchSection(this.activeTab); } }">
     <header class="page-header">
         <div class="page-header-copy">
             <h1 class="page-breadcrumbs"><a href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Endpoints</a><span aria-hidden="true">/</span><x-inline-title :name="$name" :placeholder="$preview ? $derivedName : 'New endpoint'" /></h1>
@@ -27,19 +27,27 @@
             : (! $responseReady
                 ? 'Next: complete response selection so this endpoint can answer requests.'
                 : 'Editing '.$derivedName.' · Ctrl/⌘ + Enter saves.');
+        $settingsState = $this->requestMetadataReady() ? 'valid' : (($submitAttempted || in_array('settings', $touchedSections, true)) ? 'attention' : 'neutral');
     @endphp
 
-    <nav class="flow-nav" aria-label="Endpoint settings">
-        <div role="tablist" aria-label="Endpoint settings" data-endpoint-tabs>
-            @foreach (['request' => ['Request', $requestState], 'matching' => ['Matching', $matchingState], 'response' => ['Response', $responseState], 'callback' => ['Callback', $callbackState]] as $tab => [$label, $state])
-                <button id="tab-{{ $tab }}" type="button" role="tab" aria-controls="panel-{{ $tab }}" x-bind:aria-selected="activeTab === '{{ $tab }}'" x-bind:tabindex="activeTab === '{{ $tab }}' ? 0 : -1" x-on:click="switchTab('{{ $tab }}')" @if ($tab === 'response' && $hasNoResponses) aria-describedby="response-empty-note" title="No response yet. Add one so this endpoint can answer requests. Until then it returns a diagnostic 500." @endif>
-                    <span>{{ $label }}</span><i class="section-status {{ $state }}" aria-label="{{ $tab === 'response' && $hasNoResponses ? 'No response yet' : ($state === 'valid' ? ($tab === 'response' ? 'Response selection is complete' : ($tab === 'request' ? 'Request is valid' : $label.' policy is ready')) : ($state === 'attention' ? ($tab === 'response' ? 'Response selection needs attention' : ($tab === 'request' ? 'Request needs attention' : $label.' policy needs attention')) : $label.' not yet reviewed')) }}">{{ $stateSymbol($state) }}</i>
+    <nav class="flow-nav endpoint-workspace-tabs" aria-label="Endpoint workspace">
+        <div role="tablist" aria-label="Endpoint workspace" data-endpoint-tabs>
+            @foreach (['editor' => ['Editor', $requestState, 'panel-editor panel-response'], 'callback' => ['Callback', $callbackState, 'panel-callback'], 'settings' => ['Settings', $settingsState, 'panel-settings']] as $tab => [$label, $state, $panel])
+                <button id="tab-{{ $tab }}" type="button" role="tab" aria-controls="{{ $panel }}"
+                        x-bind:aria-selected="workspaceTab === '{{ $tab }}'" x-bind:tabindex="workspaceTab === '{{ $tab }}' ? 0 : -1" x-on:click="switchTab('{{ $tab }}')">
+                    <span>{{ $label }}</span><i class="section-status {{ $state }}" aria-label="{{ $state === 'valid' ? $label.' settings are ready' : ($state === 'attention' ? $label.' needs attention' : $label.' not yet reviewed') }}">{{ $stateSymbol($state) }}</i>
                 </button>
             @endforeach
         </div>
+        @if ($endpointId)
+            <div class="endpoint-invocation-actions">
+                <button class="button button-secondary button-small" type="button" data-copy-curl data-copy-endpoint="{{ $endpointId }}" title="Copies the saved request using today's active Environment values; unsaved changes are not included."><x-workbench-icon name="copy" /> Copy mock curl</button>
+                <a class="button button-tertiary button-small" href="{{ route('dashboard.logs.index', ['endpoint' => $endpointId]) }}" wire:navigate>Logs</a>
+            </div>
+        @endif
     </nav>
 
-    <div class="endpoint-panel-viewport" data-editor-viewport>
+    <div class="endpoint-panel-viewport endpoint-workspace-viewport" data-editor-viewport>
         <div class="validation-panel error-panel" role="status" aria-live="polite" aria-atomic="true" data-save-result @if ($saveSummary === '') hidden @endif>
             <strong>{{ $saveSummary }}</strong>
             <dl class="definition-list">
@@ -50,10 +58,18 @@
                 @endforeach
             </dl>
         </div>
-    <form id="endpoint-settings" wire:submit="saveAll" data-endpoint-save-form x-show="['request', 'matching'].includes(activeTab)">
-    <div class="editor-grid">
-        <div class="editor-main">
-            <section id="panel-request" role="tabpanel" aria-labelledby="tab-request" class="card form-card editor-section" x-show="activeTab === 'request'">
+    <div class="endpoint-authoring-grid" x-bind:class="{ 'is-single-pane': workspaceTab !== 'editor' }">
+    <form id="endpoint-settings" class="endpoint-request-workspace" wire:submit="saveAll" data-endpoint-save-form x-show="workspaceTab !== 'callback'">
+        <div id="panel-editor" role="tabpanel" aria-labelledby="tab-editor" x-show="workspaceTab === 'editor'">
+            <div class="editor-pane-heading"><h2>Request &amp; matching</h2><span class="field-help">Draft request</span></div>
+            <div class="editor-request-tabs" role="tablist" aria-label="Request configuration" data-editor-subtabs>
+                @foreach (['request' => ['Request', $requestState], 'matching' => ['Matching', $matchingState]] as $tab => [$label, $state])
+                    <button id="tab-{{ $tab }}" type="button" role="tab" aria-controls="panel-{{ $tab }}" x-bind:aria-selected="(activeTab === 'matching' ? 'matching' : 'request') === '{{ $tab }}'" x-bind:tabindex="(activeTab === 'matching' ? 'matching' : 'request') === '{{ $tab }}' ? 0 : -1" x-on:click="switchTab('{{ $tab }}')">
+                        <span>{{ $label }}</span><i class="section-status {{ $state }}" aria-label="{{ $state === 'valid' ? ($tab === 'request' ? 'Request is valid' : 'Matching policy is ready') : ($state === 'attention' ? ($tab === 'request' ? 'Request needs attention' : 'Matching policy needs attention') : $label.' not yet reviewed') }}">{{ $stateSymbol($state) }}</i>
+                    </button>
+                @endforeach
+            </div>
+            <section id="panel-request" role="tabpanel" aria-labelledby="tab-request" class="card form-card editor-section" x-show="activeTab !== 'matching'">
                 <div class="card-heading">
                     <div>
                         <h2>Request</h2>
@@ -136,25 +152,12 @@
                     @endif
                 </div>
 
-                <div class="endpoint-control-grid">
-                    <div class="control-card">
-                        <div>
-                            <strong>Endpoint enabled</strong>
-                            <small>Disabled endpoints remain configured but never match.</small>
-                        </div>
-                        <label class="switch-control">
-                            <input type="checkbox" wire:model="enabled" aria-label="Endpoint enabled">
-                            <span aria-hidden="true"></span>
-                        </label>
-                    </div>
-                    <div class="field control-field">
-                        <label for="endpoint-priority">
-                            Priority <span>-1000 to 1000</span>
-                            <x-help-tip title="Priority" label="Priority is considered before signature specificity. For example, priority 10 can win over priority 0 even when priority 0 includes more headers." />
-                        </label>
-                        <input id="endpoint-priority" type="number" min="-1000" max="1000" step="1" wire:model="priority" aria-describedby="priority-help @error('priority') priority-error @enderror">
-                        <small id="priority-help" class="field-help">Use 0 normally. Increase it only to prefer this endpoint over an overlapping signature.</small>
-                        @error('priority') <p id="priority-error" class="field-error" data-error-for="{{ 'priority' }}">{{ $message }}</p> @enderror
+            </section>
+            <section id="panel-matching" role="tabpanel" aria-labelledby="tab-matching" class="card form-card editor-section" x-show="activeTab === 'matching'" x-cloak>
+                <div class="card-heading">
+                    <div>
+                        <h2>Matching</h2>
+                        <p>Control which request data participates in the canonical signature.</p>
                     </div>
                 </div>
 
@@ -178,76 +181,6 @@
                         </div>
                     @endif
                     @error('pathPatternEnabled') <p class="field-error" data-error-for="{{ 'pathPatternEnabled' }}" role="alert">{{ $message }}</p> @enderror
-                </div>
-
-                <div class="organization-grid">
-                    <div class="field">
-                        <label for="endpoint-collection">Collection</label>
-                        <select class="ui-select" id="endpoint-collection" wire:model="collectionId">
-                            <option value="">No collection</option>
-                            @foreach ($collections as $endpointCollection)<option value="{{ $endpointCollection->id }}">{{ $endpointCollection->name }}</option>@endforeach
-                        </select>
-                        <div class="inline-create-control">
-                            <input type="text" wire:model="newCollectionName" placeholder="New collection name" aria-label="New collection name">
-                            <button class="button button-secondary button-small" type="button" wire:click="createCollectionInline">Create</button>
-                        </div>
-                        @error('collectionId') <p class="field-error" data-error-for="{{ 'collectionId' }}">{{ $message }}</p> @enderror
-                        @error('newCollectionName') <p class="field-error" data-error-for="{{ 'newCollectionName' }}">{{ $message }}</p> @enderror
-                    </div>
-
-                    <fieldset class="field tag-input">
-                        <legend>Tags <x-help-tip title="Endpoint tags" label="Use tags to filter endpoints or assign them in bulk. Save changes to store this endpoint’s tag assignments." /></legend>
-                        <div class="tag-choice-list">
-                            @forelse ($availableTags as $tag)
-                                <label class="tag-chip selectable {{ in_array((string) $tag->id, array_map('strval', $tagIds), true) ? 'selected' : '' }}">
-                                    <input type="checkbox" wire:model="tagIds" value="{{ $tag->id }}"><span>{{ $tag->name }}</span>
-                                </label>
-                            @empty
-                                <span class="field-help">No tags yet.</span>
-                            @endforelse
-                        </div>
-                        <div class="inline-create-control">
-                            <input type="text" wire:model="newTagName" placeholder="New tag" aria-label="New tag name">
-                            <button class="button button-secondary button-small" type="button" wire:click="createTagInline">Add tag</button>
-                        </div>
-                        @error('tagIds.*') <p class="field-error" data-error-for="{{ 'tagIds.*' }}">{{ $message }}</p> @enderror
-                        @error('newTagName') <p class="field-error" data-error-for="{{ 'newTagName' }}">{{ $message }}</p> @enderror
-                    </fieldset>
-                </div>
-
-                <details class="normalized-details environment-overrides" data-disclosure>
-                    <summary><x-disclosure-chevron /> Environment availability</summary>
-                    <div class="table-scroll">
-                        <table class="header-table">
-                            <thead><tr><th scope="col">Environment</th><th scope="col">Behavior</th></tr></thead>
-                            <tbody>
-                                <tr><th scope="row">All other environments</th><td>Inherits endpoint state ({{ $enabled ? 'enabled' : 'disabled' }})</td></tr>
-                                @foreach ($environments as $environment)
-                                    <tr>
-                                        <th scope="row">{{ $environment->name }} @if($environment->is_default)<x-badge>Default</x-badge>@endif</th>
-                                        <td>
-                                            <select class="ui-select" wire:model="environmentOverrides.{{ $environment->id }}" aria-label="{{ $environment->name }} override">
-                                                <option value="">Inherit endpoint state</option>
-                                                <option value="1">Allow when endpoint is enabled</option>
-                                                <option value="0">Force disabled</option>
-                                            </select>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </details>
-
-
-            </section>
-
-            <section id="panel-matching" role="tabpanel" aria-labelledby="tab-matching" class="card form-card editor-section" x-show="activeTab === 'matching'" x-cloak>
-                <div class="card-heading">
-                    <div>
-                        <h2>Matching</h2>
-                        <p>Control which request data participates in the canonical signature.</p>
-                    </div>
                 </div>
 
                 <div class="policy-group">
@@ -318,22 +251,17 @@
                 @endif
                 @error('excludedQueryParams') <p class="field-error" data-error-for="{{ 'excludedQueryParams' }}" role="alert">{{ $message }}</p> @enderror
                 @error('excludedHeaderNames') <p class="field-error" data-error-for="{{ 'excludedHeaderNames' }}" role="alert">{{ $message }}</p> @enderror
-            </section>
-
-
-
-        </div>
-
-        <aside class="preview-column">
+            </section>        <aside class="preview-column">
             <section class="card preview-card sticky-card">
                 <div class="card-heading tight">
                     <div>
                         <h2>Signature</h2>
-                        <p>The canonical request saved for matching.</p>
+                        <p>Canonical preview of this draft; Save changes persists it.</p>
                     </div>
                 </div>
 
                 @if ($preview)
+                    <p class="field-help">Source URL · not the mock invocation URL</p>
                     <div class="request-summary">
                         <span class="method-badge method-{{ strtolower($preview['parsed']->method) }}">{{ $preview['parsed']->method }}</span>
                         <code>{{ $preview['parsed']->url }}</code>
@@ -411,20 +339,107 @@
                 <p>Matching uses the URL path and query, not the scheme, host, or port.</p>
             </div>
         </aside>
-    </div>
+        </div>
+        <section id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" class="endpoint-settings-workspace" x-show="workspaceTab === 'settings'" x-cloak>
+            <div class="editor-pane-heading"><h2>Endpoint settings</h2><span class="field-help">Saved with Save changes</span></div>
+            <p class="field-help">Rename with the title above. Organize this endpoint and control when it can match.</p>
+                <div class="endpoint-control-grid">
+                    <div class="control-card">
+                        <div>
+                            <strong>Endpoint enabled</strong>
+                            <small>Disabled endpoints remain configured but never match.</small>
+                        </div>
+                        <label class="switch-control">
+                            <input type="checkbox" wire:model="enabled" aria-label="Endpoint enabled">
+                            <span aria-hidden="true"></span>
+                        </label>
+                    </div>
+                    <div class="field control-field">
+                        <label for="endpoint-priority">
+                            Priority <span>-1000 to 1000</span>
+                            <x-help-tip title="Priority" label="Priority is considered before signature specificity. For example, priority 10 can win over priority 0 even when priority 0 includes more headers." />
+                        </label>
+                        <input id="endpoint-priority" type="number" min="-1000" max="1000" step="1" wire:model="priority" aria-describedby="priority-help @error('priority') priority-error @enderror">
+                        <small id="priority-help" class="field-help">Use 0 normally. Increase it only to prefer this endpoint over an overlapping signature.</small>
+                        @error('priority') <p id="priority-error" class="field-error" data-error-for="{{ 'priority' }}">{{ $message }}</p> @enderror
+                    </div>
+                </div>
 
+                <div class="organization-grid">
+                    <div class="field">
+                        <label for="endpoint-collection">Collection</label>
+                        <select class="ui-select" id="endpoint-collection" wire:model="collectionId">
+                            <option value="">No collection</option>
+                            @foreach ($collections as $endpointCollection)<option value="{{ $endpointCollection->id }}">{{ $endpointCollection->name }}</option>@endforeach
+                        </select>
+                        <div class="inline-create-control">
+                            <input type="text" wire:model="newCollectionName" placeholder="New collection name" aria-label="New collection name">
+                            <button class="button button-secondary button-small" type="button" wire:click="createCollectionInline">Create</button>
+                        </div>
+                        @error('collectionId') <p class="field-error" data-error-for="{{ 'collectionId' }}">{{ $message }}</p> @enderror
+                        @error('newCollectionName') <p class="field-error" data-error-for="{{ 'newCollectionName' }}">{{ $message }}</p> @enderror
+                    </div>
+
+                    <fieldset class="field tag-input">
+                        <legend>Tags <x-help-tip title="Endpoint tags" label="Use tags to filter endpoints or assign them in bulk. Save changes to store this endpoint’s tag assignments." /></legend>
+                        <div class="tag-choice-list">
+                            @forelse ($availableTags as $tag)
+                                <label class="tag-chip selectable {{ in_array((string) $tag->id, array_map('strval', $tagIds), true) ? 'selected' : '' }}">
+                                    <input type="checkbox" wire:model="tagIds" value="{{ $tag->id }}"><span>{{ $tag->name }}</span>
+                                </label>
+                            @empty
+                                <span class="field-help">No tags yet.</span>
+                            @endforelse
+                        </div>
+                        <div class="inline-create-control">
+                            <input type="text" wire:model="newTagName" placeholder="New tag" aria-label="New tag name">
+                            <button class="button button-secondary button-small" type="button" wire:click="createTagInline">Add tag</button>
+                        </div>
+                        @error('tagIds.*') <p class="field-error" data-error-for="{{ 'tagIds.*' }}">{{ $message }}</p> @enderror
+                        @error('newTagName') <p class="field-error" data-error-for="{{ 'newTagName' }}">{{ $message }}</p> @enderror
+                    </fieldset>
+                </div>
+
+                <details class="normalized-details environment-overrides" data-disclosure>
+                    <summary><x-disclosure-chevron /> Environment availability</summary>
+                    <div class="table-scroll">
+                        <table class="header-table">
+                            <thead><tr><th scope="col">Environment</th><th scope="col">Behavior</th></tr></thead>
+                            <tbody>
+                                <tr><th scope="row">All other environments</th><td>Inherits endpoint state ({{ $enabled ? 'enabled' : 'disabled' }})</td></tr>
+                                @foreach ($environments as $environment)
+                                    <tr>
+                                        <th scope="row">{{ $environment->name }} @if($environment->is_default)<x-badge>Default</x-badge>@endif</th>
+                                        <td>
+                                            <select class="ui-select" wire:model="environmentOverrides.{{ $environment->id }}" aria-label="{{ $environment->name }} override">
+                                                <option value="">Inherit endpoint state</option>
+                                                <option value="1">Allow when endpoint is enabled</option>
+                                                <option value="0">Force disabled</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+
+
+        </section>
     </form>
-
-    <div x-show="['response', 'callback'].includes(activeTab)" x-cloak>
-        @if ($preview)
-            <div class="endpoint-context-strip"><span class="method-badge method-{{ strtolower($preview['parsed']->method) }}">{{ $preview['parsed']->method }}</span><code title="{{ $preview['parsed']->url }}">{{ parse_url($preview['parsed']->url, PHP_URL_PATH) ?: '/' }}</code><x-help-tip title="Full request URL" :label="$preview['parsed']->url" /></div>
-        @endif
+    <div class="endpoint-response-workspace" x-show="workspaceTab !== 'settings'">
+        <div class="editor-pane-heading" x-show="workspaceTab === 'editor'">
+            <h2 id="response-pane-heading" @if ($hasNoResponses) aria-describedby="response-empty-note" @endif>Responses</h2>
+            <i data-response-state class="section-status {{ $responseState }}" aria-label="{{ $hasNoResponses ? 'No response yet' : ($responseReady ? 'Response selection is complete' : 'Response selection needs attention') }}">{{ $stateSymbol($responseState) }}</i>
+        </div>
         @if ($endpoint)
             <livewire:admin.response-manager :endpoint="$endpoint" :key="'endpoint-responses-'.$endpointId" />
         @else
-            <section id="panel-response" role="tabpanel" aria-labelledby="tab-response" x-show="activeTab === 'response'" class="card empty-state"><h3>Create the endpoint first</h3><p>Save the request, then add responses.</p><button class="button button-secondary" type="button" x-on:click="switchTab('request')">Configure request</button></section>
-            <section id="panel-callback" role="tabpanel" aria-labelledby="tab-callback" x-show="activeTab === 'callback'" class="card empty-state"><h3>Add a response first</h3><p>Callbacks belong to individual responses.</p><button class="button button-secondary" type="button" x-on:click="switchTab('response')">Configure responses</button></section>
+            <section id="panel-response" role="region" aria-labelledby="response-pane-heading" x-show="workspaceTab === 'editor'" class="empty-state editor-create-response"><h3>Create the endpoint first</h3><p>Save the request, then add responses.</p><button class="button button-secondary" type="button" x-on:click="switchTab('request')">Configure request</button></section>
+            <section id="panel-callback" role="tabpanel" aria-labelledby="tab-callback" x-show="activeTab === 'callback'" class="empty-state" x-cloak><h3>Add a response first</h3><p>Callbacks belong to individual responses.</p><button class="button button-secondary" type="button" x-on:click="switchTab('response')">Configure responses</button></section>
         @endif
+    </div>
     </div>
     </div>
 

@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // One fresh guarded PostgreSQL database per theme, never an operator instance.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -30,7 +31,7 @@ try {
         await page.locator('#raw-curl').fill(f.curl);
         const save = page.locator('[data-sticky-action-bar]').getByRole('button', { name: 'Save changes', exact: true });
         await poll(() => save.isEnabled(), 'Request preview did not settle');
-        await page.getByRole('tab', { name: /^Response/ }).click();
+        await openEditorSection(page, 'Response');
         const edit = async id => {
             await page.locator(`[wire\\:key="response-${id}"]`).getByRole('button', { name: 'Edit', exact: true }).click();
             await poll(async () => (await page.locator('.response-form h3').innerText()).includes(`#${id}`), 'Response did not open');
@@ -65,7 +66,7 @@ try {
         const state = async key => page.locator(`[data-save-scope="${key}"] dd`).innerText();
         assert.equal(await state(`response:${f.first}`), scenario === 'race' ? 'Saved' : 'Not saved');
         assert.equal(await state(`response:${f.second}`), scenario === 'validation' ? 'Needs attention' : scenario === 'race' ? 'Saved' : 'Not saved');
-        assert.equal(await page.getByRole('tab', { name: scenario === 'validation' ? /^Response/ : /^Request/ }).getAttribute('aria-selected'), 'true');
+        assert.equal(await page.locator('[data-endpoint-tabs]').getByRole('tab', { name: /^Editor/ }).getAttribute('aria-selected'), 'true');
         await poll(() => page.evaluate(id => document.activeElement?.id === id, scenario === 'validation' ? 'response-weight' : 'raw-curl'), 'Focus did not reach the first invalid field');
         assert.equal(await page.evaluate(() => window.MockDeckEditor.isDirty()), true);
         assert.equal(await page.locator('.response-manager').getAttribute('data-server-dirty'), scenario === 'race' ? 'false' : 'true');
@@ -77,22 +78,22 @@ try {
         assert.ok(await page.locator('[data-sticky-action-bar]').evaluate(el => el.getBoundingClientRect().bottom <= innerHeight + 1));
         if (shots) await page.screenshot({ path: `${shots}/${label}.png`, fullPage: true });
         if (scenario === 'race') {
-            await page.getByRole('tab', { name: /^Response/ }).click();
+            await openEditorSection(page, 'Response');
             await edit(f.first);
             await page.locator('#response-body').fill('a later draft');
             const oldState = page.locator(`[data-save-scope="response:${f.first}"]`);
             await poll(async () => !(await oldState.isVisible()), 'Later edit retained stale Saved state');
-            await page.getByRole('tab', { name: /^Request/ }).click();
-            await page.getByRole('tab', { name: /^Response/ }).click();
+            await openEditorSection(page, 'Request');
+            await openEditorSection(page, 'Response');
             await poll(async () => !(await oldState.isVisible()), 'Parent morph resurrected stale Saved state');
             await page.locator('#response-body').fill('after-a');
-            await page.getByRole('tab', { name: /^Request/ }).click();
+            await openEditorSection(page, 'Request');
         }
         // Correct the failing scope, then retry. Old Saved/Not saved labels must disappear on edit.
         if (scenario !== 'validation') {
             await page.locator('#raw-curl').fill(f.curl.replace('/new', '/corrected'));
             await poll(() => save.isEnabled(), 'Save stayed disabled after correcting request');
-            await page.getByRole('tab', { name: /^Response/ }).click();
+            await openEditorSection(page, 'Response');
         } else {
             await page.locator('#response-weight').fill('1');
             await poll(() => save.isEnabled(), 'Save stayed disabled after child failure');

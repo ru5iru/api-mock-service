@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Read-only application checks. Presentation preferences are the only stored changes.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -41,10 +42,10 @@ try {
         await explorerSearch.fill('__no_such_workbench_endpoint__');
         await page.getByText('No endpoints match. Change the search or collection.').waitFor();
         await explorerSearch.fill('');
-        for (const tab of ['Request', 'Matching', 'Response', 'Callback']) {
-            await page.getByRole('tab', { name: new RegExp(`^${tab}`) }).click();
+        for (const tab of ['Request', 'Matching', 'Response', 'Callback', 'Settings']) {
+            await openEditorSection(page, tab);
         }
-        await page.getByRole('tab', { name: /^Request/ }).click();
+        await openEditorSection(page, 'Request');
         const curl = page.locator('#raw-curl');
         const originalCurl = await curl.inputValue();
         await curl.fill("curl 'https://example.test/workbench-unsaved'");
@@ -59,6 +60,7 @@ try {
         assert.equal(await curl.inputValue(), "curl 'https://example.test/workbench-unsaved'", 'Cancelled navigation must retain the edited source');
         await curl.fill(originalCurl);
         await page.waitForFunction(() => !window.MockDeckEditor.isDirty());
+        await openEditorSection(page, 'Settings');
         const priority = page.locator('#endpoint-priority');
         await priority.focus();
         await priority.scrollIntoViewIfNeeded();
@@ -69,7 +71,7 @@ try {
         assert.ok(fieldBox.y >= headerBox.y + headerBox.height && fieldBox.y + fieldBox.height <= saveBox.y, 'Focused input must clear sticky chrome');
         assert.ok(saveBox.y + saveBox.height <= footerBox.y + 1, 'Save action bar must clear status bar');
         await priority.blur();
-        const tip = page.locator('.help-tip').first();
+        const tip = page.locator('.help-tip[aria-label="Priority"]');
         await tip.hover();
         const bubble = tip.locator('[role="tooltip"]');
         await bubble.waitFor({ state: 'visible' });
@@ -117,7 +119,7 @@ try {
             await page.screenshot({ path: resolve(shots, `registry-${width}-${theme}.png`) });
         }
         await page.close();
-        console.log(`PASS ${theme}: routes, persistence, sidebar, four tabs, tooltip hover/Escape, targets, shortcut opt-out, 1024/390/320 reflow`);
+        console.log(`PASS ${theme}: routes, persistence, sidebar, workspace/pane navigation, tooltip hover/Escape, targets, shortcut opt-out, 1024/390/320 reflow`);
     }
     assert.deepEqual(errors, []);
 } finally { await browser.close(); }

@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Confirm and cancel every formerly native dialog against a dedicated test database.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -101,7 +102,7 @@ try {
         assert.equal(await page.locator('.selection-response-card').count(), 2);
         await confirm(removeResponse);
         await poll(async () => await page.locator('.selection-response-card').count() === 1, 'Response confirmation did not delete');
-        await page.getByRole('tab', { name: /^Request/ }).click();
+        await openEditorSection(page, 'Settings');
         await page.locator('#endpoint-priority').fill('42');
         const navigation = page.locator('.topnav a[href$="/logs"]');
         await cancel(navigation);

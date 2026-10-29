@@ -31,7 +31,7 @@ Login attempts are rate-limited. Use the user menu to sign out. Setting `MOCK_DA
 
 The workbench uses a persistent top bar, a left navigation rail and a contextual sidebar. The rail opens Endpoints, Logs, Import / export, Environments and Documentation. Use **Toggle workspace sidebar** to recover editing space; its desktop collapsed state is remembered. At narrower widths it opens a temporary sidebar; Escape closes it and returns focus to the toggle. Mobile uses the labelled Menu for global destinations.
 
-When creating or editing an endpoint, the sidebar offers a separate search and flat Collection filter with 15 endpoints per page. It never lists run-owned mocks or shows request credentials. The main registry retains its own filters, pagination and bulk actions. Request, Matching, Response and Callback remain the current editor tabs during this first migration stage.
+When creating or editing an endpoint, the sidebar offers a separate search and flat Collection filter with 15 endpoints per page. It never lists run-owned mocks or shows request credentials. The main registry retains its own filters, pagination and bulk actions. Endpoint editing uses Editor, Callback and Settings. Editor keeps Request/Matching controls on the left and Responses on the right; narrower layouts stack these panes.
 
 Open shortcut help with **?** or **Shortcuts** in the footer and uncheck **Enable N, / and ? shortcuts outside text fields** to disable single-character shortcuts. This preference persists; Ctrl/⌘+Enter remains available. Theme, log density, sidebar visibility and shortcut preference are presentation settings; endpoint values and secrets are not stored by the new workbench preference script.
 
@@ -68,9 +68,9 @@ Keyboard shortcuts are ignored while typing in a form control:
 6. Review the canonical request, signature variant, and SHA-256 hash.
 7. Save the endpoint and configure at least one response.
 
-An endpoint with zero saved responses shows a **No response** badge and an **Add response** link in the registry. The link opens the Response tab, where the persistent note explains the diagnostic 500 until a response is saved. The note and tab cue clear immediately after saving a response, including for imported Postman requests with no saved examples. No placeholder response is created.
+An endpoint with zero saved responses shows a **No response** badge and an **Add response** link in the registry. The link opens the Responses pane in Editor, where the persistent note explains the diagnostic 500 until a response is saved. The note and pane cue clear immediately after saving a response, including for imported Postman requests with no saved examples. No placeholder response is created.
 
-Request, Matching, Response, and Callback are separate tabs. Switching keeps unsaved edits in the current editor session and does not scroll the document. Request and Matching share the Signature sidebar; Response and Callback retain a compact method/path strip. The tabs stick below the main navigation, and the save bar stays at the viewport bottom with the scrolling panel ending above it. **Save changes** saves request settings and response/selection/callback drafts, including drafts held for another response. **Cancel edit** discards the selected response draft; navigating away asks before discarding unsaved work. The header's **History** button opens endpoint versions from every tab.
+Editor, Callback and Settings are the primary tasks. In Editor, Request and Matching are subtabs in the left pane, with the full Signature preview below them; the right pane contains Responses. At desktop widths above 1100px each pane scrolls independently; at narrower widths they stack in one scrolling workspace. Callback and Settings each use the full workspace. The top tabs and global save bar remain outside pane scrolling and clear the shell statusbar. Switching keeps unsaved edits in the same mounted components. Existing ?tab=request, matching and response links open their corresponding Editor area; ?tab=callback stays Callback; ?tab=settings opens Settings and ?tab=editor opens Editor. **Save changes** saves request settings and response/selection/callback drafts, including drafts held for another response. **Cancel edit** discards the selected response draft; navigating away asks before discarding unsaved work. The header's **History** button opens endpoint versions from every tab.
 
 In-app navigation away from a dirty editor opens the shared **Discard unsaved changes?** confirmation. Reload and tab close use the browser's own leave prompt; its wording is browser-controlled and the browser may not show it. Unsaved edits are held in memory only: there is no autosave or draft recovery. Accepting a leave prompt discards unsaved edits; saved changes remain.
 
@@ -81,6 +81,13 @@ Authentication is ignored by default for newly created endpoints. Transport meta
 Absolute URLs are required during configuration, but scheme, host, and port are not part of the signature. An endpoint created from `https://api.example.test/v1/items` is invoked through the MockDeck host at `/v1/items`.
 
 URL-embedded credentials, relative URLs, non-HTTP schemes, file-backed cURL bodies, and unsupported unsafe input are rejected.
+
+
+Use **Response to edit** to select a saved response, or **New response** to restore/start the new-response draft. Each response keeps its own draft. **Cancel edit** still discards only the current draft. The editable form appears before the full response-selection/configured-pool list; Weighted, Sequence, Rule-based, rule conditions, reordering, History and Delete remain available below it. No response is created by choosing a row or starting a draft.
+
+**Settings** contains enabled state, priority, collection, tag assignment/creation and every Environment availability override. These remain part of the existing endpoint Save changes operation. The inline title retains its independent Enter/blur rename behavior. Validation of these metadata fields opens Settings; request and matching errors open the appropriate Editor subtab.
+
+For a saved endpoint, **Copy mock curl** and **Logs** stay beside the primary tabs. Copy uses the saved request and active Environment at click time, excludes unsaved request changes, and shares the registry's existing clipboard/error handling. The source URL and canonical draft are labelled separately. A valid copied invocation is not proof that a response exists; until one is saved, the diagnostic 500 remains.
 
 ## 4. Understand request matching
 
@@ -421,7 +428,7 @@ Revision summaries are intentionally short (for example, `renamed`, `priority 0�
 
 ## 16. Asynchronous callbacks
 
-Each saved response can send an independent HTTP request after its normal mock response has already been sent. Open the endpoint's **Callback** tab and select a response's **Enable callback** or **Edit callback** action. Enter an absolute HTTP(S) URL and select POST, PUT, PATCH, or DELETE. Add a JSON object of request headers and a JSON response template for the callback body. **Save callback** applies these settings without saving unrelated response edits. The main response's status, body, and latency do not depend on callback delivery. Add a response in the **Response** tab first if the list is empty.
+Each saved response can send an independent HTTP request after its normal mock response has already been sent. Open the endpoint's **Callback** tab and select a response's **Enable callback** or **Edit callback** action. Enter an absolute HTTP(S) URL and select POST, PUT, PATCH, or DELETE. Add a JSON object of request headers and a JSON response template for the callback body. **Save callback** applies these settings without saving unrelated response edits. The main response's status, body, and latency do not depend on callback delivery. Add a response in the **Responses** pane in Editor first if the list is empty.
 
 The callback runs in a dedicated background worker (`docker compose ps callback-worker`); stopped workers leave new jobs queued. Choose a fixed minimum delay, or set a larger maximum for a random range (up to 30 seconds). **Max attempts** includes the first delivery (1–5 total); non-2xx HTTP responses and network errors retry until the first success or this limit, waiting the configured backoff between attempts. Each attempt has a hard 100–10,000 ms timeout. Redirects do not count as success and are not followed automatically.
 
@@ -563,7 +570,7 @@ An untouched Add response form does not create another response. **Add response*
 
 ### Finding callback configuration
 
-Open an existing endpoint's **Callback** tab, then choose **Enable callback** or **Edit callback** on its compact response row. The selected response opens Delivery settings; expand **Retry policy** and **Signing** for secondary settings. Save with **Save callback** or the global **Save changes**. The Response tab contains status, weight, delay, headers, body, and the collapsed Fault injection settings. Add a saved response first if the callback list is empty. The response row's overflow menu also offers a shortcut to its callback settings.
+Open an existing endpoint's **Callback** tab, then choose **Enable callback** or **Edit callback** on its compact response row. The selected response opens Delivery settings; expand **Retry policy** and **Signing** for secondary settings. Save with **Save callback** or the global **Save changes**. The Responses pane in Editor contains status, weight, delay, headers, body, and the collapsed Fault injection settings. Add a saved response first if the callback list is empty. The response row's overflow menu also offers a shortcut to its callback settings.
 
 
 ## 22. Field exclusions and path parameters

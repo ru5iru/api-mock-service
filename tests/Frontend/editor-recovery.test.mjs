@@ -33,7 +33,7 @@ test('advanced help explains condition syntax, callback scope and restore conseq
     assert.match(responses, /Dot-separated JSON path/);
     assert.match(responses, /Include regex delimiters/);
     assert.match(callbacks, /Timing and retries/);
-    assert.match(callbacks, /Locale and Seed settings in the Response tab/);
+    assert.match(callbacks, /Locale and Seed settings in the Responses pane in Editor/);
     assert.match(callbacks, /wire:target="previewCallback"/);
     assert.match(history, /Unsaved drafts for this item will be discarded/);
 });
