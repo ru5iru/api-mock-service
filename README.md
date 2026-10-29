@@ -90,7 +90,7 @@ Callbacks run only when a selected response has callbacks enabled. The separate 
 
 ## Manage endpoints and responses
 
-The endpoint registry searches name, method, path, and raw cURL; filters by method/state; and sorts by recent update, name, or priority. Each row can be opened, enabled/disabled, duplicated, exported, deleted, or copied as a MockDeck-host cURL. Selecting rows exposes bulk enable, disable, move-to-collection, add-tags, export, and delete actions.
+The endpoint registry searches name, method, path, and raw cURL; filters by method/state; and sorts by recent update, name, or priority. Each row can be opened, enabled/disabled, duplicated, exported, deleted, or copied as a MockDeck-host cURL. Selecting rows exposes bulk enable, disable, move-to-collection, add-tags, export, and delete actions. The selection strip states the total and visible-page counts because selection spans pages and filters. Recent requests sits in a collapsible secondary section below the registry.
 
 Collections and tags organize the registry without affecting request signatures. Filter by collection or multiple tag chips, show tags on endpoint rows, and use the bulk bar to move endpoints or attach tags. Deleting a collection keeps every endpoint and clears only its collection assignment.
 

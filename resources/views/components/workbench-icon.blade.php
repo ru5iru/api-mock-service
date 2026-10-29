@@ -8,6 +8,7 @@
         @case('docs') <path d="M12 5C9 3 5 3 2 4v15c4-1 7-1 10 1 3-2 6-2 10-1V4c-3-1-7-1-10 1Zm0 0v15" /> @break
         @case('plus') <path d="M12 5v14M5 12h14" /> @break
         @case('copy') <rect x="8" y="8" width="12" height="13" rx="2" /><path d="M16 8V3H3v13h5" /> @break
+        @case('more') <circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /> @break
         @case('sidebar') <rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /> @break
     @endswitch
 </svg>

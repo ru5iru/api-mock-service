@@ -114,7 +114,7 @@ Request-log match labels mean:
 
 ## 5. Manage the endpoint registry
 
-The endpoint toolbar can search name, method, path, or raw cURL. Filter by HTTP method and enabled state, then sort by recent update, name, or priority.
+The endpoint workspace has a search field followed by labelled Method, State, Sort and Collection filters and the Tags menu. Search name, method, path, or raw cURL; sort by recent update, name, or priority. The result count above the rows shows the filtered total relative to all ordinary endpoints. Each page contains up to 15 endpoints. Clear filters restores the full registry and the default sort.
 
 Each endpoint row supports:
 
@@ -124,7 +124,9 @@ Each endpoint row supports:
 - duplicate as a disabled endpoint;
 - delete the endpoint and all of its responses.
 
-Select one page or individual rows to expose bulk actions for **Enable**, **Disable**, **Export**, and **Delete**. Bulk delete requires confirmation. Pagination and selection are independent; verify the selection count before a destructive action.
+Use **Select page** or individual row checkboxes to expose the bulk action strip. The page checkbox shows a mixed state when only some visible rows are selected. Selection is retained across pages and filters; the strip states both the total selected and how many are on this page. **Clear selection** clears the whole selection, including hidden pages. Bulk **Enable**, **Disable**, **Move to collection**, **Add tags** and **Delete** clear selection after success; **Export** keeps it. Export uses the existing redacted native 1.5 format. Bulk delete requires the shared confirmation dialog. Review the full selected count before applying an action.
+
+An empty database offers **New endpoint** and **Import configuration**. An empty selected collection or unfiled group explains that scope; other zero-result filters offer **Clear filters**. Filter and page requests show the existing loading skeleton. Below pagination, **Recent requests** is a secondary disclosure, open initially; collapse it to focus on endpoints or open the full request log from inside it. The disclosure uses existing log polling and Pause/Resume behavior and does not store a new preference.
 
 ### Collections and tags
 

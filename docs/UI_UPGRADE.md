@@ -19,12 +19,12 @@ A checkbox means the named scope is implemented and has **two recorded successfu
 
 ## Current delivery boundary
 
-Delivered scope: shared workbench foundations and registry presentation (final review/verification ledger below). Existing Request / Matching / Response / Callback tabs stay until the separate endpoint-workbench migration; no premature Editor / Settings labels. The source, matching, mutation, import, credential and run-isolation contracts remain authoritative.
+Delivered scope: shared workbench foundations, registry presentation and registry interactions/secondary activity (dated verification ledgers below). Existing Request / Matching / Response / Callback tabs stay until the separate endpoint-workbench migration; no premature Editor / Settings labels. The source, matching, mutation, import, credential and run-isolation contracts remain authoritative.
 
 ## Checklist
 
 
-**P0:** foundation or safety dependency. **P1:** core redesign release. **P2:** completion/hardening. Checkboxes describe work to do; none claim an implemented fix.
+**P0:** foundation or safety dependency. **P1:** core redesign release. **P2:** completion/hardening. Checked items have evidence in the ledger below; unchecked items remain pending.
 
 ### P0 — shared foundations and interaction contracts
 
@@ -43,12 +43,12 @@ Delivered scope: shared workbench foundations and registry presentation (final r
 ### P1 — endpoint registry and explorer
 
 - [x] **R01** Replace endpoint cards with continuous aligned rows, preserving full identities and contextual details.
-- [ ] **R02** Preserve search, method/state/collection/tag filters, sorting, counts and pagination.
-- [ ] **R03** Preserve single-row enable, copy, edit, duplicate and delete with explicit focus/hover access.
-- [ ] **R04** Preserve page/individual selection and every bulk operation, including move and tags.
+- [x] **R02** Preserve search, method/state/collection/tag filters, sorting, counts and pagination.
+- [x] **R03** Preserve single-row enable, copy, edit, duplicate and delete with explicit focus/hover access.
+- [x] **R04** Preserve page/individual selection and every bulk operation, including move and tags.
 - [x] **R05** Implement explorer search/collection navigation with bounded loading and correct flat grouping.
 - [ ] **R06** Design database-empty, collection-empty, filtered-empty, loading and deleted-current-endpoint states.
-- [ ] **R07** Place embedded recent requests without restoring a wall of dashboard cards.
+- [x] **R07** Place embedded recent requests without restoring a wall of dashboard cards.
 
 **Acceptance:** a registry containing long names/paths, unfiled items, many tags, disabled/no-response entries and multiple pages remains fully manageable; the explorer never exposes run-owned mocks.
 
@@ -146,7 +146,7 @@ Delivered scope: shared workbench foundations and registry presentation (final r
 
 ## Feature parity inventory
 
-The following target mapping is carried forward from the approved plan after reconciling recent master. It is an inventory of preserved features and intended destinations, **not** a claim that each proposed screen has shipped. The checklist above is the completion authority. **8 of 72 items are verified complete; 64 remain unchecked.**
+The following target mapping is carried forward from the approved plan after reconciling recent master. It is an inventory of preserved features and intended destinations, **not** a claim that each proposed screen has shipped. The checklist above is the completion authority. **12 of 72 items are verified complete; 60 remain unchecked.**
 
 
 **Coverage labels:** Shown = present in the prototype; Partial = a simplified illustration exists; Missing = a production design must be supplied. All proposed routes below retain their current URL unless explicitly stated otherwise.
@@ -273,3 +273,71 @@ Compared with the imported master snapshot, these files are changed or new. Earl
 - `tests/Frontend/workbench.test.mjs`
 
 No Composer/package dependency, route, database migration, canonicalization/matching service or response/callback mutation service was changed.
+
+
+### Registry interactions and secondary activity — 29 October 2026
+
+Baseline for this increment: the delivered 28 October foundation on uploaded master `8622ec7`; local Git ancestry is still `44a00e30cac673decf93dae3b503abc9c35c5e3d`. User master changes and foundation work remain intact. This increment changes registry presentation/draft synchronization only; it adds no backend service, dependency, route, migration, matching/signature rule or native-format change.
+
+Implemented: full-width search; visible filter labels; separate page-selection/result strip; native mixed checkbox state; a contextual bulk strip stating total/on-page selection and cross-page persistence; existing actions with pending guards; visible row actions; wrapping identities; distinct database/collection/filtered empty states; and initially open, collapsible recent requests using the same LogViewer. Filters use two columns at <=740px and one at <=440px so current native option labels remain readable. R06 remains partial: deleted-current-editor recovery is still pending; empty/loading presentation alone is not its whole requirement.
+
+Runtime testing exposed two actual registry issues, fixed within this scope: the master checkbox could keep its previous page's checked state after morphing, and deferred bulk-tag drafts left Apply tags disabled. The master now synchronizes native checked/indeterminate properties. Bulk tags use live draft binding and preserve the native menu's open state through `wire:ignore.self`; assignments still persist only on Apply. Overflow menus use the same open-state convention. The browser test reads saved state independently and waits for the toggle response to settle before opening a row action.
+
+The existing workbench smoke also assumed the cURL textarea remained expanded throughout the discard dialog. Parsing can legitimately collapse it into the source summary. The test now reopens Edit request when needed and additionally verifies that cancelled navigation retained the exact edited cURL before restoring the baseline. No dirty-navigation application code changed.
+
+| Scope | First verification | Second verification | Completion |
+|---|---|---|---|
+| R02 filters / sorting / counts / pagination | RegistryWorkspaceTest verifies combined filters, reset, page reset, totals and sort | Real browser exercises method/state/collection/tag filters, totals, name/priority sort and page navigation in both themes | Verified twice; bounded review ship |
+| R03 row actions | PHPUnit verifies enable, disabled duplicate with response copy and deletion; existing copy/redaction regression retained | Real browser copies to clipboard, toggles, duplicates, cancels/confirms delete and opens Edit in both themes | Verified twice; bounded review ship |
+| R04 selection / every bulk action | PHPUnit checks two-page selection, hidden selection, move/tags/enable/disable/export/delete and clearing contracts | Real browser checks mixed native state, cross-page/filter selection, real persisted action results and native 1.5 download | Verified twice; bounded review ship |
+| R07 secondary activity | Source/HTTP test confirms same compact LogViewer in existing disclosure | Browser collapses/opens with mouse/keyboard and follows full-log link in both themes | Verified twice; bounded review ship |
+
+Independent review found clipped selected filter labels at 320/390px and an overbroad test completion message. The correction stacks filters below 440px, checks measured selected-text fit, updates guidance and distinguishes desktop action testing from five-width selected-state geometry. The reviewer scored both findings resolved and returned **ship for the bounded registry workspace milestone** after inspecting all ten current recaptures and corrective source. This is not approval of the remaining editor/screen migration or a full accessibility audit.
+
+Testing uses PHP 8.3.6, Laravel 13.32.0, Livewire 4.4.5, Chromium 150.0.7871.100, Playwright 1.62.1 and Node 24.22.1. Browser databases are separate disposable SQLite files outside tracked source; PHPUnit uses in-memory SQLite. No operator database or application .env was changed. The local large Chromium executable needed restoration from its already downloaded package before launch; runtime setup is outside source, and failed setup attempts are not counted as browser passes.
+
+**BLOCKED:** `make validate` was attempted and stops at `docker compose config --quiet`: `make: docker: No such file or directory` (compose-config error127, Make exit2). Docker image/Composer/container/PostgreSQL checks and remote GitHub Actions are not claimed passed. The Impeccable context/detector launchers both returned Permission denied; source context and independent review were used, not a claimed detector pass. Screen readers, physical touch and real400% zoom remain outstanding.
+
+The new `make browser-registry-test` requires MOCKDECK_BROWSER_FIXTURE=1 and a fresh disposable database; its fixture refuses unrelated endpoints and removes only its own examples. CI invokes it before the other fixture-writing browser scripts. Wiring is verified from workflow source; no remote CI result is implied.
+
+
+Files changed in the 29 October registry increment (relative to the delivered foundation; earlier imported master changes are not attributed to this increment):
+
+- `.github/workflows/ci.yml`
+- `DESIGN.md`
+- `Makefile`
+- `README.md`
+- `docs/UI_GUIDE.md`
+- `docs/UI_UPGRADE.md`
+- `docs/USER_GUIDE.md`
+- `docs/VALIDATION.md`
+- `public/css/app.css`
+- `resources/views/admin/docs.blade.php`
+- `resources/views/admin/endpoints/index.blade.php`
+- `resources/views/components/workbench-icon.blade.php`
+- `resources/views/livewire/admin/endpoint-index.blade.php`
+- `tests/Browser/registry-workspace-smoke.mjs`
+- `tests/Browser/workbench-smoke.mjs`
+- `tests/Feature/RegistryWorkspaceTest.php`
+- `tests/Frontend/filter-layout.test.mjs`
+- `tests/Support/registry-workspace-fixture.php`
+
+Design documentation was independently reconciled after the correction batch: DESIGN.md reflects the actual registry geometry and interactions; theme values/frontmatter stay unchanged. The system sidecar remains a valid foundation reference, not a claim to preview every registry state.
+
+
+Final executed checks for the registry increment:
+
+| Check | Actual result |
+|---|---|
+| Full configured PHPUnit suite | PASS:443 tests,4445 assertions,zero skipped (42.50s final run). PostgreSQL-only guarded suite remains BLOCKED below. |
+| Frontend Node suite | PASS:84 tests,zero failures. The prior hidden-caption assertion was deliberately updated to require visible registry captions; Log filters retain their existing compact contract. |
+| Setup helpers / tokens / Pint | PASS:16 setup tests; design-token literal and paired-theme contrast validation; whole-project Pint --test. |
+| New make browser-registry-test | PASS:desktop workflows in both themes; selected-state geometry1440/1024/740/390/320; selected option text fit320/390. Actions are not claimed exercised at all five widths. |
+| make browser-test | PASS:workbench, layout and documentation scripts, both themes; dirty source retained after cancelled navigation, including collapsed-source case. |
+| make browser-regression-test | PASS:critique and endpoint-editor regression scripts, both themes, on a disposable instance. |
+| Existing registry alignment smoke | PASS:both themes; ten widths;0–1MiB request bodies,0–128 headers and1–101 responses. |
+| CI wiring / source hygiene | PASS:YAML parses; fresh-registry target precedes other fixture writers; JS syntax and git diff --check pass. Remote CI is not claimed run. |
+| Independent finish / design documentation | PASS at bounded registry scope:both material findings resolved; all ten current recaptures reviewed; actual anatomy documented without changing theme tokens. |
+| make validate / Docker / PostgreSQL | BLOCKED:docker executable unavailable; no container validation or guarded PostgreSQL browser result claimed. |
+
+Remaining manual work: Docker/PostgreSQL validation and guarded suites; actual400% browser zoom, screen-reader announcements and physical touch; deleted-current-editor recovery (R06). Next feature milestone remains the endpoint workbench migration; do not rename its existing four tabs before its compatibility/save-scope work is implemented. Current completion:12/72;60 pending.

@@ -1,4 +1,4 @@
-.PHONY: browser-regression-test mcp-offline-test mcp-test up down build validation-image logs shell test test-unit test-feature frontend-test design-validate lint format composer-validate compose-config validate health https-check browser-test
+.PHONY: browser-registry-test browser-regression-test mcp-offline-test mcp-test up down build validation-image logs shell test test-unit test-feature frontend-test design-validate lint format composer-validate compose-config validate health https-check browser-test
 
 TEST_ENV = -e APP_ENV=testing -e APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= -e DB_CONNECTION=sqlite -e DB_DATABASE=:memory: -e CACHE_STORE=array -e SESSION_DRIVER=array -e MOCK_DASHBOARD_AUTH_ENABLED=false -e MOCK_LOG_STDOUT=false -e MOCK_LOG_FILE=false -e RUN_MIGRATIONS=false
 APP_URL ?= $(shell python3 scripts/setup.py url)
@@ -27,6 +27,7 @@ help:
 	  'format         Apply PHP formatting to source files' \
 	  'browser-install / browser-test  Install Playwright / read-only checks in both themes' \
 	  'browser-regression-test  Fixture-writing UI checks; disposable DB and opt-in required' \
+	  'browser-registry-test  Registry actions in both themes; fresh disposable DB required' \
 	  'build / shell / artisan ARGS="..."  Clean image build / shell / Artisan command' \
 	  'Full setup and prerequisites: docs/SETUP.md'
 	@python3 scripts/setup.py summary
@@ -168,3 +169,7 @@ setup-test:
 browser-regression-test:
 	node tests/Browser/critique-regressions.mjs
 	node tests/Browser/endpoint-editor-regressions.mjs
+
+# Requires a fresh disposable database; this fixture refuses unrelated endpoints.
+browser-registry-test:
+	node tests/Browser/registry-workspace-smoke.mjs

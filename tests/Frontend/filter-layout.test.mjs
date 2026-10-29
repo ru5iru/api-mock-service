@@ -15,10 +15,11 @@ test('request-log filter captions remain accessible without adding a visual row'
     assert.doesNotMatch(requestLog, /<span class="select-caption">(?:HTTP status|Time range)<\/span>/);
 });
 
-test('endpoint toolbar uses the same compact accessible filter pattern', () => {
-    for (const label of ['Method', 'State', 'Sort']) {
-        assert.match(endpoints, new RegExp(`<span class="select-caption">${label}</span>\\s*<select`, 'm'));
+test('endpoint workspace filters have visible captions and retain accessible native selects', () => {
+    for (const label of ['Method', 'State', 'Sort', 'Collection']) {
+        assert.match(endpoints, new RegExp(`<span class="select-caption registry-filter-caption">${label}</span>\\s*<select`, 'm'));
     }
+    assert.match(css, /\.workbench \.registry-toolbar \.registry-filter-caption \{[^}]*position: static;[^}]*clip: auto/s);
 });
 
 test('request-log filter layout snapshot covers 1440, 1024, and 390 pixel viewports', () => {

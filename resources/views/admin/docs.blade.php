@@ -157,11 +157,12 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
             <p>Search endpoint name, method, path, or raw cURL. Filter by method and enabled state, then sort by recent update, name, or priority.</p>
             <ul>
                 <li>Select a row to edit its request and response pool.</li>
-                <li>Use the row menu to enable/disable, duplicate, copy the mock-host cURL, or delete.</li>
+                <li>Use the visible row switch, Copy mock curl and Edit controls; the More actions menu contains Duplicate and Delete.</li>
                 <li>Duplicated endpoints start disabled so they cannot immediately compete with the source signature.</li>
-                <li>Select individual rows or the current page for bulk enable, disable, export, or delete.</li>
+                <li>Select individual rows or the current page for bulk enable, disable, move to collection, add tags, export, or delete. Selection is kept across pages and filters; review the total and on-page counts. Clear selection clears all selected rows.</li>
                 <li>Disabled endpoints retain their configuration but never participate in matching.</li>
             </ul>
+            <p>Filter labels remain visible above Method, State, Sort and Collection. Empty collections and empty searches explain how to recover. Recent requests is a collapsible section below the registry, with the existing Pause/Resume and full-log link inside.</p>
         </section>
 
         <section id="request-matching" class="card docs-card">

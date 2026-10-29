@@ -53,6 +53,10 @@ try {
         await page.locator('#confirm-dialog').waitFor({ state: 'visible' });
         await page.locator('#confirm-dialog [data-confirm-cancel]').click();
         assert.ok(page.url().endsWith('/endpoints/create'));
+        await page.locator('.endpoint-editor').waitFor();
+        // Parsing may have collapsed the source while the discard dialog was open.
+        if (await curl.count() === 0) await page.getByRole('button', { name: 'Edit request', exact: true }).click();
+        assert.equal(await curl.inputValue(), "curl 'https://example.test/workbench-unsaved'", 'Cancelled navigation must retain the edited source');
         await curl.fill(originalCurl);
         await page.waitForFunction(() => !window.MockDeckEditor.isDirty());
         const priority = page.locator('#endpoint-priority');

@@ -356,7 +356,7 @@ Zero-response rows reuse `.inline-warning` across the full detail row with the w
 
 **Responsive behavior:** at <=900px details use `90px 132px minmax(140px, 1fr)`, and updated time spans a row. At <=740px the card uses `--space-4` padding, two equal detail columns, a full-row canonical disclosure, and actions below details; counts keep the same column starts in every card. Long paths wrap to at most two lines with the method badge aligned to the top; the full target remains available through its title, canonical request and editor. The canonical disclosure adds `data-menu` to `data-disclosure` and caps its shared anchored panel at 300px via `data-panel-height`, retaining Escape/outside-click dismissal and viewport containment. The overflow menu uses the same controller.
 
-**States:** hover/focus use the existing Card/row-link rules. Enabled/Disabled is a status badge plus the existing switch. Loading uses the registry skeleton. No separate selected-row skin or new color is introduced.
+**States:** hover/focus use the existing Card/row-link rules. Enabled/Disabled is a status badge plus the existing switch. Loading uses the registry skeleton. In the registry workspace, checked rows use the existing `--accent-subtle` surface and nested-control focus adds a fine inset `--accent-border`; neither introduces a new color.
 
 ```blade
 <div class="endpoint-detail-line">
@@ -378,6 +378,19 @@ Zero-response rows reuse `.inline-warning` across the full detail row with the w
 ```
 
 **Do/Don't:** reserve the same tracks across rows; do not let body-size text determine the next item's start. Keep optional metadata outside the fixed facts; do not insert callback/priority badges midway through them. Wrap at the documented breakpoints; do not introduce horizontal page scrolling.
+
+
+### Registry workspace controls
+
+The `.registry-workspace` composes existing native filters, row controls, menus, toasts, downloads and confirmation dialogs. `.registry-toolbar` has full-width search above wrapping labelled filters; `.registry-filter-caption` explicitly restores visible captions for this workspace only (Log filters keep their existing compact captions). At <=740px filters use two equal columns; at <=440px they stack into one column so selected option names remain readable. Never hide a filter or change query semantics to make the toolbar fit.
+
+`.registry-list-heading` separates the page checkbox and live result count from filters. The checkbox synchronizes both native `checked` and `indeterminate` properties after Livewire morphs. Its label is Select page / Clear selection; clearing retains the existing whole-selection behavior. `.registry-selection` sits between filters and list, names total and on-page counts, and warns that selection persists across pages/filters. Only the concise count has status semantics, rather than re-announcing the entire action bar. Bulk operations reuse their existing server actions and disable repeated submissions while pending. Add tags preserves its open menu with `wire:ignore.self` and uses `wire:model.live="bulkTags"` so its existing server-rendered Apply disabled state follows checkbox drafts; it does not save assignments until Apply tags.
+
+Row Copy/Edit/switch/menu controls remain visible without hover; menus reuse the shared `data-menu` controller and confirmations remain the shared dialog. More actions uses the shared workbench SVG vocabulary. All switches/menu triggers have >=44px hit height; canonical summary is >=28px. At tablet widths <=1100px row actions move below the facts, and <=740px existing stacked facts/actions remain. Custom names wrap instead of losing their identity to ellipsis.
+
+Empty states distinguish database-empty, collection/unfiled-empty and filtered-empty, retaining their create/import or clear-filter recovery. Filter and page requests use the existing skeleton with a concise loading status. Deleted-current-editor recovery remains a separate pending item R06; no new cross-client deletion protocol is implied.
+
+`details.registry-activity[data-disclosure]` is an initially open secondary Recent requests section below pagination. Its summary uses `aria-controls` and the existing disclosure chevron/controller. Inside is the same compact LogViewer with polling, detail, Pause/Resume and full-log link. Collapse hides activity without a new stored preference or a second log implementation.
 
 ### Tag filter menu
 
