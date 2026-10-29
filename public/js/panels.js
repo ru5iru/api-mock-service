@@ -1,6 +1,7 @@
 (function () {
     'use strict';
     const active = new Map();
+    const tipCloseTimers = new WeakMap();
     function close(panel) {
         if (panel?.matches(':popover-open')) panel.hidePopover();
         active.delete(panel);
@@ -77,11 +78,20 @@
     new MutationObserver(refresh).observe(document.body, { childList: true, subtree: true });
     document.addEventListener('pointerover', (event) => {
         const tip = event.target.closest?.('.help-tip');
+        if (tip) clearTimeout(tipCloseTimers.get(tip));
         if (tip && !tip.hasAttribute('data-tip-dismissed')) open(tip, tip.querySelector('.help-tip-content'));
     });
     document.addEventListener('pointerout', (event) => {
         const tip = event.target.closest?.('.help-tip');
-        if (tip && !tip.contains(event.relatedTarget) && !tip.contains(document.activeElement)) close(tip.querySelector('.help-tip-content'));
+        if (tip && !tip.contains(event.relatedTarget) && !tip.contains(document.activeElement)) {
+            tipCloseTimers.set(tip, setTimeout(() => {
+                const panel = tip.querySelector('.help-tip-content');
+                if (!tip.matches(':hover') && !panel?.matches(':hover') && !tip.contains(document.activeElement)) {
+                    close(panel);
+                    tip.removeAttribute('data-tip-dismissed');
+                }
+            }, 150));
+        }
     });
     document.addEventListener('focusin', (event) => {
         const tip = event.target.closest?.('.help-tip');
@@ -96,11 +106,11 @@
     });
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
-        const tip = document.activeElement?.closest('.help-tip');
-        if (tip) {
-            tip.setAttribute('data-tip-dismissed', '');
-            close(tip.querySelector('.help-tip-content'));
-        }
+        active.forEach((anchor, panel) => {
+            if (!anchor.matches('.help-tip')) return;
+            anchor.setAttribute('data-tip-dismissed', '');
+            close(panel);
+        });
     });
     window.MockDeckPanels = { open, close, position };
 }());

@@ -10,6 +10,14 @@
 [data-theme="light"] {
     color-scheme: light;
 
+    /* Workbench frame */
+    --shell-rail-width: 52px;
+    --shell-context-width: 252px;
+    --shell-header-height: 52px;
+    --shell-status-height: 28px;
+    --shell-chrome: #f1eee8;
+    --shell-sidebar: #f5f2ec;
+
     /* Typography */
     --font-ui: -apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     --font-code: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
@@ -130,6 +138,8 @@
 
 [data-theme="dark"] {
     color-scheme: dark;
+    --shell-chrome: #26221c;
+    --shell-sidebar: #242019;
 
     --shadow-sm: none;
     --shadow-md: none;
@@ -140,30 +150,30 @@
     --shadow-selected: 0 0 0 2px rgb(209 162 58 / 24%);
     --shadow-accent-pulse: 0 0 0 3px rgb(240 199 94 / 38%);
 
-    --bg: #14120f;
-    --surface: #1b1915;
-    --surface-2: #23201b;
+    --bg: #201d18;
+    --surface: #201d18;
+    --surface-2: #26221c;
     --surface-raised: #29251f;
-    --surface-hover: #2b271f;
-    --surface-translucent: rgb(20 18 15 / 95%);
-    --border: #3d382f;
-    --border-strong: #7b7160;
-    --text: #ece7dc;
-    --text-muted: #aaa191;
-    --text-subtle: #b8ae9c;
-    --placeholder: #aaa191;
+    --surface-hover: #332b20;
+    --surface-translucent: rgb(32 29 24 / 98%);
+    --border: #40392f;
+    --border-strong: #887b69;
+    --text: #e7e0d5;
+    --text-muted: #b8ad9d;
+    --text-subtle: #a69a88;
+    --placeholder: #b8ad9d;
     --overlay: rgb(0 0 0 / 70%);
     --selection: #5b4318;
     --disabled-bg: #35312b;
     --disabled-fg: #bdb4a4;
     --skeleton-highlight: #312d26;
-    --theme-color: #14120f;
+    --theme-color: #201d18;
 
-    --accent: #d1a23a;
-    --accent-hover: #e1b44f;
-    --accent-subtle: #352a14;
-    --accent-border: #b98d30;
-    --accent-link: #e1b44f;
+    --accent: #e6b66d;
+    --accent-hover: #efc486;
+    --accent-subtle: #332b20;
+    --accent-border: #b98d57;
+    --accent-link: #efc486;
     --on-accent: #1a1408;
     --focus-ring: #f0c75e;
     --control-hover: #2b271f;
@@ -196,10 +206,10 @@
     --method-put-bg: #2d2338;
     --method-put-fg: #d6b9f4;
     --method-put-border: #80649d;
-    --code-bg: #0f0e0c;
-    --code-surface: #171511;
-    --code-fg: #f2ede3;
-    --code-muted: #b8ae9c;
+    --code-bg: #1c1915;
+    --code-surface: #201d18;
+    --code-fg: #e7e0d5;
+    --code-muted: #b8ad9d;
     --code-border: #4a443a;
     --syntax-flag: #f2c96d;
     --syntax-url: #8edbd4;

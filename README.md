@@ -354,3 +354,5 @@ Native format **1.4** contains both tracks' configuration fields. Runtime counte
 MockDeck's application code is source-available under the [PolyForm Strict License 1.0.0](LICENSE), copyright © 2026 [Rusiru Rathmina](https://github.com/ru5iru). It permits the noncommercial purposes described in the license; it does not grant permission to modify or redistribute the application. Commercial use requires separate permission from the copyright holder.
 
 Third-party packages and fonts retain their own licenses. Previously released MIT versions retain their MIT rights. See [licensing and third-party notices](docs/LICENSING.md) for scope and the historical release boundary.
+
+UI workbench migration progress and verified checklist: [UI upgrade](docs/UI_UPGRADE.md).

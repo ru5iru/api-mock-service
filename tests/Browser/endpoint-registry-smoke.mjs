@@ -15,7 +15,7 @@ async function poll(check, message) {
     while (Date.now() < end) { if (await check()) return; await new Promise(r => setTimeout(r, 80)); }
     throw new Error(message);
 }
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, ...(process.env.MOCKDECK_CHROMIUM_PATH ? { executablePath: process.env.MOCKDECK_CHROMIUM_PATH } : {}) });
 const errors = [];
 try {
     for (const theme of ['light', 'dark']) {

@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T16:08:51.189593Z",
+  "title": "Design System: MockDeck",
+  "extensions": {
+    "colorMeta": {
+      "light-accent": {
+        "role": "primary",
+        "displayName": "Light accent"
+      },
+      "light-bg": {
+        "role": "neutral",
+        "displayName": "Light bg"
+      },
+      "light-surface": {
+        "role": "neutral",
+        "displayName": "Light surface"
+      },
+      "light-shell-chrome": {
+        "role": "neutral",
+        "displayName": "Light shell chrome"
+      },
+      "light-shell-sidebar": {
+        "role": "neutral",
+        "displayName": "Light shell sidebar"
+      },
+      "dark-accent": {
+        "role": "primary",
+        "displayName": "Dark accent"
+      },
+      "dark-bg": {
+        "role": "neutral",
+        "displayName": "Dark bg"
+      },
+      "dark-surface": {
+        "role": "neutral",
+        "displayName": "Dark surface"
+      },
+      "dark-shell-chrome": {
+        "role": "neutral",
+        "displayName": "Dark shell chrome"
+      },
+      "dark-shell-sidebar": {
+        "role": "neutral",
+        "displayName": "Dark shell sidebar"
+      }
+    },
+    "typographyMeta": {
+      "body": {
+        "displayName": "Interface body",
+        "purpose": "Compact operating text."
+      },
+      "title": {
+        "displayName": "Page title",
+        "purpose": "Existing dashboard page headings."
+      },
+      "code": {
+        "displayName": "Technical text",
+        "purpose": "Code and technical identifiers; ligatures disabled."
+      }
+    },
+    "shadows": [
+      {
+        "name": "light-sm",
+        "value": "0 1px 2px rgb(26 26 26 / 4%)",
+        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+      },
+      {
+        "name": "light-md",
+        "value": "0 4px 14px rgb(26 26 26 / 7%)",
+        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+      },
+      {
+        "name": "light-lg",
+        "value": "0 12px 32px rgb(26 26 26 / 9%)",
+        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+      },
+      {
+        "name": "light-inset",
+        "value": "inset 0 1px 8px rgb(0 0 0 / 18%)",
+        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+      },
+      {
+        "name": "light-sticky",
+        "value": "0 -8px 24px rgb(26 26 26 / 6%)",
+        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+      },
+      {
+        "name": "light-focus",
+        "value": "0 0 0 3px rgb(153 107 7 / 18%)",
+        "purpose": "State ring; not ambient elevation."
+      },
+      {
+        "name": "light-selected",
+        "value": "0 0 0 2px rgb(153 107 7 / 10%)",
+        "purpose": "State ring; not ambient elevation."
+      },
+      {
+        "name": "light-accent-pulse",
+        "value": "0 0 0 3px rgb(153 107 7 / 30%)",
+        "purpose": "State ring; not ambient elevation."
+      },
+      {
+        "name": "dark-sm",
+        "value": "none",
+        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+      },
+      {
+        "name": "dark-md",
+        "value": "none",
+        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+      },
+      {
+        "name": "dark-lg",
+        "value": "none",
+        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+      },
+      {
+        "name": "dark-inset",
+        "value": "none",
+        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+      },
+      {
+        "name": "dark-sticky",
+        "value": "none",
+        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+      },
+      {
+        "name": "dark-focus",
+        "value": "0 0 0 3px rgb(240 199 94 / 30%)",
+        "purpose": "State ring; not ambient elevation."
+      },
+      {
+        "name": "dark-selected",
+        "value": "0 0 0 2px rgb(209 162 58 / 24%)",
+        "purpose": "State ring; not ambient elevation."
+      },
+      {
+        "name": "dark-accent-pulse",
+        "value": "0 0 0 3px rgb(240 199 94 / 38%)",
+        "purpose": "State ring; not ambient elevation."
+      }
+    ],
+    "motion": [
+      {
+        "name": "fast",
+        "value": "120ms ease-out",
+        "purpose": "Short control and menu transitions."
+      },
+      {
+        "name": "base",
+        "value": "180ms ease-out",
+        "purpose": "Shared state transitions; suppressed by reduced-motion and theme-switching rules."
+      },
+      {
+        "name": "tooltip-pointer-close-delay",
+        "value": "150ms",
+        "purpose": "Per-anchor runtime timer lets the pointer cross to a hoverable help panel; closes on ordinary departure when no hover/focus remains."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "context-drawer",
+        "value": "1100px"
+      },
+      {
+        "name": "mobile-navigation",
+        "value": "767px"
+      },
+      {
+        "name": "page-header-wrap",
+        "value": "440px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Existing workbench action variant; flat in hover and active states.",
+      "html": "<button type=\"button\" class=\"ds-button-primary\">Save changes</button>",
+      "css": ".ds-button-primary{min-height:36px;padding:var(--space-2) var(--space-4);border:1px solid transparent;border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);cursor:pointer;font-weight:var(--font-weight-semibold);font-family:var(--font-ui);font-size:var(--font-size-base);transition:color var(--motion-base),border-color var(--motion-base),background-color var(--motion-base);color:var(--on-accent);background:var(--accent);border-color:var(--accent);}.ds-button-primary:hover:not(:disabled){background:var(--accent-hover);border-color:var(--accent-hover);}.ds-button-primary:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-button-primary:active{box-shadow:none;transform:none;}.ds-button-primary:disabled{color:var(--disabled-fg);border-color:var(--border);background:var(--disabled-bg);cursor:not-allowed;}"
+    },
+    {
+      "name": "Secondary button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Existing workbench action variant; flat in hover and active states.",
+      "html": "<button type=\"button\" class=\"ds-button-secondary\">Cancel</button>",
+      "css": ".ds-button-secondary{min-height:36px;padding:var(--space-2) var(--space-4);border:1px solid transparent;border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);cursor:pointer;font-weight:var(--font-weight-semibold);font-family:var(--font-ui);font-size:var(--font-size-base);transition:color var(--motion-base),border-color var(--motion-base),background-color var(--motion-base);color:var(--text);background:transparent;border-color:var(--text);}.ds-button-secondary:hover:not(:disabled){color:var(--accent-hover);border-color:var(--accent);background:var(--surface-2);}.ds-button-secondary:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-button-secondary:active{box-shadow:none;transform:none;}.ds-button-secondary:disabled{color:var(--disabled-fg);border-color:var(--border);background:var(--disabled-bg);cursor:not-allowed;}"
+    },
+    {
+      "name": "Tertiary button",
+      "kind": "button",
+      "refersTo": "button-tertiary",
+      "description": "Existing workbench action variant; flat in hover and active states.",
+      "html": "<button type=\"button\" class=\"ds-button-tertiary\">View details</button>",
+      "css": ".ds-button-tertiary{min-height:36px;padding:var(--space-2) var(--space-4);border:1px solid transparent;border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);cursor:pointer;font-weight:var(--font-weight-semibold);font-family:var(--font-ui);font-size:var(--font-size-base);transition:color var(--motion-base),border-color var(--motion-base),background-color var(--motion-base);min-height:40px;padding-inline:10px;color:var(--text);background:transparent;}.ds-button-tertiary:hover:not(:disabled){color:var(--accent-hover);border-color:var(--border);background:var(--surface-2);}.ds-button-tertiary:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-button-tertiary:active{box-shadow:none;transform:none;}.ds-button-tertiary:disabled{color:var(--disabled-fg);border-color:var(--border);background:var(--disabled-bg);cursor:not-allowed;}"
+    },
+    {
+      "name": "Danger button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Existing workbench action variant; flat in hover and active states.",
+      "html": "<button type=\"button\" class=\"ds-button-danger\">Delete</button>",
+      "css": ".ds-button-danger{min-height:36px;padding:var(--space-2) var(--space-4);border:1px solid transparent;border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);cursor:pointer;font-weight:var(--font-weight-semibold);font-family:var(--font-ui);font-size:var(--font-size-base);transition:color var(--motion-base),border-color var(--motion-base),background-color var(--motion-base);color:var(--on-danger);background:var(--danger-fill);border-color:var(--danger-fill);}.ds-button-danger:hover:not(:disabled){background:var(--danger-fill-hover);border-color:var(--danger-fill-hover);}.ds-button-danger:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-button-danger:active{box-shadow:none;transform:none;}.ds-button-danger:disabled{color:var(--disabled-fg);border-color:var(--border);background:var(--disabled-bg);cursor:not-allowed;}"
+    },
+    {
+      "name": "Labelled text field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Existing ordinary field geometry, used by explorer search.",
+      "html": "<label class=\"ds-field\"><span>Find an endpoint</span><input type=\"search\" placeholder=\"Name, method or path…\"></label>",
+      "css": ".ds-field{display:block;color:var(--text);font-family:var(--font-ui);font-size:var(--font-size-base);}.ds-field span{display:block;margin-bottom:7px;font-weight:600;}.ds-field input{width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--border-strong);border-radius:6px;outline:none;color:var(--text);background:transparent;font-family:var(--font-ui);font-size:var(--font-size-base);transition:border-color var(--motion-fast),box-shadow var(--motion-fast),background-color var(--motion-fast);}.ds-field input:hover:not(:disabled){border-color:var(--accent-border);}.ds-field input:focus{border-color:var(--accent);background:var(--surface);box-shadow:var(--shadow-focus);}.ds-field input:disabled{color:var(--disabled-fg);border-color:var(--border);background:var(--disabled-bg);cursor:not-allowed;}"
+    },
+    {
+      "name": "Tag chip",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Existing static tag; selectable variants retain their native input behavior in the application.",
+      "html": "<span class=\"ds-tag\">Example tag</span>",
+      "css": ".ds-tag{min-height:24px;padding:3px 7px;border:1px solid var(--border-strong);border-radius:var(--radius-pill);display:inline-flex;align-items:center;gap:5px;color:var(--text-muted);background:var(--surface-2);font:500 var(--font-size-xs)/var(--line-height-base) var(--font-ui);}"
+    },
+    {
+      "name": "Rail destination",
+      "kind": "nav",
+      "refersTo": "rail-link",
+      "description": "Icon rail link with an accessible name and current-page state.",
+      "html": "<nav aria-label=\"Dashboard navigation\"><a class=\"ds-rail-link\" href=\"#endpoints\" aria-label=\"Endpoints\" aria-current=\"page\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><path d=\"M4 9h16M9 9v11\"/></svg></a></nav>",
+      "css": ".ds-rail-link{min-height:40px;width:44px;padding:var(--space-2);display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);color:var(--text-muted);text-decoration:none;background:transparent;}.ds-rail-link:hover,.ds-rail-link[aria-current=\"page\"]{color:var(--text);background:var(--accent-subtle);}.ds-rail-link:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}"
+    },
+    {
+      "name": "Registry row surface",
+      "kind": "card",
+      "refersTo": "registry-row",
+      "description": "Continuous row container; actual registry details and mutation actions stay in the application.",
+      "html": "<div class=\"ds-registry\"><div class=\"ds-registry-row\" tabindex=\"0\">Endpoint identity</div><div class=\"ds-registry-row\" tabindex=\"0\">Another endpoint</div></div>",
+      "css": ".ds-registry{border:1px solid var(--border);}.ds-registry-row{padding:var(--space-3);border-bottom:1px solid var(--border);border-radius:0;color:var(--text);background:var(--surface);box-shadow:none;font-family:var(--font-ui);font-size:var(--font-size-base);}.ds-registry-row:last-child{border-bottom:0;}.ds-registry-row:hover{background:var(--surface-hover);}.ds-registry-row:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}"
+    },
+    {
+      "name": "Explorer row",
+      "kind": "custom",
+      "refersTo": "explorer-row",
+      "description": "Flat identity row; current page and hover use subtle accent.",
+      "html": "<a class=\"ds-explorer-row\" href=\"#endpoint\" aria-current=\"page\"><span class=\"ds-method\">GET</span><span><strong>Endpoint identity</strong><small>1 response · Enabled</small></span></a>",
+      "css": ".ds-explorer-row{display:flex;gap:var(--space-2);padding:var(--space-3) var(--space-2);border-bottom:1px solid var(--border);color:var(--text);text-decoration:none;font-family:var(--font-ui);font-size:var(--font-size-base);}.ds-explorer-row:hover,.ds-explorer-row[aria-current=\"page\"]{background:var(--accent-subtle);}.ds-explorer-row:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-explorer-row>span:last-child{min-width:0;}.ds-explorer-row strong{display:block;overflow-wrap:anywhere;font-size:var(--font-size-sm);font-weight:500;}.ds-explorer-row small{display:block;margin-top:var(--space-1);color:var(--text-muted);}.ds-method{align-self:start;min-width:36px;min-height:28px;padding:var(--space-1);border:1px solid var(--method-get-border);border-radius:5px;display:inline-flex;align-items:center;justify-content:center;color:var(--method-get-fg);background:var(--method-get-bg);font:500 var(--font-size-xs) var(--font-code);letter-spacing:.06em;}"
+    },
+    {
+      "name": "Help tooltip",
+      "kind": "custom",
+      "description": "CSS preview of native help trigger and hoverable panel; application panels.js supplies top-layer placement, per-anchor 150ms departure timers and Escape dismissal, including hover-only bubbles.",
+      "html": "<div class=\"ds-help-wrap\"><button type=\"button\" class=\"ds-help\" aria-describedby=\"ds-help-description\">?</button><span class=\"ds-help-panel\" id=\"ds-help-description\" role=\"tooltip\">Contextual help text.</span></div>",
+      "css": ".ds-help-wrap{position:relative;display:inline-block;padding-top:64px;}.ds-help{width:24px;height:24px;border:1px solid var(--border-strong);border-radius:50%;color:var(--text-muted);background:var(--surface);cursor:help;font:600 12px/1 var(--font-ui);}.ds-help:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-help-panel{position:absolute;bottom:33px;left:0;width:220px;padding:10px 12px;border:1px solid var(--border-strong);border-radius:6px;color:var(--text);background:var(--surface);box-shadow:var(--shadow-lg);font:400 13px/1.45 var(--font-ui);opacity:0;visibility:hidden;pointer-events:none;transition:opacity var(--motion-base),visibility var(--motion-base);}.ds-help-wrap:hover .ds-help-panel,.ds-help-wrap:focus-within .ds-help-panel{opacity:1;visibility:visible;pointer-events:auto;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Supplied desktop workbench",
+    "overview": "Warm surfaces, compact typography, continuous working areas and restrained elevation. This source-derived foundation record covers shared chrome, the paginated editor explorer and registry presentation. Existing endpoint tabs remain; the complete feature-workspace migration is future work.",
+    "keyCharacteristics": [
+      "Paired warm light/dark mappings",
+      "Flat continuous operating surfaces",
+      "System UI and local mono typography",
+      "Existing feature and mutation contracts retained"
+    ],
+    "rules": [
+      {
+        "name": "The Paired Theme Rule",
+        "body": "Change light and dark mappings together, using existing semantic CSS roles.",
+        "section": "colors"
+      },
+      {
+        "name": "The Continuous Surface Rule",
+        "body": "Registry rows touch and share borders; workbench cards/buttons do not gain decorative elevation or hover translation.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use semantic CSS variables.",
+      "Do retain full endpoint identities and accessible names.",
+      "Do preserve measured shell/action offsets.",
+      "Do keep unchecked migrations visibly future work.",
+      "Do keep the visible footer Shortcuts opener available after single-key opt-out."
+    ],
+    "donts": [
+      "Do not present Editor / Callback / Settings or split request/response panes as shipped.",
+      "Do not store configuration drafts or secrets in workbench preferences.",
+      "Do not alter matching, import, mutation or run-isolation behavior as a visual side effect."
+    ]
+  }
+}

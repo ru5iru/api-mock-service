@@ -4,6 +4,20 @@ Endpoint navigation compares saved scope baselines with current editable values 
 
 Use these recipes without adding page-specific classes to alter their appearance. The CSS and Blade paths below are authoritative. Update this reference and its source-verification tests in the same change as a shared component. Token names resolve to **exact light and dark values** in [Theme tokens](#theme-tokens); geometry is identical in both themes unless stated otherwise. `transparent` means the ancestor surface shows through, not a new color.
 
+## Workbench foundation (current migration stage)
+
+The shared shell is implemented in `resources/views/components/workbench-navigation.blade.php` and `resources/views/layouts/dashboard.blade.php`. Its matching CSS is the Workbench foundation section of `public/css/app.css`. It supersedes the older centered page-shell/card presentation described later in this reference, while feature form behavior stays unchanged. Migration scope and two-pass verification are tracked in [UI upgrade](UI_UPGRADE.md).
+
+- Frame tokens: `--shell-header-height` 52px, `--shell-rail-width` 52px, `--shell-context-width` 252px, `--shell-status-height` 28px. Chrome/sidebar colors are semantic tokens with both theme values in the table below.
+- Desktop has an icon navigation rail, a labelled contextual sidebar, an unconstrained work area and fixed version/documentation status bar. Navigation icons use `resources/views/components/workbench-icon.blade.php`; accessible names remain text-based.
+- `.workbench-context` contains a paginated `.workbench-explorer` only on endpoint create/edit. It reuses `EndpointIndex` with locked explorer/current-ID inputs, the existing scoped query and a separate explorerPage paginator. No raw request or resolved cURL is rendered in that view.
+- `.workbench` shared cards and registry rows have square panel edges and no elevation. Buttons keep the existing dimensions/semantics but no longer lift, translate or gain hover shadows in the workbench. Auth/error shells retain their existing compact card layout.
+- The header persists through Livewire navigation; contextual navigation re-renders for the active destination. The Environment selector continues to affect ordinary traffic globally.
+- At <=1100px, the context sidebar is an overlay, closed by default. At <=767px, the rail is replaced by the existing labelled mobile Menu, and page/action-bar left offsets become zero. Sidebar toggle uses aria-controls/aria-expanded; hidden content is inert. Escape closes an open overlay and returns focus. Sticky action bars end above the status bar and retain measured content clearance.
+- `public/js/workbench.js` remembers only desktop sidebar visibility and single-character-shortcut opt-in. The shortcut control lives in the shared Shortcuts dialog, always reachable through the footer Shortcuts button even when ? is disabled; existing input/dialog exclusions and modified save shortcut remain unchanged. Storage failures degrade to usable page-local choices.
+- Page headers wrap their actions at <=440px to prevent title/count collisions. Footer Shortcuts uses a 24px target inside the status bar. Help-tip clickable boxes are 24x24px; bubbles accept pointer input, use per-anchor delayed closing to allow crossing the anchor gap, close after normal pointer departure, and Escape dismisses hover-only as well as focused bubbles. Existing top-layer positioning remains in `public/js/panels.js`.
+- All old Request/Matching/Response/Callback tabs, mutation actions, server save-result scopes, template builders and import/secret contracts are retained in this stage. Editor / Callback / Settings is not shipped yet.
+
 ## Contents
 
 1. [Buttons](#buttons)
@@ -605,6 +619,12 @@ In-app unsaved navigation uses the shared dialog. Browser reload/tab-close does 
 
 | Token | Light | Dark |
 |---|---|---|
+| `--shell-rail-width` | `52px` | Same |
+| `--shell-context-width` | `252px` | Same |
+| `--shell-header-height` | `52px` | Same |
+| `--shell-status-height` | `28px` | Same |
+| `--shell-chrome` | `#f1eee8` | `#26221c` |
+| `--shell-sidebar` | `#f5f2ec` | `#242019` |
 | `--font-ui` | `-apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"` | Same |
 | `--font-code` | `"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace` | Same |
 | `--font-size-xs` | `11px` | Same |
@@ -645,29 +665,29 @@ In-app unsaved navigation uses the shared dialog. Browser reload/tab-close does 
 | `--shadow-accent-pulse` | `0 0 0 3px rgb(153 107 7 / 30%)` | `0 0 0 3px rgb(240 199 94 / 38%)` |
 | `--motion-fast` | `120ms ease-out` | Same |
 | `--motion-base` | `180ms ease-out` | Same |
-| `--bg` | `#fafaf8` | `#14120f` |
-| `--surface` | `#ffffff` | `#1b1915` |
-| `--surface-2` | `#f5f3f0` | `#23201b` |
+| `--bg` | `#fafaf8` | `#201d18` |
+| `--surface` | `#ffffff` | `#201d18` |
+| `--surface-2` | `#f5f3f0` | `#26221c` |
 | `--surface-raised` | `#fffdf8` | `#29251f` |
-| `--surface-hover` | `#fffaf0` | `#2b271f` |
-| `--surface-translucent` | `rgb(250 250 248 / 96%)` | `rgb(20 18 15 / 95%)` |
-| `--border` | `#e8e4df` | `#3d382f` |
-| `--border-strong` | `#8f877e` | `#7b7160` |
-| `--text` | `#1a1a1a` | `#ece7dc` |
-| `--text-muted` | `#625f59` | `#aaa191` |
-| `--text-subtle` | `#716c64` | `#b8ae9c` |
-| `--placeholder` | `#625f59` | `#aaa191` |
+| `--surface-hover` | `#fffaf0` | `#332b20` |
+| `--surface-translucent` | `rgb(250 250 248 / 96%)` | `rgb(32 29 24 / 98%)` |
+| `--border` | `#e8e4df` | `#40392f` |
+| `--border-strong` | `#8f877e` | `#887b69` |
+| `--text` | `#1a1a1a` | `#e7e0d5` |
+| `--text-muted` | `#625f59` | `#b8ad9d` |
+| `--text-subtle` | `#716c64` | `#a69a88` |
+| `--placeholder` | `#625f59` | `#b8ad9d` |
 | `--overlay` | `rgb(26 26 26 / 48%)` | `rgb(0 0 0 / 70%)` |
 | `--selection` | `#f1dfaa` | `#5b4318` |
 | `--disabled-bg` | `#ddd8cf` | `#35312b` |
 | `--disabled-fg` | `#514c45` | `#bdb4a4` |
 | `--skeleton-highlight` | `#ffffff` | `#312d26` |
-| `--theme-color` | `#fafaf8` | `#14120f` |
-| `--accent` | `#996b07` | `#d1a23a` |
-| `--accent-hover` | `#805a04` | `#e1b44f` |
-| `--accent-subtle` | `#fbf3df` | `#352a14` |
-| `--accent-border` | `#aa7e1d` | `#b98d30` |
-| `--accent-link` | `#805a04` | `#e1b44f` |
+| `--theme-color` | `#fafaf8` | `#201d18` |
+| `--accent` | `#996b07` | `#e6b66d` |
+| `--accent-hover` | `#805a04` | `#efc486` |
+| `--accent-subtle` | `#fbf3df` | `#332b20` |
+| `--accent-border` | `#aa7e1d` | `#b98d57` |
+| `--accent-link` | `#805a04` | `#efc486` |
 | `--on-accent` | `#ffffff` | `#1a1408` |
 | `--focus-ring` | `#7a5605` | `#f0c75e` |
 | `--control-hover` | `#fffdf8` | `#2b271f` |
@@ -698,10 +718,10 @@ In-app unsaved navigation uses the shared dialog. Browser reload/tab-close does 
 | `--method-put-bg` | `#f9f5fd` | `#2d2338` |
 | `--method-put-fg` | `#5d477d` | `#d6b9f4` |
 | `--method-put-border` | `#9681b0` | `#80649d` |
-| `--code-bg` | `#22211e` | `#0f0e0c` |
-| `--code-surface` | `#292722` | `#171511` |
-| `--code-fg` | `#eee9df` | `#f2ede3` |
-| `--code-muted` | `#c8c0b3` | `#b8ae9c` |
+| `--code-bg` | `#22211e` | `#1c1915` |
+| `--code-surface` | `#292722` | `#201d18` |
+| `--code-fg` | `#eee9df` | `#e7e0d5` |
+| `--code-muted` | `#c8c0b3` | `#b8ad9d` |
 | `--code-border` | `#5b554b` | `#4a443a` |
 | `--syntax-flag` | `#e8bb55` | `#f2c96d` |
 | `--syntax-url` | `#83c7c2` | `#8edbd4` |
