@@ -19,7 +19,7 @@ A checkbox means the named scope is implemented and has **two recorded successfu
 
 ## Current delivery boundary
 
-Delivered scope: shared workbench foundations, registry presentation/interactions, and the first endpoint-workspace milestone (dated verification ledgers below). Create/edit now use Editor / Callback / Settings with Request / Matching subtabs and a Responses pane. Legacy Request / Matching / Response / Callback URL links remain supported. Response body/template authoring is now delivered; selection/fault/Callback, Logs, Environments and transfer redesigns remain unchecked. The source, matching, mutation, import, credential and run-isolation contracts remain authoritative.
+Delivered scope: shared workbench foundations, registry presentation/interactions, and the first endpoint-workspace milestone (dated verification ledgers below). Create/edit now use Editor / Callback / Settings with Request / Matching subtabs and a Responses pane. Legacy Request / Matching / Response / Callback URL links remain supported. Response body/template authoring is now delivered; selection and fault controls are delivered; Callback, response History/remaining pool states, Logs, Environments and transfer redesigns remain unchecked. The source, matching, mutation, import, credential and run-isolation contracts remain authoritative.
 
 ## Checklist
 
@@ -73,10 +73,10 @@ Delivered scope: shared workbench foundations, registry presentation/interaction
 - [x] **S03** Migrate Template/Static and Builder/JSON with the existing catalog and schema controls.
 - [x] **S04** Preserve nested builder fields, argument inputs, reorder alternatives and unsupported-builder fallback.
 - [x] **S05** Migrate preview, issues/quick fixes, locale and all seed modes; label synthetic samples accurately.
-- [ ] **S06** Preserve Weighted default and probability summaries.
-- [ ] **S07** Migrate Sequence order/exhaustion/preview/reset with explicit active-environment scope.
-- [ ] **S08** Migrate Rule conditions/priorities/default validation without changing grammar or order.
-- [ ] **S09** Migrate the four existing fault types, limits and enabled/probability summaries.
+- [x] **S06** Preserve Weighted default and probability summaries.
+- [x] **S07** Migrate Sequence order/exhaustion/preview/reset with explicit active-environment scope.
+- [x] **S08** Migrate Rule conditions/priorities/default validation without changing grammar or order.
+- [x] **S09** Migrate the four existing fault types, limits and enabled/probability summaries.
 - [ ] **S10** Preserve response History, source example labels, save/cancel and per-response dirty state.
 
 **Acceptance:** Weighted outcomes remain governed by existing services; 503→503→200 sequence/reset works; Rule match and fallback work; preview leaves runtime state untouched; raw text remains raw; configured faults retain existing behavior.
@@ -146,7 +146,7 @@ Delivered scope: shared workbench foundations, registry presentation/interaction
 
 ## Feature parity inventory
 
-The following target mapping is carried forward from the approved plan after reconciling recent master. It is an inventory of preserved features and intended destinations, **not** a claim that each proposed screen has shipped. The checklist above is the completion authority. **20 of 72 items are verified complete; 52 remain unchecked.**
+The following target mapping is carried forward from the approved plan after reconciling recent master. It is an inventory of preserved features and intended destinations, **not** a claim that each proposed screen has shipped. The checklist above is the completion authority. **24 of 72 items are verified complete; 48 remain unchecked.**
 
 
 **Coverage labels:** Shown = present in the prototype; Partial = a simplified illustration exists; Missing = a production design must be supplied. All proposed routes below retain their current URL unless explicitly stated otherwise.
@@ -462,7 +462,7 @@ Remaining release/manual checks: Docker/PostgreSQL validation and guarded browse
 
 One combined browser run stopped before the older critique assertions because the local Chromium process failed at launch with SIGSEGV. A fresh external harness restored its runtime files; the response smoke and both regression scripts then completed with exit0. The launch failure is not an application pass or an application defect classification. Test/runtime logs and screenshots stay outside tracked source.
 
-Fresh finish review returned **ship for the bounded S03/S04/S05 milestone** after inspecting all28 current actual-app captures in both themes at1440/1024/390/320px and the matching source. No implementation correction was requested. Design documentation was independently reconciled afterward, preserving existing tokens and distinguishing completed response authoring from pending selection/fault/Callback work. Current completion is **20/72**, with **52 unchecked** items. No whole-application completion, remote CI pass or assistive-technology certification is claimed.
+Fresh finish review returned **ship for the bounded S03/S04/S05 milestone** after inspecting all28 current actual-app captures in both themes at1440/1024/390/320px and the matching source. No implementation correction was requested. Design documentation was independently reconciled afterward, preserving existing tokens and distinguishing completed response authoring from pending selection/fault/Callback work. Historical completion at the close of the response-authoring milestone was **20/72**, with **52 unchecked** items. See the later selection/fault ledger for the current total. No whole-application completion, remote CI pass or assistive-technology certification is claimed.
 
 Files changed in this response-authoring increment (relative to its504-file before-response manifest):
 
@@ -483,3 +483,63 @@ Files changed in this response-authoring increment (relative to its504-file befo
 - `tests/Feature/ResponseAuthoringWorkspaceTest.php`
 
 Source archive verification compares every payload byte with the final workspace. It excludes local .env values, vendor/node dependencies, databases, screenshots and runtime logs. No Git commit was staged or created.
+
+
+### Selection and primary-response faults — 29 October 2026
+
+This increment starts from the delivered20/72 response-authoring milestone and a506-file external before-selection SHA-256 manifest. It preserves imported master and all prior UI work. Scope: S06/S07/S08/S09; response History/basic pool safeguards and Callback redesign remain separate unchecked items.
+
+Implemented: native Response editor / Selection & pool jump links within the same mounted response manager; saved-pool counts and weight percentages (one decimal, effective saved weight minimum1, explicitly excluding unsaved weight drafts); mode descriptions; a named active-Environment Sequence block with the existing exhaustion/reset/preview controls; always-visible keyboard reorder buttons alongside native drag; Rule fallback/Conditions directly on response rows, outside metadata Details; and draft-only fault type/probability summaries with clear save instructions. The four fault types remain delay, malformed_body, truncated_body and timeout (documented long-delay approximation). Existing conditions, validation messages, priorities, engine order, save fingerprints, reset scope and Delete protection are unchanged.
+
+No application PHP or JavaScript controller/service, route, migration, dependency, native1.5 format, signature/matching or ordinary/run-isolation rule was changed. The only new arithmetic is presentation of the selector's existing saved-weight proportions; it does not select a response.
+
+| Scope | First verification | Second verification | Completion |
+|---|---|---|---|
+| S06 Weighted default/probabilities | SelectionWorkspaceTest verifies25/75 saved chances remain unchanged for an unsaved weight99, then reflect a saved change; existing weighted-selection suite remains green | Real browser checks25/50/25 saved pool and labels in both themes | Verified twice; bounded independent review ship |
+| S07 Sequence order/exhaustion/preview/reset | Existing WaveOneEditorTest and selection/concurrency suite verify saved order, loop/not-found/repeat behavior and scoped reset; new test checks byte-identical runtime after preview/navigation | Real browser keyboard/native drag,503→503→200→200, unchanged runtime across preview and reset of only active Environment while retaining counts/other Environment | Verified twice; bounded independent review ship |
+| S08 Rule conditions/default | Existing WaveOneEditorTest, serving and portability tests verify grammar/order/exactly-one fallback/atomic changes; DOM assertion confirms direct Rule controls outside metadata | Real browser validates missing fallback, enters a header condition, serves matching503/nonmatching200 and blocks saved-fallback deletion | Verified twice; bounded independent review ship |
+| S09 four fault types/bounds | FaultEditorTest verifies defaults, draft retention, atomic invalid-save rejection, Content-Type and probability validation; new test checks draft summary and unknown-type rejection | Real HTTP serves fixed90ms delay (measured >=75ms), malformed/truncated bodies and short configured timeout approximation; all calls counted; invalid min/max leaves response attributes unchanged | Verified twice; bounded independent review ship |
+
+Actual native environment: PHP8.3.6, Laravel13.32.0, Livewire4.4.5, Chromium150.0.7871.100, Playwright1.62.1, Node24.22.1. Browser fixtures use a new external disposable SQLite file; PHPUnit uses in-memory SQLite. No operator database or application .env was changed. Pointer drag is tested at desktop with both rows visible, while responsive geometry covers1440/1024/390/320. No physical-touch or browser-zoom certification is implied.
+
+| Check | Actual result |
+|---|---|
+| Full configured PHPUnit | PASS:460 tests,4545 assertions,zero skipped (42.62s). Guarded PostgreSQL audit remains outside this local suite. |
+| Focused selection/fault PHP | PASS:SelectionWorkspaceTest3tests/20assertions; existing WaveOneEditorTest+FaultEditorTest9tests/65assertions. |
+| Frontend/setup/tokens/Pint | PASS:84 Node tests,16 setup tests, paired-theme tokens/contrast validator and whole-project Pint --test. |
+| New browser selection/fault workflow | PASS:final browser-final-ship.log both themes, strict visible-pane geometry, keyboard/native mouse drag, three-step/repeat-last sequence, read-only preview, scoped reset, real Rule/fallback, protected Delete, invalid fault bounds, all four real fault types and exact counters. Probability41→blank→100 updates locally without persistence; fault captures wait for matching summaries/fields/helpers. |
+| Existing browser regressions | PASS:response authoring, endpoint workspace, workbench, layout, documentation, critique and endpoint-editor scripts completed in both themes (combined browser-final.log,exit0). |
+| make validate | BLOCKED:docker compose config --quiet fails because docker is unavailable (error127,Make exit2). Container image/Composer/PostgreSQL validation not claimed passed. |
+| CI | New browser-selection-test wired after response authoring in the existing disposable browser job; remote CI not run. |
+| Impeccable detector | BLOCKED:Permission denied,exit126. No detector pass claimed. |
+
+Browser development found a test drag-coordinate issue: the first run dropped on a different row, which independent database reads confirmed as order2/3/1; serving correctly followed that saved order. The test now keeps both intended rows visible, drops on the target identity and verifies the exact order before calling. A second test assumption used an exact native-select label while its existing wrapped label text also contains option text (OperatorEqualsContainsRegexExists); the role/name-prefix locator still identifies that one Operator control. No engine or label behavior was changed to obtain a pass.
+
+Visual inspection also caught a real presentation issue: implicit auto grid tracks could clip selection content within a320px pane despite staying inside the browser viewport. Selection/list/runtime tracks now use minmax(0,1fr). Browser geometry includes summaries, segmented controls, notices and panels, measured against the pane's client edge rather than only the browser width. Captures dismiss existing toasts through their real buttons and disable finite animations before recording the named state; toast timing and behavior are not modified.
+
+Remaining release/manual checks: Docker/PostgreSQL validation, guarded audit suites and remote CI; screen readers, forced-colors, physical touch and actual400% browser zoom. No entire-application redesign completion is claimed.
+
+Review corrections: fault-type captures now wait for the server-rendered summary and the matching type-specific fields/helper text before recording. The narrow invalid-delay capture targets the actual inline error. The new probability annotation uses a local Alpine scope reading the existing deferred Livewire value, updating41→blank→100 without saving; blank shows —%. No new live numeric request was retained. An edge characterization exposed a pre-existing limitation in untouched ResponseManager::formState: submitting an empty required integer probability can raise PropertyNotFoundException rather than a normal field error. That broader typed-numeric save validation is not changed in this presentation milestone and remains a separate follow-up; the UI does not introduce automatic requests for it.
+
+Independent finish review returned **ship for the bounded S06/S07/S08/S09 milestone**, after directly inspecting all36 final actual-app screenshots and their source in both themes. The reviewer scored the stale-type captures, local probability annotation and inherited disclosure-grid percentage layout resolved, with no further implementation fix or recapture required. Design records were reconciled independently afterward, preserving existing tokens and samples. Current completion: **24/72**, **48 unchecked**. S02/S10 and Callback remain pending; no full-app, remote-CI or assistive-technology pass is implied.
+
+Files changed in this selection/fault increment (relative to its506-file before-selection manifest):
+
+- `.github/workflows/ci.yml`
+- `.impeccable/design.json`
+- `DESIGN.md`
+- `Makefile`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/UI_GUIDE.md`
+- `docs/UI_UPGRADE.md`
+- `docs/USER_GUIDE.md`
+- `docs/VALIDATION.md`
+- `public/css/app.css`
+- `resources/views/admin/docs.blade.php`
+- `resources/views/livewire/admin/response-manager.blade.php`
+- `tests/Browser/selection-workspace-smoke.mjs`
+- `tests/Feature/SelectionWorkspaceTest.php`
+- `tests/Support/selection-workspace-fixture.php`
+
+All baseline source files are retained. The source archive excludes local .env values, dependencies, databases, screenshots and runtime logs. Archive verification compares every payload byte to the final workspace. No Git commit was staged or created.

@@ -208,6 +208,8 @@ A response provides:
 - exact body text without re-encoding;
 - artificial delay bounded by `MOCK_MAX_DELAY_MS`.
 
+Responses includes **Response editor / Selection & pool** jump links, saved-weight probability summaries, direct row reordering, Environment-scoped sequence status/reset and Rule conditions outside metadata Details. Fault settings retain their four existing types and explicit long-delay timeout approximation.
+
 The body can remain static or opt into JSON templating. Template mode includes a schema builder and raw JSON editor, a server-built Faker catalog, fixed/request-derived seeds, locale selection, inline validation, and server-rendered preview. Static response bodies containing `$` or `{{` remain exact text. The PHP backend maps the supported Faker.js-shaped method names to `fakerphp/faker`; it does not ship Faker in the browser bundle.
 
 Runtime failure semantics:

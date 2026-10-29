@@ -17,7 +17,11 @@
         </div>
         <p class="field-help">Switching keeps each response's draft. Cancel edit discards only the current draft.</p>
     </div>
-    <form class="card response-form" wire:submit="save">
+    <nav class="response-workspace-links" aria-label="Response workspace">
+        <a href="#response-editor-form">Response editor</a>
+        <a href="#response-selection-title">Selection &amp; pool <span>{{ $responses->count() }}</span></a>
+    </nav>
+    <form id="response-editor-form" class="card response-form" wire:submit="save" tabindex="-1">
         <div class="form-title-row">
             <h3>{{ $editingId ? 'Edit response #'.$editingId : 'Add response' }}</h3>
             @if ($editingId)
@@ -261,8 +265,10 @@
         @endif
         </div>
 
-        <details class="history-disclosure" data-disclosure wire:ignore.self wire:key="response-fault-{{ $editingId ?? 'new' }}">
-            <summary><x-disclosure-chevron /><strong>Fault injection</strong>@if ($faultEnabled)<x-badge variant="warning">Enabled</x-badge>@endif</summary>
+        <details class="history-disclosure response-fault-settings" data-disclosure wire:ignore.self wire:key="response-fault-{{ $editingId ?? 'new' }}">
+            <summary><x-disclosure-chevron /><strong>Fault injection</strong>@if ($faultEnabled)<x-badge variant="warning">Enabled</x-badge><span class="fault-summary">{{ $faultType === 'timeout' ? 'Long delay' : ucfirst(str_replace('_', ' ', $faultType)) }} · <span x-data x-text="$wire.faultProbability === '' || $wire.faultProbability == null ? '—' : $wire.faultProbability">{{ $faultProbability }}</span>%</span>@else<span class="fault-summary">Off</span>@endif</summary>
+            <div class="response-fault-controls" role="group" aria-label="Fault settings">
+            <p class="field-help">Update response or Save changes applies these settings.</p>
             <label class="toggle-inline"><input type="checkbox" wire:model.live="faultEnabled"><span>Enable fault injection</span></label>
             <p class="field-help">Applied after response selection. <x-help-tip title="Primary response faults" label="Faulted calls still count as matches. Probability is rolled for each selected response. Delay adds to the normal response delay; an empty maximum uses a fixed delay. Template previews remain normal." /></p>
             <div class="field-row two">
@@ -295,6 +301,7 @@
             @elseif ($faultType === 'truncated_body')
                 <p class="field-help">Returns the first half of the rendered body's bytes.</p>
             @endif
+            </div>
         </details>
 
         <button class="button button-primary button-full" type="submit" wire:loading.attr="disabled" wire:target="save" @disabled($bodyMode === 'template' && collect($templateIssues)->contains(fn ($issue) => $issue['severity'] === 'error'))>
@@ -302,16 +309,24 @@
             <span wire:loading wire:target="save">Saving…</span>
         </button>
     </form>
-    <div class="response-list">
+    <div class="response-list" data-selection-mode="{{ $selectionMode }}">
+        @php
+            $savedWeightTotal = $responses->sum(fn ($item) => max(1, (int) $item->weight));
+        @endphp
         <section class="card selection-settings" aria-labelledby="response-selection-title">
-            <h3 id="response-selection-title">Response selection</h3>
+            <div class="selection-workspace-heading"><h3 id="response-selection-title" tabindex="-1">Response selection</h3><span>{{ $responses->count() }} {{ Str::plural('response', $responses->count()) }}</span></div>
             <div class="segmented-control" role="group" aria-label="Response selection mode">
                 @foreach (['weighted' => 'Weighted', 'sequence' => 'Sequence', 'rule' => 'Rule-based'] as $mode => $label)
                     <button type="button" wire:click="setSelectionMode('{{ $mode }}')" aria-pressed="{{ $selectionMode === $mode ? 'true' : 'false' }}">{{ $label }}</button>
                 @endforeach
             </div>
             <p class="field-help">{{ $selectionDirty ? 'Unsaved selection changes.' : 'Selection saved.' }} <x-help-tip title="Saving selection" label="Save selection applies this mode and order. Save changes also saves these drafts. Weighted is the default mode." /></p>
+            <p class="selection-mode-help">{{ match ($selectionMode) { 'sequence' => 'Serve responses in the order below. Position is scoped to the active Environment.', 'rule' => 'Evaluate conditions after endpoint matching; choose the first matching response or the fallback.', default => 'Choose randomly in proportion to each saved response weight.' } }}</p>
+            @if ($selectionMode === 'weighted')
+                <p class="info-note saved-weight-note">Chances below use saved weights, rounded to one decimal. Save response weight edits before relying on these values.</p>
+            @endif
             @if ($selectionMode === 'sequence')
+                <div class="sequence-runtime" aria-label="Sequence runtime for {{ $selectionEnvironment->name }}">
                 <label class="field" for="sequence-on-exhaust"><span>On exhaust</span>
                     <select class="ui-select" id="sequence-on-exhaust" wire:model.live="sequenceOnExhaust">
                         <option value="repeat_last">Repeat last</option><option value="loop">Loop</option><option value="not_found">Not found</option>
@@ -319,6 +334,7 @@
                 </label>
                 <p class="field-help" role="status">@if ($responses->isEmpty())No responses configured for {{ $selectionEnvironment->name }}.@elseif ($nextSequencePosition === null)Sequence exhausted for {{ $selectionEnvironment->name }}.@else Next response: {{ $nextSequencePosition }} of {{ $responses->count() }} for {{ $selectionEnvironment->name }}.@endif Matched calls: {{ $totalMatchCount }}. <x-help-tip title="Sequence position" label="The next position follows the On exhaust policy. Reset affects only the active environment and retains match counts." /></p>
                 <button class="button button-tertiary button-small" type="button" wire:click="resetSequence" data-confirm-title="Confirm response action" data-confirm="Reset the sequence position for {{ $selectionEnvironment->name }} only? Match counts and other environments will be retained.">Reset sequence</button>
+                </div>
             @endif
             @php
                 $selectionErrors = collect($errors->getMessages())->filter(fn ($messages, $key) => preg_match('/^(selection_mode|sequence_on_exhaust|sequence_order|is_default|responseRules)/', $key));
@@ -364,17 +380,23 @@
                 <div class="response-description response-row-summary" title="{{ ($response->body_mode ?? 'static') === 'template' ? 'JSON response template' : ($response->body ?: 'Empty body') }}">
                     <x-response-identity :response="$response" />
                     @if ($this->responseHasDraft($response->id))<x-badge variant="warning">Unsaved changes</x-badge>@endif
-                    @if ($selectionMode === 'weighted')Weight {{ $response->weight }}@endif
+                    @if ($selectionMode === 'weighted')<span class="response-selection-summary">Weight {{ $response->weight }} · {{ number_format(max(1, (int) $response->weight) / max(1, $savedWeightTotal) * 100, 1) }}% of saved pool</span>@endif
                     @if ($selectionMode === 'sequence')<x-badge variant="info">Position {{ $responseIndex + 1 }}</x-badge>@endif
                     @if ($selectionMode === 'rule')
                         @if ($fallbackResponseId === $response->id)
                             <x-badge variant="info">Fallback</x-badge>
                         @else
-                            {{ count($responseRules[$response->id] ?? []) }} conditions
+                            {{ count($responseRules[$response->id] ?? []) }} {{ Str::plural('condition', count($responseRules[$response->id] ?? [])) }}
                         @endif
                     @endif
                 </div>
                 <div class="endpoint-actions">
+                    @if ($selectionMode !== 'weighted')
+                        <div class="selection-move-actions">
+                            <button class="icon-button" type="button" wire:click="moveSelectionResponse({{ $responseIndex }}, -1)" @disabled($responseIndex === 0) aria-label="Move response {{ $response->id }} earlier">↑</button>
+                            <button class="icon-button" type="button" wire:click="moveSelectionResponse({{ $responseIndex }}, 1)" @disabled($responseIndex === $responses->count() - 1) aria-label="Move response {{ $response->id }} later">↓</button>
+                        </div>
+                    @endif
                     <button class="icon-button" type="button" wire:click="edit({{ $response->id }})">Edit</button>
                     <details class="overflow-menu" data-menu>
                         <summary aria-label="More actions for response {{ $response->id }}">•••</summary>
@@ -385,18 +407,6 @@
                         </div>
                     </details>
                 </div>
-                <details class="history-disclosure response-row-details" data-disclosure wire:ignore.self wire:key="response-details-{{ $response->id }}">
-                    <summary><x-disclosure-chevron /><strong>Details</strong></summary>
-                    <div class="response-row-detail-content">
-                        @if ($response->external_label !== null)<p class="field-help">Imported example: <strong>{{ $response->external_label }}</strong></p>@endif
-                        <code class="response-body-summary">{{ ($response->body_mode ?? 'static') === 'template' ? 'JSON response template' : (Str::limit(preg_replace('/\s+/', ' ', $response->body ?? ''), 82) ?: 'Empty body') }}</code>
-                        <div class="metadata-row"><span>{{ $response->delay_ms }} ms delay</span><span>{{ count($response->headers ?? []) }} headers</span>@if ($response->callback_enabled)<x-badge variant="info">Callback enabled</x-badge>@endif @if ($response->fault_enabled)<x-badge variant="warning">Fault: {{ $response->fault_type === 'timeout' ? 'long delay' : str_replace('_', ' ', $response->fault_type) }}</x-badge>@endif</div>
-                        @if ($selectionMode !== 'weighted')
-                    <div class="selection-move-actions">
-                        <button class="icon-button" type="button" wire:click="moveSelectionResponse({{ $responseIndex }}, -1)" @disabled($responseIndex === 0) aria-label="Move response {{ $response->id }} earlier">↑</button>
-                        <button class="icon-button" type="button" wire:click="moveSelectionResponse({{ $responseIndex }}, 1)" @disabled($responseIndex === $responses->count() - 1) aria-label="Move response {{ $response->id }} later">↓</button>
-                    </div>
-                        @endif
                 @if ($selectionMode === 'rule')
                     <div class="selection-response-details">
                         <label class="toggle-inline"><x-radio name="fallback-response" value="{{ $response->id }}" wire:click="setFallback({{ $response->id }})" :checked="$fallbackResponseId === $response->id" aria-label="Use response {{ $response->id }} as default fallback" /><span>Default / fallback</span></label>
@@ -425,6 +435,13 @@
                         </details>
                     </div>
                 @endif
+                <details class="history-disclosure response-row-details" data-disclosure wire:ignore.self wire:key="response-details-{{ $response->id }}">
+                    <summary><x-disclosure-chevron /><strong>Details</strong></summary>
+                    <div class="response-row-detail-content">
+                        @if ($response->external_label !== null)<p class="field-help">Imported example: <strong>{{ $response->external_label }}</strong></p>@endif
+                        <code class="response-body-summary">{{ ($response->body_mode ?? 'static') === 'template' ? 'JSON response template' : (Str::limit(preg_replace('/\s+/', ' ', $response->body ?? ''), 82) ?: 'Empty body') }}</code>
+                        <div class="metadata-row"><span>{{ $response->delay_ms }} ms delay</span><span>{{ count($response->headers ?? []) }} headers</span>@if ($response->callback_enabled)<x-badge variant="info">Callback enabled</x-badge>@endif @if ($response->fault_enabled)<x-badge variant="warning">Fault: {{ $response->fault_type === 'timeout' ? 'long delay' : str_replace('_', ' ', $response->fault_type) }}</x-badge>@endif</div>
+
                 <details class="history-disclosure response-history" data-disclosure>
                     <summary><x-disclosure-chevron /><span><strong>History</strong><small>Compare or restore response versions.</small></span></summary>
                     <livewire:admin.revision-history entity-type="response" :entity-id="$response->id" :key="'response-history-'.$response->id" />

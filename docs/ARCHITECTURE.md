@@ -221,3 +221,6 @@ CopiesMockCurl is the shared Livewire explicit-copy action used by EndpointIndex
 
 
 The response authoring presentation groups the existing Static/Template, schema Builder/JSON, locale/seed and synthetic preview controls inside `.response-body-workspace`. Its adaptive rows and bounded sample surface are scoped to the response form. `ResponseManager` continues to delegate conversion, validation, catalog access and preview to the existing template services; no alternate renderer or browser Faker implementation was added. Callback, selection, fault and save boundaries remain unchanged.
+
+
+Selection presentation reuses the existing response-pool draft and save boundary. Native anchor links move within the same mounted manager; direct row reorder/Rule controls invoke the same mutation actions. Saved-weight percentage text is derived only for display using the existing selector's effective weights and does not choose a response. Sequence runtime remains scoped to the active Environment; preview is read-only and Reset retains match counts. Fault disclosure summaries describe form drafts; the shared fault validator and post-selection application order remain unchanged.

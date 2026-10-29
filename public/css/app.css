@@ -1429,3 +1429,51 @@ body.workbench { --workbench-offset: calc(var(--shell-rail-width) + var(--shell-
     .endpoint-response-workspace .response-form .schema-row-actions { justify-content: flex-start; }
     .endpoint-response-workspace .response-form .schema-row-actions .icon-button { min-width: 44px; min-height: 44px; }
 }
+
+/* Selection and faults reuse the response workspace and existing save scopes. */
+.response-workspace-links { display: flex; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); background: var(--surface); }
+.response-workspace-links a { min-height: 36px; display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-muted); text-underline-offset: var(--space-1); }
+.response-workspace-links a:hover { color: var(--accent-link); }
+.response-workspace-links a span { font-variant-numeric: tabular-nums; }
+#response-editor-form, #response-selection-title { scroll-margin-top: calc(var(--site-nav-height) + var(--space-3)); }
+.endpoint-response-workspace .selection-workspace-heading { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+.selection-workspace-heading > span { color: var(--text-muted); font-size: var(--font-size-sm); }
+.endpoint-response-workspace .selection-mode-help { margin: 0; color: var(--text-muted); font-size: var(--font-size-sm); }
+.endpoint-response-workspace .saved-weight-note { margin: 0; font-size: var(--font-size-sm); }
+.endpoint-response-workspace .selection-settings { padding: var(--space-3); gap: var(--space-3); background: var(--surface); }
+.endpoint-response-workspace .selection-settings > .button { justify-self: start; }
+.endpoint-response-workspace .sequence-runtime { border-block: 1px solid var(--border); padding-block: var(--space-3); display: grid; gap: var(--space-2); }
+.sequence-runtime .field { margin: 0; }
+.sequence-runtime p { margin: 0; }
+.sequence-runtime .button { justify-self: start; }
+.endpoint-response-workspace .selection-preview { border: 0; border-top: 1px solid var(--border); border-radius: 0; padding: var(--space-3) 0 0; background: transparent; }
+.endpoint-response-workspace .selection-preview h3 { font-size: var(--font-size-sm); }
+.endpoint-response-workspace .selection-response-card { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-3); }
+.endpoint-response-workspace .selection-response-card .response-row-summary { min-width: 0; flex: 1 1 160px; white-space: normal; overflow: visible; text-overflow: clip; }
+.endpoint-response-workspace .selection-response-card .response-identity { min-width: 0; }
+.endpoint-response-workspace .selection-response-card .response-identity strong { overflow-wrap: anywhere; }
+.endpoint-response-workspace .response-selection-summary { display: block; color: var(--text-muted); font-size: var(--font-size-xs); font-variant-numeric: tabular-nums; }
+.endpoint-response-workspace .selection-response-card .endpoint-actions { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.endpoint-response-workspace .selection-response-card .selection-move-actions { gap: var(--space-1); }
+.endpoint-response-workspace .selection-response-card .endpoint-actions :is(button, summary) { min-height: 36px; min-width: 36px; }
+.endpoint-response-workspace .selection-response-details, .endpoint-response-workspace .response-row-details { flex-basis: 100%; width: 100%; }
+.endpoint-response-workspace .selection-response-details { border-top: 1px solid var(--border); padding-top: var(--space-2); }
+.endpoint-response-workspace .selection-response-details > .toggle-inline { min-height: 36px; }
+.endpoint-response-workspace .rule-condition-row { padding-block: var(--space-3); }
+.endpoint-response-workspace .rule-condition-row .field-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.endpoint-response-workspace .rule-condition-row .field { min-width: 0; margin-bottom: 0; }
+.endpoint-response-workspace .rule-condition-row .field-help { overflow-wrap: anywhere; }
+.endpoint-response-workspace .response-fault-settings > summary { flex-wrap: wrap; }
+.endpoint-response-workspace .fault-summary { color: var(--text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-regular); }
+.endpoint-response-workspace .response-fault-controls { border-top: 1px solid var(--border); padding-top: var(--space-2); }
+.endpoint-response-workspace .response-fault-controls .field-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@container (max-width: 430px) {
+    .endpoint-response-workspace .selection-response-card .endpoint-actions { flex-basis: 100%; justify-content: flex-end; }
+    .endpoint-response-workspace .selection-response-card .endpoint-actions :is(button, summary), .response-workspace-links a { min-height: 44px; }
+    .endpoint-response-workspace .rule-condition-row .field-row, .endpoint-response-workspace .response-fault-controls .field-row { grid-template-columns: minmax(0, 1fr); }
+}
+.endpoint-response-workspace .response-list { grid-template-columns: minmax(0, 1fr); }
+.endpoint-response-workspace .selection-settings { min-width: 0; max-width: 100%; }
+.endpoint-response-workspace .selection-settings > * { min-width: 0; max-width: 100%; }
+.endpoint-response-workspace .selection-settings, .endpoint-response-workspace .sequence-runtime { grid-template-columns: minmax(0, 1fr); }
+.endpoint-response-workspace .response-form .fault-summary, .endpoint-response-workspace .response-form .fault-summary > span { display: inline; }

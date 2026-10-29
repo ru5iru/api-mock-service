@@ -546,6 +546,8 @@ Choose Sequence, drag response handles or use their Earlier/Later keyboard butto
 
 Runtime state is independent per endpoint and environment. The readout shows the next call position for the active environment. Reset sequence confirms that environment and resets its position only; lifetime match count and other environments are retained. Saving/reordering configuration also retains runtime position, so explicitly reset when restarting a test scenario. Adding responses appends sequence positions; deletion closes the gap.
 
+Use **Selection & pool** at the top of Responses to jump directly to selection settings without losing body drafts. **Response editor** jumps back. Saved-weight percentages are rounded and describe only saved weights; an unsaved weight change is not reflected until the response is saved. Reorder buttons are always on Sequence/Rule rows alongside Edit and More; drag remains available. Rule mode puts Default / fallback and Conditions directly on each row, without first opening metadata Details. Details still contains saved body/metadata and History.
+
 ### Rule-based
 
 The request must first match this endpoint by method, path/query, retained headers and body; rules then choose among its responses. A rule cannot make a different request match. To vary a header or query value, exclude it in Matching first, then choose the response with a rule.
