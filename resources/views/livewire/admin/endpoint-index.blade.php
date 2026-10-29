@@ -199,7 +199,7 @@
                             <button class="button button-secondary button-small" type="button"
                                     data-copy-curl data-copy-endpoint="{{ $endpoint->id }}"
                                     aria-label="Copy mock curl for {{ $endpoint->displayName() }}">
-                                <span aria-hidden="true">⧉</span> Copy mock curl
+                                <x-workbench-icon name="copy" /> Copy mock curl
                             </button>
                         @else
                             <button class="button button-secondary button-small" type="button" disabled

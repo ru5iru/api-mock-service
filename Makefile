@@ -157,6 +157,7 @@ https-check:
 
 # Requires Playwright and an accessible dashboard (both themes are tested).
 browser-test:
+	node tests/Browser/workbench-smoke.mjs
 	node tests/Browser/layout-smoke.mjs
 	node tests/Browser/documentation-smoke.mjs
 

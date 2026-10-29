@@ -1,0 +1,275 @@
+# UI upgrade checklist and implementation record
+
+Baseline: uploaded master archive `8622ec7d9223c97394a936501762d2d6f909cfa7` (487 files verified against the archive); local Git ancestry remains `44a00e3`. Direction: the supplied version-6 desktop workbench and the 28 October UI/UX upgrade plan. This is the maintained implementation checklist derived from that plan.
+
+## Reconciliation with recent master
+
+| Recent change | Updated requirement |
+|---|---|
+| Endpoint preflight validation before response-draft saves | Preserve `saveAll` preflight and attempt IDs; invalid endpoint input must not save child drafts. E09 includes the existing global-save characterization suite. |
+| Per-scope saved/failed/unconfirmed results and client recovery | F07 uses the shipped results; no replacement save protocol. Test uncertainty and partial outcomes, not just successful saves. |
+| First-run/no-response diagnostic and honest labels | E02 preserves the diagnostic 500 when an eligible mock has no response; never label parsed input as callable readiness. |
+| Clipboard capture/fallback and action-boundary resolution | E08/L05 preserve delegated clipboard ordering, exact bytes, failure feedback and server-only resolution. |
+| Sensitive-output redaction and new regression fixtures | F04, E08, L05 and V04 must preserve these expanded boundaries, including output not handled by the older name-only heuristic. |
+| More CI/browser regression coverage | Keep the new first-run/global-save/honest-labels/sensitive-data checks. Adding a smoke test to Make alone does not prove CI ran it. |
+
+## Completion rule
+
+A checkbox means the named scope is implemented and has **two recorded successful verification passes**. Source inspection and a browser pass are different forms of evidence; running the same assertion twice is not an independent review. Partial work stays unchecked. Environment-blocked checks stay BLOCKED and do not become a pass. The ledger names which milestone is delivered; unchecked items are future work, not silently dropped features.
+
+## Current delivery boundary
+
+Delivered scope: shared workbench foundations and registry presentation (final review/verification ledger below). Existing Request / Matching / Response / Callback tabs stay until the separate endpoint-workbench migration; no premature Editor / Settings labels. The source, matching, mutation, import, credential and run-isolation contracts remain authoritative.
+
+## Checklist
+
+
+**P0:** foundation or safety dependency. **P1:** core redesign release. **P2:** completion/hardening. Checkboxes describe work to do; none claim an implemented fix.
+
+### P0 — shared foundations and interaction contracts
+
+- [x] **F01** Approve the workbench shell, tab mapping and full-registry retention.
+- [x] **F02** Define one token mapping, light counterpart, typography, spacing, density, hit targets and elevation rules in the existing UI guide.
+- [x] **F03** Inventory all current actions/states using section 3 and keep a migration parity ledger.
+- [ ] **F04** Style the existing buttons, fields, selects, switches, badges, menu, dialog, toast, disclosure, tooltip and code surfaces consistently.
+- [x] **F05** Implement persistent rail/context/work-area chrome without breaking Livewire navigation, theme resolution or session/local-access state.
+- [x] **F06** Establish scroll ownership, pane collapse, focus restoration and measured sticky/action offsets.
+- [ ] **F07** Establish truthful Saved / Unsaved / Saving / Failed / Partially saved semantics using existing draft scopes.
+- [x] **F08** Reuse the dirty-navigation guard for new explorer/navigation interactions; test failure and partial-save paths.
+- [ ] **F09** Define accessible shortcuts, tooltip dismissal, announcements and compact-target geometry.
+
+**Gate:** all shared components have light/dark, keyboard, disabled/loading/error and 320 px examples before feature pages are migrated. These are implementation deliverables, not new files created by this planning task.
+
+### P1 — endpoint registry and explorer
+
+- [x] **R01** Replace endpoint cards with continuous aligned rows, preserving full identities and contextual details.
+- [ ] **R02** Preserve search, method/state/collection/tag filters, sorting, counts and pagination.
+- [ ] **R03** Preserve single-row enable, copy, edit, duplicate and delete with explicit focus/hover access.
+- [ ] **R04** Preserve page/individual selection and every bulk operation, including move and tags.
+- [x] **R05** Implement explorer search/collection navigation with bounded loading and correct flat grouping.
+- [ ] **R06** Design database-empty, collection-empty, filtered-empty, loading and deleted-current-endpoint states.
+- [ ] **R07** Place embedded recent requests without restoring a wall of dashboard cards.
+
+**Acceptance:** a registry containing long names/paths, unfiled items, many tags, disabled/no-response entries and multiple pages remains fully manageable; the explorer never exposes run-owned mocks.
+
+### P1 — endpoint create/edit: Request and Matching
+
+- [ ] **E01** Migrate create/edit into a shared Editor / Callback / Settings layout; preserve old tab deep links through an explicit compatibility mapping.
+- [ ] **E02** Implement create-before-response guidance and accurate serving-readiness states.
+- [ ] **E03** Move cURL import/source editing to the shared dialog/pane flow while preserving parser validation/warnings.
+- [ ] **E04** Display source URL separately from real mock invocation instructions.
+- [ ] **E05** Preserve coarse header policies, subordinate-choice memory and real defaults.
+- [ ] **E06** Preserve field exclusions, Postman token provenance and path-segment editing.
+- [ ] **E07** Keep complete live canonical preview, variant, hash copy and duplicate detection.
+- [ ] **E08** Preserve credential warnings, Mask detected secrets and explicit-copy resolution/error behavior.
+- [ ] **E09** Preserve dirty drafts, action scoping, first-error focus and failed/partial-save reconciliation.
+
+**Acceptance:** equivalent configurations produce byte-identical canonical strings/hashes and native exports; source and copied cURL remain valid without escaping regressions; no new request is executed by parsing or previewing.
+
+### P1 — responses, templates and selection
+
+- [ ] **S01** Implement response identity/selector/list without losing drafts held for other responses.
+- [ ] **S02** Preserve status range, JSON headers, raw Static body, weight, delay and Delete safeguards.
+- [ ] **S03** Migrate Template/Static and Builder/JSON with the existing catalog and schema controls.
+- [ ] **S04** Preserve nested builder fields, argument inputs, reorder alternatives and unsupported-builder fallback.
+- [ ] **S05** Migrate preview, issues/quick fixes, locale and all seed modes; label synthetic samples accurately.
+- [ ] **S06** Preserve Weighted default and probability summaries.
+- [ ] **S07** Migrate Sequence order/exhaustion/preview/reset with explicit active-environment scope.
+- [ ] **S08** Migrate Rule conditions/priorities/default validation without changing grammar or order.
+- [ ] **S09** Migrate the four existing fault types, limits and enabled/probability summaries.
+- [ ] **S10** Preserve response History, source example labels, save/cancel and per-response dirty state.
+
+**Acceptance:** Weighted outcomes remain governed by existing services; 503→503→200 sequence/reset works; Rule match and fallback work; preview leaves runtime state untouched; raw text remains raw; configured faults retain existing behavior.
+
+### P1 — endpoint Callback and Settings
+
+- [ ] **C01** Bind callback editing visibly to a selected response.
+- [ ] **C02** Preserve URL/method, headers, builder/JSON body, preview and enable state.
+- [ ] **C03** Migrate timing, attempts, backoff, timeout, signing and saved-secret retention.
+- [ ] **C04** Keep Test saved callback separate from payload preview and disabled for unsaved relevant changes.
+- [ ] **C05** Link real saved test outcomes/attempts and related callback Logs.
+- [ ] **C06** Move name/collection/tags/priority/environment availability into Settings with current save boundaries.
+- [ ] **C07** Preserve enabled/override semantics, inline organization creation and destructive safeguards.
+
+**Acceptance:** callback test uses saved configuration; no secret becomes readable; every real environment override remains editable; callback/network behavior is unchanged.
+
+### P1 — request and callback Logs
+
+- [ ] **L01** Build the shared stable list/inspector frame and narrow Back-to-list behavior.
+- [ ] **L02** Preserve Requests/Callbacks and aliases; defer unsupported All activity/CSV additions explicitly.
+- [ ] **L03** Preserve every existing filter, grouping/time/density control and result/window label.
+- [ ] **L04** Preserve Live/Paused/detail-open polling behavior without selection/focus jumps.
+- [ ] **L05** Migrate complete mismatch/nearest-candidate diagnostics and redacted cURL copy.
+- [ ] **L06** Migrate callback recorded-target/outcome/lineage details and Resend behavior.
+- [ ] **L07** Preserve endpoint, response and triggering-request cross-links, including deleted-record states.
+- [ ] **L08** Distinguish mocked failures, no match, selection exhaustion and callback delivery failure where real data supports it.
+
+**Acceptance:** a known mismatch is diagnosable without leaving the list; excluded fields are not shown as mismatches; inspect/copy do not alter counters or dispatch callbacks; callback Resend preserves original evidence.
+
+### P1 — Environments
+
+- [ ] **V01** Migrate environment list/detail with separate Active, Default and Selected concepts.
+- [ ] **V02** Preserve create, rename, duplicate, make-default and guarded delete/replacement.
+- [ ] **V03** Migrate variable rows/new-variable entry, per-row Save/Delete and dirty/error feedback.
+- [ ] **V04** Preserve masked write-only secrets and leave-blank-to-retain behavior.
+- [ ] **V05** Preserve variable drafts across selection and explain global activation consequences.
+
+**Acceptance:** editing a selected environment does not switch the global active environment; duplication/deletion keep existing semantics; values never leak through new UI attributes or persistence.
+
+### P1 — Import/export
+
+- [ ] **I01** Migrate real export selection/options, filters, scope, filename and selected counts.
+- [ ] **I02** Preserve redaction preview, sensitive acknowledgement and native 1.5 output.
+- [ ] **I03** Migrate Native/Postman upload, size/structure errors, companion Environment and mode-specific options.
+- [ ] **I04** Render real per-request action/error/warning plans in a scalable list/inspector.
+- [ ] **I05** Retain complete variable candidates, source/precedence/conflict notes and original token annotations.
+- [ ] **I06** Preserve explicit variable creation and Exclude/Resolve/per-field choices with their consequences.
+- [ ] **I07** Surface actual credential/script/template-conversion/request-body warnings without adding script features.
+- [ ] **I08** Preserve preview invalidation, confirmation, atomic apply and response-replacement warnings.
+- [ ] **I09** Migrate completion links, grouped version snapshots and accurately bounded Undo.
+
+**Acceptance:** native round trips remain format 1.5; masked exports retain disable/replacement flags; Postman correlation and variable behavior are unchanged; no script executes; no run/runtime data becomes portable.
+
+### P2 — history, documentation, access and recovery
+
+- [ ] **H01** Re-skin endpoint/response History with full comparisons and existing restore behavior.
+- [ ] **H02** Migrate run history as read-only, including retained deleted-entity names and no Restore control.
+- [ ] **D01** Move Documentation to the reading workspace with existing search/anchors/examples.
+- [ ] **D02** Update in-app and Markdown user guidance for the new navigation/action locations without rewriting unrelated feature contracts.
+- [ ] **A01** Align sign-in, user menu, local access and theme controls with the new system.
+- [ ] **A02** Align 404/419/429/500/503 recovery screens; test auth/session failures on dirty forms.
+- [ ] **A03** Complete empty/loading/unavailable states across every route and nested editor.
+- [ ] **A04** Complete keyboard, touch, real 400% zoom, forced-colors, reduced-motion and screen-reader checks.
+
+**Acceptance:** every route and shared overlay looks like the same application; no page falls back to the former website shell; read-only run constraints, authentication and error semantics remain intact.
+
+
+## Feature parity inventory
+
+The following target mapping is carried forward from the approved plan after reconciling recent master. It is an inventory of preserved features and intended destinations, **not** a claim that each proposed screen has shipped. The checklist above is the completion authority. **8 of 72 items are verified complete; 64 remain unchecked.**
+
+
+**Coverage labels:** Shown = present in the prototype; Partial = a simplified illustration exists; Missing = a production design must be supplied. All proposed routes below retain their current URL unless explicitly stated otherwise.
+
+| Existing destination or capability | Current entry point | Prototype coverage | Proposed location / treatment |
+|---|---|---|---|
+| Endpoint registry | `/dashboard`; `EndpointIndex` | Partial: explorer only | Full-width continuous registry with filters, bulk actions and an optional context sidebar. |
+| Endpoint create | `/dashboard/endpoints/create`; `EndpointForm` | Partial: local dialog | Same workbench as edit, with a deliberate unsaved/new state and first-save guidance. |
+| Endpoint edit | `/dashboard/endpoints/{endpoint}/edit` | Shown | Explorer plus Editor / Callback / Settings; stable object header. |
+| Request parsing and warnings | `EndpointForm` request panel | Partial | Import cURL dialog, compact source summary, parse state and real warnings in request pane. |
+| Original cURL and parsed data | Request panel | Partial | Source disclosure and Headers / Query / Body inspection; preserve literal data and copy behavior. |
+| Coarse matching policies | Matching panel | Shown | Request pane Matching rules section; current defaults and flags unchanged. |
+| Per-field exclusion + original Postman tokens | Matching tables / metadata | Missing | Header/query rows show Included / Excluded and token provenance. |
+| Path segment editor | Request panel | Partial: text pattern | Reuse current segment controls within Matching rules; avoid a second pattern editor. |
+| Canonical request, variant and SHA-256 | Signature sidebar | Partial | Dedicated inspectable signature section with full canonical content and copy commands. |
+| Duplicate signature + credential warnings | Request panel | Missing | Blocking issue or review callout near request source, with existing repair actions. |
+| Endpoint name, enabled, priority | Request/header | Shown | Inline title; enabled state in object toolbar; name/priority in Settings. |
+| Collection and tags | Request organization fields; registry filters/bulk | Shown/Partial | Flat collection explorer, Settings assignment, preserved filters and bulk operations. |
+| Endpoint environment availability | Request organization | Partial | Settings matrix with Inherit / Allow / Disabled for every real environment. |
+| Static response create/edit/delete | `ResponseManager` | Shown/Partial | Right pane response selector/list, status/headers/body/delay/weight, explicit commands. |
+| Multi-response drafts and global save | `ResponseManager` + `EndpointForm::saveAll` | Partial | Shared save state with per-scope dirty/error markers and response identity retained. |
+| Weighted selection | Response selection section | Partial | Selection mode control and weight/probability summary. |
+| Sequence order / exhaustion / reset / preview | Response selection section | Partial | Inline sequence list, exhaustion select, read-only next-response preview, scoped Reset. |
+| Rule conditions / priorities / one default | Response selection section | Partial | Expandable full-width selection area, ordered responses and original condition grammar. |
+| Static vs Template | Response form | Partial | Mode selector; preserve raw text and template mode behavior. |
+| Template JSON + schema builder | `response-manager`, `partials/schema-row` | Missing builder | Reuse existing Builder / JSON control, nested rows and method catalog in right pane. |
+| Locale, random/fixed/signature seeds, regeneration | Response form | Missing/Partial | Template toolbar and preview controls, retaining all three seed modes. |
+| Template issues, quick fixes, sample context | Template preview service | Partial | Resizable/stacked sample panel with issues, location and existing structured codes. |
+| Fault injection | Response form advanced disclosure | Partial | Summary + configuration for `delay`, `malformed_body`, `truncated_body`, `timeout` only. |
+| Per-response callback configuration | Callback tab | Partial | Response selector, target/payload editor and timing/retries/signing sections. |
+| Test saved callback | Callback settings partial | Missing real delivery | Existing command with synthetic-context warning and saved/draft distinction. |
+| Request log | `/dashboard/logs?type=requests`; `LogViewer` | Shown snapshot | Live request table and real-detail inspector; retain existing diagnostics. |
+| Callback attempts + resend | `/dashboard/logs?type=callbacks`; `CallbackLog` | Missing real records | Callback table + attempt inspector, recorded target, lineage and explicit Resend. |
+| Request/callback aliases | `/dashboard/requests`, `/dashboard/callbacks` | Missing | Preserve current routing/alias behavior; no new divergent log page. |
+| Embedded recent requests on registry | `LogViewer` compact mode | Missing | Compact optional bottom/activity region or secondary section, not a competing dashboard of cards. |
+| Native export | `/dashboard/config`; `ConfigTransfer` | Shown demo | Endpoint selection + export options/review; real native 1.5 output. |
+| Native import and replace-pool options | Same | Partial | Source/options + real preview + clear destructive confirmation. |
+| Postman import, variables, warnings | Same | Partial | Full variable review and per-request plan, built from existing mapped preview. |
+| Import completion / grouped versions / undo | Same | Missing | Persistent completion summary, affected items and bounded Undo this import. |
+| Environments / variables / secret editing | `/dashboard/environments`; `EnvironmentManager` | Missing | Environment list plus variable editor with independent save scopes. |
+| Active environment | `EnvironmentSwitcher` | Partial single option | Persist existing global selector with explicit instance-wide consequence. |
+| Endpoint/response version history and restore | `RevisionHistory` dialogs | Partial local history | Timeline + structural comparison using existing component and restore contract. |
+| MCP test-run history | `/dashboard/test-runs/{publicId}/history` | Missing | Read-only run-scoped history in the new shell; preserve no-restore rule. |
+| Documentation | `/dashboard/docs` | Partial modal | Reading workspace with section navigation, search, contextual deep links and examples. |
+| Sign in / sign out / local access | `/dashboard/login`, user menu | Missing | Quiet product-style sign-in and consistent session/local-access identity. |
+| Light / Dark / System | Theme control | Missing light/system | One coordinated design system, persisted with existing theme resolver. |
+| Shared confirmations / menus / toasts / tooltips | Existing shared components/scripts | Partial | Re-skin existing patterns; preserve timing, focus, keyboard and safe-action contracts. |
+| 404 / 419 / 429 / 500 / 503 | `resources/views/errors/` | Missing | Compact operational recovery states with useful next steps. |
+| MCP/verification credentials and tools | CLI/API plus docs | Missing UI | Keep existing CLI/API surface and help. A management console is a separate feature, not required here. |
+
+
+## Verification ledger
+
+### Foundation / explorer / registry presentation — 28 October 2026
+
+Implementation: persistent topbar + navigation rail + context sidebar + status bar; full-width operating surfaces; warm semantic tokens in both themes; bounded 15-row explorer reusing EndpointIndex's existing query; continuous registry surfaces; sidebar preference; reversible single-character-shortcut opt-out; hoverable/dismissible 24px help triggers. Four existing editor tabs and all server mutation/validation/save-result contracts remain unchanged.
+
+The independent finish review found three defects (320px header collision, missing shortcut-preference recovery, and cancelled tooltip close). All three were fixed together. Browser assertions now check header rectangles, the visible footer Shortcuts opener, ordinary pointer departure and hover-only Escape, rather than relying on document width or programmatic dialog opening alone.
+
+| Checklist scope | First verification | Second verification | Status |
+|---|---|---|---|
+| F01 direction / registry retention / migration boundaries | Reconciled version-6 prototype and uploaded-master changes; target inventory retained | Independent rendered review confirmed bounded workbench scope and truthful four-tab editor | Verified twice; independent fix verdict: resolved / ship |
+| F02 tokens / shared geometry | Design-token validator and exact light/dark reference test pass | Rendered light/dark routes, compact controls and 320/390/1024px layouts inspected | Verified twice |
+| F03 source inventory / parity ledger | Original full feature mapping reconciled against 40 modified +19 added master files | Mapping checked against current route/component/service paths and full PHP regression | Verified twice |
+| F05 shell / persistence / local-session identity | WorkbenchShellTest verifies all destinations and state controls | Workbench smoke + existing layout smoke verify real Livewire header persistence in both themes | Verified twice |
+| F06 scroll / responsive / focus geometry | Existing measured viewport/action-bar logic retained; narrow header fix reviewed | Browser checks reflow, action/title rectangles, sidebar Escape focus and focused-input/action/status-bar clearance | Verified twice |
+| F08 dirty-navigation guard | Existing editor-drafts Node tests and native PHP/editor characterization pass | Real browser edits request then attempts rail navigation, cancels discard and retains editor; editor regression tests cover dirty N navigation | Verified twice |
+| R01 continuous registry rows | Source uses existing row semantics/actions with one continuous surface | Registry browser regression verifies aligned retained fields at ten widths in both themes | Verified twice |
+| R05 bounded explorer / flat collections | Livewire test verifies 15-item pagination, search, current identity, ordinary/run wall and absence of request credentials | Browser exercises explorer search/empty result and the route/sidebar presentation in both themes | Verified twice |
+
+### Actual executed checks
+
+- Native PHP 8.3.6 / Laravel 13.32.0 / Livewire 4.4.5, dedicated external SQLite database for browser fixtures, in-memory SQLite for PHPUnit. No operator database or application .env was changed.
+- Full PHPUnit: **439 passed, 4403 assertions, zero skipped**, including native concurrent tests after enabling the local runtime's POSIX extension. Docker/PostgreSQL parity is not implied.
+- Node frontend: **84 passed, zero failures**; setup helpers: **16 passed**; design-token validation passed; whole-project Pint `--test` passed.
+- `make browser-test`: new workbench smoke, existing layout smoke and documentation smoke passed in both themes. Chromium **150.0.7871.100**, Playwright **1.62.1**, Node **24.22.1**.
+- `make browser-regression-test`: existing critique and endpoint-editor regressions passed on the disposable instance. This Make target runs those two scripts, not every script in tests/Browser.
+- `endpoint-registry-smoke.mjs`: both themes passed at 1680/1440/1200/1024/901/900/768/740/390/320px with 0–1 MiB bodies, 0–128 headers and 1–101 responses. Its only script change is support for the existing optional Chromium executable convention; no assertions were weakened.
+- `git diff --check`, JavaScript syntax and source paths checked. Current screenshot/log artifacts remain outside tracked source.
+
+Independent finish-review verdict: **ship this bounded milestone**. All three material findings were scored resolved after the correction batch, source/test checks and recaptured light/dark 320/390px evidence. This does not approve the remaining unchecked upgrade work.
+
+### BLOCKED / not claimed
+
+- `make validate` was actually attempted and stops at Compose configuration: `make: docker: No such file or directory` (`compose-config`, error 127; Make exits 2). Its independently runnable pieces above were run; the Docker image/Composer/container checks did not pass by implication.
+- Docker/PostgreSQL browser/global-save/sensitive-data guarded scripts require their real disposable PostgreSQL setup and were not substituted with SQLite. Existing PHP tests cover those behaviors, but that is different evidence.
+- Remote GitHub Actions execution was not triggered/verified here; the new smoke is wired through the existing make browser-test job.
+- Real 400% desktop browser zoom, screen readers, physical touch devices and a complete axe audit remain outstanding. No accessibility-conformance claim is made.
+- Editor / Callback / Settings consolidation, side-by-side request/response authoring, advanced response/selection/callback migration, Logs inspectors and complete import/environment/history screen migration remain unchecked. First-run readiness and existing per-scope save state are retained, not reimplemented.
+
+### Remaining manual verification
+
+On a disposable Docker/PostgreSQL instance, run make validate and guarded browser scripts in both themes; check logged-in expiry and 419 paths; verify real browser zoom, screen-reader announcements, touch/menu behavior and the remaining planned advanced workflows. Inspect the first foundation milestone before starting the separate endpoint-pane migration.
+
+
+### Files changed in this milestone
+
+Compared with the imported master snapshot, these files are changed or new. Earlier user developments remain part of the baseline, not attributed to this UI work.
+
+- `.impeccable/design.json`
+- `DESIGN.md`
+- `Makefile`
+- `README.md`
+- `app/Livewire/Admin/EndpointIndex.php`
+- `docs/ARCHITECTURE.md`
+- `docs/UI_GUIDE.md`
+- `docs/UI_UPGRADE.md`
+- `docs/USER_GUIDE.md`
+- `docs/VALIDATION.md`
+- `public/css/app.css`
+- `public/css/tokens.css`
+- `public/js/panels.js`
+- `public/js/workbench.js`
+- `resources/views/admin/docs.blade.php`
+- `resources/views/admin/endpoints/index.blade.php`
+- `resources/views/components/workbench-icon.blade.php`
+- `resources/views/components/workbench-navigation.blade.php`
+- `resources/views/layouts/dashboard.blade.php`
+- `resources/views/livewire/admin/endpoint-explorer.blade.php`
+- `resources/views/livewire/admin/endpoint-index.blade.php`
+- `tests/Browser/endpoint-registry-smoke.mjs`
+- `tests/Browser/workbench-smoke.mjs`
+- `tests/Feature/WorkbenchShellTest.php`
+- `tests/Frontend/workbench.test.mjs`
+
+No Composer/package dependency, route, database migration, canonicalization/matching service or response/callback mutation service was changed.

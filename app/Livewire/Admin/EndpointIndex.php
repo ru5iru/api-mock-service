@@ -14,6 +14,7 @@ use App\Services\Templates\TemplateRenderException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use InvalidArgumentException;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -21,6 +22,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 final class EndpointIndex extends Component
 {
     use WithPagination;
+
+    #[Locked]
+    public bool $explorer = false;
+
+    #[Locked]
+    public ?int $currentEndpointId = null;
 
     public string $search = '';
 
@@ -45,33 +52,33 @@ final class EndpointIndex extends Component
 
     public function updatedSearch(): void
     {
-        $this->resetPage();
+        $this->resetPage(pageName: $this->explorer ? 'explorerPage' : 'page');
     }
 
     public function updatedMethod(): void
     {
-        $this->resetPage();
+        $this->resetPage(pageName: $this->explorer ? 'explorerPage' : 'page');
     }
 
     public function updatedState(): void
     {
-        $this->resetPage();
+        $this->resetPage(pageName: $this->explorer ? 'explorerPage' : 'page');
     }
 
     public function updatedSort(): void
     {
-        $this->resetPage();
+        $this->resetPage(pageName: $this->explorer ? 'explorerPage' : 'page');
     }
 
     public function updatedCollection(): void
     {
-        $this->resetPage();
+        $this->resetPage(pageName: $this->explorer ? 'explorerPage' : 'page');
     }
 
     public function updatedTags(): void
     {
         $this->tags = array_values(array_unique(array_map('intval', $this->tags)));
-        $this->resetPage();
+        $this->resetPage(pageName: $this->explorer ? 'explorerPage' : 'page');
     }
 
     public function clearFilters(): void
@@ -79,7 +86,7 @@ final class EndpointIndex extends Component
         $this->reset(['search', 'method', 'state', 'sort', 'collection', 'tags']);
         $this->state = 'all';
         $this->sort = 'recent';
-        $this->resetPage();
+        $this->resetPage(pageName: $this->explorer ? 'explorerPage' : 'page');
     }
 
     public function selectPage(): void
@@ -198,7 +205,14 @@ final class EndpointIndex extends Component
 
     public function render(): View
     {
-        $endpoints = $this->endpointQuery()->paginate(15);
+        $endpoints = $this->endpointQuery()->paginate(15, ['*'], $this->explorer ? 'explorerPage' : 'page');
+
+        if ($this->explorer) {
+            return view('livewire.admin.endpoint-explorer', [
+                'endpoints' => $endpoints,
+                'collections' => Collection::query()->withCount('endpoints')->orderBy('name')->get(),
+            ]);
+        }
 
         $parser = app(CurlParser::class);
         $builder = app(MockCurlBuilder::class);

@@ -29,6 +29,12 @@ Login attempts are rate-limited. Use the user menu to sign out. Setting `MOCK_DA
 
 ## 2. Dashboard navigation and preferences
 
+The workbench uses a persistent top bar, a left navigation rail and a contextual sidebar. The rail opens Endpoints, Logs, Import / export, Environments and Documentation. Use **Toggle workspace sidebar** to recover editing space; its desktop collapsed state is remembered. At narrower widths it opens a temporary sidebar; Escape closes it and returns focus to the toggle. Mobile uses the labelled Menu for global destinations.
+
+When creating or editing an endpoint, the sidebar offers a separate search and flat Collection filter with 15 endpoints per page. It never lists run-owned mocks or shows request credentials. The main registry retains its own filters, pagination and bulk actions. Request, Matching, Response and Callback remain the current editor tabs during this first migration stage.
+
+Open shortcut help with **?** or **Shortcuts** in the footer and uncheck **Enable N, / and ? shortcuts outside text fields** to disable single-character shortcuts. This preference persists; Ctrl/⌘+Enter remains available. Theme, log density, sidebar visibility and shortcut preference are presentation settings; endpoint values and secrets are not stored by the new workbench preference script.
+
 The dashboard contains:
 
 - **Endpoints** — create, find, manage, duplicate, enable, disable, export, and delete mock endpoints.

@@ -21,6 +21,7 @@
     <script src="{{ asset('js/dialogs.js') }}?v={{ filemtime(public_path('js/dialogs.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/menu.js') }}?v={{ filemtime(public_path('js/menu.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/ui-preferences.js') }}?v={{ filemtime(public_path('js/ui-preferences.js')) }}" defer></script>
+    <script src="{{ asset('js/workbench.js') }}?v={{ filemtime(public_path('js/workbench.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/template-editor.js') }}?v={{ filemtime(public_path('js/template-editor.js')) }}" defer data-navigate-once></script>
     @livewireStyles
 </head>
@@ -30,7 +31,7 @@
         app(\App\Services\Logging\LogTailer::class)->recent(100),
     )));
 @endphp
-<body data-unmatched-timestamps="{{ json_encode($navigationUnmatchedTimestamps) }}">
+<body class="workbench" data-unmatched-timestamps="{{ json_encode($navigationUnmatchedTimestamps) }}">
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="app-shell">
         @persist('dashboard-topbar')
@@ -43,22 +44,8 @@
                 </span>
             </a>
 
-            <nav class="topnav" aria-label="Dashboard navigation">
-                <a href="{{ route('dashboard.endpoints.index') }}" wire:navigate
-                   class="{{ request()->routeIs('dashboard.endpoints.*') ? 'active' : '' }}"
-                   @if (request()->routeIs('dashboard.endpoints.*')) aria-current="page" @endif>
-                    Endpoints
-                </a>
-                <a href="{{ route('dashboard.logs.index') }}" wire:navigate
-                   class="{{ request()->routeIs('dashboard.logs.*', 'dashboard.requests.*', 'dashboard.callbacks.*') ? 'active' : '' }}"
-                   @if (request()->routeIs('dashboard.logs.*', 'dashboard.requests.*', 'dashboard.callbacks.*')) aria-current="page" @endif>
-                    Logs <span class="nav-badge" data-unmatched-badge hidden>0</span>
-                </a>
-                <a href="{{ route('dashboard.config.index') }}" wire:navigate
-                   class="{{ request()->routeIs('dashboard.config.*') ? 'active' : '' }}"
-                   @if (request()->routeIs('dashboard.config.*')) aria-current="page" @endif>
-                    Import / export
-                </a>
+            <button class="icon-button workbench-sidebar-toggle" type="button" data-workbench-toggle aria-controls="workbench-context" aria-expanded="true" aria-label="Toggle workspace sidebar"><x-workbench-icon name="sidebar" /></button>
+            <div class="topbar-tools">
                 <livewire:admin.environment-switcher />
                 <x-theme-control name="theme-header" />
                 <details class="user-menu" data-menu>
@@ -79,7 +66,7 @@
                         @endif
                     </div>
                 </details>
-            </nav>
+            </div>
 
             <details class="mobile-nav" data-menu>
                 <summary aria-label="Open dashboard navigation">Menu<x-chevron /></summary>
@@ -116,12 +103,15 @@
         </header>
         @endpersist
 
+        <x-workbench-navigation />
+
         <main id="main-content" class="page-shell" tabindex="-1">
             {{ $slot }}
         </main>
 
         <footer class="footer">
             <span>MockDeck v{{ config('mock.portable_config.generator_version') }}</span>
+            <button class="text-button" type="button" data-dialog-open="shortcut-dialog">Shortcuts</button>
             <a href="{{ route('dashboard.docs') }}" wire:navigate>Documentation</a>
         </footer>
     </div>
@@ -143,6 +133,7 @@
             <div><dt><kbd>?</kbd></dt><dd>Shortcut help</dd></div>
             <div><dt><kbd>Esc</kbd></dt><dd>Close this dialog</dd></div>
         </dl>
+        <label class="toggle-inline"><input type="checkbox" data-single-key-shortcuts checked> Enable N, / and ? shortcuts outside text fields</label>
     </x-dialog>
 
     <x-dialog id="confirm-dialog" title="Confirm action" close-label="Cancel confirmation">
@@ -528,6 +519,7 @@
             const isEditing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target?.isContentEditable;
             if (isEditing || target?.closest('dialog[open]') || event.ctrlKey || event.metaKey || event.altKey) return;
 
+            if (window.MockDeckWorkbench?.singleKeyShortcutsEnabled() === false) return;
             if (event.key === 'n' || event.key === 'N') {
                 window.MockDeckEditor.navigate(@js(route('dashboard.endpoints.create')), target);
             } else if (event.key === '/') {

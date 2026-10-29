@@ -207,3 +207,7 @@ The dashboard and API use `ResponseTemplateEngine::preview(template, locale, see
 ### Run-scoped external imports
 
 `McpPostmanImport` orchestrates `PostmanMapper` and the shared `MappedImportService.previewDocument()` / `applyDocument()` boundaries. Preview stays in memory; the original dashboard cached-preview/confirmation flow uses the same analyzer and writer. An explicit `TestRun` scopes correlation and endpoint construction before INSERT, with responses inheriting endpoint ownership. Apply executes under the existing MCP run lock and `McpIdempotency` transaction; every changed run endpoint receives an existing run-scoped revision batch. Folder Collections retain their existing shared-metadata behavior. Neither path interprets Postman scripts or creates Environment variables.
+
+## Workbench presentation layer
+
+The shared dashboard shell composes a persistent topbar, navigation rail, route-specific context sidebar and status bar. `EndpointIndex` supports a locked explorer presentation with its own 15-item paginator and current endpoint identity; it reuses the normal scoped endpoint query and does not render raw requests or resolve clipboard credentials. No matching/mutation service, schema or route contract changes are introduced by this presentation mode. `public/js/workbench.js` stores only sidebar and shortcut preferences. The existing draft, save-attempt, clipboard and server redaction controllers remain authoritative. See [UI upgrade](UI_UPGRADE.md) for migration boundaries and evidence.

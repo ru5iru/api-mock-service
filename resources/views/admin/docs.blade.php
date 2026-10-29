@@ -418,6 +418,8 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
 
         <section id="preferences-accessibility" class="card docs-card">
             <h2>Theme and accessibility</h2>
+            <p>The workbench rail opens Endpoints, Logs, Import / export, Environments and Documentation. Toggle workspace sidebar collapses the desktop sidebar; on smaller screens it opens a temporary sidebar dismissed with Escape. Endpoint creation/editing includes a separate, paginated endpoint search. The registry retains all filters and bulk actions.</p>
+            <p>Open shortcut help with ? or the footer Shortcuts button and clear Enable N, / and ? shortcuts outside text fields to disable single-character shortcuts. Ctrl/⌘+Enter still saves. Only presentation preferences are remembered by the workbench; request data and secrets are not stored locally.</p>
             <ul>
                 <li>Choose System, Light, or Dark from the header. Explicit choices persist in this browser; System follows live operating-system changes.</li>
                 <li>The in-app brand icon follows the effective dashboard theme. The browser favicon follows the browser/system colour preference.</li>
