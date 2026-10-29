@@ -362,3 +362,5 @@ MockDeck's application code is source-available under the [PolyForm Strict Licen
 Third-party packages and fonts retain their own licenses. Previously released MIT versions retain their MIT rights. See [licensing and third-party notices](docs/LICENSING.md) for scope and the historical release boundary.
 
 UI workbench migration progress and verified checklist: [UI upgrade](docs/UI_UPGRADE.md).
+
+The workbench upgrade and its verification checklist are maintained in [docs/UI_UPGRADE.md](docs/UI_UPGRADE.md). Supporting workspace browser checks: `make browser-supporting-test` on an explicitly disposable instance; see [validation](docs/VALIDATION.md).

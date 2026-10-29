@@ -463,6 +463,7 @@
 </section>
 <section id="panel-callback" role="tabpanel" aria-labelledby="tab-callback" x-show="activeTab === 'callback'" x-cloak>
     <p class="field-help">New callback deliveries use worker-time values, not a snapshot taken when the mock was called.</p>
+    <div class="callback-workspace">
     <div class="callback-response-list" aria-label="Response callbacks">
         @forelse ($responses as $responseIndex => $response)
             @php
@@ -490,5 +491,6 @@
     @elseif ($responses->isNotEmpty())
         <p class="field-help">Select a response to configure its callback.</p>
     @endif
+    </div>
 </section>
 </div>

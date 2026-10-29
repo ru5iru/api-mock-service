@@ -171,7 +171,21 @@
         "name": "page-header-wrap",
         "value": "440px"
       }
-    ]
+    ],
+    "supportingWorkspaces": {
+      "mode": "Operate",
+      "surfaces": [
+        "callback",
+        "request-inspector",
+        "callback-inspector",
+        "environments",
+        "transfer",
+        "history",
+        "recovery"
+      ],
+      "verification": "docs/UI_UPGRADE.md",
+      "manualGate": "A04"
+    }
   },
   "components": [
     {

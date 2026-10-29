@@ -976,7 +976,7 @@ Registry keyboard navigation activates only when the row itself receives Enter. 
 
 ### Callback evidence
 
-Callback logs lead with Status and display the attempt's recorded target, never the mutable current callback URL. Attempt details reuse `.normalized-details` and `.definition-list` for sanitized errors, response/request references and retry/resend lineage. Secret-shaped text uses the existing redactor and is Blade escaped. Removable scope chips expose response/request deep-link filters. Search covers recorded targets and request IDs in the explicitly bounded 100-attempt window. Resend uses the captured target/payload and keeps the original record.
+Callback logs lead with Status and display the attempt's recorded target, never the mutable current callback URL. Attempt details reuse the shared inspector and `.definition-list` for sanitized errors, response/request references and retry/resend lineage. Secret-shaped text uses the existing redactor and is Blade escaped. Removable scope chips expose response/request deep-link filters. Search covers recorded targets and request IDs in the explicitly bounded 100-attempt window. Resend uses the captured target/payload and keeps the original record.
 
 ### Task order, identity and truthful state
 
@@ -998,8 +998,21 @@ Documentation's compact `.docs-searchbar` reuses native inputs/selects and the s
 
 Semantic notices retain their existing icons, foreground/background tokens and borders with a uniform 1px boundary. Avoid a second thick colored side accent; status must remain understandable from copy and icons.
 
-On narrow screens the documentation search and section fields share a row, with count/Clear below. Callback attempt definition rows stack their label and value inside the target column, and outcome cells align to the top. Prospective import diffs sit below the scrollable summary table so Before/After can stack at the actual mobile component width.
+On narrow screens the documentation search and section fields share a row, with count/Clear below. Callback attempt definition rows stack their label and value inside the inspector, and outcome cells align to the top. Prospective import diffs sit below the scrollable summary table so Before/After can stack at the actual mobile component width.
 
 Response weight explains its Weighted-only effect. Non-fallback rule Conditions start expanded inside Details, avoiding a second required disclosure; `wire:ignore.self` retains the operator’s choice through updates.
 
 Tooltip triggers in `resources/views/components/help-tip.blade.php` are native buttons with a scoped Alpine description ID, referenced by aria-describedby and the tooltip content ID. The ID is stable for that mounted tooltip. Shared panel placement, focus/hover opening and Escape dismissal remain in `public/js/panels.js`.
+
+## Supporting workspaces
+
+The workbench extends through Callback, Logs, Environments, configuration transfer, History and Documentation. These screens use continuous surfaces with shared borders, semantic tokens, native disclosures, the existing dialogs and explicit save commands.
+
+- **Callback:** `.callback-workspace` pairs the saved response list with the selected response's form; it stacks at 1100px. Timing/retries and Signing retain their disclosures. JSON is the existing template editor, not another implementation. Test saved callback remains separate from sample generation and disabled for unsaved callback fields. Blank signing secrets retain saved values.
+- **Logs:** `.activity-workspace` pairs the existing filtered list with one `.activity-inspector`. At 1100px and below the inspector replaces the list; Back to list restores its activating row. Only explicit inspection moves focus. Opening details suspends polling without changing the Pause preference. Request details use the retained event window; callback details use the filtered 100-attempt window. An expired/filtered selection has an unavailable state, never an unfiltered lookup. Current configuration references are labelled separately from recorded evidence. All activity/CSV remain deferred features.
+- **Environments:** Selected for editing, Active and Default have distinct meanings. Selecting an editor never activates an Environment. At 620px editor width variable rows stack with Key/Value/Secret labels. Existing write-only secrets, per-variable saves, drafts and replacement requirements are unchanged.
+- **Transfer:** Export / Import / Review plan links navigate the existing source and review sections. The real native/Postman tables and warning disclosures remain the scalable plan: no second client-side plan. Preview invalidation, acknowledgements, atomic apply, version snapshots and bounded Undo keep their services and limits.
+- **History:** endpoint History uses the native dialog's top layer inside its Livewire owner, without a teleport around its nested component. This permits comparison updates. The separate save action bar still teleports. Run History remains read-only. Structural before/after values use the shared code surfaces.
+- **Documentation and recovery:** documentation is a continuous reading column (72ch paragraphs). Sign-in/recovery share warm shell tokens and restrained elevation. A missing endpoint directs the user to the registry; POST failures never offer automatic mutation replay.
+
+Accessibility release checks still require a screen reader, a physical touch device and real browser zoom to 400%. Emulated 320px reflow is not a zoom test. Do not label these manual checks passed from source inspection.

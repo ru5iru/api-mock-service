@@ -131,7 +131,7 @@ final class HonestLabelsTest extends TestCase
             ->assertSee('Disabling a callback stops enqueues from future mock calls but does not cancel a delivery already queued.');
         CallbackAttempt::query()->create(['response_id' => $response->id, 'target_url' => 'https://recorded.example.test/hook',
             'resolved_headers' => [], 'resolved_body' => '{}', 'method' => 'POST', 'attempt_number' => 1, 'status' => 'success']);
-        Livewire::test(CallbackLog::class)->assertSee('Recorded target')->assertSee('recorded.example.test')->assertDontSee('current.example.test')
+        Livewire::test(CallbackLog::class)->call('inspectAttempt', CallbackAttempt::query()->sole()->id)->assertSee('Recorded target')->assertSee('recorded.example.test')->assertDontSee('current.example.test')
             ->assertSee('Response / current label')->assertSee('Current label')->assertSee('The response label uses current configuration.');
     }
 }

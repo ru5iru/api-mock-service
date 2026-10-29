@@ -1,4 +1,4 @@
-.PHONY: browser-selection-test browser-response-test browser-editor-test browser-registry-test browser-regression-test mcp-offline-test mcp-test up down build validation-image logs shell test test-unit test-feature frontend-test design-validate lint format composer-validate compose-config validate health https-check browser-test
+.PHONY: browser-supporting-test browser-selection-test browser-response-test browser-editor-test browser-registry-test browser-regression-test mcp-offline-test mcp-test up down build validation-image logs shell test test-unit test-feature frontend-test design-validate lint format composer-validate compose-config validate health https-check browser-test
 
 TEST_ENV = -e APP_ENV=testing -e APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= -e DB_CONNECTION=sqlite -e DB_DATABASE=:memory: -e CACHE_STORE=array -e SESSION_DRIVER=array -e MOCK_DASHBOARD_AUTH_ENABLED=false -e MOCK_LOG_STDOUT=false -e MOCK_LOG_FILE=false -e RUN_MIGRATIONS=false
 APP_URL ?= $(shell python3 scripts/setup.py url)
@@ -31,6 +31,7 @@ help:
 	  'browser-editor-test  Editor workflows in both themes; disposable DB required' \
 	  'browser-response-test  Template authoring in both themes; disposable DB required' \
 	  'browser-selection-test  Selection/fault workflows; disposable DB required' \
+	  'browser-supporting-test  Callback, Logs, Environments, transfer and History checks' \
 	  'build / shell / artisan ARGS="..."  Clean image build / shell / Artisan command' \
 	  'Full setup and prerequisites: docs/SETUP.md'
 	@python3 scripts/setup.py summary
@@ -188,3 +189,7 @@ browser-response-test:
 # Writes fixtures and invokes mocks; disposable instance only.
 browser-selection-test:
 	node tests/Browser/selection-workspace-smoke.mjs
+
+# Supporting screens and inspectors; disposable instance only.
+browser-supporting-test:
+	node tests/Browser/supporting-workspace-smoke.mjs

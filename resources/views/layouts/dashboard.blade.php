@@ -24,6 +24,7 @@
     <script src="{{ asset('js/workbench.js') }}?v={{ filemtime(public_path('js/workbench.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/template-editor.js') }}?v={{ filemtime(public_path('js/template-editor.js')) }}" defer data-navigate-once></script>
     @livewireStyles
+    <script src="{{ asset('js/activity-inspector.js') }}?v={{ filemtime(public_path('js/activity-inspector.js')) }}" defer></script>
 </head>
 @php
     $navigationUnmatchedTimestamps = array_values(array_filter(array_map(

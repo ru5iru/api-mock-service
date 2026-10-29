@@ -6,6 +6,11 @@
     </x-page-header>
 
     <div class="docs-grid">
+        <section id="workbench-navigation" class="card docs-card docs-wide">
+            <h2>Workbench navigation</h2>
+            <p>Use the rail for Endpoints, Logs, Import/export, Environments and Documentation. In an endpoint, Editor contains Request, Matching and Responses; Callback and Settings have their own tabs. History opens the existing version comparison. Changes are saved only by the labelled save commands.</p>
+            <p>Logs open a request or callback inspector beside the list on wide screens. On narrow screens, use Back to list to return to the selected row. Environment selection for editing does not change the active Environment.</p>
+        </section>
         <div class="card docs-searchbar docs-wide" role="search" aria-label="Documentation">
             <label class="field"><span>Search documentation</span><input type="search" data-docs-search placeholder="Search commands, matching, callbacks…" aria-describedby="docs-results"></label>
             <label class="field"><span>Section</span><select class="ui-select" data-docs-jump><option value="">Jump to a section…</option></select></label>

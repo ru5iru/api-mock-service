@@ -224,3 +224,9 @@ The response authoring presentation groups the existing Static/Template, schema 
 
 
 Selection presentation reuses the existing response-pool draft and save boundary. Native anchor links move within the same mounted manager; direct row reorder/Rule controls invoke the same mutation actions. Saved-weight percentage text is derived only for display using the existing selector's effective weights and does not choose a response. Sequence runtime remains scoped to the active Environment; preview is read-only and Reset retains match counts. Fault disclosure summaries describe form drafts; the shared fault validator and post-selection application order remain unchanged.
+
+### Supporting workbench presentation
+
+Request and callback Logs share `activity-workspace` / `activity-inspector` presentation and `public/js/activity-inspector.js` for explicit inspect/back focus. Request selection reuses `LogViewer::$expandedKey`; callback selection uses `CallbackLog::$selectedAttemptId` resolved only from the existing filtered rows. Inspection does not mutate deliveries, counters or revisions. Detail partials retain existing event fields and redactors. No additional evidence is retained.
+
+Callback, Environments, transfer and History reuse existing components and services. The endpoint History dialog stays within its Livewire owner to allow nested comparison morphs; native dialog top-layer behavior provides overlay positioning. No matching, canonicalization, native format 1.5, ordinary/run isolation or mutation transaction contract changes in this presentation pass.
