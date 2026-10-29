@@ -115,7 +115,9 @@ Environment-scoped exports include endpoints with no override for that environme
 
 ## Use response templates
 
-Choose **Body → Template** in a response editor:
+Choose **Body → Template** in the **Editor → Responses** pane. Its compact Builder/JSON toolbar, locale/seed controls and labelled Sample data preview share the existing renderer; preview and view switching never save configuration. Nested Builder rows adapt to their available width.
+
+To configure a template:
 
 1. Use **Builder** for representable object/list schemas or **JSON** for the complete language.
 2. Choose Random, Fixed, or Request signature seed mode and a supported locale.
@@ -205,6 +207,8 @@ A response provides:
 - response headers from a JSON object;
 - exact body text without re-encoding;
 - artificial delay bounded by `MOCK_MAX_DELAY_MS`.
+
+Responses includes **Response editor / Selection & pool** jump links, saved-weight probability summaries, direct row reordering, Environment-scoped sequence status/reset and Rule conditions outside metadata Details. Fault settings retain their four existing types and explicit long-delay timeout approximation.
 
 The body can remain static or opt into JSON templating. Template mode includes a schema builder and raw JSON editor, a server-built Faker catalog, fixed/request-derived seeds, locale selection, inline validation, and server-rendered preview. Static response bodies containing `$` or `{{` remain exact text. The PHP backend maps the supported Faker.js-shaped method names to `fakerphp/faker`; it does not ship Faker in the browser bundle.
 

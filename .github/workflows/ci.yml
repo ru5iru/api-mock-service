@@ -84,6 +84,8 @@ jobs:
           curl --fail --silent --show-error --retry 20 --retry-delay 1 --retry-connrefused "$MOCKDECK_BASE_URL/up"
           MOCKDECK_BROWSER_FIXTURE=1 make browser-registry-test
           MOCKDECK_BROWSER_FIXTURE=1 make browser-editor-test
+          MOCKDECK_BROWSER_FIXTURE=1 make browser-response-test
+          MOCKDECK_BROWSER_FIXTURE=1 make browser-selection-test
           make browser-test
           MOCKDECK_BROWSER_FIXTURE=1 make browser-regression-test
 

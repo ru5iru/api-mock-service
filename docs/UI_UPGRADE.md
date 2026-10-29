@@ -19,7 +19,7 @@ A checkbox means the named scope is implemented and has **two recorded successfu
 
 ## Current delivery boundary
 
-Delivered scope: shared workbench foundations, registry presentation/interactions, and the first endpoint-workspace milestone (dated verification ledgers below). Create/edit now use Editor / Callback / Settings with Request / Matching subtabs and a Responses pane. Legacy Request / Matching / Response / Callback URL links remain supported. Advanced response/callback, Logs, Environments and transfer redesigns remain unchecked. The source, matching, mutation, import, credential and run-isolation contracts remain authoritative.
+Delivered scope: shared workbench foundations, registry presentation/interactions, and the first endpoint-workspace milestone (dated verification ledgers below). Create/edit now use Editor / Callback / Settings with Request / Matching subtabs and a Responses pane. Legacy Request / Matching / Response / Callback URL links remain supported. Response body/template authoring is now delivered; selection and fault controls are delivered; Callback, response History/remaining pool states, Logs, Environments and transfer redesigns remain unchecked. The source, matching, mutation, import, credential and run-isolation contracts remain authoritative.
 
 ## Checklist
 
@@ -70,13 +70,13 @@ Delivered scope: shared workbench foundations, registry presentation/interaction
 
 - [x] **S01** Implement response identity/selector/list without losing drafts held for other responses.
 - [ ] **S02** Preserve status range, JSON headers, raw Static body, weight, delay and Delete safeguards.
-- [ ] **S03** Migrate Template/Static and Builder/JSON with the existing catalog and schema controls.
-- [ ] **S04** Preserve nested builder fields, argument inputs, reorder alternatives and unsupported-builder fallback.
-- [ ] **S05** Migrate preview, issues/quick fixes, locale and all seed modes; label synthetic samples accurately.
-- [ ] **S06** Preserve Weighted default and probability summaries.
-- [ ] **S07** Migrate Sequence order/exhaustion/preview/reset with explicit active-environment scope.
-- [ ] **S08** Migrate Rule conditions/priorities/default validation without changing grammar or order.
-- [ ] **S09** Migrate the four existing fault types, limits and enabled/probability summaries.
+- [x] **S03** Migrate Template/Static and Builder/JSON with the existing catalog and schema controls.
+- [x] **S04** Preserve nested builder fields, argument inputs, reorder alternatives and unsupported-builder fallback.
+- [x] **S05** Migrate preview, issues/quick fixes, locale and all seed modes; label synthetic samples accurately.
+- [x] **S06** Preserve Weighted default and probability summaries.
+- [x] **S07** Migrate Sequence order/exhaustion/preview/reset with explicit active-environment scope.
+- [x] **S08** Migrate Rule conditions/priorities/default validation without changing grammar or order.
+- [x] **S09** Migrate the four existing fault types, limits and enabled/probability summaries.
 - [ ] **S10** Preserve response History, source example labels, save/cancel and per-response dirty state.
 
 **Acceptance:** Weighted outcomes remain governed by existing services; 503→503→200 sequence/reset works; Rule match and fallback work; preview leaves runtime state untouched; raw text remains raw; configured faults retain existing behavior.
@@ -146,7 +146,7 @@ Delivered scope: shared workbench foundations, registry presentation/interaction
 
 ## Feature parity inventory
 
-The following target mapping is carried forward from the approved plan after reconciling recent master. It is an inventory of preserved features and intended destinations, **not** a claim that each proposed screen has shipped. The checklist above is the completion authority. **17 of 72 items are verified complete; 55 remain unchecked.**
+The following target mapping is carried forward from the approved plan after reconciling recent master. It is an inventory of preserved features and intended destinations, **not** a claim that each proposed screen has shipped. The checklist above is the completion authority. **24 of 72 items are verified complete; 48 remain unchecked.**
 
 
 **Coverage labels:** Shown = present in the prototype; Partial = a simplified illustration exists; Missing = a production design must be supplied. All proposed routes below retain their current URL unless explicitly stated otherwise.
@@ -359,7 +359,7 @@ The title retains the existing inline rename boundary. C06/C07 therefore remain 
 | E09 drafts / global save integration | EndpointWorkspaceTest, GlobalSaveResultsTest and existing save/draft suites verify scoped preflight, error destination, preservation and reconciliation | Real browser invalid weight blocks save; corrected global save independently re-reads persisted response bodies, callback, priority, collection/tag; dirty navigation cancellation retains state | PASS locally; PostgreSQL guarded audit BLOCKED |
 | S01 response identity and drafts | Direct Livewire selector/createNew tests preserve other saved-response and new-response drafts | Real browser switches responses and tasks, revisits new draft and checks selected callback identity in both themes | PASS |
 
-All other unchecked editor/response/callback items remain pending even where the original feature still functions. Current completion: **17/72**, **55 unchecked**.
+All other unchecked editor/response/callback items remained pending at the close of this endpoint milestone, even where the original feature still functioned. Historical completion at that point: **17/72**, **55 unchecked**. See the later response-authoring ledger for the current total.
 
 Environment: PHP8.3.6, Laravel13.32.0, Livewire4.4.5, Chromium150.0.7871.100, Playwright1.62.1, Node24.22.1. Real Laravel was served through native PHP against an external disposable SQLite file; PHPUnit uses in-memory SQLite. No operator database or application .env was changed.
 
@@ -427,3 +427,119 @@ Files changed in this endpoint increment (relative to its500-file before-editor 
 - `tests/Frontend/editor-recovery.test.mjs`
 
 No Git commit was created or staged by this task. Release archives exclude local environment values, dependencies, databases, screenshots and runtime logs.
+
+
+### Response body and template authoring — 29 October 2026
+
+This increment follows the delivered17/72 endpoint workspace milestone. The before-response SHA-256 manifest outside source contains504 files; imported master, foundation, registry and endpoint changes remain intact. Scope is S03/S04/S05 (body modes, Builder/JSON, nested fields/catalog and sample preview), with compact parameter presentation. Weighted/Sequence/Rule, fault and Callback redesigns remain separate pending milestones. Existing controls and mutation/rendering services are reused.
+
+Implemented: a compact Status/Weight/Delay row with full-width Weight explanation; a three-row Headers viewport; one Body canvas with the existing Static/Template and Builder/JSON controls; Locale/Seed grouping; lossless JSON-only fallback; continuous Builder rows with key/type, configuration and nullable/actions; per-row width containment so deeply nested content stacks; a bounded300px sample preview labelled Sample data, retaining the exact existing synthetic-context notice and structured issues/quick fixes. Regenerate reports Rendering sample and retains its existing pending guard. All new overrides are scoped to `.endpoint-response-workspace .response-form`; Callback Builder and preview styling are not migrated by this change.
+
+No application PHP/service, JavaScript controller, route, migration, package, native format, canonicalization, matching or run-isolation rule changed. Preview, seed, locale, converter, catalog, reorder, save and validation actions still call the existing ResponseManager/shared services. Native format1.5 remains unchanged.
+
+| Scope | First verification | Second verification | Completion |
+|---|---|---|---|
+| S03 Static/Template + Builder/JSON | ResponseAuthoringWorkspaceTest verifies raw Static text retention, no persisted changes on view switching and exact unsupported JSON retention; existing DashboardTest saves/blocks template responses | Real browser workflow and independent before/after persisted snapshots; fresh finish review inspects both modes/views in both themes | Verified twice; bounded ship |
+| S04 nested fields/catalog/reorder | New Livewire test exercises nested conversion/reorder/render; existing DashboardTest covers add/remove, catalog argument defaults and reorder | Real browser exercises keyboard move and native desktop drag, catalog method/argument selection and narrow/deep rows; finish reviewer inspects responsive Builder/catalog | Verified twice; bounded ship |
+| S05 preview/issues/locale/seeds | New fixed-seed/no-persistence test, existing compiler/API/context/quick-fix coverage, no call-state/revisions created | Real browser exercises locale, Random/Fixed/Request-signature preview, errors/warnings and JSON-only request samples; finish review checks notices/controls/issues | Verified twice; bounded ship |
+
+Verification environment remains native PHP8.3.6/Laravel13.32.0/Livewire4.4.5, Chromium150.0.7871.100/Playwright1.62.1/Node24.22.1. Browser runs use a new external disposable SQLite database; PHPUnit uses in-memory SQLite. No operator database or application .env was changed.
+
+| Executed check | Actual result |
+|---|---|
+| Full configured PHPUnit | PASS:457 tests,4525 assertions,zero skipped,50.49s. Guarded PostgreSQL characterization remains outside this suite. |
+| Focused ResponseAuthoringWorkspaceTest | PASS:3 tests,27 assertions, including real renderer/converter and independently unchanged persistence. |
+| Node/setup/tokens/Pint | PASS:84 frontend tests;16 setup tests; paired-theme token/contrast validator; whole-project Pint --test. |
+| make browser-response-test | PASS:both themes; real renderer/converter, Static retention, three seed modes, locale, issues, keyboard move/native desktop drag, catalog arguments, unchanged persisted snapshot and1440/1024/390/320 geometry. Final repeat adds visible template-toolbar captures at1440/320 in both themes. |
+| Editor/workbench/layout/documentation/regression browser suites | PASS:editor/workbench/layout/documentation in both themes; fresh-harness make browser-regression-test completed exit0 (critique and endpoint-editor scripts, both themes). |
+| CI wiring/source hygiene | CI YAML parses; new browser-response-test is invoked after browser-editor-test in existing disposable-browser job. JS syntax and diff whitespace checks pass; no remote CI execution claimed. |
+| make validate | BLOCKED:docker compose config --quiet stops with make:docker:No such file or directory, error127 (Make exit2). Docker image/Composer/container/PostgreSQL validation not claimed passed. |
+| Impeccable detector | BLOCKED:Permission denied,exit126. No detector pass claimed. |
+
+Development checks corrected three test-fixture assumptions without changing application behavior: the shipped locale picker exposes fr_FR rather than fr; the shared non-pattern synthetic request method is POST rather than the saved endpoint's GET; and primitive literal arrays are not representable by Builder (the nested test uses its supported `$repeat` directive). Native drag is exercised in the wide layout where both rows are visible. Browser geometry is read atomically from one DOM snapshot; reopening a catalog is deliberate, and menu measurement precedes capture rather than reading a potentially refreshed disclosure afterward. Captures disable finite animations so an in-progress disclosure fade is not mistaken for transparent panel styling. None of these failed attempts is recorded as a passing suite.
+
+Remaining release/manual checks: Docker/PostgreSQL validation and guarded browser audits; remote CI; screen-reader announcements, actual400% browser zoom, forced-colors and physical touch. Seeded samples and responsive geometry are not an accessibility certification. Selection, faults and Callback redesigns remain unchecked.
+
+One combined browser run stopped before the older critique assertions because the local Chromium process failed at launch with SIGSEGV. A fresh external harness restored its runtime files; the response smoke and both regression scripts then completed with exit0. The launch failure is not an application pass or an application defect classification. Test/runtime logs and screenshots stay outside tracked source.
+
+Fresh finish review returned **ship for the bounded S03/S04/S05 milestone** after inspecting all28 current actual-app captures in both themes at1440/1024/390/320px and the matching source. No implementation correction was requested. Design documentation was independently reconciled afterward, preserving existing tokens and distinguishing completed response authoring from pending selection/fault/Callback work. Historical completion at the close of the response-authoring milestone was **20/72**, with **52 unchecked** items. See the later selection/fault ledger for the current total. No whole-application completion, remote CI pass or assistive-technology certification is claimed.
+
+Files changed in this response-authoring increment (relative to its504-file before-response manifest):
+
+- `.github/workflows/ci.yml`
+- `.impeccable/design.json`
+- `DESIGN.md`
+- `Makefile`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/UI_GUIDE.md`
+- `docs/UI_UPGRADE.md`
+- `docs/USER_GUIDE.md`
+- `docs/VALIDATION.md`
+- `public/css/app.css`
+- `resources/views/admin/docs.blade.php`
+- `resources/views/livewire/admin/response-manager.blade.php`
+- `tests/Browser/response-authoring-smoke.mjs`
+- `tests/Feature/ResponseAuthoringWorkspaceTest.php`
+
+Source archive verification compares every payload byte with the final workspace. It excludes local .env values, vendor/node dependencies, databases, screenshots and runtime logs. No Git commit was staged or created.
+
+
+### Selection and primary-response faults — 29 October 2026
+
+This increment starts from the delivered20/72 response-authoring milestone and a506-file external before-selection SHA-256 manifest. It preserves imported master and all prior UI work. Scope: S06/S07/S08/S09; response History/basic pool safeguards and Callback redesign remain separate unchecked items.
+
+Implemented: native Response editor / Selection & pool jump links within the same mounted response manager; saved-pool counts and weight percentages (one decimal, effective saved weight minimum1, explicitly excluding unsaved weight drafts); mode descriptions; a named active-Environment Sequence block with the existing exhaustion/reset/preview controls; always-visible keyboard reorder buttons alongside native drag; Rule fallback/Conditions directly on response rows, outside metadata Details; and draft-only fault type/probability summaries with clear save instructions. The four fault types remain delay, malformed_body, truncated_body and timeout (documented long-delay approximation). Existing conditions, validation messages, priorities, engine order, save fingerprints, reset scope and Delete protection are unchanged.
+
+No application PHP or JavaScript controller/service, route, migration, dependency, native1.5 format, signature/matching or ordinary/run-isolation rule was changed. The only new arithmetic is presentation of the selector's existing saved-weight proportions; it does not select a response.
+
+| Scope | First verification | Second verification | Completion |
+|---|---|---|---|
+| S06 Weighted default/probabilities | SelectionWorkspaceTest verifies25/75 saved chances remain unchanged for an unsaved weight99, then reflect a saved change; existing weighted-selection suite remains green | Real browser checks25/50/25 saved pool and labels in both themes | Verified twice; bounded independent review ship |
+| S07 Sequence order/exhaustion/preview/reset | Existing WaveOneEditorTest and selection/concurrency suite verify saved order, loop/not-found/repeat behavior and scoped reset; new test checks byte-identical runtime after preview/navigation | Real browser keyboard/native drag,503→503→200→200, unchanged runtime across preview and reset of only active Environment while retaining counts/other Environment | Verified twice; bounded independent review ship |
+| S08 Rule conditions/default | Existing WaveOneEditorTest, serving and portability tests verify grammar/order/exactly-one fallback/atomic changes; DOM assertion confirms direct Rule controls outside metadata | Real browser validates missing fallback, enters a header condition, serves matching503/nonmatching200 and blocks saved-fallback deletion | Verified twice; bounded independent review ship |
+| S09 four fault types/bounds | FaultEditorTest verifies defaults, draft retention, atomic invalid-save rejection, Content-Type and probability validation; new test checks draft summary and unknown-type rejection | Real HTTP serves fixed90ms delay (measured >=75ms), malformed/truncated bodies and short configured timeout approximation; all calls counted; invalid min/max leaves response attributes unchanged | Verified twice; bounded independent review ship |
+
+Actual native environment: PHP8.3.6, Laravel13.32.0, Livewire4.4.5, Chromium150.0.7871.100, Playwright1.62.1, Node24.22.1. Browser fixtures use a new external disposable SQLite file; PHPUnit uses in-memory SQLite. No operator database or application .env was changed. Pointer drag is tested at desktop with both rows visible, while responsive geometry covers1440/1024/390/320. No physical-touch or browser-zoom certification is implied.
+
+| Check | Actual result |
+|---|---|
+| Full configured PHPUnit | PASS:460 tests,4545 assertions,zero skipped (42.62s). Guarded PostgreSQL audit remains outside this local suite. |
+| Focused selection/fault PHP | PASS:SelectionWorkspaceTest3tests/20assertions; existing WaveOneEditorTest+FaultEditorTest9tests/65assertions. |
+| Frontend/setup/tokens/Pint | PASS:84 Node tests,16 setup tests, paired-theme tokens/contrast validator and whole-project Pint --test. |
+| New browser selection/fault workflow | PASS:final browser-final-ship.log both themes, strict visible-pane geometry, keyboard/native mouse drag, three-step/repeat-last sequence, read-only preview, scoped reset, real Rule/fallback, protected Delete, invalid fault bounds, all four real fault types and exact counters. Probability41→blank→100 updates locally without persistence; fault captures wait for matching summaries/fields/helpers. |
+| Existing browser regressions | PASS:response authoring, endpoint workspace, workbench, layout, documentation, critique and endpoint-editor scripts completed in both themes (combined browser-final.log,exit0). |
+| make validate | BLOCKED:docker compose config --quiet fails because docker is unavailable (error127,Make exit2). Container image/Composer/PostgreSQL validation not claimed passed. |
+| CI | New browser-selection-test wired after response authoring in the existing disposable browser job; remote CI not run. |
+| Impeccable detector | BLOCKED:Permission denied,exit126. No detector pass claimed. |
+
+Browser development found a test drag-coordinate issue: the first run dropped on a different row, which independent database reads confirmed as order2/3/1; serving correctly followed that saved order. The test now keeps both intended rows visible, drops on the target identity and verifies the exact order before calling. A second test assumption used an exact native-select label while its existing wrapped label text also contains option text (OperatorEqualsContainsRegexExists); the role/name-prefix locator still identifies that one Operator control. No engine or label behavior was changed to obtain a pass.
+
+Visual inspection also caught a real presentation issue: implicit auto grid tracks could clip selection content within a320px pane despite staying inside the browser viewport. Selection/list/runtime tracks now use minmax(0,1fr). Browser geometry includes summaries, segmented controls, notices and panels, measured against the pane's client edge rather than only the browser width. Captures dismiss existing toasts through their real buttons and disable finite animations before recording the named state; toast timing and behavior are not modified.
+
+Remaining release/manual checks: Docker/PostgreSQL validation, guarded audit suites and remote CI; screen readers, forced-colors, physical touch and actual400% browser zoom. No entire-application redesign completion is claimed.
+
+Review corrections: fault-type captures now wait for the server-rendered summary and the matching type-specific fields/helper text before recording. The narrow invalid-delay capture targets the actual inline error. The new probability annotation uses a local Alpine scope reading the existing deferred Livewire value, updating41→blank→100 without saving; blank shows —%. No new live numeric request was retained. An edge characterization exposed a pre-existing limitation in untouched ResponseManager::formState: submitting an empty required integer probability can raise PropertyNotFoundException rather than a normal field error. That broader typed-numeric save validation is not changed in this presentation milestone and remains a separate follow-up; the UI does not introduce automatic requests for it.
+
+Independent finish review returned **ship for the bounded S06/S07/S08/S09 milestone**, after directly inspecting all36 final actual-app screenshots and their source in both themes. The reviewer scored the stale-type captures, local probability annotation and inherited disclosure-grid percentage layout resolved, with no further implementation fix or recapture required. Design records were reconciled independently afterward, preserving existing tokens and samples. Current completion: **24/72**, **48 unchecked**. S02/S10 and Callback remain pending; no full-app, remote-CI or assistive-technology pass is implied.
+
+Files changed in this selection/fault increment (relative to its506-file before-selection manifest):
+
+- `.github/workflows/ci.yml`
+- `.impeccable/design.json`
+- `DESIGN.md`
+- `Makefile`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/UI_GUIDE.md`
+- `docs/UI_UPGRADE.md`
+- `docs/USER_GUIDE.md`
+- `docs/VALIDATION.md`
+- `public/css/app.css`
+- `resources/views/admin/docs.blade.php`
+- `resources/views/livewire/admin/response-manager.blade.php`
+- `tests/Browser/selection-workspace-smoke.mjs`
+- `tests/Feature/SelectionWorkspaceTest.php`
+- `tests/Support/selection-workspace-fixture.php`
+
+All baseline source files are retained. The source archive excludes local .env values, dependencies, databases, screenshots and runtime logs. Archive verification compares every payload byte to the final workspace. No Git commit was staged or created.

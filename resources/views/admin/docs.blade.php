@@ -203,7 +203,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <li><strong>Static:</strong> returned exactly as stored; dollar signs and braces remain literal.</li>
                 <li><strong>Template:</strong> parsed and rendered for every matching request.</li>
             </ul>
-            <p>Choose <strong>Weighted</strong>, <strong>Sequence</strong>, or <strong>Rule-based</strong> above the configured response list, then select <strong>Save selection</strong>. Sequence uses the existing row drag handles (or up/down controls); choose Repeat last, Loop, or Not found on exhaustion. The next-call readout and confirmed Reset sequence are scoped to the active environment.</p>
+            <p>Use <strong>Selection &amp; pool</strong> in Responses to jump to the configured list without losing body drafts; <strong>Response editor</strong> returns to the form. Choose <strong>Weighted</strong>, <strong>Sequence</strong>, or <strong>Rule-based</strong>, then select <strong>Save selection</strong>. Weighted percentages describe saved weights, rounded to one decimal. Reorder controls sit directly on Sequence and Rule rows; Rule Conditions no longer require opening metadata Details. Sequence uses the existing row drag handles (or up/down controls); choose Repeat last, Loop, or Not found on exhaustion. The next-call readout and confirmed Reset sequence are scoped to the active environment.</p>
             <p>Rule-based selection combines each response's Conditions with AND, tries responses in ascending condition priority, and requires exactly one Default / fallback. Drag responses to change global rule priority. The saved fallback cannot be deleted until a replacement has been selected and saved. Selection preview shows the next response or ordered conditions without advancing runtime state.</p>
             <p>The request must first match this endpoint by method, path/query, retained headers and body; rules then choose among its responses. A rule cannot make a different request match. To vary a header or query value, exclude it in Matching first, then choose the response with a rule.</p>
         </section>
@@ -222,7 +222,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
 
         <section id="response-templating" class="card docs-card docs-wide">
             <h2>Response templating</h2>
-            <p>Choose <strong>Body → Template</strong> to generate response JSON with Faker data. Templating is opt-in per response; existing static responses are unchanged. Preview and live serving use the same server-side parser and renderer.</p>
+            <p>In <strong>Editor → Responses</strong>, choose <strong>Body → Template</strong> to generate response JSON with Faker data. Templating is opt-in per response; existing static responses are unchanged. Preview and live serving use the same server-side parser and renderer.</p>
             <p>The backend maps supported Faker.js-shaped method names to FakerPHP 1.24. No Faker runtime or template evaluator is shipped to the browser. Successful templates default to <code>application/json</code> when the response does not define Content-Type.</p>
             <p>In the JSON editor, use <code>$request.method</code>, <code>$request.url</code>, <code>$request.id</code>, <code>$request.body</code>, <code>$request.json.user.name</code>, and <code>@verbatim{{env.KEY}}@endverbatim</code>. Inline text such as <code>@verbatimHello {{$request.method}}@endverbatim</code> works too. Preview labels its synthetic request samples. Missing JSON paths resolve to null; bodies over 64 KiB omit body/JSON context and produce a visible warning in Logs. Request/environment tokens require the JSON editor in this wave.</p>
             <h3>Workflow</h3>
@@ -230,7 +230,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
                 <li>Choose <strong>Builder</strong> for a simple schema or <strong>JSON</strong> for the complete language.</li>
                 <li>Select a locale and seed mode. Fixed and request-signature seeds make output repeatable.</li>
                 <li>Build or type the template. Validation identifies errors by JSON pointer, line, and column.</li>
-                <li>Review the preview, byte count, render time, warnings, and errors. Use <strong>Regenerate</strong> to render again.</li>
+                <li>Review the preview, byte count, render time, warnings, and errors. Use <strong>Regenerate</strong> to render again. The <strong>Sample data</strong> label and synthetic-context notice distinguish this output from captured traffic; previewing does not save configuration or advance counters.</li>
                 <li>Save when no error issues remain. Warnings do not block saving.</li>
             </ol>
             <h3>Complete example</h3>
@@ -381,7 +381,7 @@ curl -v http://127.0.0.1:18473/up</code></pre></div>
             <p>In Matching, toggle Exclude beside individual query parameters or headers. Excluded values remain visible for review; coarse header policies disable redundant controls. In Request, enable Use path parameters, then convert and name individual segment chips.</p>
             <p>A path such as <code>/users/{id}</code> matches one segment. Query, retained headers and body still match exactly. Literal paths win at equal priority. V6 applies only to endpoints using exclusions or patterns; existing signatures remain unchanged.</p>
             <p>Response and callback JSON templates can use <code>$request.path.id</code>. Preview uses sample captures. These tokens stay in the JSON editor.</p>
-            <p>In Response, expand Fault injection for probability, bounded delay, malformed JSON/XML, byte truncation or Timeout (long delay). Timeout is an approximation: proxy and worker limits still apply. TCP connection reset is not offered. Faulted calls remain counted and are labelled in Logs.</p>
+            <p>In Editor → Responses, expand Fault injection for probability, bounded delay, malformed JSON/XML, byte truncation or Timeout (long delay). Timeout is an approximation: proxy and worker limits still apply. TCP connection reset is not offered. Faulted calls remain counted and are labelled in Logs.</p>
         </section>
         <section id="verification" class="card docs-card">
             <h2>CI verification</h2>
