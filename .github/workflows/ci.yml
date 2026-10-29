@@ -82,6 +82,7 @@ jobs:
           server_pid=$!
           trap 'kill "$server_pid" || true' EXIT
           curl --fail --silent --show-error --retry 20 --retry-delay 1 --retry-connrefused "$MOCKDECK_BASE_URL/up"
+          MOCKDECK_BROWSER_FIXTURE=1 make browser-registry-test
           make browser-test
           MOCKDECK_BROWSER_FIXTURE=1 make browser-regression-test
 

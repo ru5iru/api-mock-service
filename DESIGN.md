@@ -204,7 +204,7 @@ components:
 
 The supplied desktop workbench is the visual authority: warm surfaces, compact typography, continuous working areas and restrained elevation. The current implementation captures its shared frame and registry treatment while retaining the application's existing feature controllers and interaction contracts.
 
-This is a source-derived record of the bounded foundation implementation, not evidence that the full upgrade checklist is complete. The delivered frame comprises the topbar, navigation rail, contextual sidebar and statusbar; the editor sidebar adds a paginated endpoint explorer. Endpoint editing still uses Request / Matching / Response / Callback. The proposed Editor / Callback / Settings navigation and split request/response workspace remain future work in `docs/UI_UPGRADE.md`.
+This is a source-derived record of the bounded foundation and registry workspace implementation, not evidence that the full upgrade checklist is complete. The delivered frame comprises the topbar, navigation rail, contextual sidebar and statusbar; the editor sidebar adds a paginated endpoint explorer. The registry adds explicit filter captions, contextual selection actions and a secondary Recent requests disclosure. Endpoint editing still uses Request / Matching / Response / Callback. The proposed Editor / Callback / Settings navigation and split request/response workspace remain future work in `docs/UI_UPGRADE.md`.
 
 Key characteristics:
 
@@ -213,7 +213,7 @@ Key characteristics:
 - Flat work surfaces separated by fine borders.
 - Existing native and Livewire behavior retained behind shared chrome.
 
-The normative implementation is `public/css/tokens.css` plus the Workbench foundation block in `public/css/app.css`; `docs/UI_GUIDE.md` documents its current migration stage. Frontmatter keys prefixed `light-` and `dark-` are the resolved values of the same CSS token in each theme; they are paired alternatives, not an expanded set of unrelated colors. Component frontmatter records the default light mapping; actual components resolve theme-aware CSS variables. `.impeccable/design.json` carries motion, elevation, breakpoints and isolated component previews.
+The normative implementation is `public/css/tokens.css` plus the Workbench foundation and Registry workspace blocks in `public/css/app.css`; `docs/UI_GUIDE.md` documents its current migration stage. Frontmatter keys prefixed `light-` and `dark-` are the resolved values of the same CSS token in each theme; they are paired alternatives, not an expanded set of unrelated colors. Component frontmatter records the default light mapping; actual components resolve theme-aware CSS variables. `.impeccable/design.json` carries motion, elevation, breakpoints and isolated component previews.
 
 ## Colors
 
@@ -243,7 +243,9 @@ At 1100px and below, the sidebar becomes an optional drawer and the work-area of
 
 Sticky actions begin at the current work-area offset and sit above the statusbar. Their measured height participates in content padding. Preserve the existing endpoint tab viewport as the owner of editor scrolling; do not add another page/card scroller. Existing tables and code surfaces retain their own bounded overflow.
 
-The explorer is a flat filtered list with search and collection selection, including Unfiled. It reuses EndpointIndex and paginates 15 endpoints with its own `explorerPage` name. It is not a replacement for the full registry or a new collection tree. The registry retains its search, filters, sorting, counts, selection and bulk operations.
+The explorer is a flat filtered list with search and collection selection, including Unfiled. It reuses EndpointIndex and paginates 15 endpoints with its own `explorerPage` name. It is not a replacement for the full registry or a new collection tree.
+
+The registry is a continuous workspace: full-width search, wrapping labelled filters, a contextual selection strip, page selection/result count, endpoint rows and pagination. At 740px and below, filters form two equal columns; at 440px and below, they stack into one column to preserve readable option names. At 1100px and below, row actions move below the facts; at 740px and below, the existing stacked facts/actions layout remains. Recent requests follows pagination as a secondary disclosure.
 
 ## Elevation & Depth
 
@@ -271,7 +273,11 @@ Rail links are centered icons with accessible labels and a minimum height of 40p
 
 ### Registry and explorer rows
 
-Registry entries retain their identity, contextual details, nested actions, checkboxes and disclosures. The visual container is a continuous bordered list with 12px row padding and no gaps. Nested controls retain native keyboard behavior; row Enter activation applies only when the row itself is focused.
+Registry entries retain their identity, contextual details, nested actions, checkboxes and disclosures. The visual container is a continuous bordered list with 12px row padding and no gaps. Selected rows use the subtle accent surface; focus within a row adds an inset accent boundary. Custom names wrap anywhere. Copy, Edit, enable switches and More actions remain visible without hover. Switches and menu triggers have a 44px minimum hit height; the Canonical request summary has a 28px minimum height. Nested controls retain native keyboard behavior; row Enter activation applies only when the row itself is focused.
+
+The contextual selection strip uses the subtle accent surface and accent border. It names the total selected count and the count on this page, explains that selection persists across pages and filters, and keeps existing bulk actions together. The page checkbox synchronizes native checked and indeterminate states after updates; Clear selection retains its whole-selection behavior. Add tags keeps its native menu open while checkbox drafts update the Apply tags state; assignments change only when Apply tags is activated. Bulk actions disable repeated submissions while pending.
+
+Empty states distinguish an empty registry, an empty collection or Unfiled view, and no filter matches, with create/import or clear-filter recovery. Filtering and pagination retain the existing skeleton with a concise loading status. Recent requests starts open with a 44px minimum summary target and reuses the compact LogViewer, including polling, request detail and Pause/Resume. Collapsing it adds no stored preference.
 
 Explorer rows use 12px/8px padding, a method badge, wrapped identity and response/enabled summary. The current endpoint is marked through `aria-current`; hover/current use the subtle accent surface. Previous/Next controls remain native buttons with true boundary disabled state. The explorer uses existing dirty-navigation handling for its links.
 

@@ -9,7 +9,10 @@
 
     <livewire:admin.endpoint-index />
 
-    <section id="request-log" class="section-spacer">
-        <livewire:admin.log-viewer :full="false" />
-    </section>
+    <details id="request-log" class="registry-activity section-spacer" data-disclosure open>
+        <summary aria-expanded="true" aria-controls="registry-recent-requests"><x-disclosure-chevron /> Recent requests</summary>
+        <div id="registry-recent-requests">
+            <livewire:admin.log-viewer :full="false" />
+        </div>
+    </details>
 </x-layouts.dashboard>

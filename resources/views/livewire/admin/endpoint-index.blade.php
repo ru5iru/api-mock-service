@@ -1,14 +1,13 @@
-<div>
+<div class="registry-workspace">
     @php
         $pageIds = $endpoints->pluck('id')->map(static fn ($id) => (int) $id)->all();
         $pageSelected = $pageIds !== [] && count(array_intersect($pageIds, $selected)) === count($pageIds);
         $filtersActive = $search !== '' || $method !== '' || $state !== 'all' || $collection !== 'all' || $tags !== [];
+        $selectedOnPage = count(array_intersect($pageIds, $selected));
+        $collectionOnly = $collection !== 'all' && $search === '' && $method === '' && $state === 'all' && $tags === [];
         $allEndpointCount = \App\Models\MockEndpoint::query()->count();
     @endphp
-    <div class="toolbar card" aria-label="Endpoint controls">
-        <label class="page-select-control" title="{{ $pageSelected ? 'Clear selection' : 'Select this page' }}">
-            <input type="checkbox" @checked($pageSelected) wire:click="{{ $pageSelected ? 'clearSelection' : 'selectPage' }}" aria-label="{{ $pageSelected ? 'Clear endpoint selection' : 'Select all endpoints on this page' }}">
-        </label>
+    <div class="toolbar registry-toolbar" aria-label="Endpoint controls">
         <label class="search-field">
             <span class="sr-only">Search endpoints</span>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -17,9 +16,9 @@
             <input type="search" wire:model.live.debounce.250ms="search" data-search-shortcut placeholder="Search name, method, path, or curl…">
         </label>
 
-        <div class="toolbar-controls">
+        <div class="toolbar-controls" role="group" aria-label="Filter and sort endpoints">
             <label class="select-field">
-                <span class="select-caption">Method</span>
+                <span class="select-caption registry-filter-caption">Method</span>
                 <select class="ui-select ui-select-filter" wire:model.live="method" aria-label="Filter by method">
                     <option value="">All methods</option>
                     @foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as $option)
@@ -28,7 +27,7 @@
                 </select>
             </label>
             <label class="select-field">
-                <span class="select-caption">State</span>
+                <span class="select-caption registry-filter-caption">State</span>
                 <select class="ui-select ui-select-filter" wire:model.live="state" aria-label="Filter by state">
                     <option value="all">Any state</option>
                     <option value="enabled">Enabled</option>
@@ -36,7 +35,7 @@
                 </select>
             </label>
             <label class="select-field sort-field">
-                <span class="select-caption">Sort</span>
+                <span class="select-caption registry-filter-caption">Sort</span>
                 <select class="ui-select ui-select-filter" wire:model.live="sort" aria-label="Sort endpoints">
                     <option value="recent">Recently updated</option>
                     <option value="name">Name</option>
@@ -44,7 +43,7 @@
                 </select>
             </label>
             <label class="select-field">
-                <span class="select-caption">Collection</span>
+                <span class="select-caption registry-filter-caption">Collection</span>
                 <select class="ui-select ui-select-filter" wire:model.live="collection" aria-label="Filter by collection">
                     <option value="all">All collections</option>
                     <option value="none">No collection</option>
@@ -74,19 +73,16 @@
             @if ($search !== '' || $method !== '' || $state !== 'all' || $sort !== 'recent' || $collection !== 'all' || $tags !== [])
                 <button class="text-button filter-reset" type="button" wire:click="clearFilters">Clear filters</button>
             @endif
-            <span class="result-count">
-                @if ($filtersActive)
-                    {{ $endpoints->total() }} of {{ $allEndpointCount }} {{ Str::plural('endpoint', $allEndpointCount) }}
-                @else
-                    {{ $allEndpointCount }} {{ Str::plural('endpoint', $allEndpointCount) }}
-                @endif
-            </span>
+
         </div>
     </div>
 
     @if ($selected !== [])
-        <div class="selection-bar card" aria-live="polite">
-            <strong>{{ count($selected) }} selected</strong>
+        <div class="selection-bar registry-selection" role="region" aria-label="Selected endpoint actions">
+            <div class="registry-selection-summary">
+                <strong role="status">{{ count($selected) }} selected</strong>
+                <span>{{ $selectedOnPage }} on this page. Selection is kept across pages and filters.</span>
+            </div>
             <div class="selection-actions">
                 <label class="select-field bulk-select">
                     <span class="sr-only">Move selected endpoints to collection</span>
@@ -95,36 +91,53 @@
                         @foreach ($collections as $endpointCollection)<option value="{{ $endpointCollection->id }}">{{ $endpointCollection->name }}</option>@endforeach
                     </select>
                 </label>
-                <button class="button button-tertiary button-small" type="button" wire:click="bulkMoveToCollection">Move to collection</button>
+                <button class="button button-tertiary button-small" type="button" wire:click="bulkMoveToCollection" wire:loading.attr="disabled" wire:target="bulkMoveToCollection,bulkAddTags,bulkSetEnabled,bulkExport,bulkDelete">Move to collection</button>
                 @if ($availableTags->isNotEmpty())
-                    <details class="bulk-tag-picker" data-menu>
-                        <summary class="button button-tertiary button-small">Add tags</summary>
+                    <details class="bulk-tag-picker" data-menu wire:ignore.self>
+                        <summary class="button button-tertiary button-small">Add tags <x-chevron /></summary>
                         <div>
                             @foreach ($availableTags as $tag)
-                                <label><input type="checkbox" value="{{ $tag->id }}" wire:model="bulkTags"> {{ $tag->name }}</label>
+                                <label><input type="checkbox" value="{{ $tag->id }}" wire:model.live="bulkTags"> {{ $tag->name }}</label>
                             @endforeach
-                            <button class="button button-primary button-small" type="button" wire:click="bulkAddTags" @disabled($bulkTags === [])>Apply tags</button>
+                            <button class="button button-primary button-small" type="button" wire:click="bulkAddTags" wire:loading.attr="disabled" wire:target="bulkMoveToCollection,bulkAddTags,bulkSetEnabled,bulkExport,bulkDelete" @disabled($bulkTags === [])>Apply tags</button>
                         </div>
                     </details>
                 @endif
-                <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(true)">Enable</button>
-                <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(false)">Disable</button>
-                <button class="button button-secondary button-small" type="button" wire:click="bulkExport">Export</button>
-                <button class="button button-danger button-small" type="button" wire:click="bulkDelete" data-confirm-title="Delete endpoint" data-confirm="Delete {{ count($selected) }} selected endpoints and all of their configured responses? This cannot be undone.">Delete</button>
-                <button class="text-button" type="button" wire:click="clearSelection">Clear</button>
+                <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(true)" wire:loading.attr="disabled" wire:target="bulkMoveToCollection,bulkAddTags,bulkSetEnabled,bulkExport,bulkDelete">Enable</button>
+                <button class="button button-tertiary button-small" type="button" wire:click="bulkSetEnabled(false)" wire:loading.attr="disabled" wire:target="bulkMoveToCollection,bulkAddTags,bulkSetEnabled,bulkExport,bulkDelete">Disable</button>
+                <button class="button button-secondary button-small" type="button" wire:click="bulkExport" wire:loading.attr="disabled" wire:target="bulkMoveToCollection,bulkAddTags,bulkSetEnabled,bulkExport,bulkDelete">Export</button>
+                <button class="button button-danger button-small" type="button" wire:click="bulkDelete" wire:loading.attr="disabled" wire:target="bulkMoveToCollection,bulkAddTags,bulkSetEnabled,bulkExport,bulkDelete" data-confirm-title="Delete endpoint" data-confirm="Delete {{ count($selected) }} selected endpoints and all of their configured responses? This cannot be undone.">Delete</button>
+                <button class="text-button" type="button" wire:click="clearSelection">Clear selection</button>
             </div>
         </div>
     @endif
 
+    <div class="registry-list-heading">
+        <label class="page-select-control registry-page-select" title="{{ $pageSelected ? 'Clear selection' : 'Select this page' }}">
+            <input type="checkbox" @checked($pageSelected) @disabled($pageIds === [])
+                   x-data x-effect="$el.checked = {{ $pageSelected ? 'true' : 'false' }}; $el.indeterminate = {{ $selectedOnPage > 0 && ! $pageSelected ? 'true' : 'false' }}"
+                   wire:click="{{ $pageSelected ? 'clearSelection' : 'selectPage' }}"
+                   aria-label="{{ $pageSelected ? 'Clear endpoint selection' : 'Select all endpoints on this page' }}">
+            <span>{{ $pageSelected ? 'Clear selection' : 'Select page' }}</span>
+        </label>
+        <span class="result-count" role="status">
+            @if ($filtersActive)
+                {{ $endpoints->total() }} of {{ $allEndpointCount }} {{ Str::plural('endpoint', $allEndpointCount) }}
+            @else
+                {{ $allEndpointCount }} {{ Str::plural('endpoint', $allEndpointCount) }}
+            @endif
+        </span>
+    </div>
+
     <div class="endpoint-list" wire:loading.class="is-loading">
-        <div class="skeleton-list" wire:loading.flex wire:target="search,method,state,sort,collection,tags,clearFilters">
+        <div class="skeleton-list" role="status" wire:loading.flex wire:target="search,method,state,sort,collection,tags,clearFilters,previousPage,nextPage,gotoPage">
             @foreach (range(1, 3) as $row)
                 <span class="skeleton-row" aria-hidden="true"></span>
             @endforeach
             <span class="sr-only">Loading endpoints…</span>
         </div>
 
-        <div wire:loading.remove wire:target="search,method,state,sort,collection,tags,clearFilters">
+        <div wire:loading.remove wire:target="search,method,state,sort,collection,tags,clearFilters,previousPage,nextPage,gotoPage">
             @forelse ($endpoints as $endpoint)
                 @php
                     $stats = $endpoint->requestStats();
@@ -132,7 +145,7 @@
                     $autoDerivedName = trim((string) $endpoint->name) === '' || trim((string) $endpoint->name) === $derivedName;
                 @endphp
                 <article
-                    class="endpoint-card card row-link"
+                    class="endpoint-card card row-link {{ in_array($endpoint->id, $selected) ? 'is-selected' : '' }}"
                     wire:key="endpoint-{{ $endpoint->id }}"
                     tabindex="0"
                     data-row-href="{{ route('dashboard.endpoints.edit', $endpoint) }}"
@@ -150,7 +163,7 @@
                                     <code class="request-target endpoint-primary" title="{{ $endpoint->requestTarget() }}">{{ $endpoint->requestTarget() }}</code>
                                 </div>
                             @else
-                                <h3>{{ $endpoint->displayName() }}</h3>
+                                <h3 title="{{ $endpoint->displayName() }}">{{ $endpoint->displayName() }}</h3>
                                 <div class="endpoint-request-line">
                                     <span class="method-badge method-{{ strtolower($endpoint->method) }}">{{ $endpoint->method }}</span>
                                     <code class="request-target" title="{{ $endpoint->requestTarget() }}">{{ $endpoint->requestTarget() }}</code>
@@ -209,18 +222,18 @@
                         @endif
 
                         <label class="switch-control" title="{{ $endpoint->enabled ? 'Disable' : 'Enable' }} {{ $endpoint->displayName() }}">
-                            <input type="checkbox" @checked($endpoint->enabled) wire:click="toggleEnabled({{ $endpoint->id }})" aria-label="Endpoint enabled">
+                            <input type="checkbox" @checked($endpoint->enabled) wire:click="toggleEnabled({{ $endpoint->id }})" aria-label="Endpoint enabled" wire:loading.attr="disabled" wire:target="toggleEnabled({{ $endpoint->id }})">
                             <span aria-hidden="true"></span>
                         </label>
 
                         <a class="button button-tertiary button-small" href="{{ route('dashboard.endpoints.edit', $endpoint) }}" wire:navigate>Edit</a>
 
-                        <details class="overflow-menu" data-menu>
-                            <summary aria-label="More actions for {{ $endpoint->displayName() }}">•••</summary>
+                        <details class="overflow-menu" data-menu wire:ignore.self>
+                            <summary aria-label="More actions for {{ $endpoint->displayName() }}"><x-workbench-icon name="more" /></summary>
                             <div>
-                                <button type="button" wire:click="duplicate({{ $endpoint->id }})">Duplicate</button>
+                                <button type="button" wire:click="duplicate({{ $endpoint->id }})" wire:loading.attr="disabled" wire:target="duplicate({{ $endpoint->id }})">Duplicate</button>
                                 <button class="danger-text" type="button"
-                                        wire:click="delete({{ $endpoint->id }})"
+                                        wire:click="delete({{ $endpoint->id }})" wire:loading.attr="disabled" wire:target="delete({{ $endpoint->id }})"
                                         data-confirm-title="Delete endpoint" data-confirm="Delete {{ $endpoint->displayName() }} and all {{ $endpoint->responses_count }} configured responses? This cannot be undone.">
                                     Delete
                                 </button>
@@ -229,13 +242,11 @@
                     </div>
                 </article>
             @empty
-                <div class="empty-state card">
-                    <div class="empty-illustration" aria-hidden="true"><span>{ }</span></div>
-                    @php($filtered = $search !== '' || $method !== '' || $state !== 'all' || $collection !== 'all' || $tags !== [])
-                    <h3>{{ $filtered ? 'No endpoints match these filters' : 'Your mock registry is empty' }}</h3>
-                    <p>{{ $filtered ? 'Try a different search, method, or state.' : 'Create an endpoint from a curl command or import an existing MockDeck configuration.' }}</p>
+                <div class="empty-state registry-empty" data-registry-empty="{{ $allEndpointCount === 0 ? 'database' : ($collectionOnly ? 'collection' : 'filtered') }}">
+                    <h3>{{ $allEndpointCount === 0 ? 'Your mock registry is empty' : ($collectionOnly ? ($collection === 'none' ? 'No unfiled endpoints' : 'This collection has no endpoints') : 'No endpoints match these filters') }}</h3>
+                    <p>{{ $allEndpointCount === 0 ? 'Create an endpoint from a curl command or import an existing MockDeck configuration.' : ($collectionOnly ? 'Choose another collection or clear filters to see all endpoints.' : 'Change the search, method, state, collection, or selected tags, or clear all filters.') }}</p>
                     <div class="empty-actions">
-                        @if ($filtered)
+                        @if ($allEndpointCount > 0)
                             <button class="button button-secondary" type="button" wire:click="clearFilters">Clear filters</button>
                         @else
                             <a class="button button-primary" href="{{ route('dashboard.endpoints.create') }}" wire:navigate>New endpoint</a>
