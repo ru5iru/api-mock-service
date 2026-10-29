@@ -34,6 +34,13 @@ final class CallbackLog extends Component
 
     public bool $paused = false;
 
+    public ?int $selectedAttemptId = null;
+
+    public function inspectAttempt(?int $id): void
+    {
+        $this->selectedAttemptId = $id;
+    }
+
     public string $clock = 'local';
 
     public function togglePaused(): void

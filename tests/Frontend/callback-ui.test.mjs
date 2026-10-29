@@ -5,7 +5,7 @@ import test from 'node:test';
 const read = (path) => readFileSync(path, 'utf8');
 const editor = read('resources/views/livewire/admin/response-manager.blade.php');
 const settings = read('resources/views/livewire/admin/partials/callback-settings.blade.php');
-const log = read('resources/views/livewire/admin/callback-log.blade.php');
+const log = read('resources/views/livewire/admin/callback-log.blade.php') + read('resources/views/livewire/admin/partials/callback-inspector.blade.php');
 const dashboard = read('resources/views/layouts/dashboard.blade.php');
 const guide = read('docs/UI_GUIDE.md');
 
@@ -26,7 +26,7 @@ test('callback editor lives in its own tab and documents raw-body HMAC signing',
 });
 
 test('callback log reuses request table, links triggering request and allows labelled resend', () => {
-    assert.match(log, /class="table-scroll log-table-scroll"/);
+    assert.match(log, /class="activity-list table-scroll log-table-scroll"/);
     assert.match(log, /class="log-table"/);
     assert.match(log, /Request log/);
     assert.match(log, /aria-label="Resend callback attempt/);

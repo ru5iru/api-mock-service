@@ -22,7 +22,7 @@ final class CallbackLogEvidenceTest extends TestCase
             'method' => 'POST', 'attempt_number' => 1, 'status' => 'failed', 'http_status' => 500,
             'error' => 'Receiver failed. Authorization: Bearer hidden-error-secret',
         ]);
-        Livewire::test(CallbackLog::class)->assertSee('old.example.test')->assertDontSee('new.example.test')
+        Livewire::test(CallbackLog::class)->call('inspectAttempt', CallbackAttempt::query()->sole()->id)->assertSee('old.example.test')->assertDontSee('new.example.test')
             ->assertSee('Receiver failed.')->assertSee('[REDACTED]')->assertDontSee('hidden-target-secret')
             ->assertDontSee('hidden-error-secret')->assertSee('captured target and payload')
             ->set('search', 'old.example.test')->assertSee('Attempt #');

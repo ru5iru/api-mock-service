@@ -13,7 +13,7 @@ const base = process.env.MOCKDECK_BASE_URL;
 if (!base || process.env.MOCKDECK_BROWSER_FIXTURE !== '1') throw new Error('Set MOCKDECK_BASE_URL and MOCKDECK_BROWSER_FIXTURE=1, using a dedicated test database.');
 const shots = resolve(process.env.MOCKDECK_SCREENSHOT_DIR ?? 'tests/Browser/screenshots');
 await mkdir(shots, { recursive: true });
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, ...(process.env.MOCKDECK_CHROMIUM_PATH ? { executablePath: process.env.MOCKDECK_CHROMIUM_PATH } : {}) });
 const failures = [];
 async function poll(check, message) {
     const deadline = Date.now() + 10000;

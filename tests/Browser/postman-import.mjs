@@ -10,7 +10,7 @@ const base = process.env.MOCKDECK_BASE_URL;
 if (!base) throw new Error('Set MOCKDECK_BASE_URL to a running dashboard.');
 const screenshots = resolve(process.env.MOCKDECK_SCREENSHOT_DIR ?? 'tests/Browser/screenshots');
 await mkdir(screenshots, { recursive: true });
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, ...(process.env.MOCKDECK_CHROMIUM_PATH ? { executablePath: process.env.MOCKDECK_CHROMIUM_PATH } : {}) });
 try {
     for (const theme of ['light', 'dark']) {
         const page = await browser.newPage();

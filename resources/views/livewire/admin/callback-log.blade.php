@@ -1,6 +1,6 @@
-<section class="card log-card callback-log" data-log-viewer data-log-density="compact" @unless($paused) wire:poll.visible.5s @endunless>
+<section class="card log-card callback-log" data-log-viewer data-log-density="compact" @if (! $paused && $selectedAttemptId === null) wire:poll.visible.5s @endif>
     <div class="log-statusbar">
-        <div class="live-state {{ $paused ? 'paused' : 'live' }}"><i aria-hidden="true"></i><strong>{{ $paused ? 'Paused' : 'Live' }}</strong><span>Updated <time datetime="{{ now()->toIso8601String() }}" data-relative-time>just now</time></span></div>
+        <div class="live-state {{ ($paused || $selectedAttemptId !== null) ? 'paused' : 'live' }}"><i aria-hidden="true"></i><strong>{{ $paused ? 'Paused' : ($selectedAttemptId !== null ? 'Detail open' : 'Live') }}</strong><span>Updated <time datetime="{{ now()->toIso8601String() }}" data-relative-time>just now</time></span></div>
         <div class="log-live-actions"><button class="button button-tertiary button-small" type="button" wire:click="togglePaused">{{ $paused ? 'Resume refresh' : 'Pause refresh' }}</button></div>
     </div>
     <div class="log-filter-panel" aria-label="Callback log filters">
@@ -36,7 +36,8 @@
     @endif
     <p class="field-help">Showing up to 100 recent attempts matching these filters. Search checks recorded targets and request IDs in this window.</p>
     @if ($message !== '') <p class="info-note" role="status">{{ $message }}</p> @endif
-    <div class="table-scroll log-table-scroll">
+    <div class="activity-workspace {{ $selectedAttemptId !== null ? 'has-inspector' : '' }}" data-activity-workspace>
+    <div class="activity-list table-scroll log-table-scroll">
         <table class="log-table">
             <thead><tr><th scope="col">Status</th><th scope="col">Target / details</th><th scope="col">Time</th><th scope="col">Environment</th><th scope="col">Method</th><th scope="col">Attempt</th><th scope="col" class="numeric">Duration</th><th scope="col">Retry of</th><th scope="col">Action</th></tr></thead>
             <tbody>
@@ -51,18 +52,7 @@
                         <td><x-badge :variant="$attempt->status === 'success' ? 'success' : ($attempt->status === 'pending' ? 'info' : 'danger')">{{ ucfirst($attempt->status) }}{{ $attempt->http_status ? ' · '.$attempt->http_status : '' }}</x-badge></td>
 
                         <td><code>{{ Str::limit($redactor->redact($attempt->target_url ?? '[target unavailable]'), 75) }}</code>
-                            <details class="normalized-details" data-disclosure wire:ignore.self wire:key="callback-detail-{{ $attempt->id }}">
-                                <summary><x-disclosure-chevron /> Attempt #{{ $attempt->id }}</summary>
-                                <p class="field-help">Recorded attempt fields retain the delivery evidence. The response label uses current configuration.</p>
-                                <dl class="definition-list">
-                                    <div><dt>Recorded target</dt><dd><code>{{ $redactor->redact($attempt->target_url ?? '[target unavailable]') }}</code></dd></div>
-                                    <div><dt>Response / current label</dt><dd>#{{ $attempt->response_id ?? 'deleted' }} · {{ $attempt->response?->external_label ?? 'Saved response' }}</dd></div>
-                                    <div><dt>Request</dt><dd>{{ $attempt->request_log_id ?? 'No request reference' }}</dd></div>
-                                    <div><dt>Outcome</dt><dd>{{ $attempt->error ? $redactor->redact($attempt->error) : ($attempt->http_status ? 'Receiver returned HTTP '.$attempt->http_status : 'No error detail recorded.') }}</dd></div>
-                                    <div><dt>Lineage</dt><dd>{{ $attempt->retry_of_id ? 'Retry of #'.$attempt->retry_of_id : ($attempt->resend_of_id ? 'Resend of #'.$attempt->resend_of_id : 'Original attempt') }}</dd></div>
-                                </dl>
-                                <p class="field-help">Resend queues a new attempt using this attempt's captured target and payload. The original record is retained.</p>
-                            </details>
+                            <button class="text-button" type="button" wire:click="inspectAttempt({{ $attempt->id }})" data-activity-trigger="{{ $attempt->id }}">Attempt #{{ $attempt->id }}</button>
                             @if ($attempt->request_log_id)<a class="table-link" href="{{ route('dashboard.logs.index', ['type' => 'requests', 'search' => $attempt->request_log_id]) }}" wire:navigate>Request log</a>@endif
                         </td>
                         <td class="nowrap"><time datetime="{{ $attempt->created_at->toIso8601String() }}" data-log-time data-clock="{{ $clock }}" title="{{ $attempt->created_at->toIso8601String() }}">{{ $attempt->created_at->diffForHumans(short: true) }}</time></td>
@@ -79,5 +69,19 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+    @if ($selectedAttemptId !== null)
+        <section class="activity-inspector" data-activity-inspector tabindex="-1" aria-label="Callback inspector">
+            <button class="button button-secondary button-small" type="button" wire:click="inspectAttempt(null)" data-activity-back>Back to list</button>
+            @php($selectedAttempt = $rows->firstWhere('id', $selectedAttemptId))
+            @if ($selectedAttempt)
+                <h3>Attempt #{{ $selectedAttempt->id }}</h3>
+                @include('livewire.admin.partials.callback-inspector', ['attempt' => $selectedAttempt])
+                <button class="button button-secondary" type="button" wire:click="resend({{ $selectedAttempt->id }})">Resend captured delivery</button>
+            @else
+                <p class="info-note">This attempt is no longer in the filtered window. Return to the list or change the filters.</p>
+            @endif
+        </section>
+    @endif
     </div>
 </section>

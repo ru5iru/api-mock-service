@@ -444,11 +444,9 @@
     </div>
 
     @if ($endpointId)
-        @teleport('body')
             <x-dialog id="endpoint-history-dialog" class="history-dialog" title="Endpoint history" close-label="Close endpoint history" wire:ignore.self>
                 <livewire:admin.revision-history entity-type="endpoint" :entity-id="$endpointId" :key="'endpoint-history-'.$endpointId" />
             </x-dialog>
-        @endteleport
     @endif
 
     @teleport('body')

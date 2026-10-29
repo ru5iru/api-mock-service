@@ -76,7 +76,7 @@ try {
     const requestId = unmatched.headers()['x-request-id'];
     await page.goto(`${base}/dashboard/logs`);
     await page.locator('.log-row').filter({ has: page.locator(`code[title*="${requestId}"]`) }).click();
-    const detail = page.locator('.log-detail-row'); await detail.waitFor();
+    const detail = page.locator('.activity-inspector'); await detail.waitFor();
     for (const phrase of ['Recorded request event', 'Current configuration', 'Nearest current configured candidates', 'Q02 before import', 'The reconstructed cURL contains method and URL only; add headers and body before using it.']) assert.ok((await detail.innerText()).includes(phrase));
     await fits('recorded-and-current');
     await page.goto(`${base}/dashboard/endpoints/${fixture.editor}/edit?tab=response`);

@@ -24,11 +24,11 @@
     <div class="environment-editor" wire:key="environment-editor-{{ $selectedEnvironmentId }}">
         <section class="card form-card">
             <div class="card-heading tight">
-                <div><h2>{{ $selectedEnvironment->name }}</h2><p>Names and variables are shared by every endpoint using this environment.</p></div>
+                <div><h2>{{ $selectedEnvironment->name }}</h2><span class="field-help">Selected for editing</span><p>Names and variables are shared by every endpoint using this environment.</p></div>
                 <div class="button-row">
-                    <button class="button button-secondary button-small" type="button" wire:click="duplicateSelected">Duplicate</button>
+                    <button class="button button-secondary button-small" type="button" wire:click="duplicateSelected" wire:loading.attr="disabled" wire:target="duplicateSelected">Duplicate</button>
                     @unless ($selectedEnvironment->is_default)
-                        <button class="button button-tertiary button-small" type="button" wire:click="makeDefault">Make default</button>
+                        <button class="button button-tertiary button-small" type="button" wire:click="makeDefault" wire:loading.attr="disabled" wire:target="makeDefault">Make default</button>
                     @endunless
                 </div>
             </div>
@@ -55,7 +55,7 @@
                             @endforeach
                         </select>
                     </label>
-                    <button class="button button-danger" type="button" wire:click="deleteSelected" data-confirm-title="Confirm environment action" data-confirm="Delete {{ $selectedEnvironment->name }}? Its variables and endpoint overrides will be removed.">Delete</button>
+                    <button class="button button-danger" type="button" wire:click="deleteSelected" wire:loading.attr="disabled" wire:target="deleteSelected" data-confirm-title="Confirm environment action" data-confirm="Delete {{ $selectedEnvironment->name }}? Its variables and endpoint overrides will be removed.">Delete</button>
                 </div>
                 @error('replacementEnvironmentId') <p class="field-error" data-error-for="{{ 'replacementEnvironmentId' }}">{{ $message }}</p> @enderror
             </details>
@@ -70,10 +70,10 @@
                     <tbody>
                         @forelse ($selectedEnvironment->variables as $variable)
                             <tr wire:key="environment-variable-{{ $variable->id }}">
-                                <td><input aria-label="Variable key" type="text" wire:model="variableDrafts.{{ $variable->id }}.key">@error('variableDrafts.'.$variable->id.'.key')<span class="field-error" data-error-for="{{ 'variableDrafts.'.$variable->id.'.key' }}" role="alert">{{ $message }}</span>@enderror</td>
-                                <td><input aria-label="Variable value" type="{{ $variable->is_secret ? 'password' : 'text' }}" wire:model="variableDrafts.{{ $variable->id }}.value" placeholder="{{ $variable->is_secret ? '•••••••• · leave blank to keep' : '' }}" autocomplete="off">@error('variableDrafts.'.$variable->id.'.value')<span class="field-error" data-error-for="{{ 'variableDrafts.'.$variable->id.'.value' }}">{{ $message }}</span>@enderror</td>
-                                <td><input aria-label="Secret variable" type="checkbox" wire:model="variableDrafts.{{ $variable->id }}.is_secret"></td>
-                                <td><span class="field-help" wire:dirty wire:target="variableDrafts.{{ $variable->id }}">Unsaved</span><div class="row-actions"><button class="button button-primary button-small" type="button" wire:click="saveVariable({{ $variable->id }})" wire:loading.attr="disabled" wire:target="saveVariable({{ $variable->id }})">Save</button><button class="icon-button danger" type="button" wire:click="deleteVariable({{ $variable->id }})" data-confirm-title="Confirm environment action" data-confirm="Delete {{ $variable->key }}?">Delete</button></div></td>
+                                <td data-column="Key"><input aria-label="Variable key" type="text" wire:model="variableDrafts.{{ $variable->id }}.key">@error('variableDrafts.'.$variable->id.'.key')<span class="field-error" data-error-for="{{ 'variableDrafts.'.$variable->id.'.key' }}" role="alert">{{ $message }}</span>@enderror</td>
+                                <td data-column="Value"><input aria-label="Variable value" type="{{ $variable->is_secret ? 'password' : 'text' }}" wire:model="variableDrafts.{{ $variable->id }}.value" placeholder="{{ $variable->is_secret ? '•••••••• · leave blank to keep' : '' }}" autocomplete="off">@error('variableDrafts.'.$variable->id.'.value')<span class="field-error" data-error-for="{{ 'variableDrafts.'.$variable->id.'.value' }}">{{ $message }}</span>@enderror</td>
+                                <td data-column="Secret"><input aria-label="Secret variable" type="checkbox" wire:model="variableDrafts.{{ $variable->id }}.is_secret"></td>
+                                <td data-column="Actions"><span class="field-help" wire:dirty wire:target="variableDrafts.{{ $variable->id }}">Unsaved</span><div class="row-actions"><button class="button button-primary button-small" type="button" wire:click="saveVariable({{ $variable->id }})" wire:loading.attr="disabled" wire:target="saveVariable({{ $variable->id }})">Save</button><button class="icon-button danger" type="button" wire:click="deleteVariable({{ $variable->id }})" data-confirm-title="Confirm environment action" data-confirm="Delete {{ $variable->key }}?">Delete</button></div></td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="empty-table">No variables in this environment.</td></tr>
@@ -81,10 +81,10 @@
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td><input aria-label="New variable key" type="text" wire:model="newVariableKey" placeholder="API_BASE_URL"></td>
-                            <td><input aria-label="New variable value" type="{{ $newVariableSecret ? 'password' : 'text' }}" wire:model="newVariableValue" placeholder="Value" autocomplete="off"></td>
-                            <td><input aria-label="New variable is secret" type="checkbox" wire:model.live="newVariableSecret"></td>
-                            <td><button class="button button-primary button-small" type="button" wire:click="addVariable">Add variable</button></td>
+                            <td data-column="New key"><input aria-label="New variable key" type="text" wire:model="newVariableKey" placeholder="API_BASE_URL"></td>
+                            <td data-column="New value"><input aria-label="New variable value" type="{{ $newVariableSecret ? 'password' : 'text' }}" wire:model="newVariableValue" placeholder="Value" autocomplete="off"></td>
+                            <td data-column="Secret"><input aria-label="New variable is secret" type="checkbox" wire:model.live="newVariableSecret"></td>
+                            <td><button class="button button-primary button-small" type="button" wire:click="addVariable" wire:loading.attr="disabled" wire:target="addVariable">Add variable</button></td>
                         </tr>
                     </tfoot>
                 </table>

@@ -71,7 +71,7 @@
                     @else
                         <div data-template-editor-root>
                             <label for="callback-body">Body <span>JSON template</span></label>
-                            <textarea id="callback-body" class="code-input compact" rows="8" spellcheck="false" wire:model.live.debounce.400ms="callbackBody" data-template-editor role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="callback-method-suggestions"></textarea>
+                            <textarea id="callback-body" class="code-input compact" rows="12" spellcheck="false" wire:model.live.debounce.400ms="callbackBody" data-template-editor role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="callback-method-suggestions"></textarea>
                             <div id="callback-method-suggestions" class="template-autocomplete" data-template-autocomplete role="listbox" aria-label="Callback Faker method suggestions" wire:ignore hidden></div>
                         </div>
                     @endif

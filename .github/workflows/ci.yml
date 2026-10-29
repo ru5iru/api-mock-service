@@ -86,6 +86,7 @@ jobs:
           MOCKDECK_BROWSER_FIXTURE=1 make browser-editor-test
           MOCKDECK_BROWSER_FIXTURE=1 make browser-response-test
           MOCKDECK_BROWSER_FIXTURE=1 make browser-selection-test
+          MOCKDECK_BROWSER_FIXTURE=1 make browser-supporting-test
           make browser-test
           MOCKDECK_BROWSER_FIXTURE=1 make browser-regression-test
 

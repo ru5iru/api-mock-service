@@ -1,9 +1,12 @@
-<div>
+<div class="transfer-workspace">
+    <nav class="response-workspace-links" aria-label="Configuration workflow">
+        <a href="#export-heading">Export</a><a href="#import-heading">Import</a><a href="#preview-heading">Review plan</a>
+    </nav>
     <div class="transfer-grid">
         <section class="card transfer-card" aria-labelledby="export-heading">
             <div class="card-heading tight">
                 <div>
-                    <h2 id="export-heading">Export configuration</h2>
+                    <h2 id="export-heading" tabindex="-1">Export configuration</h2>
                     <p>Download every endpoint or choose a portable subset.</p>
                 </div>
             </div>
@@ -121,7 +124,7 @@
         <section class="card transfer-card" aria-labelledby="import-heading">
             <div class="card-heading tight">
                 <div>
-                    <h2 id="import-heading">Import configuration</h2>
+                    <h2 id="import-heading" tabindex="-1">Import configuration</h2>
                     <p>Validate the file and preview every change before writing.</p>
                 </div>
             </div>
@@ -207,7 +210,7 @@
     <section class="card import-preview preview-reserved" aria-labelledby="preview-heading" aria-live="polite">
         <div class="section-heading">
             <div>
-                <h2 id="preview-heading">Preview</h2>
+                <h2 id="preview-heading" tabindex="-1">Preview</h2>
                 <p>Endpoint import and Environment variable creation each require confirmation.</p>
             </div>
         </div>

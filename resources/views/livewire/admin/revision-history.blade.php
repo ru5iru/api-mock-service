@@ -1,4 +1,6 @@
 <div class="revision-history-panel">
+    @if ($runId !== null)<p class="info-note">Test-run history is read-only. Restore is unavailable for runtime configuration.</p>@endif
+    <p class="field-help" role="status" wire:loading>Loading history…</p>
     @if ($revisions->isEmpty())
         <div class="mini-empty-state revision-empty">
             <strong>No saved versions yet</strong>
@@ -53,7 +55,7 @@
 
             @forelse ($diff['changes'] as $change)
                 <article class="revision-diff-change renderer-{{ $change['renderer'] }}">
-                    <div class="revision-diff-heading-{{ $entityType }}-{{ $entityId }}-{{ $runId ?? 'ordinary' }}">
+                    <div class="revision-diff-heading">
                         <code>{{ $change['path'] }}</code>
                         <x-badge :variant="$change['type'] === 'removed' ? 'danger' : ($change['type'] === 'added' ? 'success' : 'info')">{{ $change['type'] }}</x-badge>
                     </div>

@@ -100,7 +100,7 @@ try {
         await page.goto(`${base}/dashboard/logs`);
         const logRow = page.locator('.log-row').filter({ has: page.locator(`code[title*="${id}"]`) });
         await logRow.click();
-        await page.locator('.log-detail-row').waitFor();
+        await page.locator('.activity-inspector').waitFor();
         assert.equal(await page.locator('[data-cookie-matching-hint]').count(), expected ? 1 : 0);
         if (expected) assert.match(await page.locator('[data-cookie-matching-hint]').innerText(), /^If this request came from a browser/);
         await fits(`logs ${method} ${path}`);

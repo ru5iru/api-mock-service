@@ -40,7 +40,7 @@ try {
         });
         assert.ok(containment.right <= containment.viewport);
         for (const right of containment.actions) assert.ok(right <= containment.viewport);
-        if (width === 390) assert.ok(containment.scrollable, 'Variable actions require reachable internal scrolling');
+        // Narrow variable rows stack; every action must remain reachable without page overflow.
         for (const action of containment.tableActions) {
             assert.ok(action.left >= containment.scrollLeft - 1 && action.right <= containment.scrollRight + 1, 'Every table action is reachable at the end of internal scroll');
         }
@@ -114,9 +114,9 @@ try {
         await page.goto(`${base}/dashboard/logs?type=callbacks&time_range=all&request_log_id=critique-regression-request`);
         assert.ok((await page.locator('.callback-log thead th').first().innerText()).toLowerCase().includes('status'));
         const attempt = page.locator(`tr[wire\\:key="callback-attempt-${fixture.attempt}"]`);
-        await attempt.locator('summary').click();
+        await attempt.getByRole('button', { name: `Attempt #${fixture.attempt}`, exact: true }).click();
         await page.waitForTimeout(350);
-        const evidence = await attempt.innerText();
+        const evidence = await page.locator('.activity-inspector').innerText();
         assert.ok(evidence.includes('recorded.example.test')); assert.ok(evidence.includes('Receiver unavailable'));
         assert.ok(!evidence.includes('current.example.test')); assert.ok(!evidence.includes('hidden-error-secret'));
         assert.ok(!evidence.includes('hidden-regression-secret'));

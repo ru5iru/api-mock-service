@@ -646,3 +646,13 @@ Environment edits remain in the current page's drafts when you switch between En
 Response and Callback lists show response IDs, saved-example labels and short body summaries. Selection saved/unsaved status reflects actual changes. Callback attempt details show the recorded destination, sanitized failure and retry/resend lineage, even after callback settings change. Response/request scope chips can be removed independently.
 
 Documentation has search and a section picker that remain available while reading. Import update previews show Before/After changes and response-pool consequences; the download offered before importing follows the export scope and redaction settings above it.
+
+## Using the upgraded workbench
+
+Use the rail to move between Endpoints, Logs, Import/export, Environments and Documentation. Endpoint **Editor** contains Request and Matching, alongside Responses. **Callback** selects a response and edits only its callback; **Settings** contains endpoint organization, priority and Environment availability. Existing deep links continue to work.
+
+In Logs, select a request row or an Attempt button to inspect recorded evidence. Wide screens retain the list beside the inspector. Narrow screens show the inspector alone; **Back to list** restores the selected row. Opening details pauses refresh; manually pausing remains a separate choice. The displayed filters and retention limits still apply. Copy is not a replay; Resend explicitly queues a captured callback delivery.
+
+In Environments, **Selected for editing** is not **Active**. Only the header Environment switcher changes the instance-wide active Environment for ordinary traffic; runs retain their own binding. Save each variable independently. Leave a secret value blank to retain it. On narrow screens each variable stacks vertically with visible field labels.
+
+Import/export keeps its existing workflow: select source/options, **Preview import**, review actions and warnings, acknowledge required consequences, then confirm. Export, Import and Review plan links navigate those sections. History comparisons and existing restore safeguards remain available; run history is read-only. Nothing in the redesign adds autosave or browser draft storage.
