@@ -14,7 +14,7 @@ await mkdir(shots, { recursive: true });
 async function poll(check, message) {
     const until = Date.now() + 15000;
     while (Date.now() < until) { if (await check()) return; await new Promise(r => setTimeout(r, 80)); }
-    throw new Error(message);
+    throw new Error(typeof message === 'function' ? message() : message);
 }
 const browser = await chromium.launch({ headless: true, ...(process.env.MOCKDECK_CHROMIUM_PATH ? { executablePath: process.env.MOCKDECK_CHROMIUM_PATH } : {}) });
 const errors = [];
@@ -133,9 +133,19 @@ try {
             for (const section of ['Request', 'Matching', 'Settings', 'Callback']) {
                 await openEditorSection(page, section);
                 assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${theme}/${width}/${section}: page overflows`);
-                const viewport = await page.locator('[data-editor-viewport]').boundingBox();
-                const actions = await page.locator('#save-actions').boundingBox();
-                assert.ok(viewport.y + viewport.height <= actions.y - 15, `${theme}/${width}: save bar obscures pane`);
+                // Resize/tab updates schedule geometry in requestAnimationFrame.
+                // Read both rectangles together and require the original clearance.
+                let geometry;
+                await poll(async () => {
+                    geometry = await page.evaluate(() => {
+                        const pane = document.querySelector('[data-editor-viewport]').getBoundingClientRect();
+                        const bar = document.querySelector('#save-actions').getBoundingClientRect();
+                        return { paneBottom: pane.bottom, barTop: bar.top };
+                    });
+                    return geometry.paneBottom <= geometry.barTop - 15;
+                }, () => `${theme}/${width}/${section}: save bar obscures pane after layout settles: ${JSON.stringify(geometry)}`);
+                assert.ok(geometry.paneBottom <= geometry.barTop - 15,
+                    `${theme}/${width}/${section}: save bar obscures pane: ${JSON.stringify(geometry)}`);
                 const visible = await page.locator('.endpoint-authoring-grid input:visible, .endpoint-authoring-grid select:visible, .endpoint-authoring-grid textarea:visible').evaluateAll(els => els.map(el => { const b = el.getBoundingClientRect(); return { x: b.x, right: b.right }; }));
                 for (const b of visible) assert.ok(b.x >= 0 && b.right <= width + 1, `${theme}/${width}/${section}: control escapes viewport`);
                 if (width === 1440 && section === 'Request') {

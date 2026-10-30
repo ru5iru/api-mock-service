@@ -124,8 +124,7 @@ try {
         if (!await picker.evaluate(el => el.open)) await picker.locator(':scope > summary').click();
         await picker.getByRole('searchbox').fill('');
         await picker.locator('.faker-picker-panel').waitFor({ state: 'visible' });
-        // Visibility precedes the shared panel's animation-frame positioning.
-        // Keep the containment requirement, but wait for the actual positioned state.
+        // Visibility can precede animation-frame positioning of the shared panel.
         await poll(async () => {
             const box = await picker.locator('.faker-picker-panel').boundingBox();
             return box && box.x >= 0 && box.x + box.width <= 321;
