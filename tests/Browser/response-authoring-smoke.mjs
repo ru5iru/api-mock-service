@@ -124,6 +124,11 @@ try {
         if (!await picker.evaluate(el => el.open)) await picker.locator(':scope > summary').click();
         await picker.getByRole('searchbox').fill('');
         await picker.locator('.faker-picker-panel').waitFor({ state: 'visible' });
+        // Visibility can precede animation-frame positioning of the shared panel.
+        await poll(async () => {
+            const box = await picker.locator('.faker-picker-panel').boundingBox();
+            return box && box.x >= 0 && box.x + box.width <= 321;
+        }, 'Catalog popover escapes viewport after positioning');
         const pop = await picker.locator('.faker-picker-panel').boundingBox();
         assert.ok(pop && pop.x >= 0 && pop.x + pop.width <= 321, 'Catalog popover escapes viewport');
         await capture(320, 'catalog-open', null);
