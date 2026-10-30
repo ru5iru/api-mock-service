@@ -391,22 +391,25 @@ details[data-menu][open] > :not(summary) { animation: menu-enter var(--motion-fa
 .inline-create-control input { min-width: 0; flex: 1; }
 .environment-overrides { margin: 0 0 var(--space-4); }
 .environment-overrides select { min-width: 190px; }
-.environment-management-grid { display: grid; grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); align-items: start; gap: var(--space-4); }
-.environment-list { padding: var(--space-3); position: sticky; top: 72px; }
+.environment-management-grid { display: grid; grid-template-columns: minmax(0, var(--environment-list-width)) minmax(0, 1fr); align-items: start; gap: var(--space-4);  margin: var(--space-6) var(--pane-gutter); }
+@media (max-width: 740px) { .environment-management-grid { grid-template-columns: minmax(0, 1fr); } }
+.environment-list { padding: var(--space-3); position: sticky; top: 72px;  background: var(--surface-subtle); }
 .compact-create-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); }
 .compact-create-row input { min-width: 0; width: 100%; }
 .environment-list-items { margin-top: var(--space-3); display: grid; gap: var(--space-1); }
-.environment-list-items > button { width: 100%; min-height: 52px; padding: var(--space-2); border: 1px solid transparent; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); color: var(--text); background: transparent; cursor: pointer; text-align: left; }
-.environment-list-items > button:hover, .environment-list-items > button.active { border-color: var(--accent-border); background: var(--accent-subtle); }
+.environment-list-items > button { width: 100%; min-height: var(--space-12); padding: var(--space-2); border: 1px solid transparent; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); color: var(--text); background: transparent; cursor: pointer; text-align: left;  border-color: transparent; font-size: var(--font-size-sm); font-weight: var(--font-weight-regular); }
+.environment-list-items > button:hover, .environment-list-items > button.active { border-color: transparent; background: var(--accent-subtle); }
+.environment-list-items > button.active { box-shadow: var(--selection-edge); }
 .environment-list-items strong, .environment-list-items small { display: block; }
 .environment-list-items small { margin-top: 2px; color: var(--text-muted); }
 .environment-editor { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+.environment-editor .form-card { padding: var(--space-5); }
 .environment-editor > .card, .environment-editor .table-scroll { min-width: 0; max-width: 100%; }
 .environment-editor .card-heading { flex-wrap: wrap; }
 .environment-list-items strong { overflow-wrap: anywhere; }
 .inline-edit-row .field { min-width: 0; margin: 0; flex: 1; }
 .danger-zone { margin-top: var(--space-4); }
-.environment-variable-table input[type="text"], .environment-variable-table input[type="password"] { min-width: 140px; width: 100%; }
+.environment-variable-table input[type="text"], .environment-variable-table input[type="password"] { min-width: 0; width: 100%; }
 .environment-variable-table input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
 .row-actions, .button-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .flow-nav { margin-bottom: var(--space-4); border-bottom: 1px solid var(--border); position: sticky; top: var(--site-nav-height, 65px); z-index: 30; background: var(--bg); }
@@ -1555,7 +1558,7 @@ body.workbench { --workbench-offset: calc(var(--shell-rail-width) + var(--shell-
 .callback-workspace .template-preview { max-height: 300px; overflow: auto; }
 .environment-management-grid { gap: 0; border: 1px solid var(--border); background: var(--surface); }
 .environment-management-grid .card { border: 0; border-radius: 0; box-shadow: none; margin: 0; }
-.environment-management-grid .environment-list { background: var(--surface-2); }
+.environment-management-grid .environment-list { background: var(--surface-subtle); }
 .environment-editor { min-width: 0; container-type: inline-size; border-inline-start: 1px solid var(--border); }
 .environment-editor .form-card + .form-card { border-block-start: 1px solid var(--border); }
 .environment-variable-table input[type="checkbox"] { width: 24px; height: 24px; }

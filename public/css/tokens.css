@@ -288,6 +288,7 @@
     --inspector-width: 320px;
     --inspector-width-wide: 350px;
     --inspector-width-compact: 290px;
+    --environment-list-width: 240px;
 }
 
 [data-theme="dark"] {
