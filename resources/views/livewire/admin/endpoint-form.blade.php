@@ -81,7 +81,7 @@
                     @if ($preview && ! $isExample && ! $curlExpanded)
                         <div class="curl-summary">
                             <span class="method-badge method-{{ strtolower($preview['parsed']->method) }}">{{ $preview['parsed']->method }}</span>
-                            <code>{{ $preview['parsed']->url }}</code>
+                            <code title="{{ $preview['parsed']->url }}">{{ $preview['parsed']->url }}</code>
                             <button class="button button-tertiary button-small" type="button" wire:click="$set('curlExpanded', true)">Edit request</button>
                         </div>
                     @else

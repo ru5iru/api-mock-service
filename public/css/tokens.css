@@ -273,6 +273,16 @@
     --badge-bg: #f1eee8;
     --badge-border: #ddd6cc;
     --selection-edge: inset 2px 0 var(--accent);
+    --editor-request-track: .92fr;
+    --editor-response-track: 1.08fr;
+    --editor-request-track-wide: 1fr;
+    --editor-response-track-wide: 1.15fr;
+    --settings-width: 850px;
+    --body-editor-min-height: 260px;
+    --actionbar-min-height: 56px;
+    --code-editor-font-size: 12px;
+    --code-editor-font-size-wide: 13px;
+    --summary-cell-padding: 10px;
 }
 
 [data-theme="dark"] {
