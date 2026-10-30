@@ -259,6 +259,15 @@
     --table-row-height: 40px;
     --dialog-border: #827568;
     --empty-icon-size: 30px;
+    --nav-icon-size: 17px;
+    --context-heading-height: 49px;
+    --rail-marker-size: 3px;
+    --footer-control-height: 24px;
+    --rail-selected: #eee4cf;
+    --rail-top-padding: 10px;
+    --shell-tools-gap: 13px;
+    --brand-mark-size: 21px;
+    --title-icon-height: 26px;
 }
 
 [data-theme="dark"] {
@@ -385,4 +394,5 @@
     --switch-thumb-on: #332416;
     --switch-thumb-shadow: 0 1px 2px rgb(0 0 0 / 50%);
     --dialog-border: #5a4e3c;
+    --rail-selected: #3a3125;
 }
