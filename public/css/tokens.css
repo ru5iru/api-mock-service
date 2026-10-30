@@ -283,6 +283,11 @@
     --code-editor-font-size: 12px;
     --code-editor-font-size-wide: 13px;
     --summary-cell-padding: 10px;
+    --log-row-height: 69px;
+    --log-row-comfortable-height: 84px;
+    --inspector-width: 320px;
+    --inspector-width-wide: 350px;
+    --inspector-width-compact: 290px;
 }
 
 [data-theme="dark"] {

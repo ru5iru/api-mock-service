@@ -48,7 +48,7 @@
                         <tr class="day-separator"><th scope="rowgroup" colspan="9">{{ $attempt->created_at->isToday() ? 'Today' : $attempt->created_at->format('M j, Y') }}</th></tr>
                         @php($previousDay = $day)
                     @endif
-                    <tr wire:key="callback-attempt-{{ $attempt->id }}">
+                    <tr class="callback-row" wire:key="callback-attempt-{{ $attempt->id }}">
                         <td><x-badge :variant="$attempt->status === 'success' ? 'success' : ($attempt->status === 'pending' ? 'info' : 'danger')">{{ ucfirst($attempt->status) }}{{ $attempt->http_status ? ' · '.$attempt->http_status : '' }}</x-badge></td>
 
                         <td><code>{{ Str::limit($redactor->redact($attempt->target_url ?? '[target unavailable]'), 75) }}</code>

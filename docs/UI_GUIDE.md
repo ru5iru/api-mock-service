@@ -905,6 +905,11 @@ Response JSON has12 initial rows and a220px minimum height. Its sample pre is ca
 | `--code-editor-font-size` | `12px` | Same |
 | `--code-editor-font-size-wide` | `13px` | Same |
 | `--summary-cell-padding` | `10px` | Same |
+| `--log-row-height` | `69px` | Same |
+| `--log-row-comfortable-height` | `84px` | Same |
+| `--inspector-width` | `320px` | Same |
+| `--inspector-width-wide` | `350px` | Same |
+| `--inspector-width-compact` | `290px` | Same |
 
 ## Typography scale
 
