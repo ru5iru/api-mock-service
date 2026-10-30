@@ -911,6 +911,11 @@ Response JSON has12 initial rows and a220px minimum height. Its sample pre is ca
 | `--inspector-width-wide` | `350px` | Same |
 | `--inspector-width-compact` | `290px` | Same |
 | `--environment-list-width` | `240px` | Same |
+| `--dropzone-padding-block` | `27px` | Same |
+| `--dropzone-padding-inline` | `18px` | Same |
+| `--dropzone-min-height` | `140px` | Same |
+| `--transfer-list-height` | `420px` | Same |
+| `--dropzone-border` | `#827568` | `#74634b` |
 
 ## Typography scale
 

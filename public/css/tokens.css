@@ -289,6 +289,11 @@
     --inspector-width-wide: 350px;
     --inspector-width-compact: 290px;
     --environment-list-width: 240px;
+    --dropzone-padding-block: 27px;
+    --dropzone-padding-inline: 18px;
+    --dropzone-min-height: 140px;
+    --transfer-list-height: 420px;
+    --dropzone-border: #827568;
 }
 
 [data-theme="dark"] {
@@ -418,4 +423,5 @@
     --rail-selected: #3a3125;
     --badge-bg: #2c2720;
     --badge-border: #433a2d;
+    --dropzone-border: #74634b;
 }
