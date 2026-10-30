@@ -890,6 +890,11 @@ Response JSON has12 initial rows and a220px minimum height. Its sample pre is ca
 | `--shell-tools-gap` | `13px` | Same |
 | `--brand-mark-size` | `21px` | Same |
 | `--title-icon-height` | `26px` | Same |
+| `--registry-row-min-height` | `76px` | Same |
+| `--registry-select-column` | `32px` | Same |
+| `--badge-bg` | `#f1eee8` | `#2c2720` |
+| `--badge-border` | `#ddd6cc` | `#433a2d` |
+| `--selection-edge` | `inset 2px 0 var(--accent)` | Same |
 
 ## Typography scale
 

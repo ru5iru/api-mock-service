@@ -268,6 +268,11 @@
     --shell-tools-gap: 13px;
     --brand-mark-size: 21px;
     --title-icon-height: 26px;
+    --registry-row-min-height: 76px;
+    --registry-select-column: 32px;
+    --badge-bg: #f1eee8;
+    --badge-border: #ddd6cc;
+    --selection-edge: inset 2px 0 var(--accent);
 }
 
 [data-theme="dark"] {
@@ -395,4 +400,6 @@
     --switch-thumb-shadow: 0 1px 2px rgb(0 0 0 / 50%);
     --dialog-border: #5a4e3c;
     --rail-selected: #3a3125;
+    --badge-bg: #2c2720;
+    --badge-border: #433a2d;
 }
