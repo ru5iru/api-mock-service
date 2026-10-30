@@ -294,6 +294,8 @@
     --dropzone-min-height: 140px;
     --transfer-list-height: 420px;
     --dropzone-border: #827568;
+    --docs-width: 1040px;
+    --prose-width: 60ch;
 }
 
 [data-theme="dark"] {
