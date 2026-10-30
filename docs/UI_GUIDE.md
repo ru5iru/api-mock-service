@@ -843,8 +843,8 @@ Response JSON has12 initial rows and a220px minimum height. Its sample pre is ca
 | `--shadow-inspector` | `-10px 0 24px -14px rgb(0 0 0 / 18%)` | `-10px 0 24px -14px rgb(0 0 0 / 60%)` |
 | `--shadow-actionbar` | `0 -6px 14px -8px rgb(0 0 0 / 18%)` | `0 -6px 14px -8px rgb(0 0 0 / 55%)` |
 | `--primary-background` | `linear-gradient(#8b6206, #805a04)` | `linear-gradient(#f0c582, #e6b66d)` |
-| `--primary-hover-background` | `linear-gradient(#805a04, #6b4a00)` | `linear-gradient(#f7d499, #efc17f)` |
-| `--primary-press-background` | `#6b4a00` | `#d9a55c` |
+| `--primary-hover-background` | `linear-gradient(#805a04, #6b4a00)` | `linear-gradient(#f6d29a, #f0c582)` |
+| `--primary-press-background` | `#6b4a00` | `linear-gradient(#d9a55c, #dcab63)` |
 | `--primary-border` | `#805a04` | `#c3924d` |
 | `--primary-shadow` | `inset 0 1px 0 rgb(255 245 227 / 18%), 0 1px 2px rgb(0 0 0 / 16%)` | `inset 0 1px 0 rgb(255 255 255 / 28%), 0 1px 2px rgb(0 0 0 / 40%), 0 6px 14px -8px rgb(230 182 109 / 45%)` |
 | `--tooltip-bg` | `#eee4cf` | `#3d3427` |
@@ -852,6 +852,35 @@ Response JSON has12 initial rows and a220px minimum height. Its sample pre is ca
 | `--method-patch-bg` | `var(--method-get-bg)` | Same |
 | `--method-patch-fg` | `var(--method-get-fg)` | Same |
 | `--method-patch-border` | `var(--method-get-border)` | Same |
+| `--control-press-shift` | `.5px` | Same |
+| `--control-padding-block` | `5px` | Same |
+| `--control-padding-inline` | `9px` | Same |
+| `--control-padding-small` | `8px` | Same |
+| `--control-icon-gap-small` | `6px` | Same |
+| `--button-border-press` | `#827568` | `#6a5c49` |
+| `--empty-padding` | `56px` | Same |
+| `--empty-copy-width` | `480px` | Same |
+| `--notice-padding` | `10px` | Same |
+| `--notice-icon-size` | `13px` | Same |
+| `--dialog-header-padding` | `16px` | Same |
+| `--dialog-footer-padding` | `12px` | Same |
+| `--button-min-width` | `84px` | Same |
+| `--toast-offset` | `44px` | Same |
+| `--toast-width` | `420px` | Same |
+| `--kbd-height` | `18px` | Same |
+| `--kbd-padding` | `5px` | Same |
+| `--primary-hover-shadow` | `inset 0 1px 0 rgb(255 245 227 / 22%), 0 2px 4px rgb(0 0 0 / 16%)` | `inset 0 1px 0 rgb(255 255 255 / 34%), 0 2px 4px rgb(0 0 0 / 40%), 0 8px 18px -8px rgb(230 182 109 / 55%)` |
+| `--primary-press-shadow` | `inset 0 2px 4px rgb(0 0 0 / 18%)` | `inset 0 2px 4px rgb(60 38 10 / 45%)` |
+| `--primary-text-shadow` | `0 1px 0 rgb(0 0 0 / 8%)` | `0 1px 0 rgb(255 255 255 / 18%)` |
+| `--primary-hover-border` | `#6b4a00` | `#d1a05a` |
+| `--primary-press-border` | `#6b4a00` | `#b98543` |
+| `--primary-focus` | `#7a5605` | `#fff0d7` |
+| `--switch-thumb-on` | `#fff5e3` | `#332416` |
+| `--switch-thumb-shadow` | `0 1px 2px rgb(0 0 0 / 20%)` | `0 1px 2px rgb(0 0 0 / 50%)` |
+| `--table-heading-height` | `34px` | Same |
+| `--table-row-height` | `40px` | Same |
+| `--dialog-border` | `#827568` | `#5a4e3c` |
+| `--empty-icon-size` | `30px` | Same |
 
 ## Typography scale
 

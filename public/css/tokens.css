@@ -230,6 +230,35 @@
     --method-patch-bg: var(--method-get-bg);
     --method-patch-fg: var(--method-get-fg);
     --method-patch-border: var(--method-get-border);
+    --control-press-shift: .5px;
+    --control-padding-block: 5px;
+    --control-padding-inline: 9px;
+    --control-padding-small: 8px;
+    --control-icon-gap-small: 6px;
+    --button-border-press: #827568;
+    --empty-padding: 56px;
+    --empty-copy-width: 480px;
+    --notice-padding: 10px;
+    --notice-icon-size: 13px;
+    --dialog-header-padding: 16px;
+    --dialog-footer-padding: 12px;
+    --button-min-width: 84px;
+    --toast-offset: 44px;
+    --toast-width: 420px;
+    --kbd-height: 18px;
+    --kbd-padding: 5px;
+    --primary-hover-shadow: inset 0 1px 0 rgb(255 245 227 / 22%), 0 2px 4px rgb(0 0 0 / 16%);
+    --primary-press-shadow: inset 0 2px 4px rgb(0 0 0 / 18%);
+    --primary-text-shadow: 0 1px 0 rgb(0 0 0 / 8%);
+    --primary-hover-border: #6b4a00;
+    --primary-press-border: #6b4a00;
+    --primary-focus: #7a5605;
+    --switch-thumb-on: #fff5e3;
+    --switch-thumb-shadow: 0 1px 2px rgb(0 0 0 / 20%);
+    --table-heading-height: 34px;
+    --table-row-height: 40px;
+    --dialog-border: #827568;
+    --empty-icon-size: 30px;
 }
 
 [data-theme="dark"] {
@@ -340,10 +369,20 @@
     --shadow-inspector: -10px 0 24px -14px rgb(0 0 0 / 60%);
     --shadow-actionbar: 0 -6px 14px -8px rgb(0 0 0 / 55%);
     --primary-background: linear-gradient(#f0c582, #e6b66d);
-    --primary-hover-background: linear-gradient(#f7d499, #efc17f);
-    --primary-press-background: #d9a55c;
+    --primary-hover-background: linear-gradient(#f6d29a, #f0c582);
+    --primary-press-background: linear-gradient(#d9a55c, #dcab63);
     --primary-border: #c3924d;
     --primary-shadow: inset 0 1px 0 rgb(255 255 255 / 28%), 0 1px 2px rgb(0 0 0 / 40%), 0 6px 14px -8px rgb(230 182 109 / 45%);
     --tooltip-bg: #3d3427;
     --tooltip-border: #5f4f38;
+    --button-border-press: #6a5c49;
+    --primary-hover-shadow: inset 0 1px 0 rgb(255 255 255 / 34%), 0 2px 4px rgb(0 0 0 / 40%), 0 8px 18px -8px rgb(230 182 109 / 55%);
+    --primary-press-shadow: inset 0 2px 4px rgb(60 38 10 / 45%);
+    --primary-text-shadow: 0 1px 0 rgb(255 255 255 / 18%);
+    --primary-hover-border: #d1a05a;
+    --primary-press-border: #b98543;
+    --primary-focus: #fff0d7;
+    --switch-thumb-on: #332416;
+    --switch-thumb-shadow: 0 1px 2px rgb(0 0 0 / 50%);
+    --dialog-border: #5a4e3c;
 }
