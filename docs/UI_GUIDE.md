@@ -8,7 +8,7 @@ Use these recipes without adding page-specific classes to alter their appearance
 
 The shared shell is implemented in `resources/views/components/workbench-navigation.blade.php` and `resources/views/layouts/dashboard.blade.php`. Its matching CSS is the Workbench foundation section of `public/css/app.css`. It supersedes the older centered page-shell/card presentation described later in this reference, while feature form behavior stays unchanged. Migration scope and two-pass verification are tracked in [UI upgrade](UI_UPGRADE.md).
 
-- Frame tokens: `--shell-header-height` 52px, `--shell-rail-width` 52px, `--shell-context-width` 252px, `--shell-status-height` 28px. Chrome/sidebar colors are semantic tokens with both theme values in the table below.
+- Frame tokens: `--shell-header-height` 46px, `--shell-rail-width` 52px, `--shell-context-width` 252px, `--shell-status-height` 25px. Chrome/sidebar colors are semantic tokens with both theme values in the table below.
 - Desktop has an icon navigation rail, a labelled contextual sidebar, an unconstrained work area and fixed version/documentation status bar. Navigation icons use `resources/views/components/workbench-icon.blade.php`; accessible names remain text-based.
 - `.workbench-context` contains a paginated `.workbench-explorer` only on endpoint create/edit. It reuses `EndpointIndex` with locked explorer/current-ID inputs, the existing scoped query and a separate explorerPage paginator. No raw request or resolved cURL is rendered in that view.
 - `.workbench` shared cards and registry rows have square panel edges and no elevation. Buttons keep the existing dimensions/semantics but no longer lift, translate or gain hover shadows in the workbench. Auth/error shells retain their existing compact card layout.
@@ -17,6 +17,16 @@ The shared shell is implemented in `resources/views/components/workbench-navigat
 - `public/js/workbench.js` remembers only desktop sidebar visibility and single-character-shortcut opt-in. The shortcut control lives in the shared Shortcuts dialog, always reachable through the footer Shortcuts button even when ? is disabled; existing input/dialog exclusions and modified save shortcut remain unchanged. Storage failures degrade to usable page-local choices.
 - Page headers wrap their actions at <=440px to prevent title/count collisions. Footer Shortcuts uses a 24px target inside the status bar. Help-tip clickable boxes are 24x24px; bubbles accept pointer input, use per-anchor delayed closing to allow crossing the anchor gap, close after normal pointer departure, and Escape dismisses hover-only as well as focused bubbles. Existing top-layer positioning remains in `public/js/panels.js`.
 - Editor / Callback / Settings is the current endpoint workspace. Legacy Request/Matching/Response URL sections map into Editor; Callback links stay intact. Mutation actions, server save-result scopes, template builders and import/secret contracts are retained.
+
+## Prototype v7 alignment
+
+The approved prototype's final rendered cascade governs visuals. Existing server state, forms, actions, validation, routes, Livewire/Alpine hooks and copied values remain authoritative for behavior. Light and System remain supported; the machine-value face stays self-hosted JetBrains Mono.
+
+Current foundation tokens use a 46px header and 25px status bar. The prototype has a 252px base desktop context, 272px at 1550px, and a drawer at 950px; the shell implementation is migrated in its own phase. Inputs use a component-specific 4px radius, buttons 5px, selected explorer rows 6px, dialogs 10px and toasts 6px. Flat working panes retain zero elevation; controls and temporary overlays use the numbered shadow levels. The primary control preserves the prototype's subtle amber gradient. The existing color token `--focus-ring` remains the visible outline; `--shadow-focus` is an optional halo.
+
+Blue is an explicit semantic exception for info, purple for PUT. GET and PATCH are green, POST amber, DELETE red, HEAD/OPTIONS neutral. Syntax colors use amber, green and neutral roles. Text is at least 11px; input/focus boundaries and semantic text pairs are checked in both themes. Selection, caret, scrollbars, reduced motion and forced colors use shared recipes.
+
+Recipes below are updated alongside their owning implementation phases; the complete token table always reflects the current stylesheet. Destructive confirmation focus stays on Cancel; this visual migration never changes validation or save timing.
 
 ## Contents
 
@@ -641,8 +651,8 @@ Response JSON has12 initial rows and a220px minimum height. Its sample pre is ca
 |---|---|---|
 | `--shell-rail-width` | `52px` | Same |
 | `--shell-context-width` | `252px` | Same |
-| `--shell-header-height` | `52px` | Same |
-| `--shell-status-height` | `28px` | Same |
+| `--shell-header-height` | `46px` | Same |
+| `--shell-status-height` | `25px` | Same |
 | `--shell-chrome` | `#f1eee8` | `#26221c` |
 | `--shell-sidebar` | `#f5f2ec` | `#242019` |
 | `--font-ui` | `-apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"` | Same |
@@ -669,89 +679,179 @@ Response JSON has12 initial rows and a220px minimum height. Its sample pre is ca
 | `--space-8` | `32px` | Same |
 | `--space-10` | `40px` | Same |
 | `--space-12` | `48px` | Same |
-| `--radius-sm` | `4px` | Same |
-| `--radius-md` | `6px` | Same |
+| `--radius-sm` | `3px` | Same |
+| `--radius-md` | `5px` | Same |
 | `--radius-lg` | `8px` | Same |
 | `--radius-pill` | `999px` | Same |
 | `--border-width` | `1px` | Same |
 | `--border-width-strong` | `2px` | Same |
-| `--shadow-sm` | `0 1px 2px rgb(26 26 26 / 4%)` | `none` |
-| `--shadow-md` | `0 4px 14px rgb(26 26 26 / 7%)` | `none` |
-| `--shadow-lg` | `0 12px 32px rgb(26 26 26 / 9%)` | `none` |
-| `--shadow-inset` | `inset 0 1px 8px rgb(0 0 0 / 18%)` | `none` |
-| `--shadow-sticky` | `0 -8px 24px rgb(26 26 26 / 6%)` | `none` |
-| `--shadow-focus` | `0 0 0 3px rgb(153 107 7 / 18%)` | `0 0 0 3px rgb(240 199 94 / 30%)` |
-| `--shadow-selected` | `0 0 0 2px rgb(153 107 7 / 10%)` | `0 0 0 2px rgb(209 162 58 / 24%)` |
+| `--shadow-sm` | `var(--shadow-1)` | Same |
+| `--shadow-md` | `var(--shadow-2)` | Same |
+| `--shadow-lg` | `var(--shadow-4)` | Same |
+| `--shadow-inset` | `var(--inset-well)` | Same |
+| `--shadow-sticky` | `var(--shadow-actionbar)` | Same |
+| `--shadow-focus` | `0 0 0 3px rgb(122 86 5 / 18%)` | `0 0 0 3px rgb(230 182 109 / 22%)` |
+| `--shadow-selected` | `0 0 0 2px rgb(153 107 7 / 10%)` | `inset 2px 0 var(--accent)` |
 | `--shadow-accent-pulse` | `0 0 0 3px rgb(153 107 7 / 30%)` | `0 0 0 3px rgb(240 199 94 / 38%)` |
-| `--motion-fast` | `120ms ease-out` | Same |
-| `--motion-base` | `180ms ease-out` | Same |
+| `--motion-fast` | `140ms var(--ease-control)` | Same |
+| `--motion-base` | `180ms var(--ease-control)` | Same |
 | `--bg` | `#fafaf8` | `#201d18` |
-| `--surface` | `#ffffff` | `#201d18` |
-| `--surface-2` | `#f5f3f0` | `#26221c` |
+| `--surface` | `#fafaf8` | `#201d18` |
+| `--surface-2` | `#f1eee8` | `#26221c` |
 | `--surface-raised` | `#fffdf8` | `#29251f` |
-| `--surface-hover` | `#fffaf0` | `#332b20` |
+| `--surface-hover` | `#eee8df` | `#29251e` |
 | `--surface-translucent` | `rgb(250 250 248 / 96%)` | `rgb(32 29 24 / 98%)` |
-| `--border` | `#e8e4df` | `#40392f` |
-| `--border-strong` | `#8f877e` | `#887b69` |
+| `--border` | `#ddd6cc` | `#40392f` |
+| `--border-strong` | `#827568` | `#887b69` |
 | `--text` | `#1a1a1a` | `#e7e0d5` |
 | `--text-muted` | `#625f59` | `#b8ad9d` |
-| `--text-subtle` | `#716c64` | `#a69a88` |
-| `--placeholder` | `#625f59` | `#b8ad9d` |
+| `--text-subtle` | `#68635b` | `#a69a88` |
+| `--placeholder` | `#68635b` | `#a69a88` |
 | `--overlay` | `rgb(26 26 26 / 48%)` | `rgb(0 0 0 / 70%)` |
-| `--selection` | `#f1dfaa` | `#5b4318` |
+| `--selection` | `#e7dfd3` | `#665033` |
 | `--disabled-bg` | `#ddd8cf` | `#35312b` |
 | `--disabled-fg` | `#514c45` | `#bdb4a4` |
-| `--skeleton-highlight` | `#ffffff` | `#312d26` |
+| `--skeleton-highlight` | `#fffdf8` | `#312d26` |
 | `--theme-color` | `#fafaf8` | `#201d18` |
-| `--accent` | `#996b07` | `#e6b66d` |
-| `--accent-hover` | `#805a04` | `#efc486` |
-| `--accent-subtle` | `#fbf3df` | `#332b20` |
-| `--accent-border` | `#aa7e1d` | `#b98d57` |
-| `--accent-link` | `#805a04` | `#efc486` |
-| `--on-accent` | `#ffffff` | `#1a1408` |
-| `--focus-ring` | `#7a5605` | `#f0c75e` |
-| `--control-hover` | `#fffdf8` | `#2b271f` |
-| `--toggle-off` | `#746e65` | `#71695d` |
-| `--toggle-thumb` | `#ffffff` | `#f3eee4` |
+| `--accent` | `#805a04` | `#e6b66d` |
+| `--accent-hover` | `#6b4a00` | `#f0c582` |
+| `--accent-subtle` | `#eee4cf` | `#33291c` |
+| `--accent-border` | `#aa7e1d` | `#b08a55` |
+| `--accent-link` | `#805a04` | `#e6b66d` |
+| `--on-accent` | `#fff5e3` | `#21190e` |
+| `--focus-ring` | `#7a5605` | `#e6b66d` |
+| `--control-hover` | `#fffdf8` | `#322c23` |
+| `--toggle-off` | `#746e65` | `#5b5347` |
+| `--toggle-thumb` | `#fff5e3` | `#b9afa0` |
 | `--select-chevron` | `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23996b07' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")` | `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23d1a23a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E")` |
-| `--success-bg` | `#e7f4ee` | `#183328` |
-| `--success-fg` | `#27634d` | `#86dbb2` |
-| `--success-border` | `#65947f` | `#4f9a77` |
-| `--warning-bg` | `#fff5dc` | `#382d16` |
-| `--warning-fg` | `#6b4a00` | `#f2c96d` |
-| `--warning-border` | `#a47d25` | `#9a7834` |
-| `--danger-bg` | `#fff0ed` | `#3a1d1c` |
-| `--danger-fg` | `#912f2f` | `#ffaaa5` |
-| `--danger-border` | `#b76d67` | `#a65a56` |
+| `--success-bg` | `#edf2e8` | `#263024` |
+| `--success-fg` | `#486331` | `#a9bf91` |
+| `--success-border` | `#6f895a` | `#7b9264` |
+| `--warning-bg` | `#fff5dc` | `#33291c` |
+| `--warning-fg` | `#6b4a00` | `#e6b66d` |
+| `--warning-border` | `#a47d25` | `#b08a55` |
+| `--danger-bg` | `#fff0ed` | `#3a221d` |
+| `--danger-fg` | `#912f2f` | `#e79888` |
+| `--danger-border` | `#b76d67` | `#ad6056` |
 | `--danger-fill` | `#982f2f` | `#d66560` |
 | `--danger-fill-hover` | `#762222` | `#e77a74` |
-| `--on-danger` | `#ffffff` | `#1a0d0c` |
+| `--on-danger` | `#fff5e3` | `#1a0d0c` |
 | `--info-bg` | `#edf4fb` | `#182b3d` |
 | `--info-fg` | `#294f7d` | `#9bcaff` |
 | `--info-border` | `#5f83aa` | `#527eaa` |
-| `--method-get-bg` | `#f1f8fc` | `#172d38` |
-| `--method-get-fg` | `#28536b` | `#9bd9ee` |
-| `--method-get-border` | `#6f8fa1` | `#4c8498` |
-| `--method-post-bg` | `#fff9e9` | `#382d16` |
-| `--method-post-fg` | `#6e4a00` | `#f2c96d` |
-| `--method-post-border` | `#9f7d28` | `#9a7834` |
+| `--method-get-bg` | `#edf2e8` | `#263024` |
+| `--method-get-fg` | `#486331` | `#a9bf91` |
+| `--method-get-border` | `#6f895a` | `#7b9264` |
+| `--method-post-bg` | `#fff5dc` | `#33291c` |
+| `--method-post-fg` | `#6b4a00` | `#e6b66d` |
+| `--method-post-border` | `#9f7d28` | `#b08a55` |
 | `--method-put-bg` | `#f9f5fd` | `#2d2338` |
 | `--method-put-fg` | `#5d477d` | `#d6b9f4` |
 | `--method-put-border` | `#9681b0` | `#80649d` |
-| `--code-bg` | `#22211e` | `#1c1915` |
-| `--code-surface` | `#292722` | `#201d18` |
-| `--code-fg` | `#eee9df` | `#e7e0d5` |
-| `--code-muted` | `#c8c0b3` | `#b8ad9d` |
-| `--code-border` | `#5b554b` | `#4a443a` |
-| `--syntax-flag` | `#e8bb55` | `#f2c96d` |
-| `--syntax-url` | `#83c7c2` | `#8edbd4` |
-| `--syntax-header` | `#9db7e4` | `#acc9f3` |
-| `--syntax-string` | `#bdd38d` | `#c7df9a` |
-| `--syntax-key` | `#df9cb1` | `#f0abc0` |
-
-**Example:** use existing component CSS `color: var(--text); background: var(--surface); border-color: var(--border);`, never embed hex values in Blade/styles.
-
-**Do/Don't:** resolve both themes through tokens; don't introduce literal colors outside tokens.css. Use raised dark surfaces and borders; don't add light-theme shadow colors to dark mode. Keep semantic triples together; don't mix token families to achieve contrast accidentally.
+| `--code-bg` | `#f3efe8` | `#201d18` |
+| `--code-surface` | `#f1eee8` | `#1c1915` |
+| `--code-fg` | `#1a1a1a` | `#e7e0d5` |
+| `--code-muted` | `#625f59` | `#b8ad9d` |
+| `--code-border` | `#827568` | `#786a56` |
+| `--syntax-flag` | `#805a04` | `#e6b66d` |
+| `--syntax-url` | `#486331` | `#a9bf91` |
+| `--syntax-header` | `#625f59` | `#b8ad9d` |
+| `--syntax-string` | `#486331` | `#a9bf91` |
+| `--syntax-key` | `#805a04` | `#e6b66d` |
+| `--shell-context-width-wide` | `272px` | Same |
+| `--shell-context-width-compact` | `220px` | Same |
+| `--shell-rail-width-compact` | `46px` | Same |
+| `--shell-rail-width-mobile` | `40px` | Same |
+| `--pane-gutter` | `20px` | Same |
+| `--pane-gutter-mobile` | `14px` | Same |
+| `--control-height` | `32px` | Same |
+| `--control-height-small` | `26px` | Same |
+| `--control-height-large` | `36px` | Same |
+| `--control-height-touch` | `44px` | Same |
+| `--request-control-height` | `40px` | Same |
+| `--tabs-height` | `42px` | Same |
+| `--editor-toolbar-height` | `36px` | Same |
+| `--section-heading-height` | `40px` | Same |
+| `--page-heading-height` | `61px` | Same |
+| `--icon-size` | `14px` | Same |
+| `--icon-size-large` | `16px` | Same |
+| `--icon-gap` | `8px` | Same |
+| `--icon-button-size` | `32px` | Same |
+| `--rail-button-size` | `36px` | Same |
+| `--select-chevron-size` | `14px` | Same |
+| `--select-chevron-inset` | `12px` | Same |
+| `--select-end-padding` | `36px` | Same |
+| `--switch-width` | `30px` | Same |
+| `--switch-height` | `18px` | Same |
+| `--switch-thumb-size` | `12px` | Same |
+| `--switch-inset` | `3px` | Same |
+| `--radius-none` | `0` | Same |
+| `--radius-input` | `4px` | Same |
+| `--radius-explorer` | `6px` | Same |
+| `--radius-dialog` | `10px` | Same |
+| `--radius-toast` | `6px` | Same |
+| `--radius-circle` | `50%` | Same |
+| `--focus-width` | `2px` | Same |
+| `--focus-offset` | `3px` | Same |
+| `--selection-edge-width` | `2px` | Same |
+| `--font-size-empty` | `15px` | Same |
+| `--line-height-code` | `1.85` | Same |
+| `--line-height-ui` | `1.4` | Same |
+| `--font-tracking-control` | `.005em` | Same |
+| `--ease-control` | `cubic-bezier(.16,1,.3,1)` | Same |
+| `--motion-press` | `80ms var(--ease-control)` | Same |
+| `--scrollbar-size` | `9px` | Same |
+| `--scrollbar-border` | `2px` | Same |
+| `--scrollbar-radius` | `6px` | Same |
+| `--dialog-width` | `650px` | Same |
+| `--tooltip-width` | `260px` | Same |
+| `--tooltip-offset` | `8px` | Same |
+| `--tooltip-padding-block` | `5px` | Same |
+| `--tooltip-padding-inline` | `9px` | Same |
+| `--avatar-size` | `25px` | Same |
+| `--status-dot-size` | `6px` | Same |
+| `--footer-dot-size` | `5px` | Same |
+| `--badge-height` | `20px` | Same |
+| `--field-gap` | `6px` | Same |
+| `--optical-gap` | `10px` | Same |
+| `--optical-inset` | `15px` | Same |
+| `--header-padding` | `15px` | Same |
+| `--offscreen-position` | `-10000px` | Same |
+| `--selection-text` | `#1a1a1a` | `#fff0d7` |
+| `--surface-subtle` | `#f3efe8` | `#1c1915` |
+| `--surface-inset` | `#f3efe8` | `#1b1814` |
+| `--surface-press` | `#e7dfd3` | `#363027` |
+| `--line` | `#ddd6cc` | `#332e26` |
+| `--control-border` | `#b7aa97` | `#554b3e` |
+| `--field-border` | `#827568` | `#786a56` |
+| `--field-focus-border` | `#7a5605` | `#b08a55` |
+| `--control-bg` | `#f3efe8` | `#29251e` |
+| `--control-press` | `#e7dfd3` | `#221e18` |
+| `--control-hover-border` | `#827568` | `#7a6a54` |
+| `--scrollbar-thumb` | `#827568` | `#575044` |
+| `--scrollbar-thumb-hover` | `#625f59` | `#756855` |
+| `--highlight-edge` | `inset 0 1px 0 rgb(255 245 227 / 65%)` | `inset 0 1px 0 rgb(255 238 205 / 5%)` |
+| `--shadow-1` | `0 1px 2px rgb(0 0 0 / 8%)` | `0 1px 2px rgb(0 0 0 / 30%)` |
+| `--shadow-2` | `0 2px 6px rgb(0 0 0 / 12%), 0 1px 2px rgb(0 0 0 / 8%)` | `0 2px 6px rgb(0 0 0 / 32%), 0 1px 2px rgb(0 0 0 / 24%)` |
+| `--shadow-3` | `0 8px 24px rgb(0 0 0 / 16%), 0 2px 6px rgb(0 0 0 / 10%)` | `0 8px 24px rgb(0 0 0 / 45%), 0 2px 6px rgb(0 0 0 / 30%)` |
+| `--shadow-4` | `0 16px 48px -8px rgb(0 0 0 / 22%), 0 4px 12px rgb(0 0 0 / 12%)` | `0 16px 48px -8px rgb(0 0 0 / 65%), 0 4px 12px rgb(0 0 0 / 35%)` |
+| `--inset-well` | `inset 0 2px 6px -2px rgb(0 0 0 / 10%)` | `inset 0 2px 6px -2px rgb(0 0 0 / 55%)` |
+| `--inset-field` | `inset 0 1px 2px rgb(0 0 0 / 8%)` | `inset 0 1px 2px rgb(0 0 0 / 35%)` |
+| `--shadow-press` | `inset 0 1px 3px rgb(0 0 0 / 12%)` | `inset 0 1px 3px rgb(0 0 0 / 45%)` |
+| `--shadow-chrome` | `0 1px 0 rgb(0 0 0 / 8%), 0 4px 12px -6px rgb(0 0 0 / 14%)` | `0 1px 0 rgb(0 0 0 / 35%), 0 4px 12px -6px rgb(0 0 0 / 50%)` |
+| `--shadow-sidebar` | `inset -1px 0 0 var(--border), 4px 0 12px -8px rgb(0 0 0 / 16%)` | `inset -1px 0 0 var(--border), 4px 0 12px -8px rgb(0 0 0 / 50%)` |
+| `--shadow-inspector` | `-10px 0 24px -14px rgb(0 0 0 / 18%)` | `-10px 0 24px -14px rgb(0 0 0 / 60%)` |
+| `--shadow-actionbar` | `0 -6px 14px -8px rgb(0 0 0 / 18%)` | `0 -6px 14px -8px rgb(0 0 0 / 55%)` |
+| `--primary-background` | `linear-gradient(#8b6206, #805a04)` | `linear-gradient(#f0c582, #e6b66d)` |
+| `--primary-hover-background` | `linear-gradient(#805a04, #6b4a00)` | `linear-gradient(#f7d499, #efc17f)` |
+| `--primary-press-background` | `#6b4a00` | `#d9a55c` |
+| `--primary-border` | `#805a04` | `#c3924d` |
+| `--primary-shadow` | `inset 0 1px 0 rgb(255 245 227 / 18%), 0 1px 2px rgb(0 0 0 / 16%)` | `inset 0 1px 0 rgb(255 255 255 / 28%), 0 1px 2px rgb(0 0 0 / 40%), 0 6px 14px -8px rgb(230 182 109 / 45%)` |
+| `--tooltip-bg` | `#eee4cf` | `#3d3427` |
+| `--tooltip-border` | `#827568` | `#5f4f38` |
+| `--method-patch-bg` | `var(--method-get-bg)` | Same |
+| `--method-patch-fg` | `var(--method-get-fg)` | Same |
+| `--method-patch-border` | `var(--method-get-border)` | Same |
 
 ## Typography scale
 
@@ -785,7 +885,7 @@ Response JSON has12 initial rows and a220px minimum height. Its sample pre is ca
 
 ## Motion tokens
 
-**Purpose:** communicate interaction state without delaying work. **Anatomy/classes:** `--motion-fast: 120ms ease-out`, `--motion-base: 180ms ease-out`. Fast for input/menu states; base for buttons, chevrons, disclosures, toasts/dialogs. Menu enter opacity0/translateY(-4px) to opacity1/translateY(0). Spinner uses existing `.spinner` 16px, 2px `--border`, top `--accent`, `.8s linear infinite` rotation.
+**Purpose:** communicate interaction state without delaying work. **Anatomy/classes:** `--motion-fast: 140ms var(--ease-control)`, `--motion-base: 180ms var(--ease-control)`. Fast for input/menu states; base for buttons, chevrons, disclosures, toasts/dialogs. Menu enter opacity0/translateY(-4px) to opacity1/translateY(0). Spinner uses existing `.spinner` 16px, 2px `--border`, top `--accent`, `.8s linear infinite` rotation.
 
 **States:** reduced motion sets animation/transition duration .01ms, iteration1, scroll-behavior auto globally. Theme switching suppresses transitions entirely. Route navigation stays instantaneous. Loading spinner is the declared exception to duration tokens; it signals activity, not route animation.
 
