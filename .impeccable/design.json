@@ -1,319 +1,2386 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-29T10:51:01.279901Z",
+  "generatedAt": "2026-10-31T06:07:46.282982+00:00",
   "title": "Design System: MockDeck",
   "extensions": {
     "colorMeta": {
-      "light-accent": {
-        "role": "primary",
-        "displayName": "Light accent"
-      },
-      "light-bg": {
-        "role": "neutral",
-        "displayName": "Light bg"
-      },
-      "light-surface": {
-        "role": "neutral",
-        "displayName": "Light surface"
-      },
       "light-shell-chrome": {
         "role": "neutral",
-        "displayName": "Light shell chrome"
+        "displayName": "Light Shell Chrome",
+        "tonalRamp": [
+          "oklch(15% 0.0086 84.57)",
+          "oklch(25% 0.0086 84.57)",
+          "oklch(35% 0.0086 84.57)",
+          "oklch(45% 0.0086 84.57)",
+          "oklch(55% 0.0086 84.57)",
+          "oklch(65% 0.0086 84.57)",
+          "oklch(80% 0.0086 84.57)",
+          "oklch(95% 0.0086 84.57)"
+        ]
       },
       "light-shell-sidebar": {
         "role": "neutral",
-        "displayName": "Light shell sidebar"
+        "displayName": "Light Shell Sidebar",
+        "tonalRamp": [
+          "oklch(15% 0.0086 84.57)",
+          "oklch(25% 0.0086 84.57)",
+          "oklch(35% 0.0086 84.57)",
+          "oklch(45% 0.0086 84.57)",
+          "oklch(55% 0.0086 84.57)",
+          "oklch(65% 0.0086 84.57)",
+          "oklch(80% 0.0086 84.57)",
+          "oklch(95% 0.0086 84.57)"
+        ]
       },
-      "dark-accent": {
+      "light-bg": {
+        "role": "neutral",
+        "displayName": "Light Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0026 106.45)",
+          "oklch(25% 0.0026 106.45)",
+          "oklch(35% 0.0026 106.45)",
+          "oklch(45% 0.0026 106.45)",
+          "oklch(55% 0.0026 106.45)",
+          "oklch(65% 0.0026 106.45)",
+          "oklch(80% 0.0026 106.45)",
+          "oklch(95% 0.0026 106.45)"
+        ]
+      },
+      "light-surface": {
+        "role": "neutral",
+        "displayName": "Light Surface",
+        "tonalRamp": [
+          "oklch(15% 0.0026 106.45)",
+          "oklch(25% 0.0026 106.45)",
+          "oklch(35% 0.0026 106.45)",
+          "oklch(45% 0.0026 106.45)",
+          "oklch(55% 0.0026 106.45)",
+          "oklch(65% 0.0026 106.45)",
+          "oklch(80% 0.0026 106.45)",
+          "oklch(95% 0.0026 106.45)"
+        ]
+      },
+      "light-surface-2": {
+        "role": "neutral",
+        "displayName": "Light Surface 2",
+        "tonalRamp": [
+          "oklch(15% 0.0086 84.57)",
+          "oklch(25% 0.0086 84.57)",
+          "oklch(35% 0.0086 84.57)",
+          "oklch(45% 0.0086 84.57)",
+          "oklch(55% 0.0086 84.57)",
+          "oklch(65% 0.0086 84.57)",
+          "oklch(80% 0.0086 84.57)",
+          "oklch(95% 0.0086 84.57)"
+        ]
+      },
+      "light-surface-raised": {
+        "role": "neutral",
+        "displayName": "Light Surface Raised",
+        "tonalRamp": [
+          "oklch(15% 0.0069 88.64)",
+          "oklch(25% 0.0069 88.64)",
+          "oklch(35% 0.0069 88.64)",
+          "oklch(45% 0.0069 88.64)",
+          "oklch(55% 0.0069 88.64)",
+          "oklch(65% 0.0069 88.64)",
+          "oklch(80% 0.0069 88.64)",
+          "oklch(95% 0.0069 88.64)"
+        ]
+      },
+      "light-surface-hover": {
+        "role": "neutral",
+        "displayName": "Light Surface Hover",
+        "tonalRamp": [
+          "oklch(15% 0.0137 78.26)",
+          "oklch(25% 0.0137 78.26)",
+          "oklch(35% 0.0137 78.26)",
+          "oklch(45% 0.0137 78.26)",
+          "oklch(55% 0.0137 78.26)",
+          "oklch(65% 0.0137 78.26)",
+          "oklch(80% 0.0137 78.26)",
+          "oklch(95% 0.0137 78.26)"
+        ]
+      },
+      "light-surface-subtle": {
+        "role": "neutral",
+        "displayName": "Light Surface Subtle",
+        "tonalRamp": [
+          "oklch(15% 0.0103 81.80)",
+          "oklch(25% 0.0103 81.80)",
+          "oklch(35% 0.0103 81.80)",
+          "oklch(45% 0.0103 81.80)",
+          "oklch(55% 0.0103 81.80)",
+          "oklch(65% 0.0103 81.80)",
+          "oklch(80% 0.0103 81.80)",
+          "oklch(95% 0.0103 81.80)"
+        ]
+      },
+      "light-surface-inset": {
+        "role": "neutral",
+        "displayName": "Light Surface Inset",
+        "tonalRamp": [
+          "oklch(15% 0.0103 81.80)",
+          "oklch(25% 0.0103 81.80)",
+          "oklch(35% 0.0103 81.80)",
+          "oklch(45% 0.0103 81.80)",
+          "oklch(55% 0.0103 81.80)",
+          "oklch(65% 0.0103 81.80)",
+          "oklch(80% 0.0103 81.80)",
+          "oklch(95% 0.0103 81.80)"
+        ]
+      },
+      "light-surface-press": {
+        "role": "neutral",
+        "displayName": "Light Surface Press",
+        "tonalRamp": [
+          "oklch(15% 0.0184 78.24)",
+          "oklch(25% 0.0184 78.24)",
+          "oklch(35% 0.0184 78.24)",
+          "oklch(45% 0.0184 78.24)",
+          "oklch(55% 0.0184 78.24)",
+          "oklch(65% 0.0184 78.24)",
+          "oklch(80% 0.0184 78.24)",
+          "oklch(95% 0.0184 78.24)"
+        ]
+      },
+      "light-border": {
+        "role": "neutral",
+        "displayName": "Light Border",
+        "tonalRamp": [
+          "oklch(15% 0.0156 77.06)",
+          "oklch(25% 0.0156 77.06)",
+          "oklch(35% 0.0156 77.06)",
+          "oklch(45% 0.0156 77.06)",
+          "oklch(55% 0.0156 77.06)",
+          "oklch(65% 0.0156 77.06)",
+          "oklch(80% 0.0156 77.06)",
+          "oklch(95% 0.0156 77.06)"
+        ]
+      },
+      "light-border-strong": {
+        "role": "neutral",
+        "displayName": "Light Border Strong",
+        "tonalRamp": [
+          "oklch(15% 0.0253 67.28)",
+          "oklch(25% 0.0253 67.28)",
+          "oklch(35% 0.0253 67.28)",
+          "oklch(45% 0.0253 67.28)",
+          "oklch(55% 0.0253 67.28)",
+          "oklch(65% 0.0253 67.28)",
+          "oklch(80% 0.0253 67.28)",
+          "oklch(95% 0.0253 67.28)"
+        ]
+      },
+      "light-line": {
+        "role": "neutral",
+        "displayName": "Light Line",
+        "tonalRamp": [
+          "oklch(15% 0.0156 77.06)",
+          "oklch(25% 0.0156 77.06)",
+          "oklch(35% 0.0156 77.06)",
+          "oklch(45% 0.0156 77.06)",
+          "oklch(55% 0.0156 77.06)",
+          "oklch(65% 0.0156 77.06)",
+          "oklch(80% 0.0156 77.06)",
+          "oklch(95% 0.0156 77.06)"
+        ]
+      },
+      "light-text": {
+        "role": "neutral",
+        "displayName": "Light Text",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(25% 0.0000 89.88)",
+          "oklch(35% 0.0000 89.88)",
+          "oklch(45% 0.0000 89.88)",
+          "oklch(55% 0.0000 89.88)",
+          "oklch(65% 0.0000 89.88)",
+          "oklch(80% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "light-text-muted": {
+        "role": "neutral",
+        "displayName": "Light Text Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0102 84.59)",
+          "oklch(25% 0.0102 84.59)",
+          "oklch(35% 0.0102 84.59)",
+          "oklch(45% 0.0102 84.59)",
+          "oklch(55% 0.0102 84.59)",
+          "oklch(65% 0.0102 84.59)",
+          "oklch(80% 0.0102 84.59)",
+          "oklch(95% 0.0102 84.59)"
+        ]
+      },
+      "light-text-subtle": {
+        "role": "neutral",
+        "displayName": "Light Text Subtle",
+        "tonalRamp": [
+          "oklch(15% 0.0139 79.73)",
+          "oklch(25% 0.0139 79.73)",
+          "oklch(35% 0.0139 79.73)",
+          "oklch(45% 0.0139 79.73)",
+          "oklch(55% 0.0139 79.73)",
+          "oklch(65% 0.0139 79.73)",
+          "oklch(80% 0.0139 79.73)",
+          "oklch(95% 0.0139 79.73)"
+        ]
+      },
+      "light-placeholder": {
+        "role": "neutral",
+        "displayName": "Light Placeholder",
+        "tonalRamp": [
+          "oklch(15% 0.0139 79.73)",
+          "oklch(25% 0.0139 79.73)",
+          "oklch(35% 0.0139 79.73)",
+          "oklch(45% 0.0139 79.73)",
+          "oklch(55% 0.0139 79.73)",
+          "oklch(65% 0.0139 79.73)",
+          "oklch(80% 0.0139 79.73)",
+          "oklch(95% 0.0139 79.73)"
+        ]
+      },
+      "light-overlay": {
+        "role": "neutral",
+        "displayName": "Light Overlay",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(25% 0 0)",
+          "oklch(35% 0 0)",
+          "oklch(45% 0 0)",
+          "oklch(55% 0 0)",
+          "oklch(65% 0 0)",
+          "oklch(80% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "light-selection": {
+        "role": "neutral",
+        "displayName": "Light Selection",
+        "tonalRamp": [
+          "oklch(15% 0.0184 78.24)",
+          "oklch(25% 0.0184 78.24)",
+          "oklch(35% 0.0184 78.24)",
+          "oklch(45% 0.0184 78.24)",
+          "oklch(55% 0.0184 78.24)",
+          "oklch(65% 0.0184 78.24)",
+          "oklch(80% 0.0184 78.24)",
+          "oklch(95% 0.0184 78.24)"
+        ]
+      },
+      "light-selection-text": {
+        "role": "neutral",
+        "displayName": "Light Selection Text",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(25% 0.0000 89.88)",
+          "oklch(35% 0.0000 89.88)",
+          "oklch(45% 0.0000 89.88)",
+          "oklch(55% 0.0000 89.88)",
+          "oklch(65% 0.0000 89.88)",
+          "oklch(80% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "light-disabled-bg": {
+        "role": "neutral",
+        "displayName": "Light Disabled Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0134 82.40)",
+          "oklch(25% 0.0134 82.40)",
+          "oklch(35% 0.0134 82.40)",
+          "oklch(45% 0.0134 82.40)",
+          "oklch(55% 0.0134 82.40)",
+          "oklch(65% 0.0134 82.40)",
+          "oklch(80% 0.0134 82.40)",
+          "oklch(95% 0.0134 82.40)"
+        ]
+      },
+      "light-disabled-fg": {
+        "role": "neutral",
+        "displayName": "Light Disabled Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0132 76.47)",
+          "oklch(25% 0.0132 76.47)",
+          "oklch(35% 0.0132 76.47)",
+          "oklch(45% 0.0132 76.47)",
+          "oklch(55% 0.0132 76.47)",
+          "oklch(65% 0.0132 76.47)",
+          "oklch(80% 0.0132 76.47)",
+          "oklch(95% 0.0132 76.47)"
+        ]
+      },
+      "light-accent": {
         "role": "primary",
-        "displayName": "Dark accent"
+        "displayName": "Light Accent",
+        "tonalRamp": [
+          "oklch(15% 0.1012 79.57)",
+          "oklch(25% 0.1012 79.57)",
+          "oklch(35% 0.1012 79.57)",
+          "oklch(45% 0.1012 79.57)",
+          "oklch(55% 0.1012 79.57)",
+          "oklch(65% 0.1012 79.57)",
+          "oklch(80% 0.1012 79.57)",
+          "oklch(95% 0.1012 79.57)"
+        ]
       },
-      "dark-bg": {
-        "role": "neutral",
-        "displayName": "Dark bg"
+      "light-accent-hover": {
+        "role": "primary",
+        "displayName": "Light Accent Hover",
+        "tonalRamp": [
+          "oklch(15% 0.0901 79.32)",
+          "oklch(25% 0.0901 79.32)",
+          "oklch(35% 0.0901 79.32)",
+          "oklch(45% 0.0901 79.32)",
+          "oklch(55% 0.0901 79.32)",
+          "oklch(65% 0.0901 79.32)",
+          "oklch(80% 0.0901 79.32)",
+          "oklch(95% 0.0901 79.32)"
+        ]
       },
-      "dark-surface": {
+      "light-accent-subtle": {
+        "role": "primary",
+        "displayName": "Light Accent Subtle",
+        "tonalRamp": [
+          "oklch(15% 0.0299 85.56)",
+          "oklch(25% 0.0299 85.56)",
+          "oklch(35% 0.0299 85.56)",
+          "oklch(45% 0.0299 85.56)",
+          "oklch(55% 0.0299 85.56)",
+          "oklch(65% 0.0299 85.56)",
+          "oklch(80% 0.0299 85.56)",
+          "oklch(95% 0.0299 85.56)"
+        ]
+      },
+      "light-accent-border": {
+        "role": "primary",
+        "displayName": "Light Accent Border",
+        "tonalRamp": [
+          "oklch(15% 0.1189 81.74)",
+          "oklch(25% 0.1189 81.74)",
+          "oklch(35% 0.1189 81.74)",
+          "oklch(45% 0.1189 81.74)",
+          "oklch(55% 0.1189 81.74)",
+          "oklch(65% 0.1189 81.74)",
+          "oklch(80% 0.1189 81.74)",
+          "oklch(95% 0.1189 81.74)"
+        ]
+      },
+      "light-accent-link": {
+        "role": "primary",
+        "displayName": "Light Accent Link",
+        "tonalRamp": [
+          "oklch(15% 0.1012 79.57)",
+          "oklch(25% 0.1012 79.57)",
+          "oklch(35% 0.1012 79.57)",
+          "oklch(45% 0.1012 79.57)",
+          "oklch(55% 0.1012 79.57)",
+          "oklch(65% 0.1012 79.57)",
+          "oklch(80% 0.1012 79.57)",
+          "oklch(95% 0.1012 79.57)"
+        ]
+      },
+      "light-on-accent": {
+        "role": "primary",
+        "displayName": "Light On Accent",
+        "tonalRamp": [
+          "oklch(15% 0.0260 82.39)",
+          "oklch(25% 0.0260 82.39)",
+          "oklch(35% 0.0260 82.39)",
+          "oklch(45% 0.0260 82.39)",
+          "oklch(55% 0.0260 82.39)",
+          "oklch(65% 0.0260 82.39)",
+          "oklch(80% 0.0260 82.39)",
+          "oklch(95% 0.0260 82.39)"
+        ]
+      },
+      "light-focus-ring": {
+        "role": "primary",
+        "displayName": "Light Focus Ring",
+        "tonalRamp": [
+          "oklch(15% 0.0974 79.80)",
+          "oklch(25% 0.0974 79.80)",
+          "oklch(35% 0.0974 79.80)",
+          "oklch(45% 0.0974 79.80)",
+          "oklch(55% 0.0974 79.80)",
+          "oklch(65% 0.0974 79.80)",
+          "oklch(80% 0.0974 79.80)",
+          "oklch(95% 0.0974 79.80)"
+        ]
+      },
+      "light-control-bg": {
         "role": "neutral",
-        "displayName": "Dark surface"
+        "displayName": "Light Control Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0103 81.80)",
+          "oklch(25% 0.0103 81.80)",
+          "oklch(35% 0.0103 81.80)",
+          "oklch(45% 0.0103 81.80)",
+          "oklch(55% 0.0103 81.80)",
+          "oklch(65% 0.0103 81.80)",
+          "oklch(80% 0.0103 81.80)",
+          "oklch(95% 0.0103 81.80)"
+        ]
+      },
+      "light-control-border": {
+        "role": "neutral",
+        "displayName": "Light Control Border",
+        "tonalRamp": [
+          "oklch(15% 0.0305 77.47)",
+          "oklch(25% 0.0305 77.47)",
+          "oklch(35% 0.0305 77.47)",
+          "oklch(45% 0.0305 77.47)",
+          "oklch(55% 0.0305 77.47)",
+          "oklch(65% 0.0305 77.47)",
+          "oklch(80% 0.0305 77.47)",
+          "oklch(95% 0.0305 77.47)"
+        ]
+      },
+      "light-control-hover": {
+        "role": "neutral",
+        "displayName": "Light Control Hover",
+        "tonalRamp": [
+          "oklch(15% 0.0069 88.64)",
+          "oklch(25% 0.0069 88.64)",
+          "oklch(35% 0.0069 88.64)",
+          "oklch(45% 0.0069 88.64)",
+          "oklch(55% 0.0069 88.64)",
+          "oklch(65% 0.0069 88.64)",
+          "oklch(80% 0.0069 88.64)",
+          "oklch(95% 0.0069 88.64)"
+        ]
+      },
+      "light-control-hover-border": {
+        "role": "neutral",
+        "displayName": "Light Control Hover Border",
+        "tonalRamp": [
+          "oklch(15% 0.0253 67.28)",
+          "oklch(25% 0.0253 67.28)",
+          "oklch(35% 0.0253 67.28)",
+          "oklch(45% 0.0253 67.28)",
+          "oklch(55% 0.0253 67.28)",
+          "oklch(65% 0.0253 67.28)",
+          "oklch(80% 0.0253 67.28)",
+          "oklch(95% 0.0253 67.28)"
+        ]
+      },
+      "light-control-press": {
+        "role": "neutral",
+        "displayName": "Light Control Press",
+        "tonalRamp": [
+          "oklch(15% 0.0184 78.24)",
+          "oklch(25% 0.0184 78.24)",
+          "oklch(35% 0.0184 78.24)",
+          "oklch(45% 0.0184 78.24)",
+          "oklch(55% 0.0184 78.24)",
+          "oklch(65% 0.0184 78.24)",
+          "oklch(80% 0.0184 78.24)",
+          "oklch(95% 0.0184 78.24)"
+        ]
+      },
+      "light-field-border": {
+        "role": "neutral",
+        "displayName": "Light Field Border",
+        "tonalRamp": [
+          "oklch(15% 0.0253 67.28)",
+          "oklch(25% 0.0253 67.28)",
+          "oklch(35% 0.0253 67.28)",
+          "oklch(45% 0.0253 67.28)",
+          "oklch(55% 0.0253 67.28)",
+          "oklch(65% 0.0253 67.28)",
+          "oklch(80% 0.0253 67.28)",
+          "oklch(95% 0.0253 67.28)"
+        ]
+      },
+      "light-field-focus-border": {
+        "role": "neutral",
+        "displayName": "Light Field Focus Border",
+        "tonalRamp": [
+          "oklch(15% 0.0974 79.80)",
+          "oklch(25% 0.0974 79.80)",
+          "oklch(35% 0.0974 79.80)",
+          "oklch(45% 0.0974 79.80)",
+          "oklch(55% 0.0974 79.80)",
+          "oklch(65% 0.0974 79.80)",
+          "oklch(80% 0.0974 79.80)",
+          "oklch(95% 0.0974 79.80)"
+        ]
+      },
+      "light-success-bg": {
+        "role": "neutral",
+        "displayName": "Light Success Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0143 128.63)",
+          "oklch(25% 0.0143 128.63)",
+          "oklch(35% 0.0143 128.63)",
+          "oklch(45% 0.0143 128.63)",
+          "oklch(55% 0.0143 128.63)",
+          "oklch(65% 0.0143 128.63)",
+          "oklch(80% 0.0143 128.63)",
+          "oklch(95% 0.0143 128.63)"
+        ]
+      },
+      "light-success-fg": {
+        "role": "neutral",
+        "displayName": "Light Success Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0816 132.12)",
+          "oklch(25% 0.0816 132.12)",
+          "oklch(35% 0.0816 132.12)",
+          "oklch(45% 0.0816 132.12)",
+          "oklch(55% 0.0816 132.12)",
+          "oklch(65% 0.0816 132.12)",
+          "oklch(80% 0.0816 132.12)",
+          "oklch(95% 0.0816 132.12)"
+        ]
+      },
+      "light-success-border": {
+        "role": "neutral",
+        "displayName": "Light Success Border",
+        "tonalRamp": [
+          "oklch(15% 0.0745 131.85)",
+          "oklch(25% 0.0745 131.85)",
+          "oklch(35% 0.0745 131.85)",
+          "oklch(45% 0.0745 131.85)",
+          "oklch(55% 0.0745 131.85)",
+          "oklch(65% 0.0745 131.85)",
+          "oklch(80% 0.0745 131.85)",
+          "oklch(95% 0.0745 131.85)"
+        ]
+      },
+      "light-warning-bg": {
+        "role": "neutral",
+        "displayName": "Light Warning Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0344 88.77)",
+          "oklch(25% 0.0344 88.77)",
+          "oklch(35% 0.0344 88.77)",
+          "oklch(45% 0.0344 88.77)",
+          "oklch(55% 0.0344 88.77)",
+          "oklch(65% 0.0344 88.77)",
+          "oklch(80% 0.0344 88.77)",
+          "oklch(95% 0.0344 88.77)"
+        ]
+      },
+      "light-warning-fg": {
+        "role": "neutral",
+        "displayName": "Light Warning Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0901 79.32)",
+          "oklch(25% 0.0901 79.32)",
+          "oklch(35% 0.0901 79.32)",
+          "oklch(45% 0.0901 79.32)",
+          "oklch(55% 0.0901 79.32)",
+          "oklch(65% 0.0901 79.32)",
+          "oklch(80% 0.0901 79.32)",
+          "oklch(95% 0.0901 79.32)"
+        ]
+      },
+      "light-warning-border": {
+        "role": "neutral",
+        "displayName": "Light Warning Border",
+        "tonalRamp": [
+          "oklch(15% 0.1120 83.39)",
+          "oklch(25% 0.1120 83.39)",
+          "oklch(35% 0.1120 83.39)",
+          "oklch(45% 0.1120 83.39)",
+          "oklch(55% 0.1120 83.39)",
+          "oklch(65% 0.1120 83.39)",
+          "oklch(80% 0.1120 83.39)",
+          "oklch(95% 0.1120 83.39)"
+        ]
+      },
+      "light-danger-bg": {
+        "role": "neutral",
+        "displayName": "Light Danger Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0168 31.08)",
+          "oklch(25% 0.0168 31.08)",
+          "oklch(35% 0.0168 31.08)",
+          "oklch(45% 0.0168 31.08)",
+          "oklch(55% 0.0168 31.08)",
+          "oklch(65% 0.0168 31.08)",
+          "oklch(80% 0.0168 31.08)",
+          "oklch(95% 0.0168 31.08)"
+        ]
+      },
+      "light-danger-fg": {
+        "role": "neutral",
+        "displayName": "Light Danger Fg",
+        "tonalRamp": [
+          "oklch(15% 0.1325 24.11)",
+          "oklch(25% 0.1325 24.11)",
+          "oklch(35% 0.1325 24.11)",
+          "oklch(45% 0.1325 24.11)",
+          "oklch(55% 0.1325 24.11)",
+          "oklch(65% 0.1325 24.11)",
+          "oklch(80% 0.1325 24.11)",
+          "oklch(95% 0.1325 24.11)"
+        ]
+      },
+      "light-danger-border": {
+        "role": "neutral",
+        "displayName": "Light Danger Border",
+        "tonalRamp": [
+          "oklch(15% 0.0954 25.17)",
+          "oklch(25% 0.0954 25.17)",
+          "oklch(35% 0.0954 25.17)",
+          "oklch(45% 0.0954 25.17)",
+          "oklch(55% 0.0954 25.17)",
+          "oklch(65% 0.0954 25.17)",
+          "oklch(80% 0.0954 25.17)",
+          "oklch(95% 0.0954 25.17)"
+        ]
+      },
+      "light-danger-fill": {
+        "role": "neutral",
+        "displayName": "Light Danger Fill",
+        "tonalRamp": [
+          "oklch(15% 0.1403 24.44)",
+          "oklch(25% 0.1403 24.44)",
+          "oklch(35% 0.1403 24.44)",
+          "oklch(45% 0.1403 24.44)",
+          "oklch(55% 0.1403 24.44)",
+          "oklch(65% 0.1403 24.44)",
+          "oklch(80% 0.1403 24.44)",
+          "oklch(95% 0.1403 24.44)"
+        ]
+      },
+      "light-danger-fill-hover": {
+        "role": "neutral",
+        "displayName": "Light Danger Fill Hover",
+        "tonalRamp": [
+          "oklch(15% 0.1174 24.52)",
+          "oklch(25% 0.1174 24.52)",
+          "oklch(35% 0.1174 24.52)",
+          "oklch(45% 0.1174 24.52)",
+          "oklch(55% 0.1174 24.52)",
+          "oklch(65% 0.1174 24.52)",
+          "oklch(80% 0.1174 24.52)",
+          "oklch(95% 0.1174 24.52)"
+        ]
+      },
+      "light-on-danger": {
+        "role": "neutral",
+        "displayName": "Light On Danger",
+        "tonalRamp": [
+          "oklch(15% 0.0260 82.39)",
+          "oklch(25% 0.0260 82.39)",
+          "oklch(35% 0.0260 82.39)",
+          "oklch(45% 0.0260 82.39)",
+          "oklch(55% 0.0260 82.39)",
+          "oklch(65% 0.0260 82.39)",
+          "oklch(80% 0.0260 82.39)",
+          "oklch(95% 0.0260 82.39)"
+        ]
+      },
+      "light-info-bg": {
+        "role": "neutral",
+        "displayName": "Light Info Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0120 247.95)",
+          "oklch(25% 0.0120 247.95)",
+          "oklch(35% 0.0120 247.95)",
+          "oklch(45% 0.0120 247.95)",
+          "oklch(55% 0.0120 247.95)",
+          "oklch(65% 0.0120 247.95)",
+          "oklch(80% 0.0120 247.95)",
+          "oklch(95% 0.0120 247.95)"
+        ]
+      },
+      "light-info-fg": {
+        "role": "neutral",
+        "displayName": "Light Info Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0885 254.38)",
+          "oklch(25% 0.0885 254.38)",
+          "oklch(35% 0.0885 254.38)",
+          "oklch(45% 0.0885 254.38)",
+          "oklch(55% 0.0885 254.38)",
+          "oklch(65% 0.0885 254.38)",
+          "oklch(80% 0.0885 254.38)",
+          "oklch(95% 0.0885 254.38)"
+        ]
+      },
+      "light-info-border": {
+        "role": "neutral",
+        "displayName": "Light Info Border",
+        "tonalRamp": [
+          "oklch(15% 0.0724 251.05)",
+          "oklch(25% 0.0724 251.05)",
+          "oklch(35% 0.0724 251.05)",
+          "oklch(45% 0.0724 251.05)",
+          "oklch(55% 0.0724 251.05)",
+          "oklch(65% 0.0724 251.05)",
+          "oklch(80% 0.0724 251.05)",
+          "oklch(95% 0.0724 251.05)"
+        ]
+      },
+      "light-method-get-bg": {
+        "role": "neutral",
+        "displayName": "Light Method Get Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0143 128.63)",
+          "oklch(25% 0.0143 128.63)",
+          "oklch(35% 0.0143 128.63)",
+          "oklch(45% 0.0143 128.63)",
+          "oklch(55% 0.0143 128.63)",
+          "oklch(65% 0.0143 128.63)",
+          "oklch(80% 0.0143 128.63)",
+          "oklch(95% 0.0143 128.63)"
+        ]
+      },
+      "light-method-get-fg": {
+        "role": "neutral",
+        "displayName": "Light Method Get Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0816 132.12)",
+          "oklch(25% 0.0816 132.12)",
+          "oklch(35% 0.0816 132.12)",
+          "oklch(45% 0.0816 132.12)",
+          "oklch(55% 0.0816 132.12)",
+          "oklch(65% 0.0816 132.12)",
+          "oklch(80% 0.0816 132.12)",
+          "oklch(95% 0.0816 132.12)"
+        ]
+      },
+      "light-method-get-border": {
+        "role": "neutral",
+        "displayName": "Light Method Get Border",
+        "tonalRamp": [
+          "oklch(15% 0.0745 131.85)",
+          "oklch(25% 0.0745 131.85)",
+          "oklch(35% 0.0745 131.85)",
+          "oklch(45% 0.0745 131.85)",
+          "oklch(55% 0.0745 131.85)",
+          "oklch(65% 0.0745 131.85)",
+          "oklch(80% 0.0745 131.85)",
+          "oklch(95% 0.0745 131.85)"
+        ]
+      },
+      "light-method-post-bg": {
+        "role": "neutral",
+        "displayName": "Light Method Post Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0344 88.77)",
+          "oklch(25% 0.0344 88.77)",
+          "oklch(35% 0.0344 88.77)",
+          "oklch(45% 0.0344 88.77)",
+          "oklch(55% 0.0344 88.77)",
+          "oklch(65% 0.0344 88.77)",
+          "oklch(80% 0.0344 88.77)",
+          "oklch(95% 0.0344 88.77)"
+        ]
+      },
+      "light-method-post-fg": {
+        "role": "neutral",
+        "displayName": "Light Method Post Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0901 79.32)",
+          "oklch(25% 0.0901 79.32)",
+          "oklch(35% 0.0901 79.32)",
+          "oklch(45% 0.0901 79.32)",
+          "oklch(55% 0.0901 79.32)",
+          "oklch(65% 0.0901 79.32)",
+          "oklch(80% 0.0901 79.32)",
+          "oklch(95% 0.0901 79.32)"
+        ]
+      },
+      "light-method-post-border": {
+        "role": "neutral",
+        "displayName": "Light Method Post Border",
+        "tonalRamp": [
+          "oklch(15% 0.1083 86.10)",
+          "oklch(25% 0.1083 86.10)",
+          "oklch(35% 0.1083 86.10)",
+          "oklch(45% 0.1083 86.10)",
+          "oklch(55% 0.1083 86.10)",
+          "oklch(65% 0.1083 86.10)",
+          "oklch(80% 0.1083 86.10)",
+          "oklch(95% 0.1083 86.10)"
+        ]
+      },
+      "light-method-put-bg": {
+        "role": "neutral",
+        "displayName": "Light Method Put Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0114 308.33)",
+          "oklch(25% 0.0114 308.33)",
+          "oklch(35% 0.0114 308.33)",
+          "oklch(45% 0.0114 308.33)",
+          "oklch(55% 0.0114 308.33)",
+          "oklch(65% 0.0114 308.33)",
+          "oklch(80% 0.0114 308.33)",
+          "oklch(95% 0.0114 308.33)"
+        ]
+      },
+      "light-method-put-fg": {
+        "role": "neutral",
+        "displayName": "Light Method Put Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0893 301.66)",
+          "oklch(25% 0.0893 301.66)",
+          "oklch(35% 0.0893 301.66)",
+          "oklch(45% 0.0893 301.66)",
+          "oklch(55% 0.0893 301.66)",
+          "oklch(65% 0.0893 301.66)",
+          "oklch(80% 0.0893 301.66)",
+          "oklch(95% 0.0893 301.66)"
+        ]
+      },
+      "light-method-put-border": {
+        "role": "neutral",
+        "displayName": "Light Method Put Border",
+        "tonalRamp": [
+          "oklch(15% 0.0728 304.82)",
+          "oklch(25% 0.0728 304.82)",
+          "oklch(35% 0.0728 304.82)",
+          "oklch(45% 0.0728 304.82)",
+          "oklch(55% 0.0728 304.82)",
+          "oklch(65% 0.0728 304.82)",
+          "oklch(80% 0.0728 304.82)",
+          "oklch(95% 0.0728 304.82)"
+        ]
+      },
+      "light-code-bg": {
+        "role": "neutral",
+        "displayName": "Light Code Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0103 81.80)",
+          "oklch(25% 0.0103 81.80)",
+          "oklch(35% 0.0103 81.80)",
+          "oklch(45% 0.0103 81.80)",
+          "oklch(55% 0.0103 81.80)",
+          "oklch(65% 0.0103 81.80)",
+          "oklch(80% 0.0103 81.80)",
+          "oklch(95% 0.0103 81.80)"
+        ]
+      },
+      "light-code-surface": {
+        "role": "neutral",
+        "displayName": "Light Code Surface",
+        "tonalRamp": [
+          "oklch(15% 0.0086 84.57)",
+          "oklch(25% 0.0086 84.57)",
+          "oklch(35% 0.0086 84.57)",
+          "oklch(45% 0.0086 84.57)",
+          "oklch(55% 0.0086 84.57)",
+          "oklch(65% 0.0086 84.57)",
+          "oklch(80% 0.0086 84.57)",
+          "oklch(95% 0.0086 84.57)"
+        ]
+      },
+      "light-code-fg": {
+        "role": "neutral",
+        "displayName": "Light Code Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(25% 0.0000 89.88)",
+          "oklch(35% 0.0000 89.88)",
+          "oklch(45% 0.0000 89.88)",
+          "oklch(55% 0.0000 89.88)",
+          "oklch(65% 0.0000 89.88)",
+          "oklch(80% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "light-code-muted": {
+        "role": "neutral",
+        "displayName": "Light Code Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0102 84.59)",
+          "oklch(25% 0.0102 84.59)",
+          "oklch(35% 0.0102 84.59)",
+          "oklch(45% 0.0102 84.59)",
+          "oklch(55% 0.0102 84.59)",
+          "oklch(65% 0.0102 84.59)",
+          "oklch(80% 0.0102 84.59)",
+          "oklch(95% 0.0102 84.59)"
+        ]
+      },
+      "light-code-border": {
+        "role": "neutral",
+        "displayName": "Light Code Border",
+        "tonalRamp": [
+          "oklch(15% 0.0253 67.28)",
+          "oklch(25% 0.0253 67.28)",
+          "oklch(35% 0.0253 67.28)",
+          "oklch(45% 0.0253 67.28)",
+          "oklch(55% 0.0253 67.28)",
+          "oklch(65% 0.0253 67.28)",
+          "oklch(80% 0.0253 67.28)",
+          "oklch(95% 0.0253 67.28)"
+        ]
+      },
+      "light-syntax-key": {
+        "role": "neutral",
+        "displayName": "Light Syntax Key",
+        "tonalRamp": [
+          "oklch(15% 0.1012 79.57)",
+          "oklch(25% 0.1012 79.57)",
+          "oklch(35% 0.1012 79.57)",
+          "oklch(45% 0.1012 79.57)",
+          "oklch(55% 0.1012 79.57)",
+          "oklch(65% 0.1012 79.57)",
+          "oklch(80% 0.1012 79.57)",
+          "oklch(95% 0.1012 79.57)"
+        ]
+      },
+      "light-syntax-string": {
+        "role": "neutral",
+        "displayName": "Light Syntax String",
+        "tonalRamp": [
+          "oklch(15% 0.0816 132.12)",
+          "oklch(25% 0.0816 132.12)",
+          "oklch(35% 0.0816 132.12)",
+          "oklch(45% 0.0816 132.12)",
+          "oklch(55% 0.0816 132.12)",
+          "oklch(65% 0.0816 132.12)",
+          "oklch(80% 0.0816 132.12)",
+          "oklch(95% 0.0816 132.12)"
+        ]
+      },
+      "light-syntax-header": {
+        "role": "neutral",
+        "displayName": "Light Syntax Header",
+        "tonalRamp": [
+          "oklch(15% 0.0102 84.59)",
+          "oklch(25% 0.0102 84.59)",
+          "oklch(35% 0.0102 84.59)",
+          "oklch(45% 0.0102 84.59)",
+          "oklch(55% 0.0102 84.59)",
+          "oklch(65% 0.0102 84.59)",
+          "oklch(80% 0.0102 84.59)",
+          "oklch(95% 0.0102 84.59)"
+        ]
       },
       "dark-shell-chrome": {
         "role": "neutral",
-        "displayName": "Dark shell chrome"
+        "displayName": "Dark Shell Chrome",
+        "tonalRamp": [
+          "oklch(15% 0.0125 78.05)",
+          "oklch(25% 0.0125 78.05)",
+          "oklch(35% 0.0125 78.05)",
+          "oklch(45% 0.0125 78.05)",
+          "oklch(55% 0.0125 78.05)",
+          "oklch(65% 0.0125 78.05)",
+          "oklch(80% 0.0125 78.05)",
+          "oklch(95% 0.0125 78.05)"
+        ]
       },
       "dark-shell-sidebar": {
         "role": "neutral",
-        "displayName": "Dark shell sidebar"
+        "displayName": "Dark Shell Sidebar",
+        "tonalRamp": [
+          "oklch(15% 0.0141 81.63)",
+          "oklch(25% 0.0141 81.63)",
+          "oklch(35% 0.0141 81.63)",
+          "oklch(45% 0.0141 81.63)",
+          "oklch(55% 0.0141 81.63)",
+          "oklch(65% 0.0141 81.63)",
+          "oklch(80% 0.0141 81.63)",
+          "oklch(95% 0.0141 81.63)"
+        ]
+      },
+      "dark-bg": {
+        "role": "neutral",
+        "displayName": "Dark Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0104 80.59)",
+          "oklch(25% 0.0104 80.59)",
+          "oklch(35% 0.0104 80.59)",
+          "oklch(45% 0.0104 80.59)",
+          "oklch(55% 0.0104 80.59)",
+          "oklch(65% 0.0104 80.59)",
+          "oklch(80% 0.0104 80.59)",
+          "oklch(95% 0.0104 80.59)"
+        ]
+      },
+      "dark-surface": {
+        "role": "neutral",
+        "displayName": "Dark Surface",
+        "tonalRamp": [
+          "oklch(15% 0.0104 80.59)",
+          "oklch(25% 0.0104 80.59)",
+          "oklch(35% 0.0104 80.59)",
+          "oklch(45% 0.0104 80.59)",
+          "oklch(55% 0.0104 80.59)",
+          "oklch(65% 0.0104 80.59)",
+          "oklch(80% 0.0104 80.59)",
+          "oklch(95% 0.0104 80.59)"
+        ]
+      },
+      "dark-surface-2": {
+        "role": "neutral",
+        "displayName": "Dark Surface 2",
+        "tonalRamp": [
+          "oklch(15% 0.0125 78.05)",
+          "oklch(25% 0.0125 78.05)",
+          "oklch(35% 0.0125 78.05)",
+          "oklch(45% 0.0125 78.05)",
+          "oklch(55% 0.0125 78.05)",
+          "oklch(65% 0.0125 78.05)",
+          "oklch(80% 0.0125 78.05)",
+          "oklch(95% 0.0125 78.05)"
+        ]
+      },
+      "dark-surface-raised": {
+        "role": "neutral",
+        "displayName": "Dark Surface Raised",
+        "tonalRamp": [
+          "oklch(15% 0.0123 78.07)",
+          "oklch(25% 0.0123 78.07)",
+          "oklch(35% 0.0123 78.07)",
+          "oklch(45% 0.0123 78.07)",
+          "oklch(55% 0.0123 78.07)",
+          "oklch(65% 0.0123 78.07)",
+          "oklch(80% 0.0123 78.07)",
+          "oklch(95% 0.0123 78.07)"
+        ]
+      },
+      "dark-surface-hover": {
+        "role": "neutral",
+        "displayName": "Dark Surface Hover",
+        "tonalRamp": [
+          "oklch(15% 0.0139 81.66)",
+          "oklch(25% 0.0139 81.66)",
+          "oklch(35% 0.0139 81.66)",
+          "oklch(45% 0.0139 81.66)",
+          "oklch(55% 0.0139 81.66)",
+          "oklch(65% 0.0139 81.66)",
+          "oklch(80% 0.0139 81.66)",
+          "oklch(95% 0.0139 81.66)"
+        ]
+      },
+      "dark-surface-subtle": {
+        "role": "neutral",
+        "displayName": "Dark Surface Subtle",
+        "tonalRamp": [
+          "oklch(15% 0.0090 75.14)",
+          "oklch(25% 0.0090 75.14)",
+          "oklch(35% 0.0090 75.14)",
+          "oklch(45% 0.0090 75.14)",
+          "oklch(55% 0.0090 75.14)",
+          "oklch(65% 0.0090 75.14)",
+          "oklch(80% 0.0090 75.14)",
+          "oklch(95% 0.0090 75.14)"
+        ]
+      },
+      "dark-surface-inset": {
+        "role": "neutral",
+        "displayName": "Dark Surface Inset",
+        "tonalRamp": [
+          "oklch(15% 0.0090 75.13)",
+          "oklch(25% 0.0090 75.13)",
+          "oklch(35% 0.0090 75.13)",
+          "oklch(45% 0.0090 75.13)",
+          "oklch(55% 0.0090 75.13)",
+          "oklch(65% 0.0090 75.13)",
+          "oklch(80% 0.0090 75.13)",
+          "oklch(95% 0.0090 75.13)"
+        ]
+      },
+      "dark-surface-press": {
+        "role": "neutral",
+        "displayName": "Dark Surface Press",
+        "tonalRamp": [
+          "oklch(15% 0.0177 77.97)",
+          "oklch(25% 0.0177 77.97)",
+          "oklch(35% 0.0177 77.97)",
+          "oklch(45% 0.0177 77.97)",
+          "oklch(55% 0.0177 77.97)",
+          "oklch(65% 0.0177 77.97)",
+          "oklch(80% 0.0177 77.97)",
+          "oklch(95% 0.0177 77.97)"
+        ]
+      },
+      "dark-border": {
+        "role": "neutral",
+        "displayName": "Dark Border",
+        "tonalRamp": [
+          "oklch(15% 0.0194 76.76)",
+          "oklch(25% 0.0194 76.76)",
+          "oklch(35% 0.0194 76.76)",
+          "oklch(45% 0.0194 76.76)",
+          "oklch(55% 0.0194 76.76)",
+          "oklch(65% 0.0194 76.76)",
+          "oklch(80% 0.0194 76.76)",
+          "oklch(95% 0.0194 76.76)"
+        ]
+      },
+      "dark-border-strong": {
+        "role": "neutral",
+        "displayName": "Dark Border Strong",
+        "tonalRamp": [
+          "oklch(15% 0.0309 76.00)",
+          "oklch(25% 0.0309 76.00)",
+          "oklch(35% 0.0309 76.00)",
+          "oklch(45% 0.0309 76.00)",
+          "oklch(55% 0.0309 76.00)",
+          "oklch(65% 0.0309 76.00)",
+          "oklch(80% 0.0309 76.00)",
+          "oklch(95% 0.0309 76.00)"
+        ]
+      },
+      "dark-line": {
+        "role": "neutral",
+        "displayName": "Dark Line",
+        "tonalRamp": [
+          "oklch(15% 0.0157 79.59)",
+          "oklch(25% 0.0157 79.59)",
+          "oklch(35% 0.0157 79.59)",
+          "oklch(45% 0.0157 79.59)",
+          "oklch(55% 0.0157 79.59)",
+          "oklch(65% 0.0157 79.59)",
+          "oklch(80% 0.0157 79.59)",
+          "oklch(95% 0.0157 79.59)"
+        ]
+      },
+      "dark-text": {
+        "role": "neutral",
+        "displayName": "Dark Text",
+        "tonalRamp": [
+          "oklch(15% 0.0166 79.35)",
+          "oklch(25% 0.0166 79.35)",
+          "oklch(35% 0.0166 79.35)",
+          "oklch(45% 0.0166 79.35)",
+          "oklch(55% 0.0166 79.35)",
+          "oklch(65% 0.0166 79.35)",
+          "oklch(80% 0.0166 79.35)",
+          "oklch(95% 0.0166 79.35)"
+        ]
+      },
+      "dark-text-muted": {
+        "role": "neutral",
+        "displayName": "Dark Text Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0257 77.40)",
+          "oklch(25% 0.0257 77.40)",
+          "oklch(35% 0.0257 77.40)",
+          "oklch(45% 0.0257 77.40)",
+          "oklch(55% 0.0257 77.40)",
+          "oklch(65% 0.0257 77.40)",
+          "oklch(80% 0.0257 77.40)",
+          "oklch(95% 0.0257 77.40)"
+        ]
+      },
+      "dark-text-subtle": {
+        "role": "neutral",
+        "displayName": "Dark Text Subtle",
+        "tonalRamp": [
+          "oklch(15% 0.0292 78.10)",
+          "oklch(25% 0.0292 78.10)",
+          "oklch(35% 0.0292 78.10)",
+          "oklch(45% 0.0292 78.10)",
+          "oklch(55% 0.0292 78.10)",
+          "oklch(65% 0.0292 78.10)",
+          "oklch(80% 0.0292 78.10)",
+          "oklch(95% 0.0292 78.10)"
+        ]
+      },
+      "dark-placeholder": {
+        "role": "neutral",
+        "displayName": "Dark Placeholder",
+        "tonalRamp": [
+          "oklch(15% 0.0292 78.10)",
+          "oklch(25% 0.0292 78.10)",
+          "oklch(35% 0.0292 78.10)",
+          "oklch(45% 0.0292 78.10)",
+          "oklch(55% 0.0292 78.10)",
+          "oklch(65% 0.0292 78.10)",
+          "oklch(80% 0.0292 78.10)",
+          "oklch(95% 0.0292 78.10)"
+        ]
+      },
+      "dark-overlay": {
+        "role": "neutral",
+        "displayName": "Dark Overlay",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(25% 0 0)",
+          "oklch(35% 0 0)",
+          "oklch(45% 0 0)",
+          "oklch(55% 0 0)",
+          "oklch(65% 0 0)",
+          "oklch(80% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "dark-selection": {
+        "role": "neutral",
+        "displayName": "Dark Selection",
+        "tonalRamp": [
+          "oklch(15% 0.0522 73.50)",
+          "oklch(25% 0.0522 73.50)",
+          "oklch(35% 0.0522 73.50)",
+          "oklch(45% 0.0522 73.50)",
+          "oklch(55% 0.0522 73.50)",
+          "oklch(65% 0.0522 73.50)",
+          "oklch(80% 0.0522 73.50)",
+          "oklch(95% 0.0522 73.50)"
+        ]
+      },
+      "dark-selection-text": {
+        "role": "neutral",
+        "displayName": "Dark Selection Text",
+        "tonalRamp": [
+          "oklch(15% 0.0366 80.63)",
+          "oklch(25% 0.0366 80.63)",
+          "oklch(35% 0.0366 80.63)",
+          "oklch(45% 0.0366 80.63)",
+          "oklch(55% 0.0366 80.63)",
+          "oklch(65% 0.0366 80.63)",
+          "oklch(80% 0.0366 80.63)",
+          "oklch(95% 0.0366 80.63)"
+        ]
+      },
+      "dark-disabled-bg": {
+        "role": "neutral",
+        "displayName": "Dark Disabled Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0119 78.13)",
+          "oklch(25% 0.0119 78.13)",
+          "oklch(35% 0.0119 78.13)",
+          "oklch(45% 0.0119 78.13)",
+          "oklch(55% 0.0119 78.13)",
+          "oklch(65% 0.0119 78.13)",
+          "oklch(80% 0.0119 78.13)",
+          "oklch(95% 0.0119 78.13)"
+        ]
+      },
+      "dark-disabled-fg": {
+        "role": "neutral",
+        "displayName": "Dark Disabled Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0245 82.10)",
+          "oklch(25% 0.0245 82.10)",
+          "oklch(35% 0.0245 82.10)",
+          "oklch(45% 0.0245 82.10)",
+          "oklch(55% 0.0245 82.10)",
+          "oklch(65% 0.0245 82.10)",
+          "oklch(80% 0.0245 82.10)",
+          "oklch(95% 0.0245 82.10)"
+        ]
+      },
+      "dark-accent": {
+        "role": "primary",
+        "displayName": "Dark Accent",
+        "tonalRamp": [
+          "oklch(15% 0.1067 76.78)",
+          "oklch(25% 0.1067 76.78)",
+          "oklch(35% 0.1067 76.78)",
+          "oklch(45% 0.1067 76.78)",
+          "oklch(55% 0.1067 76.78)",
+          "oklch(65% 0.1067 76.78)",
+          "oklch(80% 0.1067 76.78)",
+          "oklch(95% 0.1067 76.78)"
+        ]
+      },
+      "dark-accent-hover": {
+        "role": "primary",
+        "displayName": "Dark Accent Hover",
+        "tonalRamp": [
+          "oklch(15% 0.0978 77.94)",
+          "oklch(25% 0.0978 77.94)",
+          "oklch(35% 0.0978 77.94)",
+          "oklch(45% 0.0978 77.94)",
+          "oklch(55% 0.0978 77.94)",
+          "oklch(65% 0.0978 77.94)",
+          "oklch(80% 0.0978 77.94)",
+          "oklch(95% 0.0978 77.94)"
+        ]
+      },
+      "dark-accent-subtle": {
+        "role": "primary",
+        "displayName": "Dark Accent Subtle",
+        "tonalRamp": [
+          "oklch(15% 0.0267 73.73)",
+          "oklch(25% 0.0267 73.73)",
+          "oklch(35% 0.0267 73.73)",
+          "oklch(45% 0.0267 73.73)",
+          "oklch(55% 0.0267 73.73)",
+          "oklch(65% 0.0267 73.73)",
+          "oklch(80% 0.0267 73.73)",
+          "oklch(95% 0.0267 73.73)"
+        ]
+      },
+      "dark-accent-border": {
+        "role": "primary",
+        "displayName": "Dark Accent Border",
+        "tonalRamp": [
+          "oklch(15% 0.0841 74.67)",
+          "oklch(25% 0.0841 74.67)",
+          "oklch(35% 0.0841 74.67)",
+          "oklch(45% 0.0841 74.67)",
+          "oklch(55% 0.0841 74.67)",
+          "oklch(65% 0.0841 74.67)",
+          "oklch(80% 0.0841 74.67)",
+          "oklch(95% 0.0841 74.67)"
+        ]
+      },
+      "dark-accent-link": {
+        "role": "primary",
+        "displayName": "Dark Accent Link",
+        "tonalRamp": [
+          "oklch(15% 0.1067 76.78)",
+          "oklch(25% 0.1067 76.78)",
+          "oklch(35% 0.1067 76.78)",
+          "oklch(45% 0.1067 76.78)",
+          "oklch(55% 0.1067 76.78)",
+          "oklch(65% 0.1067 76.78)",
+          "oklch(80% 0.1067 76.78)",
+          "oklch(95% 0.1067 76.78)"
+        ]
+      },
+      "dark-on-accent": {
+        "role": "primary",
+        "displayName": "Dark On Accent",
+        "tonalRamp": [
+          "oklch(15% 0.0235 74.90)",
+          "oklch(25% 0.0235 74.90)",
+          "oklch(35% 0.0235 74.90)",
+          "oklch(45% 0.0235 74.90)",
+          "oklch(55% 0.0235 74.90)",
+          "oklch(65% 0.0235 74.90)",
+          "oklch(80% 0.0235 74.90)",
+          "oklch(95% 0.0235 74.90)"
+        ]
+      },
+      "dark-focus-ring": {
+        "role": "primary",
+        "displayName": "Dark Focus Ring",
+        "tonalRamp": [
+          "oklch(15% 0.1067 76.78)",
+          "oklch(25% 0.1067 76.78)",
+          "oklch(35% 0.1067 76.78)",
+          "oklch(45% 0.1067 76.78)",
+          "oklch(55% 0.1067 76.78)",
+          "oklch(65% 0.1067 76.78)",
+          "oklch(80% 0.1067 76.78)",
+          "oklch(95% 0.1067 76.78)"
+        ]
+      },
+      "dark-control-bg": {
+        "role": "neutral",
+        "displayName": "Dark Control Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0139 81.66)",
+          "oklch(25% 0.0139 81.66)",
+          "oklch(35% 0.0139 81.66)",
+          "oklch(45% 0.0139 81.66)",
+          "oklch(55% 0.0139 81.66)",
+          "oklch(65% 0.0139 81.66)",
+          "oklch(80% 0.0139 81.66)",
+          "oklch(95% 0.0139 81.66)"
+        ]
+      },
+      "dark-control-border": {
+        "role": "neutral",
+        "displayName": "Dark Control Border",
+        "tonalRamp": [
+          "oklch(15% 0.0247 74.28)",
+          "oklch(25% 0.0247 74.28)",
+          "oklch(35% 0.0247 74.28)",
+          "oklch(45% 0.0247 74.28)",
+          "oklch(55% 0.0247 74.28)",
+          "oklch(65% 0.0247 74.28)",
+          "oklch(80% 0.0247 74.28)",
+          "oklch(95% 0.0247 74.28)"
+        ]
+      },
+      "dark-control-hover": {
+        "role": "neutral",
+        "displayName": "Dark Control Hover",
+        "tonalRamp": [
+          "oklch(15% 0.0179 77.94)",
+          "oklch(25% 0.0179 77.94)",
+          "oklch(35% 0.0179 77.94)",
+          "oklch(45% 0.0179 77.94)",
+          "oklch(55% 0.0179 77.94)",
+          "oklch(65% 0.0179 77.94)",
+          "oklch(80% 0.0179 77.94)",
+          "oklch(95% 0.0179 77.94)"
+        ]
+      },
+      "dark-control-hover-border": {
+        "role": "neutral",
+        "displayName": "Dark Control Hover Border",
+        "tonalRamp": [
+          "oklch(15% 0.0385 75.57)",
+          "oklch(25% 0.0385 75.57)",
+          "oklch(35% 0.0385 75.57)",
+          "oklch(45% 0.0385 75.57)",
+          "oklch(55% 0.0385 75.57)",
+          "oklch(65% 0.0385 75.57)",
+          "oklch(80% 0.0385 75.57)",
+          "oklch(95% 0.0385 75.57)"
+        ]
+      },
+      "dark-control-press": {
+        "role": "neutral",
+        "displayName": "Dark Control Press",
+        "tonalRamp": [
+          "oklch(15% 0.0127 78.01)",
+          "oklch(25% 0.0127 78.01)",
+          "oklch(35% 0.0127 78.01)",
+          "oklch(45% 0.0127 78.01)",
+          "oklch(55% 0.0127 78.01)",
+          "oklch(65% 0.0127 78.01)",
+          "oklch(80% 0.0127 78.01)",
+          "oklch(95% 0.0127 78.01)"
+        ]
+      },
+      "dark-field-border": {
+        "role": "neutral",
+        "displayName": "Dark Field Border",
+        "tonalRamp": [
+          "oklch(15% 0.0348 76.65)",
+          "oklch(25% 0.0348 76.65)",
+          "oklch(35% 0.0348 76.65)",
+          "oklch(45% 0.0348 76.65)",
+          "oklch(55% 0.0348 76.65)",
+          "oklch(65% 0.0348 76.65)",
+          "oklch(80% 0.0348 76.65)",
+          "oklch(95% 0.0348 76.65)"
+        ]
+      },
+      "dark-field-focus-border": {
+        "role": "neutral",
+        "displayName": "Dark Field Focus Border",
+        "tonalRamp": [
+          "oklch(15% 0.0841 74.67)",
+          "oklch(25% 0.0841 74.67)",
+          "oklch(35% 0.0841 74.67)",
+          "oklch(45% 0.0841 74.67)",
+          "oklch(55% 0.0841 74.67)",
+          "oklch(65% 0.0841 74.67)",
+          "oklch(80% 0.0841 74.67)",
+          "oklch(95% 0.0841 74.67)"
+        ]
+      },
+      "dark-success-bg": {
+        "role": "neutral",
+        "displayName": "Dark Success Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0254 140.41)",
+          "oklch(25% 0.0254 140.41)",
+          "oklch(35% 0.0254 140.41)",
+          "oklch(45% 0.0254 140.41)",
+          "oklch(55% 0.0254 140.41)",
+          "oklch(65% 0.0254 140.41)",
+          "oklch(80% 0.0254 140.41)",
+          "oklch(95% 0.0254 140.41)"
+        ]
+      },
+      "dark-success-fg": {
+        "role": "neutral",
+        "displayName": "Dark Success Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0676 128.67)",
+          "oklch(25% 0.0676 128.67)",
+          "oklch(35% 0.0676 128.67)",
+          "oklch(45% 0.0676 128.67)",
+          "oklch(55% 0.0676 128.67)",
+          "oklch(65% 0.0676 128.67)",
+          "oklch(80% 0.0676 128.67)",
+          "oklch(95% 0.0676 128.67)"
+        ]
+      },
+      "dark-success-border": {
+        "role": "neutral",
+        "displayName": "Dark Success Border",
+        "tonalRamp": [
+          "oklch(15% 0.0711 129.83)",
+          "oklch(25% 0.0711 129.83)",
+          "oklch(35% 0.0711 129.83)",
+          "oklch(45% 0.0711 129.83)",
+          "oklch(55% 0.0711 129.83)",
+          "oklch(65% 0.0711 129.83)",
+          "oklch(80% 0.0711 129.83)",
+          "oklch(95% 0.0711 129.83)"
+        ]
+      },
+      "dark-warning-bg": {
+        "role": "neutral",
+        "displayName": "Dark Warning Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0267 73.73)",
+          "oklch(25% 0.0267 73.73)",
+          "oklch(35% 0.0267 73.73)",
+          "oklch(45% 0.0267 73.73)",
+          "oklch(55% 0.0267 73.73)",
+          "oklch(65% 0.0267 73.73)",
+          "oklch(80% 0.0267 73.73)",
+          "oklch(95% 0.0267 73.73)"
+        ]
+      },
+      "dark-warning-fg": {
+        "role": "neutral",
+        "displayName": "Dark Warning Fg",
+        "tonalRamp": [
+          "oklch(15% 0.1067 76.78)",
+          "oklch(25% 0.1067 76.78)",
+          "oklch(35% 0.1067 76.78)",
+          "oklch(45% 0.1067 76.78)",
+          "oklch(55% 0.1067 76.78)",
+          "oklch(65% 0.1067 76.78)",
+          "oklch(80% 0.1067 76.78)",
+          "oklch(95% 0.1067 76.78)"
+        ]
+      },
+      "dark-warning-border": {
+        "role": "neutral",
+        "displayName": "Dark Warning Border",
+        "tonalRamp": [
+          "oklch(15% 0.0841 74.67)",
+          "oklch(25% 0.0841 74.67)",
+          "oklch(35% 0.0841 74.67)",
+          "oklch(45% 0.0841 74.67)",
+          "oklch(55% 0.0841 74.67)",
+          "oklch(65% 0.0841 74.67)",
+          "oklch(80% 0.0841 74.67)",
+          "oklch(95% 0.0841 74.67)"
+        ]
+      },
+      "dark-danger-bg": {
+        "role": "neutral",
+        "displayName": "Dark Danger Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0385 32.38)",
+          "oklch(25% 0.0385 32.38)",
+          "oklch(35% 0.0385 32.38)",
+          "oklch(45% 0.0385 32.38)",
+          "oklch(55% 0.0385 32.38)",
+          "oklch(65% 0.0385 32.38)",
+          "oklch(80% 0.0385 32.38)",
+          "oklch(95% 0.0385 32.38)"
+        ]
+      },
+      "dark-danger-fg": {
+        "role": "neutral",
+        "displayName": "Dark Danger Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0986 32.00)",
+          "oklch(25% 0.0986 32.00)",
+          "oklch(35% 0.0986 32.00)",
+          "oklch(45% 0.0986 32.00)",
+          "oklch(55% 0.0986 32.00)",
+          "oklch(65% 0.0986 32.00)",
+          "oklch(80% 0.0986 32.00)",
+          "oklch(95% 0.0986 32.00)"
+        ]
+      },
+      "dark-danger-border": {
+        "role": "neutral",
+        "displayName": "Dark Danger Border",
+        "tonalRamp": [
+          "oklch(15% 0.1019 28.41)",
+          "oklch(25% 0.1019 28.41)",
+          "oklch(35% 0.1019 28.41)",
+          "oklch(45% 0.1019 28.41)",
+          "oklch(55% 0.1019 28.41)",
+          "oklch(65% 0.1019 28.41)",
+          "oklch(80% 0.1019 28.41)",
+          "oklch(95% 0.1019 28.41)"
+        ]
+      },
+      "dark-danger-fill": {
+        "role": "neutral",
+        "displayName": "Dark Danger Fill",
+        "tonalRamp": [
+          "oklch(15% 0.1435 24.48)",
+          "oklch(25% 0.1435 24.48)",
+          "oklch(35% 0.1435 24.48)",
+          "oklch(45% 0.1435 24.48)",
+          "oklch(55% 0.1435 24.48)",
+          "oklch(65% 0.1435 24.48)",
+          "oklch(80% 0.1435 24.48)",
+          "oklch(95% 0.1435 24.48)"
+        ]
+      },
+      "dark-danger-fill-hover": {
+        "role": "neutral",
+        "displayName": "Dark Danger Fill Hover",
+        "tonalRamp": [
+          "oklch(15% 0.1359 24.41)",
+          "oklch(25% 0.1359 24.41)",
+          "oklch(35% 0.1359 24.41)",
+          "oklch(45% 0.1359 24.41)",
+          "oklch(55% 0.1359 24.41)",
+          "oklch(65% 0.1359 24.41)",
+          "oklch(80% 0.1359 24.41)",
+          "oklch(95% 0.1359 24.41)"
+        ]
+      },
+      "dark-on-danger": {
+        "role": "neutral",
+        "displayName": "Dark On Danger",
+        "tonalRamp": [
+          "oklch(15% 0.0227 24.43)",
+          "oklch(25% 0.0227 24.43)",
+          "oklch(35% 0.0227 24.43)",
+          "oklch(45% 0.0227 24.43)",
+          "oklch(55% 0.0227 24.43)",
+          "oklch(65% 0.0227 24.43)",
+          "oklch(80% 0.0227 24.43)",
+          "oklch(95% 0.0227 24.43)"
+        ]
+      },
+      "dark-info-bg": {
+        "role": "neutral",
+        "displayName": "Dark Info Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0417 248.24)",
+          "oklch(25% 0.0417 248.24)",
+          "oklch(35% 0.0417 248.24)",
+          "oklch(45% 0.0417 248.24)",
+          "oklch(55% 0.0417 248.24)",
+          "oklch(65% 0.0417 248.24)",
+          "oklch(80% 0.0417 248.24)",
+          "oklch(95% 0.0417 248.24)"
+        ]
+      },
+      "dark-info-fg": {
+        "role": "neutral",
+        "displayName": "Dark Info Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0900 251.90)",
+          "oklch(25% 0.0900 251.90)",
+          "oklch(35% 0.0900 251.90)",
+          "oklch(45% 0.0900 251.90)",
+          "oklch(55% 0.0900 251.90)",
+          "oklch(65% 0.0900 251.90)",
+          "oklch(80% 0.0900 251.90)",
+          "oklch(95% 0.0900 251.90)"
+        ]
+      },
+      "dark-info-border": {
+        "role": "neutral",
+        "displayName": "Dark Info Border",
+        "tonalRamp": [
+          "oklch(15% 0.0838 249.45)",
+          "oklch(25% 0.0838 249.45)",
+          "oklch(35% 0.0838 249.45)",
+          "oklch(45% 0.0838 249.45)",
+          "oklch(55% 0.0838 249.45)",
+          "oklch(65% 0.0838 249.45)",
+          "oklch(80% 0.0838 249.45)",
+          "oklch(95% 0.0838 249.45)"
+        ]
+      },
+      "dark-method-get-bg": {
+        "role": "neutral",
+        "displayName": "Dark Method Get Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0254 140.41)",
+          "oklch(25% 0.0254 140.41)",
+          "oklch(35% 0.0254 140.41)",
+          "oklch(45% 0.0254 140.41)",
+          "oklch(55% 0.0254 140.41)",
+          "oklch(65% 0.0254 140.41)",
+          "oklch(80% 0.0254 140.41)",
+          "oklch(95% 0.0254 140.41)"
+        ]
+      },
+      "dark-method-get-fg": {
+        "role": "neutral",
+        "displayName": "Dark Method Get Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0676 128.67)",
+          "oklch(25% 0.0676 128.67)",
+          "oklch(35% 0.0676 128.67)",
+          "oklch(45% 0.0676 128.67)",
+          "oklch(55% 0.0676 128.67)",
+          "oklch(65% 0.0676 128.67)",
+          "oklch(80% 0.0676 128.67)",
+          "oklch(95% 0.0676 128.67)"
+        ]
+      },
+      "dark-method-get-border": {
+        "role": "neutral",
+        "displayName": "Dark Method Get Border",
+        "tonalRamp": [
+          "oklch(15% 0.0711 129.83)",
+          "oklch(25% 0.0711 129.83)",
+          "oklch(35% 0.0711 129.83)",
+          "oklch(45% 0.0711 129.83)",
+          "oklch(55% 0.0711 129.83)",
+          "oklch(65% 0.0711 129.83)",
+          "oklch(80% 0.0711 129.83)",
+          "oklch(95% 0.0711 129.83)"
+        ]
+      },
+      "dark-method-post-bg": {
+        "role": "neutral",
+        "displayName": "Dark Method Post Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0267 73.73)",
+          "oklch(25% 0.0267 73.73)",
+          "oklch(35% 0.0267 73.73)",
+          "oklch(45% 0.0267 73.73)",
+          "oklch(55% 0.0267 73.73)",
+          "oklch(65% 0.0267 73.73)",
+          "oklch(80% 0.0267 73.73)",
+          "oklch(95% 0.0267 73.73)"
+        ]
+      },
+      "dark-method-post-fg": {
+        "role": "neutral",
+        "displayName": "Dark Method Post Fg",
+        "tonalRamp": [
+          "oklch(15% 0.1067 76.78)",
+          "oklch(25% 0.1067 76.78)",
+          "oklch(35% 0.1067 76.78)",
+          "oklch(45% 0.1067 76.78)",
+          "oklch(55% 0.1067 76.78)",
+          "oklch(65% 0.1067 76.78)",
+          "oklch(80% 0.1067 76.78)",
+          "oklch(95% 0.1067 76.78)"
+        ]
+      },
+      "dark-method-post-border": {
+        "role": "neutral",
+        "displayName": "Dark Method Post Border",
+        "tonalRamp": [
+          "oklch(15% 0.0841 74.67)",
+          "oklch(25% 0.0841 74.67)",
+          "oklch(35% 0.0841 74.67)",
+          "oklch(45% 0.0841 74.67)",
+          "oklch(55% 0.0841 74.67)",
+          "oklch(65% 0.0841 74.67)",
+          "oklch(80% 0.0841 74.67)",
+          "oklch(95% 0.0841 74.67)"
+        ]
+      },
+      "dark-method-put-bg": {
+        "role": "neutral",
+        "displayName": "Dark Method Put Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0402 305.74)",
+          "oklch(25% 0.0402 305.74)",
+          "oklch(35% 0.0402 305.74)",
+          "oklch(45% 0.0402 305.74)",
+          "oklch(55% 0.0402 305.74)",
+          "oklch(65% 0.0402 305.74)",
+          "oklch(80% 0.0402 305.74)",
+          "oklch(95% 0.0402 305.74)"
+        ]
+      },
+      "dark-method-put-fg": {
+        "role": "neutral",
+        "displayName": "Dark Method Put Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0867 306.93)",
+          "oklch(25% 0.0867 306.93)",
+          "oklch(35% 0.0867 306.93)",
+          "oklch(45% 0.0867 306.93)",
+          "oklch(55% 0.0867 306.93)",
+          "oklch(65% 0.0867 306.93)",
+          "oklch(80% 0.0867 306.93)",
+          "oklch(95% 0.0867 306.93)"
+        ]
+      },
+      "dark-method-put-border": {
+        "role": "neutral",
+        "displayName": "Dark Method Put Border",
+        "tonalRamp": [
+          "oklch(15% 0.0916 306.17)",
+          "oklch(25% 0.0916 306.17)",
+          "oklch(35% 0.0916 306.17)",
+          "oklch(45% 0.0916 306.17)",
+          "oklch(55% 0.0916 306.17)",
+          "oklch(65% 0.0916 306.17)",
+          "oklch(80% 0.0916 306.17)",
+          "oklch(95% 0.0916 306.17)"
+        ]
+      },
+      "dark-code-bg": {
+        "role": "neutral",
+        "displayName": "Dark Code Bg",
+        "tonalRamp": [
+          "oklch(15% 0.0104 80.59)",
+          "oklch(25% 0.0104 80.59)",
+          "oklch(35% 0.0104 80.59)",
+          "oklch(45% 0.0104 80.59)",
+          "oklch(55% 0.0104 80.59)",
+          "oklch(65% 0.0104 80.59)",
+          "oklch(80% 0.0104 80.59)",
+          "oklch(95% 0.0104 80.59)"
+        ]
+      },
+      "dark-code-surface": {
+        "role": "neutral",
+        "displayName": "Dark Code Surface",
+        "tonalRamp": [
+          "oklch(15% 0.0090 75.14)",
+          "oklch(25% 0.0090 75.14)",
+          "oklch(35% 0.0090 75.14)",
+          "oklch(45% 0.0090 75.14)",
+          "oklch(55% 0.0090 75.14)",
+          "oklch(65% 0.0090 75.14)",
+          "oklch(80% 0.0090 75.14)",
+          "oklch(95% 0.0090 75.14)"
+        ]
+      },
+      "dark-code-fg": {
+        "role": "neutral",
+        "displayName": "Dark Code Fg",
+        "tonalRamp": [
+          "oklch(15% 0.0166 79.35)",
+          "oklch(25% 0.0166 79.35)",
+          "oklch(35% 0.0166 79.35)",
+          "oklch(45% 0.0166 79.35)",
+          "oklch(55% 0.0166 79.35)",
+          "oklch(65% 0.0166 79.35)",
+          "oklch(80% 0.0166 79.35)",
+          "oklch(95% 0.0166 79.35)"
+        ]
+      },
+      "dark-code-muted": {
+        "role": "neutral",
+        "displayName": "Dark Code Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0257 77.40)",
+          "oklch(25% 0.0257 77.40)",
+          "oklch(35% 0.0257 77.40)",
+          "oklch(45% 0.0257 77.40)",
+          "oklch(55% 0.0257 77.40)",
+          "oklch(65% 0.0257 77.40)",
+          "oklch(80% 0.0257 77.40)",
+          "oklch(95% 0.0257 77.40)"
+        ]
+      },
+      "dark-code-border": {
+        "role": "neutral",
+        "displayName": "Dark Code Border",
+        "tonalRamp": [
+          "oklch(15% 0.0348 76.65)",
+          "oklch(25% 0.0348 76.65)",
+          "oklch(35% 0.0348 76.65)",
+          "oklch(45% 0.0348 76.65)",
+          "oklch(55% 0.0348 76.65)",
+          "oklch(65% 0.0348 76.65)",
+          "oklch(80% 0.0348 76.65)",
+          "oklch(95% 0.0348 76.65)"
+        ]
+      },
+      "dark-syntax-key": {
+        "role": "neutral",
+        "displayName": "Dark Syntax Key",
+        "tonalRamp": [
+          "oklch(15% 0.1067 76.78)",
+          "oklch(25% 0.1067 76.78)",
+          "oklch(35% 0.1067 76.78)",
+          "oklch(45% 0.1067 76.78)",
+          "oklch(55% 0.1067 76.78)",
+          "oklch(65% 0.1067 76.78)",
+          "oklch(80% 0.1067 76.78)",
+          "oklch(95% 0.1067 76.78)"
+        ]
+      },
+      "dark-syntax-string": {
+        "role": "neutral",
+        "displayName": "Dark Syntax String",
+        "tonalRamp": [
+          "oklch(15% 0.0676 128.67)",
+          "oklch(25% 0.0676 128.67)",
+          "oklch(35% 0.0676 128.67)",
+          "oklch(45% 0.0676 128.67)",
+          "oklch(55% 0.0676 128.67)",
+          "oklch(65% 0.0676 128.67)",
+          "oklch(80% 0.0676 128.67)",
+          "oklch(95% 0.0676 128.67)"
+        ]
+      },
+      "dark-syntax-header": {
+        "role": "neutral",
+        "displayName": "Dark Syntax Header",
+        "tonalRamp": [
+          "oklch(15% 0.0257 77.40)",
+          "oklch(25% 0.0257 77.40)",
+          "oklch(35% 0.0257 77.40)",
+          "oklch(45% 0.0257 77.40)",
+          "oklch(55% 0.0257 77.40)",
+          "oklch(65% 0.0257 77.40)",
+          "oklch(80% 0.0257 77.40)",
+          "oklch(95% 0.0257 77.40)"
+        ]
       }
     },
     "typographyMeta": {
       "body": {
-        "displayName": "Interface body",
-        "purpose": "Compact operating text."
+        "displayName": "Body",
+        "purpose": "Compact reading text."
       },
       "title": {
-        "displayName": "Page title",
-        "purpose": "Existing dashboard page headings."
+        "displayName": "Title",
+        "purpose": "Restrained page headings."
+      },
+      "brand": {
+        "displayName": "Brand",
+        "purpose": "Workbench brand."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field and form labels."
+      },
+      "control": {
+        "displayName": "Control",
+        "purpose": "Standard compact buttons."
+      },
+      "support": {
+        "displayName": "Support",
+        "purpose": "Small support text and metadata."
       },
       "code": {
-        "displayName": "Technical text",
-        "purpose": "Code and technical identifiers; ligatures disabled."
+        "displayName": "Code",
+        "purpose": "Technical editor values; ligatures disabled."
       }
     },
     "shadows": [
       {
-        "name": "light-sm",
-        "value": "0 1px 2px rgb(26 26 26 / 4%)",
-        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+        "name": "light-shadow-1",
+        "value": "0 1px 2px rgb(0 0 0 / 8%)",
+        "purpose": "shadow 1 in light theme."
       },
       {
-        "name": "light-md",
-        "value": "0 4px 14px rgb(26 26 26 / 7%)",
-        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+        "name": "light-shadow-2",
+        "value": "0 2px 6px rgb(0 0 0 / 12%), 0 1px 2px rgb(0 0 0 / 8%)",
+        "purpose": "shadow 2 in light theme."
       },
       {
-        "name": "light-lg",
-        "value": "0 12px 32px rgb(26 26 26 / 9%)",
-        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+        "name": "light-shadow-3",
+        "value": "0 8px 24px rgb(0 0 0 / 16%), 0 2px 6px rgb(0 0 0 / 10%)",
+        "purpose": "shadow 3 in light theme."
       },
       {
-        "name": "light-inset",
-        "value": "inset 0 1px 8px rgb(0 0 0 / 18%)",
-        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+        "name": "light-shadow-4",
+        "value": "0 16px 48px -8px rgb(0 0 0 / 22%), 0 4px 12px rgb(0 0 0 / 12%)",
+        "purpose": "shadow 4 in light theme."
       },
       {
-        "name": "light-sticky",
-        "value": "0 -8px 24px rgb(26 26 26 / 6%)",
-        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+        "name": "light-highlight-edge",
+        "value": "inset 0 1px 0 rgb(255 245 227 / 65%)",
+        "purpose": "highlight edge in light theme."
       },
       {
-        "name": "light-focus",
-        "value": "0 0 0 3px rgb(153 107 7 / 18%)",
-        "purpose": "State ring; not ambient elevation."
+        "name": "light-inset-well",
+        "value": "inset 0 2px 6px -2px rgb(0 0 0 / 10%)",
+        "purpose": "inset well in light theme."
       },
       {
-        "name": "light-selected",
+        "name": "light-inset-field",
+        "value": "inset 0 1px 2px rgb(0 0 0 / 8%)",
+        "purpose": "inset field in light theme."
+      },
+      {
+        "name": "light-shadow-press",
+        "value": "inset 0 1px 3px rgb(0 0 0 / 12%)",
+        "purpose": "shadow press in light theme."
+      },
+      {
+        "name": "light-shadow-chrome",
+        "value": "0 1px 0 rgb(0 0 0 / 8%), 0 4px 12px -6px rgb(0 0 0 / 14%)",
+        "purpose": "shadow chrome in light theme."
+      },
+      {
+        "name": "light-shadow-sidebar",
+        "value": "inset -1px 0 0 var(--border), 4px 0 12px -8px rgb(0 0 0 / 16%)",
+        "purpose": "shadow sidebar in light theme."
+      },
+      {
+        "name": "light-shadow-inspector",
+        "value": "-10px 0 24px -14px rgb(0 0 0 / 18%)",
+        "purpose": "shadow inspector in light theme."
+      },
+      {
+        "name": "light-shadow-actionbar",
+        "value": "0 -6px 14px -8px rgb(0 0 0 / 18%)",
+        "purpose": "shadow actionbar in light theme."
+      },
+      {
+        "name": "light-shadow-focus",
+        "value": "0 0 0 3px rgb(122 86 5 / 18%)",
+        "purpose": "shadow focus in light theme."
+      },
+      {
+        "name": "light-shadow-selected",
         "value": "0 0 0 2px rgb(153 107 7 / 10%)",
-        "purpose": "State ring; not ambient elevation."
+        "purpose": "shadow selected in light theme."
       },
       {
-        "name": "light-accent-pulse",
-        "value": "0 0 0 3px rgb(153 107 7 / 30%)",
-        "purpose": "State ring; not ambient elevation."
+        "name": "light-shadow-explorer-selected",
+        "value": "inset 2px 0 var(--accent), var(--highlight-edge), var(--shadow-2)",
+        "purpose": "shadow explorer selected in light theme."
       },
       {
-        "name": "dark-sm",
-        "value": "none",
-        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+        "name": "light-primary-shadow",
+        "value": "inset 0 1px 0 rgb(255 245 227 / 18%), 0 1px 2px rgb(0 0 0 / 16%)",
+        "purpose": "primary shadow in light theme."
       },
       {
-        "name": "dark-md",
-        "value": "none",
-        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+        "name": "light-primary-hover-shadow",
+        "value": "inset 0 1px 0 rgb(255 245 227 / 22%), 0 2px 4px rgb(0 0 0 / 16%)",
+        "purpose": "primary hover shadow in light theme."
       },
       {
-        "name": "dark-lg",
-        "value": "none",
-        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+        "name": "light-primary-press-shadow",
+        "value": "inset 0 2px 4px rgb(0 0 0 / 18%)",
+        "purpose": "primary press shadow in light theme."
       },
       {
-        "name": "dark-inset",
-        "value": "none",
-        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+        "name": "dark-shadow-1",
+        "value": "0 1px 2px rgb(0 0 0 / 30%)",
+        "purpose": "shadow 1 in dark theme."
       },
       {
-        "name": "dark-sticky",
-        "value": "none",
-        "purpose": "Existing shared elevation token; workbench cards/buttons/registry override ambient shadows to none."
+        "name": "dark-shadow-2",
+        "value": "0 2px 6px rgb(0 0 0 / 32%), 0 1px 2px rgb(0 0 0 / 24%)",
+        "purpose": "shadow 2 in dark theme."
       },
       {
-        "name": "dark-focus",
-        "value": "0 0 0 3px rgb(240 199 94 / 30%)",
-        "purpose": "State ring; not ambient elevation."
+        "name": "dark-shadow-3",
+        "value": "0 8px 24px rgb(0 0 0 / 45%), 0 2px 6px rgb(0 0 0 / 30%)",
+        "purpose": "shadow 3 in dark theme."
       },
       {
-        "name": "dark-selected",
-        "value": "0 0 0 2px rgb(209 162 58 / 24%)",
-        "purpose": "State ring; not ambient elevation."
+        "name": "dark-shadow-4",
+        "value": "0 16px 48px -8px rgb(0 0 0 / 65%), 0 4px 12px rgb(0 0 0 / 35%)",
+        "purpose": "shadow 4 in dark theme."
       },
       {
-        "name": "dark-accent-pulse",
-        "value": "0 0 0 3px rgb(240 199 94 / 38%)",
-        "purpose": "State ring; not ambient elevation."
+        "name": "dark-highlight-edge",
+        "value": "inset 0 1px 0 rgb(255 238 205 / 5%)",
+        "purpose": "highlight edge in dark theme."
+      },
+      {
+        "name": "dark-inset-well",
+        "value": "inset 0 2px 6px -2px rgb(0 0 0 / 55%)",
+        "purpose": "inset well in dark theme."
+      },
+      {
+        "name": "dark-inset-field",
+        "value": "inset 0 1px 2px rgb(0 0 0 / 35%)",
+        "purpose": "inset field in dark theme."
+      },
+      {
+        "name": "dark-shadow-press",
+        "value": "inset 0 1px 3px rgb(0 0 0 / 45%)",
+        "purpose": "shadow press in dark theme."
+      },
+      {
+        "name": "dark-shadow-chrome",
+        "value": "0 1px 0 rgb(0 0 0 / 35%), 0 4px 12px -6px rgb(0 0 0 / 50%)",
+        "purpose": "shadow chrome in dark theme."
+      },
+      {
+        "name": "dark-shadow-sidebar",
+        "value": "inset -1px 0 0 var(--border), 4px 0 12px -8px rgb(0 0 0 / 50%)",
+        "purpose": "shadow sidebar in dark theme."
+      },
+      {
+        "name": "dark-shadow-inspector",
+        "value": "-10px 0 24px -14px rgb(0 0 0 / 60%)",
+        "purpose": "shadow inspector in dark theme."
+      },
+      {
+        "name": "dark-shadow-actionbar",
+        "value": "0 -6px 14px -8px rgb(0 0 0 / 55%)",
+        "purpose": "shadow actionbar in dark theme."
+      },
+      {
+        "name": "dark-shadow-focus",
+        "value": "0 0 0 3px rgb(230 182 109 / 22%)",
+        "purpose": "shadow focus in dark theme."
+      },
+      {
+        "name": "dark-shadow-selected",
+        "value": "inset 2px 0 var(--accent)",
+        "purpose": "shadow selected in dark theme."
+      },
+      {
+        "name": "dark-shadow-explorer-selected",
+        "value": "inset 2px 0 var(--accent), var(--highlight-edge), var(--shadow-2)",
+        "purpose": "shadow explorer selected in dark theme."
+      },
+      {
+        "name": "dark-primary-shadow",
+        "value": "inset 0 1px 0 rgb(255 255 255 / 28%), 0 1px 2px rgb(0 0 0 / 40%), 0 6px 14px -8px rgb(230 182 109 / 45%)",
+        "purpose": "primary shadow in dark theme."
+      },
+      {
+        "name": "dark-primary-hover-shadow",
+        "value": "inset 0 1px 0 rgb(255 255 255 / 34%), 0 2px 4px rgb(0 0 0 / 40%), 0 8px 18px -8px rgb(230 182 109 / 55%)",
+        "purpose": "primary hover shadow in dark theme."
+      },
+      {
+        "name": "dark-primary-press-shadow",
+        "value": "inset 0 2px 4px rgb(60 38 10 / 45%)",
+        "purpose": "primary press shadow in dark theme."
       }
     ],
     "motion": [
       {
-        "name": "fast",
-        "value": "120ms ease-out",
-        "purpose": "Short control and menu transitions."
+        "name": "ease-control",
+        "value": "cubic-bezier(.16,1,.3,1)",
+        "purpose": "Shared control feedback; reduced motion collapses duration."
       },
       {
-        "name": "base",
-        "value": "180ms ease-out",
-        "purpose": "Shared state transitions; suppressed by reduced-motion and theme-switching rules."
+        "name": "motion-fast",
+        "value": "140ms var(--ease-control)",
+        "purpose": "Shared control feedback; reduced motion collapses duration."
       },
       {
-        "name": "tooltip-pointer-close-delay",
-        "value": "150ms",
-        "purpose": "Per-anchor runtime timer lets the pointer cross to a hoverable help panel; closes on ordinary departure when no hover/focus remains."
+        "name": "motion-base",
+        "value": "180ms var(--ease-control)",
+        "purpose": "Shared control feedback; reduced motion collapses duration."
+      },
+      {
+        "name": "motion-press",
+        "value": "80ms var(--ease-control)",
+        "purpose": "Shared control feedback; reduced motion collapses duration."
       }
     ],
     "breakpoints": [
       {
-        "name": "context-drawer",
-        "value": "1100px"
+        "name": "wide-context-editor",
+        "value": "1550px"
       },
       {
-        "name": "mobile-navigation",
+        "name": "compact-context-rail",
+        "value": "1150px"
+      },
+      {
+        "name": "context-drawer",
+        "value": "950px"
+      },
+      {
+        "name": "log-inspector",
+        "value": "780px"
+      },
+      {
+        "name": "retained-touch-controls",
         "value": "767px"
       },
       {
-        "name": "page-header-wrap",
-        "value": "440px"
+        "name": "settings-metadata-stack",
+        "value": "740px"
+      },
+      {
+        "name": "export-stack",
+        "value": "720px"
+      },
+      {
+        "name": "editor-stack-phone-rail",
+        "value": "650px"
+      },
+      {
+        "name": "response-container",
+        "value": "640px"
+      },
+      {
+        "name": "narrow-response-container",
+        "value": "430px"
       }
     ],
-    "supportingWorkspaces": {
-      "mode": "Operate",
-      "surfaces": [
-        "callback",
-        "request-inspector",
-        "callback-inspector",
-        "environments",
-        "transfer",
-        "history",
-        "recovery"
-      ],
-      "verification": "docs/UI_UPGRADE.md",
-      "manualGate": "A04"
-    }
+    "geometry": {
+      "shell-header-height": "46px",
+      "shell-status-height": "25px",
+      "shell-rail-width": "52px",
+      "shell-context-width": "252px",
+      "shell-context-width-wide": "272px",
+      "shell-context-width-compact": "220px",
+      "shell-rail-width-compact": "46px",
+      "shell-rail-width-mobile": "40px",
+      "pane-gutter": "20px",
+      "pane-gutter-mobile": "14px",
+      "control-height": "32px",
+      "control-height-small": "26px",
+      "control-height-large": "36px",
+      "control-height-touch": "44px",
+      "editor-heading-height": "65px",
+      "tabs-height": "42px",
+      "editor-toolbar-height": "36px",
+      "request-control-height": "40px",
+      "settings-width": "850px",
+      "log-row-height": "69px",
+      "log-row-comfortable-height": "84px",
+      "inspector-width": "320px",
+      "inspector-width-wide": "350px",
+      "inspector-width-compact": "290px",
+      "editor-request-track": ".92fr",
+      "editor-response-track": "1.08fr",
+      "editor-request-track-wide": "1fr",
+      "editor-response-track-wide": "1.15fr",
+      "transfer-selection-track": "1.65fr",
+      "docs-width": "1040px",
+      "prose-width": "60ch"
+    },
+    "backgrounds": [
+      {
+        "name": "light-primary-background",
+        "value": "linear-gradient(#8b6206, #805a04)"
+      },
+      {
+        "name": "light-primary-hover-background",
+        "value": "linear-gradient(#805a04, #6b4a00)"
+      },
+      {
+        "name": "light-primary-press-background",
+        "value": "#6b4a00"
+      },
+      {
+        "name": "dark-primary-background",
+        "value": "linear-gradient(#f0c582, #e6b66d)"
+      },
+      {
+        "name": "dark-primary-hover-background",
+        "value": "linear-gradient(#f6d29a, #f0c582)"
+      },
+      {
+        "name": "dark-primary-press-background",
+        "value": "linear-gradient(#d9a55c, #dcab63)"
+      }
+    ],
+    "notes": [
+      "Color ramps are synthesized OKLCH display metadata; DESIGN.md primitives and source CSS remain normative.",
+      "This source-derived sidecar does not certify browser or backend tests.",
+      "The inherited ordinary-table tr[aria-expanded] issue is a limitation, never a reusable component pattern."
+    ]
   },
   "components": [
     {
-      "name": "Primary button",
+      "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "Existing workbench action variant; flat in hover and active states.",
+      "description": "Existing primary action; preserve form and loading semantics.",
       "html": "<button type=\"button\" class=\"ds-button-primary\">Save changes</button>",
-      "css": ".ds-button-primary{min-height:36px;padding:var(--space-2) var(--space-4);border:1px solid transparent;border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);cursor:pointer;font-weight:var(--font-weight-semibold);font-family:var(--font-ui);font-size:var(--font-size-base);transition:color var(--motion-base),border-color var(--motion-base),background-color var(--motion-base);color:var(--on-accent);background:var(--accent);border-color:var(--accent);}.ds-button-primary:hover:not(:disabled){background:var(--accent-hover);border-color:var(--accent-hover);}.ds-button-primary:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-button-primary:active{box-shadow:none;transform:none;}.ds-button-primary:disabled{color:var(--disabled-fg);border-color:var(--border);background:var(--disabled-bg);cursor:not-allowed;}"
+      "css": ".ds-button-primary{min-height:var(--control-height,32px);padding:0 var(--space-3,12px);border:1px solid var(--control-border,#554b3e);border-radius:var(--radius-md,5px);display:inline-flex;align-items:center;justify-content:center;gap:var(--icon-gap,8px);font:500 12px/1.2 var(--font-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif);letter-spacing:.005em;cursor:pointer;transition:background-color var(--motion-fast,140ms ease-out),border-color var(--motion-fast,140ms ease-out),box-shadow var(--motion-fast,140ms ease-out),transform var(--motion-press,80ms ease-out);color:var(--on-accent,#21190e);background:var(--primary-background,linear-gradient(#f0c582,#e6b66d));border-color:var(--primary-border,#c3924d);box-shadow:var(--primary-shadow,inset 0 1px 0 rgb(255 255 255 / 28%),0 1px 2px rgb(0 0 0 / 40%),0 6px 14px -8px rgb(230 182 109 / 45%));font-weight:600;text-shadow:var(--primary-text-shadow,0 1px 0 rgb(255 255 255 / 18%));}.ds-button-primary:hover:not(:disabled){background:var(--primary-hover-background,linear-gradient(#f6d29a,#f0c582));border-color:var(--primary-hover-border,#d1a05a);box-shadow:var(--primary-hover-shadow,inset 0 1px 0 rgb(255 255 255 / 34%),0 2px 4px rgb(0 0 0 / 40%),0 8px 18px -8px rgb(230 182 109 / 55%));}.ds-button-primary:active:not(:disabled){background:var(--primary-press-background,linear-gradient(#d9a55c,#dcab63));border-color:var(--primary-press-border,#b98543);box-shadow:var(--primary-press-shadow,inset 0 2px 4px rgb(60 38 10 / 45%));transform:translateY(.5px);text-shadow:none}.ds-button-primary:focus-visible{outline:2px solid var(--primary-focus,#fff0d7);outline-offset:3px;}.ds-button-primary:disabled{color:var(--disabled-fg,#bdb4a4);background:var(--disabled-bg,#35312b);border-color:var(--border,#40392f);box-shadow:none;transform:none;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-button-primary{transition:none}}"
     },
     {
-      "name": "Secondary button",
+      "name": "Secondary Button",
       "kind": "button",
       "refersTo": "button-secondary",
-      "description": "Existing workbench action variant; flat in hover and active states.",
+      "description": "Existing secondary action; preserve form and loading semantics.",
       "html": "<button type=\"button\" class=\"ds-button-secondary\">Cancel</button>",
-      "css": ".ds-button-secondary{min-height:36px;padding:var(--space-2) var(--space-4);border:1px solid transparent;border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);cursor:pointer;font-weight:var(--font-weight-semibold);font-family:var(--font-ui);font-size:var(--font-size-base);transition:color var(--motion-base),border-color var(--motion-base),background-color var(--motion-base);color:var(--text);background:transparent;border-color:var(--text);}.ds-button-secondary:hover:not(:disabled){color:var(--accent-hover);border-color:var(--accent);background:var(--surface-2);}.ds-button-secondary:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-button-secondary:active{box-shadow:none;transform:none;}.ds-button-secondary:disabled{color:var(--disabled-fg);border-color:var(--border);background:var(--disabled-bg);cursor:not-allowed;}"
+      "css": ".ds-button-secondary{min-height:var(--control-height,32px);padding:0 var(--space-3,12px);border:1px solid var(--control-border,#554b3e);border-radius:var(--radius-md,5px);display:inline-flex;align-items:center;justify-content:center;gap:var(--icon-gap,8px);font:500 12px/1.2 var(--font-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif);letter-spacing:.005em;cursor:pointer;transition:background-color var(--motion-fast,140ms ease-out),border-color var(--motion-fast,140ms ease-out),box-shadow var(--motion-fast,140ms ease-out),transform var(--motion-press,80ms ease-out);color:var(--text,#e7e0d5);background:var(--control-bg,#29251e);box-shadow:var(--highlight-edge,inset 0 1px 0 rgb(255 238 205 / 5%)),var(--shadow-1,0 1px 2px rgb(0 0 0 / 30%));}.ds-button-secondary:hover:not(:disabled){background:var(--control-hover,#322c23);border-color:var(--control-hover-border,#7a6a54);box-shadow:var(--shadow-2,0 2px 6px rgb(0 0 0 / 32%));}.ds-button-secondary:active:not(:disabled){background:var(--control-press,#221e18);box-shadow:var(--shadow-press,inset 0 1px 3px rgb(0 0 0 / 45%));transform:translateY(.5px)}.ds-button-secondary:focus-visible{outline:2px solid var(--focus-ring,#e6b66d);outline-offset:3px;}.ds-button-secondary:disabled{color:var(--disabled-fg,#bdb4a4);background:var(--disabled-bg,#35312b);border-color:var(--border,#40392f);box-shadow:none;transform:none;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-button-secondary{transition:none}}"
     },
     {
-      "name": "Tertiary button",
+      "name": "Tertiary Button",
       "kind": "button",
       "refersTo": "button-tertiary",
-      "description": "Existing workbench action variant; flat in hover and active states.",
-      "html": "<button type=\"button\" class=\"ds-button-tertiary\">View details</button>",
-      "css": ".ds-button-tertiary{min-height:36px;padding:var(--space-2) var(--space-4);border:1px solid transparent;border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);cursor:pointer;font-weight:var(--font-weight-semibold);font-family:var(--font-ui);font-size:var(--font-size-base);transition:color var(--motion-base),border-color var(--motion-base),background-color var(--motion-base);min-height:40px;padding-inline:10px;color:var(--text);background:transparent;}.ds-button-tertiary:hover:not(:disabled){color:var(--accent-hover);border-color:var(--border);background:var(--surface-2);}.ds-button-tertiary:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-button-tertiary:active{box-shadow:none;transform:none;}.ds-button-tertiary:disabled{color:var(--disabled-fg);border-color:var(--border);background:var(--disabled-bg);cursor:not-allowed;}"
+      "description": "Existing tertiary action; preserve form and loading semantics.",
+      "html": "<button type=\"button\" class=\"ds-button-tertiary\">Copy</button>",
+      "css": ".ds-button-tertiary{min-height:var(--control-height,32px);padding:0 var(--space-3,12px);border:1px solid var(--control-border,#554b3e);border-radius:var(--radius-md,5px);display:inline-flex;align-items:center;justify-content:center;gap:var(--icon-gap,8px);font:500 12px/1.2 var(--font-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif);letter-spacing:.005em;cursor:pointer;transition:background-color var(--motion-fast,140ms ease-out),border-color var(--motion-fast,140ms ease-out),box-shadow var(--motion-fast,140ms ease-out),transform var(--motion-press,80ms ease-out);color:var(--text-muted,#b8ad9d);background:transparent;border-color:transparent;box-shadow:none;}.ds-button-tertiary:hover:not(:disabled){color:var(--text,#e7e0d5);background:var(--surface-hover,#29251e);}.ds-button-tertiary:active:not(:disabled){background:var(--surface-press,#363027);transform:translateY(.5px)}.ds-button-tertiary:focus-visible{outline:2px solid var(--focus-ring,#e6b66d);outline-offset:3px;}.ds-button-tertiary:disabled{color:var(--disabled-fg,#bdb4a4);background:var(--disabled-bg,#35312b);border-color:var(--border,#40392f);box-shadow:none;transform:none;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-button-tertiary{transition:none}}"
     },
     {
-      "name": "Danger button",
+      "name": "Danger Button",
       "kind": "button",
       "refersTo": "button-danger",
-      "description": "Existing workbench action variant; flat in hover and active states.",
+      "description": "Existing danger action; preserve form and loading semantics.",
       "html": "<button type=\"button\" class=\"ds-button-danger\">Delete</button>",
-      "css": ".ds-button-danger{min-height:36px;padding:var(--space-2) var(--space-4);border:1px solid transparent;border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);cursor:pointer;font-weight:var(--font-weight-semibold);font-family:var(--font-ui);font-size:var(--font-size-base);transition:color var(--motion-base),border-color var(--motion-base),background-color var(--motion-base);color:var(--on-danger);background:var(--danger-fill);border-color:var(--danger-fill);}.ds-button-danger:hover:not(:disabled){background:var(--danger-fill-hover);border-color:var(--danger-fill-hover);}.ds-button-danger:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-button-danger:active{box-shadow:none;transform:none;}.ds-button-danger:disabled{color:var(--disabled-fg);border-color:var(--border);background:var(--disabled-bg);cursor:not-allowed;}"
+      "css": ".ds-button-danger{min-height:var(--control-height,32px);padding:0 var(--space-3,12px);border:1px solid var(--control-border,#554b3e);border-radius:var(--radius-md,5px);display:inline-flex;align-items:center;justify-content:center;gap:var(--icon-gap,8px);font:500 12px/1.2 var(--font-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif);letter-spacing:.005em;cursor:pointer;transition:background-color var(--motion-fast,140ms ease-out),border-color var(--motion-fast,140ms ease-out),box-shadow var(--motion-fast,140ms ease-out),transform var(--motion-press,80ms ease-out);color:var(--danger-fg,#e79888);background:transparent;border-color:var(--danger-border,#ad6056);box-shadow:none;}.ds-button-danger:hover:not(:disabled){background:var(--danger-bg,#3a221d);}.ds-button-danger:active:not(:disabled){background:var(--danger-bg,#3a221d);transform:translateY(.5px)}.ds-button-danger:focus-visible{outline:2px solid var(--focus-ring,#e6b66d);outline-offset:3px;}.ds-button-danger:disabled{color:var(--disabled-fg,#bdb4a4);background:var(--disabled-bg,#35312b);border-color:var(--border,#40392f);box-shadow:none;transform:none;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-button-danger{transition:none}}"
     },
     {
-      "name": "Labelled text field",
+      "name": "Inset Field",
       "kind": "input",
       "refersTo": "field",
-      "description": "Existing ordinary field geometry, used by explorer search.",
-      "html": "<label class=\"ds-field\"><span>Find an endpoint</span><input type=\"search\" placeholder=\"Name, method or path\u2026\"></label>",
-      "css": ".ds-field{display:block;color:var(--text);font-family:var(--font-ui);font-size:var(--font-size-base);}.ds-field span{display:block;margin-bottom:7px;font-weight:600;}.ds-field input{width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--border-strong);border-radius:6px;outline:none;color:var(--text);background:transparent;font-family:var(--font-ui);font-size:var(--font-size-base);transition:border-color var(--motion-fast),box-shadow var(--motion-fast),background-color var(--motion-fast);}.ds-field input:hover:not(:disabled){border-color:var(--accent-border);}.ds-field input:focus{border-color:var(--accent);background:var(--surface);box-shadow:var(--shadow-focus);}.ds-field input:disabled{color:var(--disabled-fg);border-color:var(--border);background:var(--disabled-bg);cursor:not-allowed;}"
+      "description": "Labelled native input with solid focus and inset surface.",
+      "html": "<label class=\"ds-field\">Endpoint name<input class=\"ds-input\" value=\"Example endpoint\"></label>",
+      "css": ".ds-field{display:grid;gap:6px;color:var(--text-muted,#b8ad9d);font:500 12px var(--font-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif)}.ds-input{min-height:32px;padding:5px 9px;border:1px solid var(--field-border,#786a56);border-radius:4px;color:var(--text,#e7e0d5);background:var(--surface-inset,#1b1814);font:400 12px var(--font-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif);box-shadow:var(--inset-field,inset 0 1px 2px rgb(0 0 0 / 35%));transition:border-color var(--motion-fast,140ms ease-out)}.ds-input:hover{border-color:var(--accent-border,#b08a55)}.ds-input:focus-visible{border-color:var(--field-focus-border,#b08a55);outline:2px solid var(--focus-ring,#e6b66d);outline-offset:2px;box-shadow:var(--inset-field,inset 0 1px 2px rgb(0 0 0 / 35%)),var(--shadow-focus,0 0 0 3px rgb(230 182 109 / 22%))}.ds-input:disabled{border-color:var(--border,#40392f);color:var(--disabled-fg,#bdb4a4);background:var(--disabled-bg,#35312b)}"
     },
     {
-      "name": "Tag chip",
+      "name": "Selectable Tag",
       "kind": "chip",
       "refersTo": "tag",
-      "description": "Existing static tag; selectable variants retain their native input behavior in the application.",
-      "html": "<span class=\"ds-tag\">Example tag</span>",
-      "css": ".ds-tag{min-height:24px;padding:3px 7px;border:1px solid var(--border-strong);border-radius:var(--radius-pill);display:inline-flex;align-items:center;gap:5px;color:var(--text-muted);background:var(--surface-2);font:500 var(--font-size-xs)/var(--line-height-base) var(--font-ui);}"
+      "description": "Native selectable tag with compact rectangular shape.",
+      "html": "<label class=\"ds-tag\"><input type=\"checkbox\">Example</label>",
+      "css": ".ds-tag{display:inline-flex;align-items:center;gap:5px;min-height:20px;padding:0 6px;border:1px solid var(--border-strong,#887b69);border-radius:3px;color:var(--text-muted,#b8ad9d);background:var(--surface-2,#26221c);font:500 11px var(--font-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif);cursor:pointer}.ds-tag input{position:absolute;opacity:0;pointer-events:none}.ds-tag:hover,.ds-tag:has(input:checked){color:var(--warning-fg,#e6b66d);border-color:var(--warning-border,#b08a55);background:var(--warning-bg,#33291c)}.ds-tag:focus-within{outline:2px solid var(--focus-ring,#e6b66d);outline-offset:2px}"
     },
     {
-      "name": "Rail destination",
+      "name": "Rail Navigation",
       "kind": "nav",
       "refersTo": "rail-link",
-      "description": "Icon rail link with an accessible name and current-page state.",
-      "html": "<nav aria-label=\"Dashboard navigation\"><a class=\"ds-rail-link\" href=\"#endpoints\" aria-label=\"Endpoints\" aria-current=\"page\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><path d=\"M4 9h16M9 9v11\"/></svg></a></nav>",
-      "css": ".ds-rail-link{min-height:40px;width:44px;padding:var(--space-2);display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);color:var(--text-muted);text-decoration:none;background:transparent;}.ds-rail-link:hover,.ds-rail-link[aria-current=\"page\"]{color:var(--text);background:var(--accent-subtle);}.ds-rail-link:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}"
+      "description": "Labelled SVG destination with current state and amber marker.",
+      "html": "<nav class=\"ds-rail\" aria-label=\"Workbench\"><a class=\"ds-rail-link\" href=\"#endpoints\" aria-label=\"Endpoints\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" aria-hidden=\"true\"><path d=\"m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16\"/></svg></a></nav>",
+      "css": ".ds-rail{width:52px;padding:10px 8px;background:var(--shell-sidebar,#242019)}.ds-rail-link{position:relative;display:grid;place-items:center;width:36px;min-height:36px;border-radius:5px;color:var(--text-muted,#b8ad9d);text-decoration:none}.ds-rail-link svg{width:17px;height:17px}.ds-rail-link:hover{background:var(--surface-hover,#29251e)}.ds-rail-link[aria-current]{color:var(--accent,#e6b66d);background:var(--rail-selected,#3a3125);box-shadow:var(--highlight-edge,inset 0 1px 0 rgb(255 238 205 / 5%)),var(--shadow-1,0 1px 2px rgb(0 0 0 / 30%))}.ds-rail-link[aria-current]::before{content:\"\";position:absolute;left:-8px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--accent,#e6b66d)}.ds-rail-link:focus-visible{outline:2px solid var(--focus-ring,#e6b66d);outline-offset:3px;}.ds-rail-link:active{background:var(--surface-press,#363027)}"
     },
     {
-      "name": "Registry row surface",
+      "name": "Selected Explorer Entry",
+      "kind": "custom",
+      "refersTo": "explorer-selected",
+      "description": "A real endpoint identity with method and selected edge.",
+      "html": "<a class=\"ds-explorer\" href=\"#endpoint\" aria-current=\"page\"><span class=\"ds-method\">GET</span><span><strong>Example endpoint</strong><small>1 response · Enabled</small></span></a>",
+      "css": ".ds-explorer{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:6px;background:var(--accent-subtle,#33291c);color:var(--text,#e7e0d5);font:400 12px var(--font-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif);text-decoration:none;box-shadow:inset 2px 0 var(--accent,#e6b66d),var(--highlight-edge,inset 0 1px 0 rgb(255 238 205 / 5%)),var(--shadow-2,0 2px 6px rgb(0 0 0 / 32%))}.ds-explorer strong{display:block;font-weight:500;overflow-wrap:anywhere}.ds-explorer small{display:block;margin-top:4px;color:var(--text-muted,#b8ad9d);font-size:11px}.ds-method{min-width:32px;color:var(--method-get-fg,#a9bf91);font:400 11px var(--font-code,\"JetBrains Mono\",monospace)}.ds-explorer:hover{background:var(--accent-subtle,#33291c)}.ds-explorer:active{background:var(--surface-press,#363027)}.ds-explorer:focus-visible{outline:2px solid var(--focus-ring,#e6b66d);outline-offset:3px;}"
+    },
+    {
+      "name": "Continuous Workspace Panel",
       "kind": "card",
-      "refersTo": "registry-row",
-      "description": "Continuous row container; actual registry details and mutation actions stay in the application.",
-      "html": "<div class=\"ds-registry\"><div class=\"ds-registry-row\" tabindex=\"0\">Endpoint identity</div><div class=\"ds-registry-row\" tabindex=\"0\">Another endpoint</div></div>",
-      "css": ".ds-registry{border:1px solid var(--border);}.ds-registry-row{padding:var(--space-3);border-bottom:1px solid var(--border);border-radius:0;color:var(--text);background:var(--surface);box-shadow:none;font-family:var(--font-ui);font-size:var(--font-size-base);}.ds-registry-row:last-child{border-bottom:0;}.ds-registry-row:hover{background:var(--surface-hover);}.ds-registry-row:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}"
+      "refersTo": "workspace-panel",
+      "description": "Square flat task surface with a fine separator.",
+      "html": "<section class=\"ds-panel\"><h2>Request</h2><p>Headers excluded from matching</p></section>",
+      "css": ".ds-panel{padding:16px 20px;border:0;border-bottom:1px solid var(--border,#40392f);border-radius:0;background:var(--surface,#201d18);color:var(--text,#e7e0d5);box-shadow:none;font:400 12px/1.5 var(--font-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif)}.ds-panel h2{margin:0 0 8px;font-size:12px;font-weight:600}.ds-panel p{margin:0;color:var(--text-muted,#b8ad9d)}"
     },
     {
-      "name": "Explorer row",
+      "name": "Inset Code Well",
       "kind": "custom",
-      "refersTo": "explorer-row",
-      "description": "Flat identity row; current page and hover use subtle accent.",
-      "html": "<a class=\"ds-explorer-row\" href=\"#endpoint\" aria-current=\"page\"><span class=\"ds-method\">GET</span><span><strong>Endpoint identity</strong><small>1 response \u00b7 Enabled</small></span></a>",
-      "css": ".ds-explorer-row{display:flex;gap:var(--space-2);padding:var(--space-3) var(--space-2);border-bottom:1px solid var(--border);color:var(--text);text-decoration:none;font-family:var(--font-ui);font-size:var(--font-size-base);}.ds-explorer-row:hover,.ds-explorer-row[aria-current=\"page\"]{background:var(--accent-subtle);}.ds-explorer-row:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-explorer-row>span:last-child{min-width:0;}.ds-explorer-row strong{display:block;overflow-wrap:anywhere;font-size:var(--font-size-sm);font-weight:500;}.ds-explorer-row small{display:block;margin-top:var(--space-1);color:var(--text-muted);}.ds-method{align-self:start;min-width:36px;min-height:28px;padding:var(--space-1);border:1px solid var(--method-get-border);border-radius:5px;display:inline-flex;align-items:center;justify-content:center;color:var(--method-get-fg);background:var(--method-get-bg);font:500 var(--font-size-xs) var(--font-code);letter-spacing:.06em;}"
-    },
-    {
-      "name": "Help tooltip",
-      "kind": "custom",
-      "description": "CSS preview of native help trigger and hoverable panel; application panels.js supplies top-layer placement, per-anchor 150ms departure timers and Escape dismissal, including hover-only bubbles.",
-      "html": "<div class=\"ds-help-wrap\"><button type=\"button\" class=\"ds-help\" aria-describedby=\"ds-help-description\">?</button><span class=\"ds-help-panel\" id=\"ds-help-description\" role=\"tooltip\">Contextual help text.</span></div>",
-      "css": ".ds-help-wrap{position:relative;display:inline-block;padding-top:64px;}.ds-help{width:24px;height:24px;border:1px solid var(--border-strong);border-radius:50%;color:var(--text-muted);background:var(--surface);cursor:help;font:600 12px/1 var(--font-ui);}.ds-help:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-help-panel{position:absolute;bottom:33px;left:0;width:220px;padding:10px 12px;border:1px solid var(--border-strong);border-radius:6px;color:var(--text);background:var(--surface);box-shadow:var(--shadow-lg);font:400 13px/1.45 var(--font-ui);opacity:0;visibility:hidden;pointer-events:none;transition:opacity var(--motion-base),visibility var(--motion-base);}.ds-help-wrap:hover .ds-help-panel,.ds-help-wrap:focus-within .ds-help-panel{opacity:1;visibility:visible;pointer-events:auto;}"
-    },
-    {
-      "name": "Response Body canvas",
-      "kind": "custom",
-      "description": "Delivered response form anatomy: compact parameters and Headers precede one Body canvas; Template groups Builder / JSON, Locale / Seed and an explicitly synthetic sample. This isolated snapshot shows JSON; application controllers retain mode switching, catalog, validation, rendering and save behavior. Builder uses continuous rows that adapt at their own 380px container width. Callback is unchanged.",
-      "html": "<section class=\"ds-response-authoring\"><fieldset class=\"ds-body-toolbar\"><legend>Body</legend><div class=\"ds-segments\" role=\"group\" aria-label=\"Response body mode\"><button type=\"button\" aria-pressed=\"false\">Static</button><button type=\"button\" aria-pressed=\"true\">Template</button></div></fieldset><div class=\"ds-template-toolbar\"><div class=\"ds-segments\" role=\"group\" aria-label=\"Template editor view\"><button type=\"button\" aria-pressed=\"false\">Builder</button><button type=\"button\" aria-pressed=\"true\">JSON</button></div><button class=\"ds-text-command\" type=\"button\">Example</button></div><div class=\"ds-generation-settings\"><label>Locale<select><option>en</option></select></label><label>Seed<select><option>Random</option><option>Fixed</option><option>Request signature</option></select></label></div><label class=\"ds-json-field\">JSON template<textarea rows=\"12\" spellcheck=\"false\">{&quot;name&quot;:&quot;$person.firstName&quot;}</textarea></label><section class=\"ds-sample\" aria-labelledby=\"ds-sample-title\" aria-describedby=\"ds-sample-notice\"><div class=\"ds-sample-heading\"><span id=\"ds-sample-title\">Preview <span>Sample data</span></span><button type=\"button\">Regenerate</button></div><p id=\"ds-sample-notice\">Request-context values in this preview are synthetic samples, not captured live traffic. Context tokens require the JSON editor.</p><pre>{&quot;name&quot;:&quot;Alex&quot;}</pre></section></section>",
-      "css": ".ds-response-authoring{container-type:inline-size;min-width:0;padding-block:var(--space-3);border-block:1px solid var(--border);color:var(--text);font:400 var(--font-size-base)/1.5 var(--font-ui);}.ds-body-toolbar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);border:0;padding:0;margin:0 0 var(--space-3);}.ds-body-toolbar legend{float:left;margin-right:var(--space-3);font-weight:600;}.ds-segments{display:inline-flex;border:1px solid var(--border-strong);border-radius:var(--radius-md);padding:3px;}.ds-segments button,.ds-text-command{min-height:40px;padding:var(--space-2);border:1px solid transparent;border-radius:var(--radius-sm);color:var(--text-muted);background:transparent;font:600 var(--font-size-sm) var(--font-ui);cursor:pointer;}.ds-segments button[aria-pressed=true]{color:var(--text);border-color:var(--accent-border);background:var(--accent-subtle);}.ds-segments button:hover,.ds-text-command:hover{color:var(--accent-hover);background:var(--surface-2);}.ds-response-authoring button:focus-visible,.ds-response-authoring select:focus-visible,.ds-response-authoring textarea:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-template-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-2);padding-block:var(--space-2);margin-bottom:var(--space-3);border-bottom:1px solid var(--border);}.ds-generation-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3);margin-bottom:var(--space-4);}.ds-generation-settings label,.ds-json-field{display:grid;min-width:0;gap:var(--space-2);font-weight:600;}.ds-generation-settings select{width:100%;min-height:44px;border:1px solid var(--border-strong);border-radius:var(--radius-md);padding:var(--space-2);color:var(--text);background:var(--surface);font:400 var(--font-size-base) var(--font-ui);}.ds-json-field textarea{min-width:0;min-height:220px;resize:vertical;padding:var(--space-3);border:1px solid var(--code-border);border-radius:var(--radius-md);color:var(--code-fg);background:var(--code-bg);font:400 12px/1.7 var(--font-code);}.ds-sample{margin-top:var(--space-4);overflow:hidden;border:1px solid var(--code-border);border-radius:var(--radius-sm);color:var(--code-fg);background:var(--code-bg);font:400 12px/1.7 var(--font-code);}.ds-sample-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-2);padding:var(--space-2) var(--space-3);border-bottom:1px solid var(--code-border);}.ds-sample-heading span span{color:var(--code-muted);font-size:var(--font-size-xs);}.ds-sample button{padding:var(--space-2);border:1px solid var(--code-border);border-radius:var(--radius-sm);color:var(--code-fg);background:var(--code-surface);font:600 var(--font-size-xs) var(--font-ui);cursor:pointer;}.ds-sample button:hover{border-color:var(--accent-border);}.ds-sample p{padding:var(--space-2) var(--space-3);color:var(--code-muted);font-size:var(--font-size-xs);}.ds-sample pre{max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:var(--space-3);margin:0;}@container(max-width:380px){.ds-generation-settings{grid-template-columns:minmax(0,1fr);}}"
-    },
-    {
-      "name": "Primary response fault disclosure",
-      "kind": "custom",
-      "description": "Delivered collapsed fault summary with one inline draft type/probability annotation. This isolated native disclosure shows a malformed-body draft; application Alpine reads the existing deferred Livewire probability locally (41 \u2192 blank \u2014 \u2192 100), retaining the input binding and save scope. Type switching, validation and serving remain application behavior. Fault and Rule fields stack at their own 430px container width.",
-      "html": "<section class=\"ds-fault-workspace\"><details class=\"ds-fault-disclosure\"><summary><svg class=\"ds-fault-chevron\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"m9 5 7 7-7 7\"/></svg><strong>Fault injection</strong><span class=\"ds-fault-enabled\">Enabled</span><span class=\"ds-fault-summary\">Malformed body \u00b7 <span>41</span>%</span></summary><div class=\"ds-fault-controls\"><p>Update response or Save changes applies these settings.</p><label class=\"ds-fault-toggle\"><input type=\"checkbox\" checked><span>Enable fault injection</span></label><p>Applied after response selection. Faulted calls still count as matches.</p><div class=\"ds-fault-fields\"><label>Fault type<select><option>Malformed body (JSON/XML)</option></select></label><label>Probability (%)<input type=\"number\" min=\"0\" max=\"100\" value=\"41\"></label></div><p>Replaces JSON or XML with an unfinished document.</p></div></details></section>",
-      "css": ".ds-fault-workspace{container-type:inline-size;min-width:0;color:var(--text);font:400 var(--font-size-base)/1.5 var(--font-ui);}.ds-fault-disclosure{min-width:0;border-block:1px solid var(--border);}.ds-fault-disclosure>summary{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-2);padding-block:var(--space-3);cursor:pointer;list-style:none;}.ds-fault-disclosure>summary:hover{color:var(--text);background:var(--surface-hover);}.ds-fault-disclosure>summary:focus-visible,.ds-fault-controls :is(input,select):focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;}.ds-fault-chevron{flex-shrink:0;transition:transform var(--motion-base);}.ds-fault-disclosure[open] .ds-fault-chevron{transform:rotate(90deg);}.ds-fault-enabled{padding:2px 6px;border:1px solid var(--warning-border);border-radius:var(--radius-sm);background:var(--warning-bg);color:var(--warning-fg);font-size:var(--font-size-xs);}.ds-fault-summary,.ds-fault-summary>span{display:inline;}.ds-fault-summary{color:var(--text-muted);font-size:var(--font-size-xs);font-weight:400;}.ds-fault-controls{min-width:0;border-top:1px solid var(--border);padding-block:var(--space-2);}.ds-fault-controls p{margin:0 0 var(--space-3);color:var(--text-muted);font-size:var(--font-size-sm);overflow-wrap:anywhere;}.ds-fault-toggle{display:flex;align-items:center;gap:var(--space-2);min-height:36px;margin-bottom:var(--space-2);}.ds-fault-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3);margin-bottom:var(--space-3);}.ds-fault-fields label{display:grid;min-width:0;gap:var(--space-2);font-weight:600;}.ds-fault-fields :is(input,select){width:100%;min-width:0;min-height:44px;padding:var(--space-2);border:1px solid var(--border-strong);border-radius:var(--radius-md);background:var(--surface);color:var(--text);font:400 var(--font-size-base) var(--font-ui);}.ds-fault-fields :is(input,select):hover{border-color:var(--accent-border);}@container(max-width:430px){.ds-fault-fields{grid-template-columns:minmax(0,1fr);}}"
+      "refersTo": "code-well",
+      "description": "Technical text within a bounded inset work surface.",
+      "html": "<pre class=\"ds-code\" tabindex=\"0\" aria-label=\"Example response body\">{\n  \"ok\": true\n}</pre>",
+      "css": ".ds-code{max-height:300px;overflow:auto;margin:0;padding:16px 20px;border:0;border-bottom:1px solid var(--line,#332e26);border-radius:0;color:var(--code-fg,#e7e0d5);background:var(--code-bg,#201d18);box-shadow:var(--inset-well,inset 0 2px 6px -2px rgb(0 0 0 / 55%));font:400 12px/1.85 var(--font-code,\"JetBrains Mono\",ui-monospace,monospace);font-variant-ligatures:none}.ds-code:focus-visible{outline:2px solid var(--focus-ring,#e6b66d);outline-offset:3px;}"
     }
   ],
   "narrative": {
-    "northStar": "Supplied desktop workbench",
-    "overview": "Warm surfaces, compact typography, continuous working areas and restrained elevation. This source-derived record covers shared chrome, the paginated editor explorer, registry presentation, the bounded endpoint workspace, response authoring, selection and primary-response faults. Editor / Callback / Settings, responsive request/response panes, the continuous Body canvas, saved-weight chances, scoped Sequence runtime, direct Rule controls and draft fault summaries are delivered. The bounded S06/S07/S08/S09 milestone brings the checklist to 24/72; History/basic pool safeguards (S02/S10) and Callback remain pending.",
+    "northStar": "The Warm Operating Workbench",
+    "overview": "The implemented v7 system follows the approved HTML prototype's final cascade: warm dark grounds, amber commands, compact typography, continuous panes and measured tactile depth. Light uses warm pale equivalents; System resolves the same two maps. This records the pinned reference with no new visual direction.\n\nMockDeck is an operator's exact-request mocking tool. The persisted product-contract equivalent is [Product contract in the UI guide](docs/UI_GUIDE.md#product-contract). Server persistence, real recorded evidence, independent draft scopes and existing Laravel/Livewire/Alpine behavior constrain presentation. Prototype fixture content and browser-local demos do not replace application semantics.",
     "keyCharacteristics": [
-      "Paired warm light/dark mappings",
-      "Flat continuous operating surfaces",
-      "System UI and local mono typography",
-      "Existing feature and mutation contracts retained"
+      "Warm paired themes with amber emphasis and restrained semantic exceptions.",
+      "Compact system UI type and self-hosted JetBrains Mono for machine values.",
+      "Continuous work surfaces with inset editors and selectively elevated controls.",
+      "Explicit selected, disabled, loading, error and save states with existing keyboard behavior."
     ],
     "rules": [
       {
         "name": "The Paired Theme Rule",
-        "body": "Change light and dark mappings together, using existing semantic CSS roles.",
+        "body": "Change both semantic maps together. Keep each color's role; do not scatter prototype literals into feature styles.",
         "section": "colors"
       },
       {
-        "name": "The Continuous Surface Rule",
-        "body": "Registry rows touch and share borders; workbench cards/buttons do not gain decorative elevation or hover translation.",
+        "name": "The Contextual Boundary Rule",
+        "body": "Verify field and focus contrast against the actual adjacent surface in each state. A boundary passing on its inset field does not certify it on every pressed or raised surface.",
+        "section": "colors"
+      },
+      {
+        "name": "The Machine Value Rule",
+        "body": "Preserve exact technical bytes and readable identities. A syntax layer, preview or copy affordance must not imply formatting, execution or persistence that the underlying control does not perform.",
+        "section": "typography"
+      },
+      {
+        "name": "The Scroll Ownership Rule",
+        "body": "Give each task one measured outer viewport or the documented independent pane scrollers. Bound tables, code and overlays within their component; preserve focus, sticky action clearance and reading order when panes stack.",
+        "section": "layout"
+      },
+      {
+        "name": "The Selective Depth Rule",
+        "body": "Preserve the prototype's primary-button gradient and tactile control states while keeping continuous working panes free of decorative card lift.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do use semantic CSS variables.",
-      "Do retain full endpoint identities and accessible names.",
-      "Do preserve measured shell/action offsets.",
-      "Do keep unchecked migrations visibly future work.",
-      "Do keep the visible footer Shortcuts opener available after single-key opt-out."
+      "**Do** follow the approved prototype's final cascade, then guide recipes, while retaining application behavior.",
+      "**Do** use paired semantic tokens, self-hosted JetBrains Mono and measured shell/component geometry.",
+      "**Do** preserve native controls, focus visibility, selected text/ARIA cues, reduced motion and forced-color fallbacks.",
+      "**Do** retain independent draft/save scopes, recorded evidence and existing recovery actions.",
+      "**Do** verify actual responsive states in both themes and System; source tests alone do not certify appearance."
     ],
     "donts": [
-      "Don't treat the delivered endpoint workspace, response authoring and bounded S06/S07/S08/S09 milestone as completion of History/basic pool safeguards (S02/S10), Callback or the full upgrade checklist.",
-      "Do not store configuration drafts or secrets in workbench preferences.",
-      "Do not alter matching, import, mutation or run-isolation behavior as a visual side effect."
+      "**Don't** restore stale v6 shell dimensions, 1100px editor stacking, pill tags or flat/no-gradient control rules.",
+      "**Don't** change technical bytes, parser/validation semantics or server persistence to mimic prototype demos.",
+      "**Don't** flatten the defined amber primary gradient or remove selective elevation.",
+      "**Don't** claim pixel-identical content across different fixtures or complete accessibility from automated checks.",
+      "**Don't** canonize the inherited ordinary-table `tr[aria-expanded]` axe finding as a component rule; its inspector/keyboard hooks remain preserved pending a separately scoped semantic change."
     ]
   }
 }

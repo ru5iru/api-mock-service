@@ -1,6 +1,10 @@
-# UI upgrade checklist and implementation record
+# Historical v6 UI upgrade checklist and implementation record
 
-Baseline: uploaded master archive `8622ec7d9223c97394a936501762d2d6f909cfa7` (487 files verified against the archive); local Git ancestry remains `44a00e3`. Direction: the supplied version-6 desktop workbench and the 28 October UI/UX upgrade plan. This is the maintained implementation checklist derived from that plan.
+> **Historical v6 record - superseded visual authority.** This file preserves the earlier version-6 checklist, delivery counts, decisions and evidence in their original context. Its checkboxes, pending gates and geometry are historical claims, not current v7 acceptance or styling instructions.
+>
+> Current authority: the approved v7 HTML prototype's final cascade, then its component guide, while retaining application behavior. [UI_GUIDE.md](UI_GUIDE.md) is the tracked product contract, exact token inventory and implementation reference; [DESIGN.md](../DESIGN.md) and [.impeccable/design.json](../.impeccable/design.json) record the synchronized visual system. The ignored `docs/ui-redesign/after/qa/RESULTS.md` contains v7 verification evidence and limitations, including the inherited table ARIA finding and reproduced baseline test issues. This ledger does not certify a clean accessibility or full backend pass.
+
+Baseline: uploaded master archive `8622ec7d9223c97394a936501762d2d6f909cfa7` (487 files verified against the archive); local Git ancestry remains `44a00e3`. Direction: the supplied version-6 desktop workbench and the 28 October UI/UX upgrade plan. The following was the maintained implementation checklist derived from that v6 plan.
 
 ## Reconciliation with recent master
 
@@ -17,7 +21,7 @@ Baseline: uploaded master archive `8622ec7d9223c97394a936501762d2d6f909cfa7` (48
 
 A checkbox means the named scope is implemented and has **two recorded successful verification passes**. Source inspection and a browser pass are different forms of evidence; running the same assertion twice is not an independent review. Partial work stays unchecked. Environment-blocked checks stay BLOCKED and do not become a pass. The ledger names which milestone is delivered; unchecked items are future work, not silently dropped features.
 
-## Current delivery boundary
+## Historical v6 delivery boundary
 
 Delivered implementation: workbench shell, registry, endpoint Request/Matching/Settings, response authoring and selection/faults, Callback, both Logs inspectors, Environments, transfer, History, Documentation, access and recovery. Existing services and contracts remain authoritative. **71/72 items are verified; A04 remains a manual release gate.** This rebuilt delivery supersedes the unavailable previous archive; its verification results are recorded below rather than inherited from that archive.
 

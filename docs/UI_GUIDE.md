@@ -4,6 +4,10 @@ MockDeck is a Laravel, Livewire and Alpine application for exact-request API moc
 
 The browser loads `public/css/tokens.css` and `public/css/app.css` directly. There is no CSS framework or compilation step. The self-hosted machine-value face is JetBrains Mono. Add a named token before introducing a component color, dimension, radius or shadow. Media/container thresholds remain literal because custom properties cannot supply query conditions. The established one-pixel visually hidden clipping recipe is the other documented geometry exception.
 
+## Product contract
+
+MockDeck serves operators who configure exact-request API mocks, author response pools and callbacks, inspect retained request/delivery evidence, manage Environment variables, and transfer configuration. This dashboard is an operating tool: readable machine values, clear save scopes, compact scanable lists and predictable keyboard controls take priority. Configuration persists on the server. The active Environment affects ordinary traffic instance-wide; isolated test-run history is read-only here. The HTML prototype supplies visual authority, while the application supplies route, validation, execution, draft and persistence truth. Visual changes must preserve those contracts and the existing hooks. This section is the persisted product-contract equivalent for the v7 implementation.
+
 ## Shell and responsive layout
 
 `resources/views/layouts/dashboard.blade.php` and `resources/views/components/workbench-navigation.blade.php` own the shell; `public/js/workbench.js` owns presentation preferences and drawer focus. The topbar persists during Livewire navigation. The context sidebar rerenders for the active destination. Keep the skip link, landmarks, accessible navigation names and fixed status bar. The environment menu: `resources/views/livewire/admin/environment-switcher.blade.php`.
@@ -18,6 +22,8 @@ The browser loads `public/css/tokens.css` and `public/css/app.css` directly. The
 | Standard / small / large control | 32px / 26px / 36px |
 | Touch controls | Existing larger 44px mobile targets retained |
 | Tabs / editor toolbar | 42px / 36px; mobile tab targets 44px |
+| Editor panes / export panes | Stack at <=650px / <=720px, matching the prototype |
+| Log inspector | Beside the list above 780px; focused inspector view below |
 
 Desktop sidebar visibility and single-key shortcut opt-in keep their existing storage keys. The rail remains visible on mobile, alongside the labelled Menu. The environment switcher continues to affect ordinary traffic instance-wide. Theme, environment and user menus retain their existing semantics and actions.
 
@@ -38,6 +44,8 @@ Dark surfaces follow the warm prototype neutrals and amber. Light uses warm pale
 Text and placeholders require >=4.5:1. Input boundaries and visible focus indicators require >=3:1. Fields use a solid focus outline plus their focus border and optional halo; a translucent shadow alone is insufficient. Selected states retain text/ARIA indicators as well as color. Disabled text uses its own opaque foreground/background roles. Loading and overridden fields retain readable text instead of lowering the entire component's opacity.
 
 Global recipes include selection foreground/background, caret, scrollbars, focus-visible, reduced motion and forced colors. Do not remove browser-native checkbox/radio behavior or the forced-colors select fallback. Keep `aria-live`, dialog focus management and focus restoration. Use existing SVG icons, `currentColor`, the shared icon sizes and decorative `aria-hidden` attributes.
+
+Response readiness icons expose their label through `role="img"`. The inherited request-log `tr[aria-expanded]` remains a known axe finding: an ordinary table row cannot use that state as a treegrid row can. Its current inspector/keyboard hooks are preserved in this visual-only update. A future semantic change should use a real disclosure control and update every reference together; do not claim a clean accessibility audit or invent treegrid semantics. Automated checks do not replace a physical screen-reader session.
 
 ## Buttons and inline commands
 
@@ -82,9 +90,11 @@ Empty states keep the current explanation and relevant action. Filter-empty and 
 ## Page recipes and preserved workflows
 
 - Endpoints: compact toolbar, visible filter captions, selection/bulk actions, separator rows, state/method/tag metadata, canonical popover and pagination. All row-navigation exclusions and copy hooks remain intact.
-- Create/edit: request-first flow, explicit response picker, existing primary/inner tabs and bottom sticky save bar. Keep independent request, response/callback and selection drafts. The prototype's editable URL/method, execution preview and header-only Save are not introduced because they would change behavior. The existing gear brand is retained.
+- Create/edit: the 65px desktop heading, 42px primary tabs, 76px request strip and split request/response panes follow the prototype. Save and the existing Cancel action sit in the heading above 650px; phone layouts retain the bottom save bar and 44px targets. Keep independent request, response/callback and selection drafts. The existing Edit request action opens the raw cURL field; do not introduce an execution preview or different parsing workflow. The shared brand uses the prototype's stacked SVG mark.
 - Response authoring: Static/Template and JSON/Builder modes, nested schema rows, drag/keyboard reorder, Faker catalog/arguments, sample render, selection strategies and fault controls reuse the shared field/menu/list recipes. Preview/view changes do not persist configuration.
-- Logs: all current filters, live state, density, search, request/callback evidence, copied values, inspectors and Resend actions remain available. Extra app columns use the guide's table recipe.
+  Static bodies use a presentation-only syntax layer and line gutter over the original textarea. It never writes the field value; no formatting or validation is implied. The native textarea remains readable if JavaScript is unavailable and in forced colors.
+- Logs: all current filters, live state, density, search, request/callback evidence, copied values, inspectors and Resend actions remain available. The request table uses the prototype's five columns; endpoint and Environment metadata sit beneath the request target. Additional live-app filters remain visible as extensions.
+- Import / export: endpoint selection and export options use the prototype's two-column layout. Existing Import and Review plan anchors reach the subsequent upload and preview sections. All actions and confirmations remain available; no prototype-only browser download or local-save behavior is introduced.
 - Environments: shared selected-list and settings forms; separate active/default/selected states; secret values remain write-only; drafts survive environment switches as before.
 - Import/export: flat two-pane workspace, selected endpoint rows, dashed upload well, Native/Postman controls and review/diff notices. Keep the real preview, acknowledgement, apply, undo, redaction and export pipelines.
 - Documentation: one reading column, 60ch prose, shared code/table/search/copy recipes and existing section links. Keep code and API meaning unchanged.
@@ -94,6 +104,8 @@ Empty states keep the current explanation and relevant action. Filter-empty and 
 Endpoint navigation compares saved scope baselines with current editable values through `public/js/editor-drafts.js`. Request, response/callback and selection drafts remain independently dirty after a failed or partial save. Anchors and the N shortcut use the shared confirmation; browser close/refresh uses before-unload protection. Inspection/preview actions never mark a configuration dirty. Retained Unsaved changes and saved identity summaries keep their current meaning.
 
 Callback configuration belongs in the Callback tab. Signing remains HMAC-SHA256 of the exact raw resolved body bytes; existing password fields and saved-callback testing keep their semantics. Owner: log viewer, callback log, endpoint form for the shared callback/history evidence presentation.
+
+Callback uses the prototype's visible heading and 850px bounded form, with the existing response selector as a compact strip above it. Delivery explanations follow the URL controls. Settings pairs Collection/Priority and gives Tags its own full-width section. Mobile request-log selects use two columns and the live/pause line stays compact; desktop request rows target 69px, with one-line endpoint/Environment metadata and a compact Copy command. Native phone controls retain 44px targets.
 
 ## Theme tokens
 
@@ -107,7 +119,7 @@ The following table is generated from `public/css/tokens.css`. Dark inherits geo
 | `--shell-status-height` | `25px` | Same |
 | `--shell-chrome` | `#f1eee8` | `#26221c` |
 | `--shell-sidebar` | `#f5f2ec` | `#242019` |
-| `--font-ui` | `-apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"` | Same |
+| `--font-ui` | `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif` | Same |
 | `--font-code` | `"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace` | Same |
 | `--font-size-xs` | `11px` | Same |
 | `--font-size-sm` | `12px` | Same |
@@ -355,7 +367,7 @@ The following table is generated from `public/css/tokens.css`. Dark inherits geo
 | `--body-editor-min-height` | `260px` | Same |
 | `--actionbar-min-height` | `56px` | Same |
 | `--code-editor-font-size` | `12px` | Same |
-| `--code-editor-font-size-wide` | `13px` | Same |
+| `--code-editor-font-size-wide` | `12px` | Same |
 | `--summary-cell-padding` | `10px` | Same |
 | `--log-row-height` | `69px` | Same |
 | `--log-row-comfortable-height` | `84px` | Same |
@@ -440,6 +452,35 @@ The following table is generated from `public/css/tokens.css`. Dark inherits geo
 | `--shadow-explorer-selected` | `inset 2px 0 var(--accent), var(--highlight-edge), var(--shadow-2)` | Same |
 | `--logs-heading-height` | `73px` | Same |
 | `--logs-heading-height-mobile` | `66px` | Same |
+| `--editor-heading-height` | `65px` | Same |
+| `--editor-bottom-clearance` | `16px` | Same |
+| `--actionbar-placement` | `footer` | Same |
+| `--editor-action-top` | `62.5px` | Same |
+| `--editor-action-width` | `232px` | Same |
+| `--editor-save-width` | `152px` | Same |
+| `--transfer-selection-track` | `1.65fr` | Same |
+| `--transfer-scope-width` | `140px` | Same |
+| `--editor-header-actions-space` | `252px` | Same |
+| `--response-status-track` | `1.3fr` | Same |
+| `--request-toolbar-padding-bottom` | `20px` | Same |
+| `--request-empty-height` | `151px` | Same |
+| `--matching-heading-height` | `41px` | Same |
+| `--matching-helper-line-height` | `1.6` | Same |
+| `--matching-helper-top` | `3px` | Same |
+| `--request-preview-top` | `32px` | Same |
+| `--request-preview-icon` | `17px` | Same |
+| `--workspace-separator-height` | `17px` | Same |
+| `--workspace-separator-gap` | `19px` | Same |
+| `--explorer-action-offset` | `13px` | Same |
+| `--explorer-action-size` | `24px` | Same |
+| `--explorer-search-inset` | `30px` | Same |
+| `--explorer-search-icon-inset` | `9px` | Same |
+| `--code-gutter-width` | `40px` | Same |
+| `--code-gutter-number-width` | `24px` | Same |
+| `--log-time-column` | `88px` | Same |
+| `--log-match-column` | `76px` | Same |
+| `--log-status-column` | `96px` | Same |
+| `--log-duration-column` | `96px` | Same |
 
 
 ## Validation and coverage
