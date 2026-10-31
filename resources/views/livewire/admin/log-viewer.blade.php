@@ -24,7 +24,6 @@
         </div>
     @endunless
 
-    <div class="card log-card">
         @if ($full)
             <div class="log-statusbar">
                 <div class="live-state {{ ($paused || $expandedKey !== null) ? 'paused' : 'live' }}">
@@ -39,6 +38,9 @@
                 </div>
             </div>
         @endif
+
+    <div class="card log-card">
+
 
     @if ($full)
         <div class="log-filter-panel" aria-label="Request log filters">
@@ -121,6 +123,7 @@
                     <input type="checkbox" wire:model.live="groupRepeats">
                     <span>Group repeats</span>
                 </label>
+                <span class="log-match-help">Match <x-help-tip title="Match types" label="Hash is an exact signature match. Fallback is a normalized recovery match. None means no endpoint matched." /></span>
                 <div class="segmented-control clock-toggle" role="group" aria-label="Timestamp display">
                     <button type="button" wire:click="$set('clock', 'local')" aria-pressed="{{ $clock === 'local' ? 'true' : 'false' }}">Local</button>
                     <button type="button" wire:click="$set('clock', 'utc')" aria-pressed="{{ $clock === 'utc' ? 'true' : 'false' }}">UTC</button>
@@ -147,10 +150,8 @@
             <thead>
                 <tr>
                     <th scope="col">Time</th>
-                    <th scope="col">Request</th>
-                    <th scope="col">Match <x-help-tip title="Match types" label="Hash is an exact signature match. Fallback is a normalized recovery match. None means no endpoint matched." /></th>
-                    <th scope="col">Endpoint</th>
-                    <th scope="col">Environment</th>
+                    <th scope="col">Request / endpoint</th>
+                    <th scope="col">Match @unless($full)<x-help-tip title="Match types" label="Hash is an exact signature match. Fallback is a normalized recovery match. None means no endpoint matched." />@endunless</th>
                     <th scope="col">Status</th>
                     <th scope="col" class="numeric">Duration</th>
                 </tr>
@@ -168,7 +169,7 @@
                         $expanded = $expandedKey === $event['_key'];
                     @endphp
                     @if ($dayKey !== $previousDay)
-                        <tr class="day-separator"><th colspan="7" scope="rowgroup">{{ $dayLabel }}</th></tr>
+                        <tr class="day-separator"><th colspan="5" scope="rowgroup">{{ $dayLabel }}</th></tr>
                         @php
                             $previousDay = $dayKey;
                         @endphp
@@ -199,14 +200,7 @@
                                 @endif
                                 <button class="copy-row-control" type="button" data-copy-curl="{{ $event['_reconstructed_curl'] }}" data-stop-row-navigation x-on:click.stop x-on:keydown.enter.stop aria-label="Copy request curl">Copy</button>
                             </div>
-                        </td>
-                        <td>
-                            <x-badge :variant="$tier === 'hash' ? 'success' : ($tier === 'fallback' ? 'warning' : 'danger')">
-                                <span aria-hidden="true">{{ $tier === 'hash' ? '✓' : ($tier === 'fallback' ? '~' : '!') }}</span>
-                                {{ $tier === 'hash' ? 'Hash' : ($tier === 'fallback' ? 'Fallback' : 'None') }}
-                            </x-badge>
-                        </td>
-                        <td>
+                            <div class="log-request-meta">
                             @if ($event['_endpoint_exists'])
                                 <a class="table-link" href="{{ route('dashboard.endpoints.edit', $event['endpoint_id']) }}" wire:navigate x-on:click.stop>{{ $event['_endpoint_name'] }}</a>
                             @elseif (isset($event['endpoint_id']))
@@ -214,8 +208,15 @@
                             @else
                                 <span class="muted">—</span>
                             @endif
+                            <x-badge>{{ $event['environment'] ?? '—' }}</x-badge>
+                            </div>
                         </td>
-                        <td><x-badge>{{ $event['environment'] ?? '—' }}</x-badge></td>
+                        <td>
+                            <x-badge :variant="$tier === 'hash' ? 'success' : ($tier === 'fallback' ? 'warning' : 'danger')">
+                                <span aria-hidden="true">{{ $tier === 'hash' ? '✓' : ($tier === 'fallback' ? '~' : '!') }}</span>
+                                {{ $tier === 'hash' ? 'Hash' : ($tier === 'fallback' ? 'Fallback' : 'None') }}
+                            </x-badge>
+                        </td>
                         <td>
                             <span class="status-result {{ $event['_mocked_server_response'] ? 'mocked' : 'status-result-'.intdiv((int) ($event['status_code'] ?? 0), 100).'xx' }}">
                                 <span aria-hidden="true">{{ $event['_mocked_server_response'] ? '●' : ((int) ($event['status_code'] ?? 0) >= 400 ? '!' : '✓') }}</span>
@@ -232,7 +233,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="empty-table">
+                        <td colspan="5" class="empty-table">
                             @if ($hasAnyEvents)
                                 <strong>No requests match the current filters.</strong>
                                 <span>Clear the filters to return to all available events.</span>
@@ -250,7 +251,7 @@
     </div>
     @if ($expandedKey !== null)
         <section class="activity-inspector" data-activity-inspector tabindex="-1" aria-label="Request inspector">
-            <button class="button button-secondary button-small" type="button" wire:click="toggleExpanded('{{ $expandedKey }}')" data-activity-back>Back to list</button>
+            <div class="activity-inspector-heading"><h2>Request details</h2><button class="icon-button" type="button" wire:click="toggleExpanded('{{ $expandedKey }}')" data-activity-back><span class="sr-only">Back to list</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg></button></div>
             @php($selectedEvent = collect($events)->firstWhere('_key', $expandedKey))
             @if ($selectedEvent)
                 @include('livewire.admin.partials.request-inspector', ['event' => $selectedEvent, 'tier' => $selectedEvent['match_tier'] ?? 'none'])

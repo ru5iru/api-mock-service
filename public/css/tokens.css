@@ -19,7 +19,7 @@
     --shell-sidebar: #f5f2ec;
 
     /* Typography */
-    --font-ui: -apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-code: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     --font-size-xs: 11px;
     --font-size-sm: 12px;
@@ -281,7 +281,7 @@
     --body-editor-min-height: 260px;
     --actionbar-min-height: 56px;
     --code-editor-font-size: 12px;
-    --code-editor-font-size-wide: 13px;
+    --code-editor-font-size-wide: 12px;
     --summary-cell-padding: 10px;
     --log-row-height: 69px;
     --log-row-comfortable-height: 84px;
@@ -366,6 +366,31 @@
     --shadow-explorer-selected: inset 2px 0 var(--accent), var(--highlight-edge), var(--shadow-2);
     --logs-heading-height: 73px;
     --logs-heading-height-mobile: 66px;
+    --editor-heading-height: 65px;
+    --editor-bottom-clearance: 16px;
+    --actionbar-placement: footer;
+    --editor-action-top: 62.5px;
+    --editor-action-width: 232px;
+    --editor-save-width: 152px;
+    --transfer-selection-track: 1.65fr;
+    --transfer-scope-width: 140px;
+    --editor-header-actions-space: 252px;
+    --response-status-track: 1.3fr;
+    --request-toolbar-padding-bottom: 20px;
+    --request-empty-height: 151px;
+    --matching-heading-height: 41px;
+    --matching-helper-line-height: 1.6;
+    --matching-helper-top: 3px;
+    --request-preview-top: 32px;
+    --request-preview-icon: 17px;
+    --workspace-separator-height: 17px;
+    --workspace-separator-gap: 19px;
+    --explorer-action-offset: 13px;
+    --explorer-action-size: 24px;
+    --explorer-search-inset: 30px;
+    --explorer-search-icon-inset: 9px;
+    --code-gutter-width: 40px;
+    --code-gutter-number-width: 24px;
 }
 
 [data-theme="dark"] {

@@ -140,11 +140,14 @@ try {
                     geometry = await page.evaluate(() => {
                         const pane = document.querySelector('[data-editor-viewport]').getBoundingClientRect();
                         const bar = document.querySelector('#save-actions').getBoundingClientRect();
-                        return { paneBottom: pane.bottom, barTop: bar.top };
+                        const action = document.querySelector('#save-actions');
+                        const headerActions = getComputedStyle(action).getPropertyValue('--actionbar-placement').trim() === 'header';
+                        const footerTop = document.querySelector('.footer').getBoundingClientRect().top;
+                        return { paneBottom: pane.bottom, barTop: bar.top, limit: headerActions ? footerTop + 1 : bar.top - 15 };
                     });
-                    return geometry.paneBottom <= geometry.barTop - 15;
+                    return geometry.paneBottom <= geometry.limit;
                 }, () => `${theme}/${width}/${section}: save bar obscures pane after layout settles: ${JSON.stringify(geometry)}`);
-                assert.ok(geometry.paneBottom <= geometry.barTop - 15,
+                assert.ok(geometry.paneBottom <= geometry.limit,
                     `${theme}/${width}/${section}: save bar obscures pane: ${JSON.stringify(geometry)}`);
                 const visible = await page.locator('.endpoint-authoring-grid input:visible, .endpoint-authoring-grid select:visible, .endpoint-authoring-grid textarea:visible').evaluateAll(els => els.map(el => { const b = el.getBoundingClientRect(); return { x: b.x, right: b.right }; }));
                 for (const b of visible) assert.ok(b.x >= 0 && b.right <= width + 1, `${theme}/${width}/${section}: control escapes viewport`);

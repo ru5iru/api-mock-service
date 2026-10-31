@@ -68,7 +68,8 @@ try {
         const headerBox = await page.locator('[data-persistent-topbar]').boundingBox();
         const saveBox = await page.locator('[data-sticky-action-bar]').boundingBox();
         const footerBox = await page.locator('.footer').boundingBox();
-        assert.ok(fieldBox.y >= headerBox.y + headerBox.height && fieldBox.y + fieldBox.height <= saveBox.y, 'Focused input must clear sticky chrome');
+        const headerActions = await page.locator('[data-sticky-action-bar]').evaluate(el => getComputedStyle(el).getPropertyValue('--actionbar-placement').trim() === 'header');
+        assert.ok(fieldBox.y >= (headerActions ? saveBox.y + saveBox.height : headerBox.y + headerBox.height) && fieldBox.y + fieldBox.height <= (headerActions ? footerBox.y : saveBox.y), 'Focused input must clear fixed chrome');
         assert.ok(saveBox.y + saveBox.height <= footerBox.y + 1, 'Save action bar must clear status bar');
         await priority.blur();
         const tip = page.locator('.help-tip[aria-label="Priority"]');

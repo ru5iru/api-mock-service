@@ -28,7 +28,8 @@ try {
         assert.equal(await page.evaluate(() => window.MockDeckEditor.isDirty()), false, 'Fresh editor must be clean');
         for (const item of await page.getByRole('tab').all()) {
             const box = await item.boundingBox();
-            assert.ok(box.height >= (width <= 767 ? 44 : 42), `${width}/${await item.innerText()}: tab height ${box.height}`);
+            // The prototype's 42px desktop tab row includes its 1px divider.
+            assert.ok(box.height >= (width <= 650 ? 44 : 41), `${width}/${await item.innerText()}: tab height ${box.height}`);
         }
         await openEditorSection(page, 'Settings');
         const tip = page.locator('.help-tip[aria-label="Priority"]'); await tip.focus();

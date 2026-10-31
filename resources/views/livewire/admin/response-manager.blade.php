@@ -14,8 +14,11 @@
                 @endforeach
             </select>
             <button class="button button-secondary button-small" type="button" wire:click="createNew">New response</button>
+            @if ($editingId)
+                <button class="text-button response-cancel-edit" type="button" wire:click="cancelEdit">Cancel edit</button>
+            @endif
         </div>
-        <p class="field-help">Switching keeps each response's draft. Cancel edit discards only the current draft.</p>
+        <p class="field-help" title="Switching keeps each response's draft. Cancel edit discards only the current draft.">Switching keeps each response's draft. Cancel edit discards only the current draft.</p>
     </div>
     <nav class="response-workspace-links" aria-label="Response workspace">
         <a href="#response-editor-form">Response editor</a>
@@ -24,9 +27,6 @@
     <form id="response-editor-form" class="card response-form" wire:submit="save" tabindex="-1">
         <div class="form-title-row">
             <h3>{{ $editingId ? 'Edit response #'.$editingId : 'Add response' }}</h3>
-            @if ($editingId)
-                <button class="text-button" type="button" wire:click="cancelEdit">Cancel edit</button>
-            @endif
         </div>
 
         @php
@@ -50,24 +50,18 @@
                 @error('statusCode') <p class="field-error" data-error-for="{{ 'statusCode' }}">{{ $message }}</p> @enderror
             </div>
             <div class="field">
-                <label for="response-weight">Weight</label>
-                <input id="response-weight" type="number" min="1" wire:model="weight" aria-describedby="response-weight-help">
-                @error('weight') <p class="field-error" data-error-for="{{ 'weight' }}">{{ $message }}</p> @enderror
-            </div>
-            <div class="field">
                 <label for="response-delay">Delay (ms)</label>
                 <input id="response-delay" type="number" min="0" max="{{ config('mock.max_delay_ms') }}" wire:model="delayMs">
                 @error('delayMs') <p class="field-error" data-error-for="{{ 'delayMs' }}">{{ $message }}</p> @enderror
             </div>
+            <div class="field">
+                <label for="response-weight" title="Used only by Weighted selection. Sequence and rule-based selection ignore this value.">Weight</label>
+                <input id="response-weight" type="number" min="1" wire:model="weight" aria-describedby="response-weight-help">
+                @error('weight') <p class="field-error" data-error-for="{{ 'weight' }}">{{ $message }}</p> @enderror
+            </div>
         </div>
 
         <p id="response-weight-help" class="field-help response-weight-note">Used only by Weighted selection. Sequence and rule-based selection ignore this value.</p>
-
-        <div class="field response-headers-field">
-            <label for="response-headers">Headers <span>JSON object</span></label>
-            <textarea id="response-headers" class="code-input compact" rows="3" spellcheck="false" wire:model="headersJson"></textarea>
-            @error('headersJson') <p class="field-error" data-error-for="{{ 'headersJson' }}">{{ $message }}</p> @enderror
-        </div>
 
         <div class="response-body-workspace">
         <fieldset class="field option-group response-body-toolbar" aria-labelledby="body-mode-label">
@@ -80,8 +74,12 @@
 
         @if ($bodyMode === 'static')
             <div class="field">
-                <label for="response-body">Body <span>sent as-is</span></label>
-                <textarea id="response-body" class="code-input compact" rows="9" spellcheck="false" wire:model="body"></textarea>
+                <label for="response-body" class="response-source-caption" title="Body sent as-is"><span>Body sent as-is</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16" /></svg><span class="response-source-filename" aria-hidden="true">{{ json_decode($body) !== null || trim($body) === 'null' ? 'response.json' : 'response.txt' }}</span></label>
+                <div class="static-code-editor" data-static-code-editor>
+                    <pre class="static-code-gutter" aria-hidden="true" wire:ignore></pre>
+                    <pre class="static-code-highlight" aria-hidden="true" wire:ignore></pre>
+                    <textarea id="response-body" class="code-input compact" rows="9" spellcheck="false" wire:model="body" data-static-code-input></textarea>
+                </div>
                 @error('body') <p class="field-error" data-error-for="{{ 'body' }}">{{ $message }}</p> @enderror
             </div>
         @else
@@ -263,6 +261,12 @@
                 @endif
             </section>
         @endif
+        </div>
+
+        <div class="field response-headers-field">
+            <label for="response-headers">Headers <span>JSON object</span></label>
+            <textarea id="response-headers" class="code-input compact" rows="3" spellcheck="false" wire:model="headersJson"></textarea>
+            @error('headersJson') <p class="field-error" data-error-for="{{ 'headersJson' }}">{{ $message }}</p> @enderror
         </div>
 
         <details class="history-disclosure response-fault-settings" data-disclosure wire:ignore.self wire:key="response-fault-{{ $editingId ?? 'new' }}">

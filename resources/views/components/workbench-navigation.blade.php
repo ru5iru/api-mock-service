@@ -19,9 +19,9 @@
 <aside id="workbench-context" class="workbench-context" aria-label="Workspace sidebar">
     <div class="workbench-context-heading">{{ $destinations[$section][0] }}</div>
     @if($section === 'endpoints')
-        <div class="workbench-context-links">
-            <a href="{{ route('dashboard.endpoints.index') }}" wire:navigate>All endpoints</a>
-            <a href="{{ route('dashboard.endpoints.create') }}" wire:navigate>New endpoint <kbd>N</kbd></a>
+        <div class="workbench-context-links {{ request()->routeIs('dashboard.endpoints.create', 'dashboard.endpoints.edit') ? 'explorer-navigation' : '' }}">
+            <a href="{{ route('dashboard.endpoints.index') }}" wire:navigate title="All endpoints"><x-workbench-icon name="endpoints" /><span>All endpoints</span></a>
+            <a href="{{ route('dashboard.endpoints.create') }}" wire:navigate title="New endpoint"><svg class="workbench-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg><span>New endpoint</span><kbd>N</kbd></a>
         </div>
         @if(request()->routeIs('dashboard.endpoints.create', 'dashboard.endpoints.edit'))
             <livewire:admin.endpoint-index :explorer="true" :current-endpoint-id="request()->route('endpoint')?->id" :key="'workbench-explorer'" />

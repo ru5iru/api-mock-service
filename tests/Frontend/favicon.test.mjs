@@ -67,14 +67,13 @@ test('web app manifest exposes both PWA icons', () => {
     );
 });
 
-test('in-app brand marks use the static icon matching the effective theme', () => {
+test('in-app brand marks reproduce the prototype using the effective theme accent', () => {
     const component = readFileSync('resources/views/components/brand-mark.blade.php', 'utf8');
     const styles = readFileSync('public/css/app.css', 'utf8');
 
-    assert.match(component, /brand-mark-light[^>]+favicon-light\.svg/);
-    assert.match(component, /brand-mark-dark[^>]+favicon-dark\.svg/);
-    assert.match(styles, /\[data-theme="dark"\] \.brand-mark-light \{ visibility: hidden; \}/);
-    assert.match(styles, /\[data-theme="dark"\] \.brand-mark-dark \{ visibility: visible; \}/);
+    assert.match(component, /stroke="currentColor"/);
+    assert.match(component, /m3 6 9-4 9 4-9 4Z/);
+    assert.match(styles, /\.brand-mark[^}]+color: var\(--accent\)/);
 
     for (const path of shells) {
         assert.match(readFileSync(path, 'utf8'), /<x-brand-mark \/>/, `${path} uses the shared themed brand mark`);

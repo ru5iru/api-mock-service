@@ -1,10 +1,13 @@
 <div class="endpoint-editor" data-unsaved-form @if ($endpointId) data-global-save-editor @endif data-save-attempt="{{ $saveAttempt['id'] ?? '' }}" data-save-pending="{{ $savingAll ? 'true' : 'false' }}" data-server-dirty="{{ $saveSummary === \App\Livewire\Admin\EndpointForm::UNCONFIRMED ? 'true' : 'false' }}" data-draft-scope="request" data-draft-baseline="{{ json_encode($requestBaseline) }}" data-draft-current="{{ json_encode($this->requestDraftValues()) }}" x-data="{ activeTab: $wire.entangle('activeTab'), get workspaceTab() { return ['callback', 'settings'].includes(this.activeTab) ? this.activeTab : 'editor'; }, switchTab(tab) { this.activeTab = tab === 'editor' ? 'request' : tab; $wire.touchSection(this.activeTab); } }">
     <header class="page-header">
         <div class="page-header-copy">
-            <h1 class="page-breadcrumbs"><a href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Endpoints</a><span aria-hidden="true">/</span><x-inline-title :name="$name" :placeholder="$preview ? $derivedName : 'New endpoint'" /></h1>
+            <h1 class="page-breadcrumbs"><span class="editor-breadcrumb"><a href="{{ route('dashboard.endpoints.index') }}" wire:navigate>Endpoints</a><span aria-hidden="true">/</span><span>{{ $endpoint?->collection?->name ?? 'Unfiled' }}</span></span><x-inline-title :name="$name" :placeholder="$preview ? $derivedName : 'New endpoint'" /></h1>
             @error('name') <p class="field-error" data-error-for="{{ 'name' }}" role="alert">{{ $message }}</p> @enderror
         </div>
-        @if ($endpointId)<div class="page-header-actions"><button class="icon-button" type="button" data-dialog-open="endpoint-history-dialog" aria-label="Endpoint history" title="Endpoint history">↶ History</button></div>@endif
+        @if ($endpointId)<div class="page-header-actions"><div class="endpoint-invocation-actions">
+                <button class="button button-secondary button-small" type="button" data-copy-curl data-copy-endpoint="{{ $endpointId }}" title="Copies the saved request using today's active Environment values; unsaved changes are not included."><x-workbench-icon name="copy" /><span class="invocation-label">Copy mock curl</span></button>
+                <a class="button button-tertiary button-small" href="{{ route('dashboard.logs.index', ['endpoint' => $endpointId]) }}" wire:navigate title="Logs"><x-workbench-icon name="logs" /><span class="invocation-label">Logs</span></a>
+            </div><button class="icon-button" type="button" data-dialog-open="endpoint-history-dialog" aria-label="Endpoint history" title="Endpoint history"><svg class="workbench-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2 7M3 5v6h6m3-5v7l4 2" /></svg><span class="invocation-label">History</span></button></div>@endif
     </header>
     @php
         $requestReady = (bool) $preview && ! $duplicate && ! $isExample && $this->requestMetadataReady();
@@ -35,17 +38,22 @@
             @foreach (['editor' => ['Editor', $requestState, 'panel-editor panel-response'], 'callback' => ['Callback', $callbackState, 'panel-callback'], 'settings' => ['Settings', $settingsState, 'panel-settings']] as $tab => [$label, $state, $panel])
                 <button id="tab-{{ $tab }}" type="button" role="tab" aria-controls="{{ $panel }}"
                         x-bind:aria-selected="workspaceTab === '{{ $tab }}'" x-bind:tabindex="workspaceTab === '{{ $tab }}' ? 0 : -1" x-on:click="switchTab('{{ $tab }}')">
-                    <span>{{ $label }}</span><i class="section-status {{ $state }}" aria-label="{{ $state === 'valid' ? $label.' settings are ready' : ($state === 'attention' ? $label.' needs attention' : $label.' not yet reviewed') }}">{{ $stateSymbol($state) }}</i>
+                    @if ($tab === 'editor')<svg class="workbench-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16" /></svg>@endif<span>{{ $label }}</span><i class="section-status {{ $state }}" aria-label="{{ $state === 'valid' ? $label.' settings are ready' : ($state === 'attention' ? $label.' needs attention' : $label.' not yet reviewed') }}">{{ $stateSymbol($state) }}</i>
                 </button>
             @endforeach
         </div>
-        @if ($endpointId)
-            <div class="endpoint-invocation-actions">
-                <button class="button button-secondary button-small" type="button" data-copy-curl data-copy-endpoint="{{ $endpointId }}" title="Copies the saved request using today's active Environment values; unsaved changes are not included."><x-workbench-icon name="copy" /> Copy mock curl</button>
-                <a class="button button-tertiary button-small" href="{{ route('dashboard.logs.index', ['endpoint' => $endpointId]) }}" wire:navigate>Logs</a>
-            </div>
-        @endif
+
     </nav>
+
+    @if ($preview && ! $isExample && ! $curlExpanded)
+    <div class="endpoint-request-toolbar" x-show="workspaceTab === 'editor'">
+                        <div class="curl-summary">
+                            <span class="method-badge method-{{ strtolower($preview['parsed']->method) }}">{{ $preview['parsed']->method }}</span>
+                            <code title="{{ $preview['parsed']->url }}">{{ $preview['parsed']->url }}</code>
+                            <button class="button button-tertiary button-small" type="button" wire:click="$set('curlExpanded', true)"><svg class="workbench-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m4 16 12-12 4 4L8 20H4Zm10-10 4 4" /></svg><span class="request-source-label">Edit request</span></button>
+                        </div>
+    </div>
+    @endif
 
     <div class="endpoint-panel-viewport endpoint-workspace-viewport" data-editor-viewport>
         <div class="validation-panel error-panel" role="status" aria-live="polite" aria-atomic="true" data-save-result @if ($saveSummary === '') hidden @endif>
@@ -61,7 +69,18 @@
     <div class="endpoint-authoring-grid" x-bind:class="{ 'is-single-pane': workspaceTab !== 'editor' }">
     <form id="endpoint-settings" class="endpoint-request-workspace" wire:submit="saveAll" data-endpoint-save-form x-show="workspaceTab !== 'callback'">
         <div id="panel-editor" role="tabpanel" aria-labelledby="tab-editor" x-show="workspaceTab === 'editor'">
-            <div class="editor-pane-heading"><h2>Request &amp; matching</h2><span class="field-help">Draft request</span></div>
+            <div class="editor-pane-heading"><h2>Request</h2>                    <div id="curl-status" class="parse-status {{ $preview ? 'success' : ($previewError ? 'error' : 'idle') }}" aria-live="polite">
+                        @if ($preview)
+                            <span aria-hidden="true">✓</span>
+                            <strong>Parsed:</strong> {{ $preview['parsed']->method }} · {{ count($preview['parsed']->headers) }} {{ Str::plural('header', count($preview['parsed']->headers)) }} · body {{ strlen($preview['parsed']->body) }} B
+                        @elseif ($previewError)
+                            <span aria-hidden="true">!</span>
+                            <strong>Could not parse:</strong> {{ $previewError }}
+                        @else
+                            <span aria-hidden="true">i</span> Paste one curl command to preview its signature.
+                        @endif
+                        <span wire:loading.delay wire:target="rawCurl" class="loading-label">Parsing…</span>
+                    </div></div>
             <div class="editor-request-tabs" role="tablist" aria-label="Request configuration" data-editor-subtabs>
                 @foreach (['request' => ['Request', $requestState], 'matching' => ['Matching', $matchingState]] as $tab => [$label, $state])
                     <button id="tab-{{ $tab }}" type="button" role="tab" aria-controls="panel-{{ $tab }}" x-bind:aria-selected="(activeTab === 'matching' ? 'matching' : 'request') === '{{ $tab }}'" x-bind:tabindex="(activeTab === 'matching' ? 'matching' : 'request') === '{{ $tab }}' ? 0 : -1" x-on:click="switchTab('{{ $tab }}')">
@@ -77,14 +96,19 @@
                     </div>
                 </div>
 
+                @if ($preview && ! $isExample && ! $curlExpanded)
+                    <div class="request-header-preview">
+                        @if ($excludeHeaders || $headerAnalysis === [])
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 6h16M3 12h12M3 18h9m4-3 3 3-3 3" /></svg>
+                            <div><strong>{{ $headerAnalysis === [] ? 'No request headers' : 'Headers excluded from matching' }}</strong><p>{{ $excludeHeaders ? 'Headers are currently excluded from matching.' : 'No headers were parsed from this request.' }}</p></div>
+                        @else
+                            <dl>@foreach ($headerAnalysis as $header)<div><dt>{{ $header['name'] }}</dt><dd><code>{{ $header['display_value'] }}</code></dd></div>@endforeach</dl>
+                        @endif
+                    </div>
+                    @endif
+
                 <div class="field curl-field">
-                    @if ($preview && ! $isExample && ! $curlExpanded)
-                        <div class="curl-summary">
-                            <span class="method-badge method-{{ strtolower($preview['parsed']->method) }}">{{ $preview['parsed']->method }}</span>
-                            <code title="{{ $preview['parsed']->url }}">{{ $preview['parsed']->url }}</code>
-                            <button class="button button-tertiary button-small" type="button" wire:click="$set('curlExpanded', true)">Edit request</button>
-                        </div>
-                    @else
+                    @if (! $preview || $isExample || $curlExpanded)
                     <div class="label-row curl-label-row">
                         <label for="raw-curl">Curl command</label>
                         <div class="input-actions">
@@ -109,18 +133,7 @@
                     @endif
                     @error('rawCurl') <p id="raw-curl-error" class="field-error" data-error-for="{{ 'rawCurl' }}" role="alert">{{ $message }}</p> @enderror
 
-                    <div id="curl-status" class="parse-status {{ $preview ? 'success' : ($previewError ? 'error' : 'idle') }}" aria-live="polite">
-                        @if ($preview)
-                            <span aria-hidden="true">✓</span>
-                            <strong>Parsed:</strong> {{ $preview['parsed']->method }} · {{ count($preview['parsed']->headers) }} {{ Str::plural('header', count($preview['parsed']->headers)) }} · body {{ strlen($preview['parsed']->body) }} B
-                        @elseif ($previewError)
-                            <span aria-hidden="true">!</span>
-                            <strong>Could not parse:</strong> {{ $previewError }}
-                        @else
-                            <span aria-hidden="true">i</span> Paste one curl command to preview its signature.
-                        @endif
-                        <span wire:loading.delay wire:target="rawCurl" class="loading-label">Parsing…</span>
-                    </div>
+
 
                     @if ($isExample)
                         <div class="validation-panel warning-panel" role="alert">
@@ -161,49 +174,11 @@
                     </div>
                 </div>
 
-                <div class="policy-group path-pattern-policy">
-                    <label class="toggle-row">
-                        <span><strong>Use path parameters</strong><small>Wildcard segments; query, retained headers and body still match exactly.</small></span>
-                        <input type="checkbox" wire:model.live="pathPatternEnabled" aria-label="Use path parameters">
-                    </label>
-                    @if ($pathPatternEnabled && $pathSegments !== [])
-                        <div class="path-segment-editor" aria-label="Path segments">
-                            @foreach ($pathSegments as $index => $segment)
-                                @if ($index > 0)<span aria-hidden="true">/</span>@endif
-                                @if ($segment !== '')
-                                    @php($isParameter = str_starts_with($segment, '{') && str_ends_with($segment, '}'))
-                                    <div class="path-segment-chip {{ $isParameter ? 'is-parameter' : '' }}" wire:key="path-segment-{{ $index }}">
-                                        <button type="button" class="button button-secondary button-small" wire:click="togglePathSegment({{ $index }})" aria-pressed="{{ $isParameter ? 'true' : 'false' }}" aria-label="{{ $isParameter ? 'Use literal for segment '.$index : 'Use parameter for segment '.$index }}" title="{{ $isParameter ? 'Use literal segment' : 'Use path parameter' }}">{{ $isParameter ? '{ }' : $segment }}</button>
-                                        @if ($isParameter)<input type="text" class="path-parameter-name" wire:model.live.debounce.300ms="pathParameterNames.{{ $index }}" aria-label="Parameter name for segment {{ $index }}" maxlength="80" spellcheck="false">@endif
-                                    </div>
-                                @endif
-                            @endforeach
-                        </div>
-                    @endif
-                    @error('pathPatternEnabled') <p class="field-error" data-error-for="{{ 'pathPatternEnabled' }}" role="alert">{{ $message }}</p> @enderror
-                </div>
-
                 <div class="policy-group">
                     <div class="policy-heading">
                         <div><strong>Headers</strong><span>{{ count($headerAnalysis) }} parsed</span></div>
                         <x-help-tip title="Header matching" label="Volatile transport headers are always removed. You can additionally ignore cookies, authentication, or every header." />
                     </div>
-                    <div class="toggle-row {{ $excludeHeaders ? 'overridden' : '' }}">
-                        <span><span class="label-row"><label for="ignore-cookies"><strong>Ignore cookies</strong></label><span wire:ignore><x-help-tip title="Browser cookies and matching" label="A request carrying a Cookie header does not match an endpoint saved without one unless cookies are ignored. Enable Ignore cookies to match browser traffic that carries cookies." /></span></span><small id="ignore-cookies-description">Removes the Cookie header from the signature.</small></span>
-                        <input id="ignore-cookies" type="checkbox" aria-describedby="ignore-cookies-description" wire:model.live="excludeCookies" @disabled($excludeHeaders) @checked($excludeHeaders || $excludeCookies)>
-                    </div>
-                    <label class="toggle-row {{ $excludeHeaders ? 'overridden' : '' }}">
-                        <span><strong>Ignore authentication</strong><small>Removes Authorization and Proxy-Authorization headers.</small></span>
-                        <input type="checkbox" wire:model.live="excludeAuth" @disabled($excludeHeaders) @checked($excludeHeaders || $excludeAuth)>
-                    </label>
-                    <label class="toggle-row">
-                        <span><strong>Ignore all headers</strong><small>Overrides both choices above. Method, path/query, and body still match.</small></span>
-                        <input type="checkbox" wire:model.live="excludeHeaders">
-                    </label>
-                    @if ($excludeHeaders)
-                        <p class="override-note"><span aria-hidden="true">i</span> Cookie and authentication exclusions are included because all headers are ignored.</p>
-                    @endif
-
                     @if ($headerAnalysis !== [])
                         <details class="normalized-details" data-disclosure wire:ignore.self wire:key="matching-header-details">
                             <summary><x-disclosure-chevron /> Header matching details ({{ count($headerAnalysis) }})</summary>
@@ -251,7 +226,49 @@
                 @endif
                 @error('excludedQueryParams') <p class="field-error" data-error-for="{{ 'excludedQueryParams' }}" role="alert">{{ $message }}</p> @enderror
                 @error('excludedHeaderNames') <p class="field-error" data-error-for="{{ 'excludedHeaderNames' }}" role="alert">{{ $message }}</p> @enderror
-            </section>        <aside class="preview-column">
+            </section><section class="matching-overview"><div class="editor-pane-heading"><h3>Matching rules</h3>@if ($preview)<span class="ui-badge">Signature {{ $preview['variant']->name }}</span>@endif</div><div class="matching-overview-controls">
+                    <label class="toggle-row">
+                        <span><strong>Ignore all headers</strong><small>Overrides both choices above. Method, path/query, and body still match.</small></span>
+                        <input type="checkbox" wire:model.live="excludeHeaders">
+                    </label>
+                    <div class="toggle-row {{ $excludeHeaders ? 'overridden' : '' }}">
+                        <span><span class="label-row"><label for="ignore-cookies"><strong>Ignore cookies</strong></label><span wire:ignore><x-help-tip title="Browser cookies and matching" label="A request carrying a Cookie header does not match an endpoint saved without one unless cookies are ignored. Enable Ignore cookies to match browser traffic that carries cookies." /></span></span><small id="ignore-cookies-description">Removes the Cookie header from the signature.</small></span>
+                        <input id="ignore-cookies" type="checkbox" aria-describedby="ignore-cookies-description" wire:model.live="excludeCookies" @disabled($excludeHeaders) @checked($excludeHeaders || $excludeCookies)>
+                    </div>
+
+                    <label class="toggle-row {{ $excludeHeaders ? 'overridden' : '' }}">
+                        <span><strong>Ignore authentication</strong><small>Removes Authorization and Proxy-Authorization headers.</small></span>
+                        <input type="checkbox" wire:model.live="excludeAuth" @disabled($excludeHeaders) @checked($excludeHeaders || $excludeAuth)>
+                    </label>
+                <div class="policy-group path-pattern-policy">
+                    <label class="toggle-row">
+                        <span><strong>Use path parameters</strong><small>Wildcard segments; query, retained headers and body still match exactly.</small></span>
+                        <input type="checkbox" wire:model.live="pathPatternEnabled" aria-label="Use path parameters">
+                    </label>
+                    @if ($pathPatternEnabled && $pathSegments !== [])
+                        <div class="path-segment-editor" aria-label="Path segments">
+                            @foreach ($pathSegments as $index => $segment)
+                                @if ($index > 0)<span aria-hidden="true">/</span>@endif
+                                @if ($segment !== '')
+                                    @php($isParameter = str_starts_with($segment, '{') && str_ends_with($segment, '}'))
+                                    <div class="path-segment-chip {{ $isParameter ? 'is-parameter' : '' }}" wire:key="path-segment-{{ $index }}">
+                                        <button type="button" class="button button-secondary button-small" wire:click="togglePathSegment({{ $index }})" aria-pressed="{{ $isParameter ? 'true' : 'false' }}" aria-label="{{ $isParameter ? 'Use literal for segment '.$index : 'Use parameter for segment '.$index }}" title="{{ $isParameter ? 'Use literal segment' : 'Use path parameter' }}">{{ $isParameter ? '{ }' : $segment }}</button>
+                                        @if ($isParameter)<input type="text" class="path-parameter-name" wire:model.live.debounce.300ms="pathParameterNames.{{ $index }}" aria-label="Parameter name for segment {{ $index }}" maxlength="80" spellcheck="false">@endif
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
+                    @error('pathPatternEnabled') <p class="field-error" data-error-for="{{ 'pathPatternEnabled' }}" role="alert">{{ $message }}</p> @enderror
+                </div>
+
+
+</div>
+                    @if ($excludeHeaders)
+                        <p class="override-note" title="Cookie and authentication exclusions are included because all headers are ignored."><span aria-hidden="true">i</span> Cookie and authentication exclusions are included because all headers are ignored.</p>
+                    @endif
+
+</section>        <aside class="preview-column">
             <section class="card preview-card sticky-card">
                 <div class="card-heading tight">
                     <div>
@@ -261,6 +278,10 @@
                 </div>
 
                 @if ($preview)
+                    <details class="normalized-details" data-disclosure open>
+                        <summary><x-disclosure-chevron /> Canonical request</summary>
+                        <pre>{{ $displayCanonical }}</pre>
+                    </details>
                     <p class="field-help">Source URL · not the mock invocation URL</p>
                     <div class="request-summary">
                         <span class="method-badge method-{{ strtolower($preview['parsed']->method) }}">{{ $preview['parsed']->method }}</span>
@@ -290,10 +311,7 @@
                         </div>
                     @endif
 
-                    <details class="normalized-details" data-disclosure open>
-                        <summary><x-disclosure-chevron /> Canonical request</summary>
-                        <pre>{{ $displayCanonical }}</pre>
-                    </details>
+
 
                     <details class="normalized-details" data-disclosure>
                         <summary><x-disclosure-chevron /> Parsed headers ({{ count($headerAnalysis) }})</summary>
@@ -450,7 +468,7 @@
     @endif
 
     @teleport('body')
-    <div id="save-actions" class="sticky-action-bar" data-sticky-action-bar>
+    <div id="save-actions" class="sticky-action-bar editor-save-actions" data-sticky-action-bar>
         <div>
             <p id="endpoint-action-status" class="action-note">{{ $saveSummary !== '' ? 'Needs attention' : $statusMessage }}</p>
         </div>
@@ -459,6 +477,7 @@
             <button class="button button-primary" type="submit" form="endpoint-settings" wire:loading.attr="disabled" wire:target="saveAll,finishSavingAll" @disabled(! $requestReady || $savingAll) @if ($saveBlockReason !== '') aria-describedby="endpoint-action-status" title="{{ $saveBlockReason }}" @endif>
                 <span wire:loading.remove wire:target="saveAll,finishSavingAll">{{ $savingAll ? 'Saving…' : ($endpointId ? 'Save changes' : 'Create endpoint') }}</span>
                 <span wire:loading wire:target="saveAll,finishSavingAll">Saving…</span>
+                <kbd class="editor-save-shortcut" aria-hidden="true">⌘ ↵</kbd>
             </button>
         </div>
     </div>

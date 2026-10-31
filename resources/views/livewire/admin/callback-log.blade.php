@@ -72,7 +72,8 @@
     </div>
     @if ($selectedAttemptId !== null)
         <section class="activity-inspector" data-activity-inspector tabindex="-1" aria-label="Callback inspector">
-            <button class="button button-secondary button-small" type="button" wire:click="inspectAttempt(null)" data-activity-back>Back to list</button>
+            <div class="activity-inspector-heading"><h2>Callback details</h2><button class="icon-button" type="button" wire:click="inspectAttempt(null)" data-activity-back><span class="sr-only">Back to list</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg></button></div>
+            <div class="activity-inspector-content">
             @php($selectedAttempt = $rows->firstWhere('id', $selectedAttemptId))
             @if ($selectedAttempt)
                 <h3>Attempt #{{ $selectedAttempt->id }}</h3>
@@ -81,6 +82,7 @@
             @else
                 <p class="info-note">This attempt is no longer in the filtered window. Return to the list or change the filters.</p>
             @endif
+            </div>
         </section>
     @endif
     </div>

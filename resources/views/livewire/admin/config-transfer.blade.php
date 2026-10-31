@@ -3,14 +3,16 @@
         <a href="#export-heading">Export</a><a href="#import-heading">Import</a><a href="#preview-heading">Review plan</a>
     </nav>
     <div class="transfer-grid">
-        <section class="card transfer-card" aria-labelledby="export-heading">
+        <section class="card transfer-card transfer-export" aria-labelledby="export-heading">
+            <div class="transfer-endpoints">
             <div class="card-heading tight">
                 <div>
-                    <h2 id="export-heading" tabindex="-1">Export configuration</h2>
+                    <h2 id="export-heading" tabindex="-1">Choose endpoints</h2>
                     <p>Download every endpoint or choose a portable subset.</p>
                 </div>
             </div>
 
+            <div class="transfer-filter-row">
             <div class="export-scope-grid">
                 <label class="field">
                     <span class="sr-only">Export scope</span>
@@ -38,6 +40,7 @@
                 <input type="search" wire:model.live.debounce.250ms="exportSearch" placeholder="Search endpoints…">
             </label>
 
+            </div>
             <div class="selection-toolbar">
                 <strong>{{ count($selectedEndpointUuids) }} of {{ $endpointTotal }} selected</strong>
                 <span>
@@ -69,6 +72,10 @@
             </div>
             @error('selectedEndpointUuids') <p class="field-error" data-error-for="{{ 'selectedEndpointUuids' }}">{{ $message }}</p> @enderror
 
+            </div>
+            <div class="transfer-export-options">
+            <div class="card-heading tight"><h2>Export options</h2><span class="ui-badge">JSON</span></div>
+            <div class="transfer-options-content">
             <label class="toggle-row transfer-toggle">
                 <span>
                     <strong>Redact request secrets</strong>
@@ -119,9 +126,11 @@
                     {{ $exportScope === 'all' ? 'Export all endpoints' : 'Export current scope' }}
                 </button>
             </div>
+            </div>
+            </div>
         </section>
 
-        <section class="card transfer-card" aria-labelledby="import-heading">
+        <section class="card transfer-card transfer-import" aria-labelledby="import-heading">
             <div class="card-heading tight">
                 <div>
                     <h2 id="import-heading" tabindex="-1">Import configuration</h2>
