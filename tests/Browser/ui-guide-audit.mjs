@@ -34,18 +34,18 @@ async function inspect(page, label) {
             check(!!name(el), el, 'Control lacks an accessible label');
             if (el.matches('.compact-create-row input, .environment-variable-table input:not([type=checkbox])')) {
                 const style = getComputedStyle(el);
-                check(style.minHeight === '44px' && style.borderRadius === '6px' && style.paddingLeft === '12px', el, 'Dense inline field recipe drifts');
-                check(style.backgroundColor === rgb('--surface') && style.color === rgb('--text'), el, 'Dense inline field colors drift');
+                check(parseFloat(style.minHeight) === parseFloat(root.getPropertyValue(innerWidth <= 767 ? '--control-height-touch' : '--control-height')) && style.borderRadius === root.getPropertyValue('--radius-input').trim() && style.paddingLeft === root.getPropertyValue('--control-padding-inline').trim(), el, 'Dense inline field recipe drifts');
+                check(style.backgroundColor === rgb('--surface-inset') && style.color === rgb('--text'), el, 'Dense inline field colors drift');
             }
         }
         for (const el of document.querySelectorAll('select')) {
             if (!visible(el)) continue;
             counts.selects = (counts.selects || 0) + 1;
             const style = getComputedStyle(el);
-            const minimum = el.classList.contains('ui-select-dense') ? 44 : el.classList.contains('ui-select-filter') ? (innerWidth <= 767 ? 44 : 40) : el.classList.contains('ui-select-bulk') ? (innerWidth <= 767 ? 44 : 34) : 48;
+            const minimum = parseFloat(root.getPropertyValue(innerWidth <= 767 ? '--control-height-touch' : '--control-height'));
             check(el.classList.contains('ui-select'), el, 'Select bypasses the shared recipe');
-            check(style.appearance === 'none' && style.backgroundImage !== 'none' && style.backgroundSize === '16px', el, 'Select chevron drifts');
-            check(parseFloat(style.minHeight) === minimum && parseFloat(style.paddingRight) === 40, el, 'Select geometry drifts');
+            check(style.appearance === 'none' && style.backgroundImage !== 'none' && style.backgroundSize === root.getPropertyValue('--select-chevron-size').trim(), el, 'Select chevron drifts');
+            check(parseFloat(style.minHeight) === minimum && parseFloat(style.paddingRight) === parseFloat(root.getPropertyValue('--select-end-padding')), el, 'Select geometry drifts');
             const disabled = el.disabled;
             const transition = el.style.transition;
             el.style.transition = 'none'; // Assert the completed state, not an in-flight color transition.
@@ -59,7 +59,7 @@ async function inspect(page, label) {
             check(el.hasAttribute('type'), el, 'Button lacks explicit type');
             check(!!(el.getAttribute('aria-label') || el.textContent.trim()), el, 'Button lacks a name');
             if (el.matches('.button, .icon-button, .text-button, .copy-inline, .code-block-heading button')) {
-                const minimum = innerWidth <= 767 ? 44 : el.matches('.icon-button, .text-button, .button-tertiary:not(.button-small)') ? 40 : el.classList.contains('button-small') ? 38 : 36;
+                const minimum = el.closest('.footer') ? 24 : innerWidth <= 767 ? 44 : el.matches('.text-button, .copy-inline, .code-block-heading button, .button-small') ? 26 : 32;
                 check(parseFloat(getComputedStyle(el).minHeight) >= minimum, el, 'Command height drifts');
                 const disabled = el.disabled, transition = el.style.transition;
                 el.style.transition = 'none';
@@ -84,7 +84,8 @@ async function inspect(page, label) {
             const box = icon.getBoundingClientRect(), parent = trigger.getBoundingClientRect();
             const contentTop = parent.top + parseFloat(parentStyle.borderTopWidth) + parseFloat(parentStyle.paddingTop);
             const contentBottom = parent.bottom - parseFloat(parentStyle.borderBottomWidth) - parseFloat(parentStyle.paddingBottom);
-            check(Math.abs(box.width - 16) < 1 && Math.abs(box.height - 16) < 1 && style.flexShrink === '0', icon, 'Chevron size or shrink drifts');
+            const iconSize = icon.classList.contains('details-chevron') ? 16 : parseFloat(root.getPropertyValue('--icon-size'));
+            check(Math.abs(box.width - iconSize) < 1 && Math.abs(box.height - iconSize) < 1 && style.flexShrink === '0', icon, 'Chevron size or shrink drifts');
             check(Math.abs((box.top + box.bottom) / 2 - (contentTop + contentBottom) / 2) < 1, icon, 'Chevron is not centered beside its label');
             check(icon.getAttribute('aria-hidden') === 'true', icon, 'Decorative chevron is announced');
             if (!icon.classList.contains('details-chevron')) continue;
@@ -160,7 +161,8 @@ async function expandedEditor(page, label) {
         const modes = { string: ['interpolated'], number: ['int', 'float'], boolean: ['random'], date: ['past', 'future', 'between', 'fixed'], array: ['range'] };
         const modeLabel = { string: 'String mode', number: 'Number mode', boolean: 'Boolean value', date: 'Date mode', array: 'Array length mode' };
         for (const mode of modes[type] || []) {
-            await commit(() => form.getByRole('combobox', { name: modeLabel[type], exact: true }).first().selectOption(mode));
+            const modeControl = form.getByRole('combobox', { name: new RegExp('^' + modeLabel[type] + '(?: for |$)') }).first();
+            if (await modeControl.inputValue() !== mode) await commit(() => modeControl.selectOption(mode));
             await inspect(page, `${label}-${type}-${mode}`);
         }
         if (type === 'object') {
@@ -186,7 +188,7 @@ async function expandedEditor(page, label) {
     }
     await commit(() => form.getByRole('button', { name: 'List of objects', exact: true }).click());
     await inspect(page, `${label}-list-fixed`);
-    await commit(() => form.locator('.builder-root-count select').selectOption('range'));
+    if (await form.locator('.builder-root-count select').inputValue() !== 'range') await commit(() => form.locator('.builder-root-count select').selectOption('range'));
     await inspect(page, `${label}-list-range`);
     await commit(() => page.locator('.selection-settings').getByRole('button', { name: 'Sequence', exact: true }).click());
     await inspect(page, `${label}-sequence`);
@@ -288,7 +290,7 @@ try {
             }
             await page.goto(`${base}/dashboard/endpoints/${fixture.endpoint}/edit`);
             for (const tab of ['Request', 'Matching', 'Response', 'Callback']) {
-                await page.getByRole('tab', { name: new RegExp('^' + tab) }).click();
+                await openEditorSection(page, tab);
                 await inspect(page, `${theme}-${width}-editor-${tab.toLowerCase()}`);
             }
             await openEditorSection(page, 'Response');

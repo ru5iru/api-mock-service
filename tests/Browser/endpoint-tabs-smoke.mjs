@@ -84,7 +84,8 @@ try {
                 await poll(async () => {
                     const bar = await page.locator('#save-actions').boundingBox();
                     const stage = await pane.boundingBox();
-                    return Math.abs(bar.y + bar.height + 28 - 600) < 1 && stage.y + stage.height <= bar.y - 15;
+                    const statusHeight = parseFloat(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--shell-status-height')));
+                    return Math.abs(bar.y + bar.height + statusHeight - 600) < 1 && stage.y + stage.height <= bar.y - 15;
                 }, `${theme}/${width}/${name}: action bar obstructs scrollable content`);
                 assert.equal(await page.locator('#save-actions').evaluate(el => el.parentElement.tagName), 'BODY');
                 const signature = page.locator('.preview-column');
@@ -118,7 +119,8 @@ try {
                 await poll(async () => {
                     const bar = await page.locator('#save-actions').boundingBox();
                     const pane = await page.locator('[data-editor-viewport]').boundingBox();
-                    return Math.abs(bar.y + bar.height + 28 - 450) < 1 && pane.y + pane.height <= bar.y - 15;
+                    const statusHeight = parseFloat(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--shell-status-height')));
+                    return Math.abs(bar.y + bar.height + statusHeight - 450) < 1 && pane.y + pane.height <= bar.y - 15;
                 }, `${theme}/${width}/450/${name}: short viewport content is obstructed`);
             }
         }

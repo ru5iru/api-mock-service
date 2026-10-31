@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import re
 import sys
+import json
+import argparse
 from pathlib import Path
 
 
@@ -52,11 +54,19 @@ def parse_theme_tokens() -> tuple[dict[str, str], dict[str, str]]:
     if not light_match or not dark_match:
         raise ValueError("Light and dark token blocks are required.")
 
-    token_pattern = re.compile(r"(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{6})\s*;")
+    token_pattern = re.compile(r"(--[\w-]+)\s*:\s*([^;]+);")
     light = dict(token_pattern.findall(light_match.group(1)))
     dark = {**light, **dict(token_pattern.findall(dark_match.group(1)))}
+    def resolve(tokens: dict[str, str]) -> dict[str, str]:
+        def value(name: str, seen: tuple[str, ...] = ()) -> str:
+            if name in seen:
+                raise ValueError(f"Circular token alias: {name}")
+            result = tokens[name].strip()
+            alias = re.fullmatch(r"var\((--[\w-]+)\)", result)
+            return value(alias.group(1), (*seen, name)) if alias else result
+        return {name: value(name) for name in tokens}
 
-    return light, dark
+    return resolve(light), resolve(dark)
 
 
 def luminance(value: str) -> float:
@@ -72,7 +82,7 @@ def contrast(first: str, second: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
-def lint_contrast() -> list[str]:
+def lint_contrast(report: list[dict] | None = None) -> list[str]:
     light, dark = parse_theme_tokens()
     text_pairs = [
         ("--text", "--bg"),
@@ -95,6 +105,13 @@ def lint_contrast() -> list[str]:
         ("--method-get-fg", "--method-get-bg"),
         ("--method-post-fg", "--method-post-bg"),
         ("--method-put-fg", "--method-put-bg"),
+        ("--method-patch-fg", "--method-patch-bg"),
+        ("--text-subtle", "--surface-subtle"),
+        ("--text-muted", "--surface-inset"),
+        ("--text-muted", "--accent-subtle"),
+        ("--text-subtle", "--accent-subtle"),
+        ("--accent", "--accent-subtle"),
+        ("--placeholder", "--surface-inset"),
     ]
     ui_pairs = [
         ("--border-strong", "--bg"),
@@ -108,24 +125,48 @@ def lint_contrast() -> list[str]:
         ("--method-get-border", "--method-get-bg"),
         ("--method-post-border", "--method-post-bg"),
         ("--method-put-border", "--method-put-bg"),
+        ("--method-patch-border", "--method-patch-bg"),
+        ("--field-border", "--surface-inset"),
+        ("--field-focus-border", "--surface-inset"),
+        ("--focus-ring", "--surface-inset"),
+        ("--focus-ring", "--shell-chrome"),
+        ("--dropzone-border", "--surface-subtle"),
     ]
     errors: list[str] = []
 
     for theme_name, tokens in (("light", light), ("dark", dark)):
         for foreground, background in text_pairs:
             ratio = contrast(tokens[foreground], tokens[background])
+            if report is not None:
+                report.append(dict(theme=theme_name, foreground=foreground, background=background, ratio=round(ratio, 3), minimum=4.5))
             if ratio < 4.5:
                 errors.append(f"{theme_name}: {foreground} on {background} is {ratio:.2f}:1; expected at least 4.5:1")
         for foreground, background in ui_pairs:
             ratio = contrast(tokens[foreground], tokens[background])
+            if report is not None:
+                report.append(dict(theme=theme_name, foreground=foreground, background=background, ratio=round(ratio, 3), minimum=3))
             if ratio < 3:
                 errors.append(f"{theme_name}: {foreground} on {background} is {ratio:.2f}:1; expected at least 3:1")
+        for role in ("--primary-background", "--primary-hover-background", "--primary-press-background"):
+            for color in re.findall(r"#[0-9a-fA-F]{6}", tokens[role]):
+                ratio = contrast(tokens["--on-accent"], color)
+                if report is not None:
+                    report.append(dict(theme=theme_name, foreground="--on-accent", background=f"{role} {color}", ratio=round(ratio, 3), minimum=4.5))
+                if ratio < 4.5:
+                    errors.append(f"{theme_name}: primary text on {role} {color} is {ratio:.2f}:1; expected at least 4.5:1")
 
     return errors
 
 
 def main() -> int:
-    errors = [*lint_literals(), *lint_contrast()]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--report", type=Path, help="Write the measured light/dark contrast pairs as JSON.")
+    arguments = parser.parse_args()
+    report: list[dict] = []
+    errors = [*lint_literals(), *lint_contrast(report)]
+    if arguments.report:
+        arguments.report.parent.mkdir(parents=True, exist_ok=True)
+        arguments.report.write_text(json.dumps(dict(pairs=report, errors=errors), indent=2)+"\n", encoding="utf-8")
     if errors:
         print("Design token validation failed:", file=sys.stderr)
         for error in errors:

@@ -114,8 +114,9 @@ try {
             if (await control.getAttribute('aria-expanded') === 'false') await control.click();
             assert.equal(await page.locator('#workbench-context').isVisible(), true);
             await page.keyboard.press('Escape');
-            assert.equal(await page.locator('#workbench-context').isVisible(), false);
-            assert.equal(await control.evaluate(node => node === document.activeElement), true);
+            // The prototype keeps the desktop context at 1024px; only <=950px is a drawer.
+            assert.equal(await page.locator('#workbench-context').isVisible(), width > 950);
+            if (width <= 950) assert.equal(await control.evaluate(node => node === document.activeElement), true);
             await page.screenshot({ path: resolve(shots, `registry-${width}-${theme}.png`) });
         }
         await page.close();
