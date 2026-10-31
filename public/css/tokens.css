@@ -391,6 +391,10 @@
     --explorer-search-icon-inset: 9px;
     --code-gutter-width: 40px;
     --code-gutter-number-width: 24px;
+    --log-time-column: 88px;
+    --log-match-column: 76px;
+    --log-status-column: 96px;
+    --log-duration-column: 96px;
 }
 
 [data-theme="dark"] {

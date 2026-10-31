@@ -31,7 +31,7 @@
                     <strong>{{ $paused ? 'Paused' : ($expandedKey !== null ? 'Detail open' : 'Live') }}</strong>
                     <span>Updated <time datetime="{{ $lastUpdatedAt }}" data-relative-time>just now</time></span>
                 </div>
-                <div class="log-live-actions">
+                <div class="log-live-actions"><span class="log-match-help">Match <x-help-tip title="Match types" label="Hash is an exact signature match. Fallback is a normalized recovery match. None means no endpoint matched." /></span>
                     <button class="button button-tertiary button-small" type="button" wire:click="togglePaused">
                         {{ $paused ? 'Resume refresh' : 'Pause refresh' }}
                     </button>
@@ -123,7 +123,7 @@
                     <input type="checkbox" wire:model.live="groupRepeats">
                     <span>Group repeats</span>
                 </label>
-                <span class="log-match-help">Match <x-help-tip title="Match types" label="Hash is an exact signature match. Fallback is a normalized recovery match. None means no endpoint matched." /></span>
+
                 <div class="segmented-control clock-toggle" role="group" aria-label="Timestamp display">
                     <button type="button" wire:click="$set('clock', 'local')" aria-pressed="{{ $clock === 'local' ? 'true' : 'false' }}">Local</button>
                     <button type="button" wire:click="$set('clock', 'utc')" aria-pressed="{{ $clock === 'utc' ? 'true' : 'false' }}">UTC</button>
@@ -202,13 +202,13 @@
                             </div>
                             <div class="log-request-meta">
                             @if ($event['_endpoint_exists'])
-                                <a class="table-link" href="{{ route('dashboard.endpoints.edit', $event['endpoint_id']) }}" wire:navigate x-on:click.stop>{{ $event['_endpoint_name'] }}</a>
+                                <a class="table-link" title="{{ $event['_endpoint_name'] }}" href="{{ route('dashboard.endpoints.edit', $event['endpoint_id']) }}" wire:navigate x-on:click.stop>{{ $event['_endpoint_name'] }}</a>
                             @elseif (isset($event['endpoint_id']))
                                 <span class="deleted-endpoint" title="This endpoint has been deleted.">#{{ $event['endpoint_id'] }} (deleted)</span>
                             @else
                                 <span class="muted">—</span>
                             @endif
-                            <x-badge>{{ $event['environment'] ?? '—' }}</x-badge>
+                            <x-badge title="{{ $event['environment'] ?? '—' }}">{{ $event['environment'] ?? '—' }}</x-badge>
                             </div>
                         </td>
                         <td>

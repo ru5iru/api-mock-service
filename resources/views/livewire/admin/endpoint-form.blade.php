@@ -372,15 +372,7 @@
                             <span aria-hidden="true"></span>
                         </label>
                     </div>
-                    <div class="field control-field">
-                        <label for="endpoint-priority">
-                            Priority <span>-1000 to 1000</span>
-                            <x-help-tip title="Priority" label="Priority is considered before signature specificity. For example, priority 10 can win over priority 0 even when priority 0 includes more headers." />
-                        </label>
-                        <input id="endpoint-priority" type="number" min="-1000" max="1000" step="1" wire:model="priority" aria-describedby="priority-help @error('priority') priority-error @enderror">
-                        <small id="priority-help" class="field-help">Use 0 normally. Increase it only to prefer this endpoint over an overlapping signature.</small>
-                        @error('priority') <p id="priority-error" class="field-error" data-error-for="{{ 'priority' }}">{{ $message }}</p> @enderror
-                    </div>
+
                 </div>
 
                 <div class="organization-grid">
@@ -398,7 +390,17 @@
                         @error('newCollectionName') <p class="field-error" data-error-for="{{ 'newCollectionName' }}">{{ $message }}</p> @enderror
                     </div>
 
-                    <fieldset class="field tag-input">
+                    <div class="field control-field">
+                        <label for="endpoint-priority">
+                            Priority <span>-1000 to 1000</span>
+                            <x-help-tip title="Priority" label="Priority is considered before signature specificity. For example, priority 10 can win over priority 0 even when priority 0 includes more headers." />
+                        </label>
+                        <input id="endpoint-priority" type="number" min="-1000" max="1000" step="1" wire:model="priority" aria-describedby="priority-help @error('priority') priority-error @enderror">
+                        <small id="priority-help" class="field-help">Use 0 normally. Increase it only to prefer this endpoint over an overlapping signature.</small>
+                        @error('priority') <p id="priority-error" class="field-error" data-error-for="{{ 'priority' }}">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+                <fieldset class="field tag-input settings-tags">
                         <legend>Tags <x-help-tip title="Endpoint tags" label="Use tags to filter endpoints or assign them in bulk. Save changes to store this endpoint’s tag assignments." /></legend>
                         <div class="tag-choice-list">
                             @forelse ($availableTags as $tag)
@@ -416,7 +418,6 @@
                         @error('tagIds.*') <p class="field-error" data-error-for="{{ 'tagIds.*' }}">{{ $message }}</p> @enderror
                         @error('newTagName') <p class="field-error" data-error-for="{{ 'newTagName' }}">{{ $message }}</p> @enderror
                     </fieldset>
-                </div>
 
                 <details class="normalized-details environment-overrides" data-disclosure>
                     <summary><x-disclosure-chevron /> Environment availability</summary>
@@ -449,7 +450,7 @@
     <div class="endpoint-response-workspace" x-show="workspaceTab !== 'settings'">
         <div class="editor-pane-heading" x-show="workspaceTab === 'editor'">
             <h2 id="response-pane-heading" @if ($hasNoResponses) aria-describedby="response-empty-note" @endif>Responses</h2>
-            <i data-response-state class="section-status {{ $responseState }}" aria-label="{{ $hasNoResponses ? 'No response yet' : ($responseReady ? 'Response selection is complete' : 'Response selection needs attention') }}">{{ $stateSymbol($responseState) }}</i>
+            <i data-response-state role="img" class="section-status {{ $responseState }}" aria-label="{{ $hasNoResponses ? 'No response yet' : ($responseReady ? 'Response selection is complete' : 'Response selection needs attention') }}">{{ $stateSymbol($responseState) }}</i>
         </div>
         @if ($endpoint)
             <livewire:admin.response-manager :endpoint="$endpoint" :key="'endpoint-responses-'.$endpointId" />

@@ -466,7 +466,7 @@
 </div>
 </section>
 <section id="panel-callback" role="tabpanel" aria-labelledby="tab-callback" x-show="activeTab === 'callback'" x-cloak>
-    <p class="field-help">New callback deliveries use worker-time values, not a snapshot taken when the mock was called.</p>
+    <div class="callback-page-heading"><h2>Callback</h2><p class="field-help">New callback deliveries use worker-time values, not a snapshot taken when the mock was called.</p></div>
     <div class="callback-workspace">
     <div class="callback-response-list" aria-label="Response callbacks">
         @forelse ($responses as $responseIndex => $response)
@@ -479,7 +479,7 @@
                 @if ($this->responseHasDraft($response->id))<x-badge variant="warning">Unsaved changes</x-badge>@endif
                 <span class="response-row-summary">@if ($selectionMode === 'sequence')Position {{ $responseIndex + 1 }}@elseif ($selectionMode === 'rule'){{ $fallbackResponseId === $response->id ? 'Fallback' : count($responseRules[$response->id] ?? []).' conditions' }}@else Weight {{ $response->weight }}@endif</span>
                 <x-badge :variant="$rowCallbackEnabled ? 'success' : 'neutral'">{{ $rowCallbackEnabled ? 'Enabled' : 'Disabled' }}</x-badge>
-                <button class="icon-button" type="button" wire:click="editCallback({{ $response->id }}, {{ $rowCallbackEnabled ? 'false' : 'true' }})" aria-label="Configure callback for response {{ $response->id }}">{{ $rowCallbackEnabled ? 'Edit callback' : 'Enable callback' }}</button>
+                <button class="icon-button" type="button" wire:click="editCallback({{ $response->id }}, {{ $rowCallbackEnabled ? 'false' : 'true' }})" aria-label="Configure callback for response {{ $response->id }}"><svg class="callback-edit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m16 3 5 5-12 12H4v-5Z" /></svg><span class="callback-edit-label">{{ $rowCallbackEnabled ? 'Edit callback' : 'Enable callback' }}</span></button>
             </div>
         @empty
             <div class="card empty-state"><h3>Add a response first</h3><p>Callbacks belong to individual responses.</p><button class="button button-secondary" type="button" x-on:click="switchTab('response')">Configure responses</button></div>
@@ -487,9 +487,10 @@
     </div>
     @if ($responses->isNotEmpty() && $editingId)
         <form class="card callback-form" wire:submit="saveCallback">
-            <div class="form-title-row"><h3>Callback for response #{{ $editingId }}</h3><span class="field-help">Save callback applies only these settings.</span></div>
+            <div class="form-title-row"><h3>Callback for response #{{ $editingId }}</h3></div>
             @if ($errors->any())<div class="validation-panel error-panel" role="alert">@foreach (array_unique($errors->all()) as $message)<p>{{ $message }}</p>@endforeach</div>@endif
             @include('livewire.admin.partials.callback-settings')
+            <span class="field-help">Save callback applies only these settings.</span>
             <button class="button button-primary" type="submit" wire:loading.attr="disabled" wire:target="saveCallback">Save callback</button>
         </form>
     @elseif ($responses->isNotEmpty())
