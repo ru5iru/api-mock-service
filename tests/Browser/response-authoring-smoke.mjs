@@ -130,7 +130,7 @@ try {
             return box && box.x >= 0 && box.x + box.width <= 321;
         }, 'Catalog popover escapes viewport after positioning');
         const pop = await picker.locator('.faker-picker-panel').boundingBox();
-        assert.ok(pop && pop.x >= 0 && pop.x + pop.width <= 321, 'Catalog popover escapes viewport');
+        assert.ok(pop && pop.x >= 0 && pop.x + pop.width <= 321, `Catalog popover escapes viewport: ${JSON.stringify(pop)}`);
         await capture(320, 'catalog-open', null);
         await page.keyboard.press('Escape');
         await action('setBodyMode', () => page.getByRole('button', { name: 'Static', exact: true }).click());

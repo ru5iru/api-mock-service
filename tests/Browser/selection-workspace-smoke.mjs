@@ -46,9 +46,13 @@ try {
             await locator.evaluate(el => el.scrollIntoView({ block: 'start' }));
             await page.evaluate(() => window.scrollTo(0, 0));
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-            const paneRight = await page.locator('.endpoint-response-workspace').evaluate(el => el.getBoundingClientRect().left + el.clientWidth);
-            const boxes = await page.locator('.response-manager input:visible,.response-manager select:visible,.response-manager textarea:visible,.response-manager button:visible,.response-manager summary:visible,.selection-settings:visible,.selection-response-card:visible,.selection-workspace-heading:visible,.selection-mode-help:visible,.saved-weight-note:visible,.sequence-runtime:visible,.selection-settings .segmented-control:visible').evaluateAll(els => els.map(el => { const b = el.getBoundingClientRect(); return { x: b.x, right: b.right }; }));
-            for (const b of boxes) assert.ok(b.x >= -1 && b.right <= Math.min(width, paneRight) + 1, `${theme}/${width}/${name}: control overflows visible pane`);
+            const paneRight = await page.locator('.endpoint-response-workspace').evaluate(el => {
+                const style = getComputedStyle(el);
+                const scrollbar = el.offsetWidth - el.clientWidth - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth);
+                return el.getBoundingClientRect().right - scrollbar - parseFloat(style.borderRightWidth);
+            });
+            const boxes = await page.locator('.response-manager input:visible,.response-manager select:visible,.response-manager textarea:visible,.response-manager button:visible,.response-manager summary:visible,.selection-settings:visible,.selection-response-card:visible,.selection-workspace-heading:visible,.selection-mode-help:visible,.saved-weight-note:visible,.sequence-runtime:visible,.selection-settings .segmented-control:visible').evaluateAll(els => els.map(el => { const b = el.getBoundingClientRect(); return { x: b.x, right: b.right, tag: el.tagName, id: el.id, class: el.className }; }));
+            for (const b of boxes) assert.ok(b.x >= -1 && b.right <= Math.min(width, paneRight) + 1, `${theme}/${width}/${name}: control overflows visible pane ${JSON.stringify({ ...b, paneRight })}`);
             await page.screenshot({ path: resolve(shots, `${theme}-${width}-${name}.png`), animations: 'disabled' });
         };
         await page.getByRole('link', { name: /^Selection & pool/ }).click();

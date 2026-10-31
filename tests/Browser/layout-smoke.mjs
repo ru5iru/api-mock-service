@@ -25,7 +25,7 @@ try {
         const baseline = await page.locator('[data-persistent-topbar]').boundingBox();
         assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior), 'auto');
         assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).scrollbarGutter), 'stable');
-        let titleY;
+        let headerY;
         for (const [name, route] of [
             ['endpoints', ''], ['requests', 'logs'], ['callbacks', 'logs?type=callbacks'],
             ['config', 'config'], ['environments', 'environments'], ['endpoints-return', ''],
@@ -46,9 +46,11 @@ try {
             assert.equal(await page.evaluate(() => window.__headerNode === document.querySelector('[data-persistent-topbar]')), true, `${name}: header remounted`);
             const box = await page.locator('[data-persistent-topbar]').boundingBox();
             for (const key of ['x', 'y', 'width', 'height']) assert.ok(Math.abs(box[key] - baseline[key]) <= 2, `${name}: header ${key} drifted`);
-            const y = (await page.locator('.page-shell .page-header h1').first().boundingBox()).y;
-            titleY ??= y;
-            assert.ok(Math.abs(y - titleY) <= 2, `${name}: title top drifted by ${y - titleY}px`);
+            const heading = await page.locator('.page-shell .page-header').first().boundingBox();
+            const title = await page.locator('.page-shell .page-header h1').first().boundingBox();
+            headerY ??= heading.y;
+            assert.ok(Math.abs(heading.y - headerY) <= 2, `${name}: page header moved below the shell`);
+            assert.ok(title.y >= heading.y && title.y + title.height <= heading.y + heading.height, `${name}: title escaped its header`);
             await page.screenshot({ path: resolve(screenshotDir, `${theme}-${name}.png`), fullPage: true });
         }
         // A short page and a forced long page must leave the persistent header in one place.
@@ -58,8 +60,8 @@ try {
         await page.locator('#gutter-probe').evaluate((node) => node.remove());
         await page.locator('a[href$="/dashboard/endpoints/create"]').first().click();
         await page.waitForURL('**/dashboard/endpoints/create');
-        const editorY = (await page.locator('.page-shell .page-header h1').first().boundingBox()).y;
-        assert.ok(Math.abs(editorY - titleY) <= 2, `editor: breadcrumb top drifted by ${editorY - titleY}px`);
+        const editorY = (await page.locator('.page-shell .page-header').first().boundingBox()).y;
+        assert.ok(Math.abs(editorY - headerY) <= 2, `editor: page header drifted by ${editorY - headerY}px`);
     }
 } finally {
     await browser.close();

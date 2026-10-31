@@ -9,7 +9,7 @@
     let shortcuts = read(shortcutKey, 'true') !== 'false';
     let drawerOpen = false;
     function sync() {
-        const narrow = window.matchMedia('(max-width: 1100px)').matches;
+        const narrow = window.matchMedia('(max-width: 950px)').matches;
         document.body.dataset.workbenchCollapsed = String(collapsed);
         document.body.dataset.workbenchDrawer = String(drawerOpen);
         document.querySelectorAll('[data-workbench-toggle]').forEach(button => button.setAttribute('aria-expanded', String(narrow ? drawerOpen : !collapsed)));
@@ -21,7 +21,7 @@
     document.addEventListener('click', event => {
         const toggle = event.target.closest('[data-workbench-toggle]');
         if (!toggle) return;
-        if (window.matchMedia('(max-width: 1100px)').matches) drawerOpen = !drawerOpen;
+        if (window.matchMedia('(max-width: 950px)').matches) drawerOpen = !drawerOpen;
         else { collapsed = !collapsed; write(sidebarKey, String(collapsed)); }
         sync();
     });
@@ -39,7 +39,7 @@
         }
     });
     document.addEventListener('livewire:navigated', () => { drawerOpen = false; sync(); });
-    window.matchMedia('(max-width: 1100px)').addEventListener('change', () => { drawerOpen = false; sync(); });
+    window.matchMedia('(max-width: 950px)').addEventListener('change', () => { drawerOpen = false; sync(); });
     window.MockDeckWorkbench = { singleKeyShortcutsEnabled: () => shortcuts };
     sync();
 }());

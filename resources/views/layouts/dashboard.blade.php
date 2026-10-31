@@ -23,6 +23,7 @@
     <script src="{{ asset('js/ui-preferences.js') }}?v={{ filemtime(public_path('js/ui-preferences.js')) }}" defer></script>
     <script src="{{ asset('js/workbench.js') }}?v={{ filemtime(public_path('js/workbench.js')) }}" defer data-navigate-once></script>
     <script src="{{ asset('js/template-editor.js') }}?v={{ filemtime(public_path('js/template-editor.js')) }}" defer data-navigate-once></script>
+    <script src="{{ asset('js/code-presentation.js') }}?v={{ filemtime(public_path('js/code-presentation.js')) }}" defer data-navigate-once></script>
     @livewireStyles
     <script src="{{ asset('js/activity-inspector.js') }}?v={{ filemtime(public_path('js/activity-inspector.js')) }}" defer></script>
 </head>
@@ -45,7 +46,7 @@
                 </span>
             </a>
 
-            <button class="icon-button workbench-sidebar-toggle" type="button" data-workbench-toggle aria-controls="workbench-context" aria-expanded="true" aria-label="Toggle workspace sidebar"><x-workbench-icon name="sidebar" /></button>
+            <button class="icon-button workbench-sidebar-toggle" type="button" data-workbench-toggle aria-controls="workbench-context" aria-expanded="true" aria-label="Toggle workspace sidebar"><x-workbench-icon name="sidebar" /><span>Workspace</span></button>
             <div class="topbar-tools">
                 <livewire:admin.environment-switcher />
                 <x-theme-control name="theme-header" />
@@ -436,12 +437,13 @@
             }
 
             const applyHeight = () => {
-                const height = Math.ceil(bar.getBoundingClientRect().height);
-                if (height > 0) {
+                const headerAction = getComputedStyle(bar).getPropertyValue('--actionbar-placement').trim() === 'header';
+                const height = headerAction ? 0 : Math.ceil(bar.getBoundingClientRect().height);
+                if (bar.getBoundingClientRect().height > 0) {
                     page.classList.add('has-sticky-action-bar');
                     page.style.setProperty('--sticky-action-bar-height', `${height}px`);
                     document.documentElement.style.setProperty('--sticky-action-bar-height', `${height}px`);
-                    document.getElementById('toast-region')?.style.setProperty('bottom', `calc(${height}px + var(--space-4))`);
+                    document.getElementById('toast-region')?.style.setProperty('bottom', `calc(${height}px + var(--toast-offset))`);
                 }
             };
 
@@ -460,9 +462,12 @@
             const tabs = document.querySelector('[data-endpoint-tabs]');
             const viewport = document.querySelector('[data-editor-viewport]');
             if (viewport && tabs) {
-                const actionHeight = Math.ceil(document.querySelector('[data-sticky-action-bar]')?.getBoundingClientRect().height ?? 0);
+                const bar = document.querySelector('[data-sticky-action-bar]');
+                const headerAction = bar && getComputedStyle(bar).getPropertyValue('--actionbar-placement').trim() === 'header';
+                const actionHeight = headerAction ? 0 : Math.ceil(bar?.getBoundingClientRect().height ?? 0);
                 const top = Math.max(viewport.getBoundingClientRect().top, navHeight + tabs.getBoundingClientRect().height);
-                const height = Math.max(0, innerHeight - top - actionHeight - (document.querySelector('.footer')?.getBoundingClientRect().height ?? 0) - 16);
+                const clearance = parseFloat(getComputedStyle(viewport).getPropertyValue('--editor-bottom-clearance')) || 0;
+                const height = Math.max(0, innerHeight - top - actionHeight - (document.querySelector('.footer')?.getBoundingClientRect().height ?? 0) - clearance);
                 viewport.style.setProperty('--editor-viewport-height', `${height}px`);
             }
         };

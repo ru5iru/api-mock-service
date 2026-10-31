@@ -1,3 +1,4 @@
+import { openEditorSection } from './editor-navigation.mjs';
 // Run with the application and this process sharing a dedicated migrated fixture database.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -42,7 +43,7 @@ async function tips(page, label) {
     for (let i = 0; i < Math.min(count, 8); i++) {
         const tip = tips.nth(i);
         await tip.scrollIntoViewIfNeeded();
-        await tip.hover();
+        try { await tip.hover(); } catch (error) { throw new Error(`${label}/tooltip-${i}: ${error.message}`); }
         await fits(tip.locator('.help-tip-content'), `${label}/tooltip-${i}`);
         await page.mouse.move(0, 0);
     }
@@ -70,7 +71,7 @@ try {
             }
             await page.goto(`${base}/dashboard/endpoints/${fixture.endpoint}/edit`);
             for (const name of ['Request', 'Matching', 'Response', 'Callback']) {
-                await commit(page, () => page.getByRole('tab', { name: new RegExp('^' + name) }).click());
+                await openEditorSection(page, name);
                 await tips(page, `${theme}/${width}/${name}`);
                 assert.equal(await page.locator('.endpoint-panel-viewport .sticky-card').first().evaluate(el => getComputedStyle(el).overflowY), 'visible');
                 assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).overflowY), 'clip');

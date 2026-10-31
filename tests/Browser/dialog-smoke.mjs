@@ -123,7 +123,11 @@ try {
         const acknowledge = page.getByRole('checkbox', { name: 'I reviewed the warnings and want to continue.' });
         if (await acknowledge.count()) await commit(() => acknowledge.check());
         await commit(() => page.getByRole('button', { name: /^Confirm import/ }).click());
-        await poll(() => page.getByRole('button', { name: 'Undo this import', exact: true }).isVisible(), 'Import did not finish');
+        try {
+            await poll(() => page.getByRole('button', { name: 'Undo this import', exact: true }).isVisible(), 'Import did not finish');
+        } catch (error) {
+            throw new Error(`${error.message}: ${await page.locator('.field-error, .error-panel').allTextContents()}`);
+        }
         const undo = page.getByRole('button', { name: 'Undo this import', exact: true });
         await cancel(undo);
         assert.equal(await undo.isVisible(), true);

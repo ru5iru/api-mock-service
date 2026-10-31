@@ -68,7 +68,8 @@ try {
         const headerBox = await page.locator('[data-persistent-topbar]').boundingBox();
         const saveBox = await page.locator('[data-sticky-action-bar]').boundingBox();
         const footerBox = await page.locator('.footer').boundingBox();
-        assert.ok(fieldBox.y >= headerBox.y + headerBox.height && fieldBox.y + fieldBox.height <= saveBox.y, 'Focused input must clear sticky chrome');
+        const headerActions = await page.locator('[data-sticky-action-bar]').evaluate(el => getComputedStyle(el).getPropertyValue('--actionbar-placement').trim() === 'header');
+        assert.ok(fieldBox.y >= (headerActions ? saveBox.y + saveBox.height : headerBox.y + headerBox.height) && fieldBox.y + fieldBox.height <= (headerActions ? footerBox.y : saveBox.y), 'Focused input must clear fixed chrome');
         assert.ok(saveBox.y + saveBox.height <= footerBox.y + 1, 'Save action bar must clear status bar');
         await priority.blur();
         const tip = page.locator('.help-tip[aria-label="Priority"]');
@@ -114,8 +115,9 @@ try {
             if (await control.getAttribute('aria-expanded') === 'false') await control.click();
             assert.equal(await page.locator('#workbench-context').isVisible(), true);
             await page.keyboard.press('Escape');
-            assert.equal(await page.locator('#workbench-context').isVisible(), false);
-            assert.equal(await control.evaluate(node => node === document.activeElement), true);
+            // The prototype keeps the desktop context at 1024px; only <=950px is a drawer.
+            assert.equal(await page.locator('#workbench-context').isVisible(), width > 950);
+            if (width <= 950) assert.equal(await control.evaluate(node => node === document.activeElement), true);
             await page.screenshot({ path: resolve(shots, `registry-${width}-${theme}.png`) });
         }
         await page.close();

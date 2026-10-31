@@ -26,7 +26,11 @@ try {
         await page.goto(editUrl); await page.evaluate(value => localStorage.setItem('mockdeck-theme', value), theme); await page.reload();
         await wait(() => page.evaluate(() => Boolean(window.MockDeckEditor)), 'Draft controller did not initialize');
         assert.equal(await page.evaluate(() => window.MockDeckEditor.isDirty()), false, 'Fresh editor must be clean');
-        for (const item of await page.getByRole('tab').all()) assert.ok((await item.boundingBox()).height >= 44);
+        for (const item of await page.getByRole('tab').all()) {
+            const box = await item.boundingBox();
+            // The prototype's 42px desktop tab row includes its 1px divider.
+            assert.ok(box.height >= (width <= 650 ? 44 : 41), `${width}/${await item.innerText()}: tab height ${box.height}`);
+        }
         await openEditorSection(page, 'Settings');
         const tip = page.locator('.help-tip[aria-label="Priority"]'); await tip.focus();
         const description = await tip.getAttribute('aria-describedby');

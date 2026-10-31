@@ -25,16 +25,17 @@ test('endpoint workspace filters have visible captions and retain accessible nat
 test('request-log filter layout snapshot covers 1440, 1024, and 390 pixel viewports', () => {
     const snapshot = {
         1440: 'six compact columns',
-        1024: 'six compact columns',
+        1024: 'three compact columns',
         390: 'two compact columns with endpoint spanning two',
     };
 
     assert.deepEqual(snapshot, {
         1440: 'six compact columns',
-        1024: 'six compact columns',
+        1024: 'three compact columns',
         390: 'two compact columns with endpoint spanning two',
     });
-    assert.match(css, /\.log-filters \{[^}]*grid-template-columns: minmax\(126px,[^}]*minmax\(76px,/s);
+    assert.match(css, /\.log-filters \{[^}]*grid-template-columns: minmax\(var\(--filter-method-width\),[^}]*minmax\(var\(--section-scroll-margin\),/s);
+    assert.match(css, /@media \(max-width: 1200px\) \{ \.log-filters \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
     assert.match(css, /@media \(max-width: 740px\)[\s\S]*?\.log-filters \{[^}]*repeat\(2, minmax\(0, 1fr\)\)/);
     assert.match(css, /@media \(max-width: 360px\)[\s\S]*?\.log-filters \{ grid-template-columns: 1fr; \}/);
     assert.match(css, /\.select-caption \{[^}]*white-space: nowrap;/s);

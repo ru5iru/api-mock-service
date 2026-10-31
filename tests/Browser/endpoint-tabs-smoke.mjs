@@ -84,7 +84,9 @@ try {
                 await poll(async () => {
                     const bar = await page.locator('#save-actions').boundingBox();
                     const stage = await pane.boundingBox();
-                    return Math.abs(bar.y + bar.height + 28 - 600) < 1 && stage.y + stage.height <= bar.y - 15;
+                    const statusHeight = parseFloat(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--shell-status-height')));
+                    const headerActions = await page.locator('#save-actions').evaluate(el => getComputedStyle(el).getPropertyValue('--actionbar-placement').trim() === 'header');
+                    return headerActions ? bar.y >= 46 && bar.y + bar.height <= stage.y && stage.y + stage.height <= 600 - statusHeight + 1 : Math.abs(bar.y + bar.height + statusHeight - 600) < 1 && stage.y + stage.height <= bar.y - 15;
                 }, `${theme}/${width}/${name}: action bar obstructs scrollable content`);
                 assert.equal(await page.locator('#save-actions').evaluate(el => el.parentElement.tagName), 'BODY');
                 const signature = page.locator('.preview-column');
@@ -94,7 +96,7 @@ try {
                 if (await signature.isVisible()) {
                     assert.equal(await signature.locator('.sticky-card').evaluate(el => getComputedStyle(el).overflowY), 'visible');
                     await poll(async () => {
-                        const owner = width > 1100 ? page.locator('.endpoint-request-workspace') : pane;
+                        const owner = width > 650 ? page.locator('.endpoint-request-workspace') : pane;
                         await owner.evaluate(el => el.scrollTop = el.scrollHeight);
                         const card = await signature.boundingBox();
                         const bounds = await pane.boundingBox();
@@ -118,7 +120,11 @@ try {
                 await poll(async () => {
                     const bar = await page.locator('#save-actions').boundingBox();
                     const pane = await page.locator('[data-editor-viewport]').boundingBox();
-                    return Math.abs(bar.y + bar.height + 28 - 450) < 1 && pane.y + pane.height <= bar.y - 15;
+                    const statusHeight = parseFloat(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--shell-status-height')));
+                    const headerAction = await page.locator('#save-actions').evaluate(el => getComputedStyle(el).getPropertyValue('--actionbar-placement').trim() === 'header');
+                    return headerAction
+                        ? bar.y >= 46 && bar.y + bar.height <= pane.y && pane.y + pane.height <= 450 - statusHeight + 1
+                        : Math.abs(bar.y + bar.height + statusHeight - 450) < 1 && pane.y + pane.height <= bar.y - 15;
                 }, `${theme}/${width}/450/${name}: short viewport content is obstructed`);
             }
         }
@@ -131,14 +137,15 @@ try {
                 rootOverflow: getComputedStyle(document.documentElement).overflowY,
                 bodyOverflow: getComputedStyle(document.body).overflowY,
                 paneOverflow: getComputedStyle(pane).overflowY,
+                requestOverflow: getComputedStyle(pane.querySelector('.endpoint-request-workspace')).overflowY,
                 cardOverflow: getComputedStyle(card).overflowY,
                 cardPosition: getComputedStyle(card).position,
             };
         });
-        assert.deepEqual(scrollContract, { rootOverflow: 'clip', bodyOverflow: 'clip', paneOverflow: 'auto', cardOverflow: 'visible', cardPosition: 'static' });
-        await page.locator('[data-editor-viewport]').evaluate(el => el.scrollTop = el.scrollHeight);
+        assert.deepEqual(scrollContract, { rootOverflow: 'clip', bodyOverflow: 'clip', paneOverflow: 'hidden', requestOverflow: 'auto', cardOverflow: 'visible', cardPosition: 'static' });
+        await page.locator('.endpoint-request-workspace').evaluate(el => el.scrollTop = el.scrollHeight);
         assert.equal(await page.evaluate(() => scrollY), 0, 'Endpoint content scrolled the outer document');
-        await page.locator('[data-editor-viewport]').evaluate(el => el.scrollTop = 0);
+        await page.locator('.endpoint-request-workspace').evaluate(el => el.scrollTop = 0);
         await tab('Response');
         const row = page.locator('.selection-response-card').last();
         const remove = row.getByRole('button', { name: 'Delete', exact: true });

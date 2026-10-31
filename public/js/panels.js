@@ -10,7 +10,9 @@
         let rect = anchor.getBoundingClientRect();
         const gap = 8;
         const edge = 16;
-        const sticky = document.querySelector('[data-sticky-action-bar]')?.getBoundingClientRect().height ?? 0;
+        const actionBar = document.querySelector('[data-sticky-action-bar]');
+        const headerAction = actionBar && getComputedStyle(actionBar).getPropertyValue('--actionbar-placement').trim() === 'header';
+        const sticky = headerAction ? 0 : actionBar?.getBoundingClientRect().height ?? 0;
         const ceiling = anchor.closest('.topbar') ? edge : Math.max(edge, (document.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 0) + gap);
         let floor = window.innerHeight - sticky - edge;
         if (panel.hasAttribute('data-overlay-editor')) {

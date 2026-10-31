@@ -75,12 +75,15 @@ try {
     let index = 0;
     for (const row of await page.locator('.log-row').all()) {
         await row.click();
-        await page.locator('.log-detail-row').waitFor();
+        const inspector = page.locator('[data-activity-inspector]');
+        await inspector.waitFor();
         await capture(`requests-expanded-dom-${index++}`, await page.content());
         if (process.env.MOCKDECK_EXPECT_SAFE_LOG_URL === '1') {
             const curl = await row.getByRole('button', { name: 'Copy request curl', exact: true }).getAttribute('data-copy-curl');
             assert.ok(!curl.includes(fixture.canaries['QRY-TOKEN']));
         }
+        await inspector.getByRole('button', { name: 'Back to list', exact: true }).click();
+        await inspector.waitFor({ state: 'detached' });
     }
     await dom('callbacks-dom', '/dashboard/logs?type=callbacks');
     for (const summary of await page.locator('details.normalized-details > summary').all()) await summary.click();

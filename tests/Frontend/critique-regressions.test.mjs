@@ -12,7 +12,7 @@ test('environment cards shrink and keep actions within their own scroll region',
 
 test('history variant beats generic dialog width and adapts to its own container', () => {
     const css = read('public/css/app.css');
-    assert.match(css, /\.ui-dialog\.history-dialog \{ width: min\(900px/);
+    assert.match(css, /\.ui-dialog\.history-dialog \{ width: min\(var\(--history-dialog-width\)/);
     assert.match(css, /\.revision-history-panel \{ container-type: inline-size/);
     assert.match(css, /@container \(max-width: 640px\)[\s\S]*\.revision-row \{ grid-template-columns: minmax\(0, 1fr\)/);
 });
