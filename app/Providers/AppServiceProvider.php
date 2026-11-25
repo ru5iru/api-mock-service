@@ -32,6 +32,9 @@ final class AppServiceProvider extends ServiceProvider
         RateLimiter::for('mcp-auth', fn (Request $request) => Limit::perMinute(config('mcp.rate_limits.auth_per_minute', 30))->by('mcp-auth:'.$request->ip()));
         RateLimiter::for('mcp', fn (Request $request) => Limit::perMinute(config('mcp.rate_limits.tools_per_minute', 60))->by('mcp:'.($request->attributes->get('mcp_credential')?->id ?? $request->ip())));
 
+        // Unauthenticated callers hit mock invocation routes; throttle to protect PHP-FPM and the DB pool.
+        RateLimiter::for('mock-invoke', fn (Request $request) => Limit::perMinute(config('mockdeck.rate_limits.invoke_per_minute', 120))->by('mock-invoke:'.$request->ip()));
+
         // Fail startup if a mapped formatter disappears after a FakerPHP upgrade.
         $this->app->make(FakerMethodCatalog::class)->catalog();
     }
