@@ -4,7 +4,7 @@ use App\Http\Controllers\Api\VerificationController;
 use App\Http\Middleware\VerifyApiToken;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('api/v1/verify')->middleware(VerifyApiToken::class)->name('verification.')->group(function (): void {
+Route::prefix('api/v1/verify')->middleware([VerifyApiToken::class, 'throttle:verification'])->name('verification.')->group(function (): void {
     // UUIDs are stable across portable configuration and independent of local IDs.
     Route::get('/endpoints/{endpoint:uuid}/calls', [VerificationController::class, 'calls'])->name('calls');
     Route::post('/endpoints/{endpoint:uuid}/assert', [VerificationController::class, 'assertCalls'])->name('assert');

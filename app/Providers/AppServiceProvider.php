@@ -35,6 +35,9 @@ final class AppServiceProvider extends ServiceProvider
         // Unauthenticated callers hit mock invocation routes; throttle to protect PHP-FPM and the DB pool.
         RateLimiter::for('mock-invoke', fn (Request $request) => Limit::perMinute(config('mockdeck.rate_limits.invoke_per_minute', 120))->by('mock-invoke:'.$request->ip()));
 
+        // Verification API endpoints are token-authenticated but still need a cap against stolen-token abuse.
+        RateLimiter::for('verification', fn (Request $request) => Limit::perMinute(config('mockdeck.rate_limits.verification_per_minute', 60))->by('verification:'.$request->ip()));
+
         // Fail startup if a mapped formatter disappears after a FakerPHP upgrade.
         $this->app->make(FakerMethodCatalog::class)->catalog();
     }
