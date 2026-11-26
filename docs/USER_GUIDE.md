@@ -446,11 +446,34 @@ For example, set URL to `https://{{env.WEBHOOK_HOST}}/events`, header `X-Request
 {"requestId":"$request.id","method":"$request.method","name":"$person.firstName"}
 ```
 
-To sign requests, enable **Sign requests**, set a secret (write-only after saving), and choose the header name (default `X-MockDeck-Signature`). MockDeck calculates a lowercase hexadecimal **HMAC-SHA256 of the exact raw resolved body bytes**, with your signing secret as the HMAC key, and sends the digest as that header's value. A receiver can verify with PHP `hash_equals(hash_hmac('sha256', $rawBody, $secret), $header)`. Do not re-encode parsed JSON before checking the signature. Disabling signing removes the signature header entirely, including a similarly named user-configured header; it does not send an empty signature.
+To sign requests, enable **Sign requests**, set a secret (write-only after saving), and choose the header name (default `X-MockDeck-Signature`). Each signed delivery includes a UUID nonce and Unix timestamp to prevent replay attacks. MockDeck adds three headers:
+
+| Header | Value |
+|---|---|
+| `X-MockDeck-Timestamp` | Unix timestamp (seconds since epoch) |
+| `X-MockDeck-Nonce` | UUID v4 |
+| `X-MockDeck-Signature` | HMAC-SHA256 hex digest (or your configured header name) |
+
+The signature covers the canonical string `<timestamp>\n<nonce>\n<raw UTF-8 body bytes>`. To verify in PHP:
+
+```php
+$ts   = $_SERVER['HTTP_X_MOCKDECK_TIMESTAMP'] ?? '';
+$nonc = $_SERVER['HTTP_X_MOCKDECK_NONCE'] ?? '';
+$sig  = $_SERVER['HTTP_X_MOCKDECK_SIGNATURE'] ?? '';
+$body = file_get_contents('php://input');
+
+// Reject deliveries older than 5 minutes.
+if (abs(time() - (int) $ts) > 300) { /* reject */ }
+
+$expected = hash_hmac('sha256', "$ts\n$nonc\n$body", $secret);
+if (!hash_equals($expected, $sig)) { /* reject */ }
+```
+
+Do not re-encode parsed JSON before computing the HMAC — use the raw request body bytes. Disabling signing removes all three headers entirely; it does not send an empty value.
 
 Save callback changes before selecting **Test saved callback**. The action is blocked while callback settings are unsaved and shows the redacted saved target; it never silently saves a draft. This uses a synthetic request even when no matching request has ever been received. The inline result updates from Queued/Pending to status, HTTP code, and duration. Open **Callback log** to filter attempts by method, status, time, request ID, or target. A callback log row links to its triggering request; the request detail links back to callback attempts. **Resend** creates a new attempt using the stored resolved target, method, headers and body, signing with the current settings rather than re-resolving Environment values. It never mutates the original row or replays the primary response.
 
-Attempt payloads, URLs, and job context may contain environment secrets: MockDeck encrypts stored resolved fields, omits them from callback-log API reads and portable exports, and protects callback endpoints with dashboard access. Keep `APP_KEY` private. The callback target is intentionally allowed to reach any well-formed HTTP(S) URL, including local network targets: MockDeck is a localhost-oriented test tool, **not** an SSRF-hardened publicly exposed proxy.
+Attempt payloads, URLs, and job context may contain environment secrets: MockDeck encrypts stored resolved fields, omits them from callback-log API reads and portable exports, and protects callback endpoints with dashboard access. Keep `APP_KEY` private. MockDeck validates callback URLs against private/reserved IP ranges (RFC-1918, loopback 127.x, link-local 169.254.x, IPv6 ::1 and fc00::/7) to prevent server-side request forgery; unresolvable hostnames are also rejected.
 
 ## 17. Protected APIs
 

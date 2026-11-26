@@ -8,6 +8,7 @@ use App\Models\MockResponse;
 use App\Services\Templates\ResponseTemplateEngine;
 use App\Services\Templates\TemplateContext;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Throwable;
 
@@ -182,13 +183,26 @@ final readonly class CallbackDelivery
     {
         $signatureHeader = (string) ($response->callback_signature_header ?: 'X-MockDeck-Signature');
         foreach (array_keys($headers) as $name) {
-            if (strcasecmp($name, $signatureHeader) === 0 || strcasecmp($name, 'X-MockDeck-Signature') === 0) {
+            if (strcasecmp($name, $signatureHeader) === 0
+                || strcasecmp($name, 'X-MockDeck-Signature') === 0
+                || strcasecmp($name, 'X-MockDeck-Nonce') === 0
+                || strcasecmp($name, 'X-MockDeck-Timestamp') === 0) {
                 unset($headers[$name]);
             }
         }
 
         if ($response->callback_signing_enabled && $response->callback_signing_secret !== null && $response->callback_signing_secret !== '') {
-            $headers[$signatureHeader] = hash_hmac('sha256', $body, $response->callback_signing_secret);
+            $nonce = Str::uuid()->toString();
+            $timestamp = (string) time();
+
+            // Canonical signed string: timestamp + "\n" + nonce + "\n" + raw body bytes.
+            // Recipients must reconstruct this string in the same order and use
+            // hash_equals() to compare the HMAC-SHA256 hex digest.
+            $canonical = $timestamp."\n".$nonce."\n".$body;
+
+            $headers['X-MockDeck-Timestamp'] = $timestamp;
+            $headers['X-MockDeck-Nonce'] = $nonce;
+            $headers[$signatureHeader] = hash_hmac('sha256', $canonical, $response->callback_signing_secret);
         }
 
         return $headers;

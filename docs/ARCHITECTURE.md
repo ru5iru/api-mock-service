@@ -144,7 +144,51 @@ Logging is non-fatal: stack exceptions are ignored and `MockRequestLogger` catch
 
 `callback_attempts.request_log_id` stores the string `X-Request-ID`, because request logs are rotating JSON files and do not have database primary keys. This is a soft correlation, not an FK: callbacks still retain their request ID if the log file rotates away. The API deliberately excludes resolved URLs, headers, and bodies (which may embed secret environment values); all three are encrypted at rest for resend. Signing secrets use an encrypted model cast and never leave via callback GET or portable export. Response revisions store only encrypted ciphertext; diff output redacts signing-secret changes. Restores copy ciphertext without encrypting it twice.
 
-The worker allows up to five attempts, a 30-second initial delay, up to 30 seconds between attempts, and up to 10 seconds per HTTP request. Its timeout is 240 seconds and the queue visibility timeout 300 seconds. Non-2xx results fail, 3xx redirects are not followed, and network failures are retried. Resend reads the originally resolved request and signs with the current secret, adding new attempt rows. Signing is HMAC-SHA256 of the raw resolved UTF-8 body bytes in lowercase hex; disabled signing removes that header. The URL guard checks only valid absolute HTTP(S) syntax: deliberately no SSRF restrictions, suitable for trusted local test endpoints, not for exposure to untrusted network users.
+The worker allows up to five attempts, a 30-second initial delay, up to 30 seconds between attempts, and up to 10 seconds per HTTP request. Its timeout is 240 seconds and the queue visibility timeout 300 seconds. Non-2xx results fail, 3xx redirects are not followed, and network failures are retried. Resend reads the originally resolved request and signs with the current secret, adding new attempt rows.
+
+**Callback signature scheme (when signing is enabled):**
+
+Each delivery generates a fresh UUID nonce and Unix timestamp. The canonical signed string is:
+
+```
+<Unix timestamp>\n<UUID nonce>\n<raw UTF-8 body bytes>
+```
+
+The signature is `HMAC-SHA256(canonical_string, signing_secret)` encoded as a lowercase hex digest. Three headers are added to every signed delivery:
+
+| Header | Value |
+|---|---|
+| `X-MockDeck-Timestamp` | Unix timestamp (seconds since epoch, as a decimal string) |
+| `X-MockDeck-Nonce` | UUID v4, lowercase |
+| `X-MockDeck-Signature` | Lowercase hex HMAC-SHA256 of the canonical string (or the configured signature header name) |
+
+**Recipient verification example (PHP):**
+
+```php
+$timestamp  = $_SERVER['HTTP_X_MOCKDECK_TIMESTAMP'] ?? '';
+$nonce      = $_SERVER['HTTP_X_MOCKDECK_NONCE'] ?? '';
+$signature  = $_SERVER['HTTP_X_MOCKDECK_SIGNATURE'] ?? '';
+$body       = file_get_contents('php://input');
+$secret     = 'your-signing-secret';
+
+// Reject stale deliveries (allow ±5 minutes clock skew).
+if (abs(time() - (int) $timestamp) > 300) {
+    http_response_code(400);
+    exit('Timestamp too old');
+}
+
+$canonical = $timestamp . "\n" . $nonce . "\n" . $body;
+$expected  = hash_hmac('sha256', $canonical, $secret);
+
+if (!hash_equals($expected, $signature)) {
+    http_response_code(401);
+    exit('Invalid signature');
+}
+```
+
+The nonce is single-use from MockDeck's side; recipients that need strict replay protection should additionally persist received nonces for the allowed time window and reject duplicates.
+
+The URL guard blocks private/reserved IP ranges (RFC-1918, loopback, link-local, and IPv6 unique-local). Resend re-signs with the current secret.
 
 ## Dashboard access
 
