@@ -60,7 +60,7 @@ services:
   callback-worker:
     image: mockdeck-laravel-app:latest
     restart: unless-stopped
-    command: ["php", "artisan", "queue:work", "database", "--queue=callbacks", "--sleep=1", "--tries=1", "--timeout=240"]
+    command: ["php", "artisan", "queue:work", "database", "--queue=callbacks", "--sleep=1", "--tries=3", "--timeout=240"]
     environment:
       <<: *app-environment
       RUN_MIGRATIONS: "false"
