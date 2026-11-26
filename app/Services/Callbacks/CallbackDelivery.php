@@ -144,33 +144,28 @@ final readonly class CallbackDelivery
 
         $host = $parts['host'];
 
-        // Reject bare IP literals that fall in private / loopback / link-local ranges without
-        // incurring a DNS round-trip for them.
+        // Block bare IP literals that fall in private / loopback / link-local ranges.
+        // DNS-based resolution for hostname targets is intentionally omitted: per-request
+        // lookups are vulnerable to DNS rebinding and add latency; egress firewall rules
+        // (e.g. a Docker network policy or cloud security group) are the recommended
+        // control for hostname-based SSRF.
         $ip = filter_var($host, FILTER_VALIDATE_IP);
-        if ($ip === false) {
-            // Hostname — resolve to an IP and then apply the same range check.
-            // gethostbyname() returns the original string unchanged on failure.
-            $ip = gethostbyname($host);
-            if ($ip === $host) {
-                // Could not resolve — refuse to dispatch to an unresolvable host.
-                throw new InvalidArgumentException('Callback target hostname could not be resolved.');
+        if ($ip !== false) {
+            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                throw new InvalidArgumentException('Callback target IP address is in a private or reserved range.');
             }
-        }
 
-        if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-            throw new InvalidArgumentException('Callback target resolves to a private or reserved IP address.');
-        }
-
-        // Explicitly block IPv6 loopback and unique-local ranges that FILTER_FLAG_NO_PRIV_RANGE
-        // may not cover in all PHP builds.
-        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-            $packed = inet_pton($ip);
-            if ($packed !== false) {
-                $first = ord($packed[0]);
-                // ::1 (loopback) — 128-bit 0…01
-                // fc00::/7 (unique-local) — first byte 0xFC or 0xFD
-                if ($ip === '::1' || ($first & 0xFE) === 0xFC) {
-                    throw new InvalidArgumentException('Callback target resolves to a private or reserved IP address.');
+            // Explicitly block IPv6 loopback and unique-local ranges that FILTER_FLAG_NO_PRIV_RANGE
+            // may not cover in all PHP builds.
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+                $packed = inet_pton($ip);
+                if ($packed !== false) {
+                    $first = ord($packed[0]);
+                    // ::1 (loopback) — 128-bit 0…01
+                    // fc00::/7 (unique-local) — first byte 0xFC or 0xFD
+                    if ($ip === '::1' || ($first & 0xFE) === 0xFC) {
+                        throw new InvalidArgumentException('Callback target IP address is in a private or reserved range.');
+                    }
                 }
             }
         }

@@ -176,7 +176,13 @@ final class CallbackSimulationTest extends TestCase
         self::assertSame(['method' => 'POST', 'id' => 42, 'token' => 'hidden-token'], json_decode($attempts[0]->resolved_body, true));
 
         Http::assertSent(fn ($request): bool => $request->header('X-MockDeck-Signature')[0]
-            === hash_hmac('sha256', $request->body(), 'first-secret')
+            === hash_hmac(
+                'sha256',
+                $request->header('X-MockDeck-Timestamp')[0]."\n"
+                    .$request->header('X-MockDeck-Nonce')[0]."\n"
+                    .$request->body(),
+                'first-secret'
+            )
             && $request->header('X-Method')[0] === 'Original POST');
         $this->getJson('/api/callback-attempts')->assertOk()->assertJsonCount(3, 'data');
         self::assertStringNotContainsString('hidden-token', $this->getJson('/api/callback-attempts')->getContent());
@@ -271,7 +277,12 @@ final class CallbackSimulationTest extends TestCase
         self::assertSame($original->resolved_body, $latest->resolved_body);
         self::assertSame('failed', $original->fresh()->status);
         Http::assertSent(fn ($request): bool => $request->url() === 'https://old-target.test/old'
-            && $request->header('X-MockDeck-Signature')[0] === hash_hmac('sha256', '{"old":true}', 'second-secret'));
+            && $request->header('X-MockDeck-Signature')[0] === hash_hmac(
+                'sha256',
+                $request->header('X-MockDeck-Timestamp')[0]."\n"
+                    .$request->header('X-MockDeck-Nonce')[0]."\n".'{"old":true}',
+                'second-secret'
+            ));
     }
 
     public function test_resend_api_enqueues_an_immutable_copy_of_the_original_attempt(): void
