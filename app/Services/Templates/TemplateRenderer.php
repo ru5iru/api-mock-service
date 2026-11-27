@@ -5,6 +5,7 @@ namespace App\Services\Templates;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Faker\Generator;
+use Illuminate\Support\Facades\Log;
 use JsonException;
 use stdClass;
 use Stringable;
@@ -47,7 +48,8 @@ final class TemplateRenderer
         } catch (JsonException $exception) {
             throw new TemplateRenderException('Rendered output could not be encoded as JSON.', '/', '', 'TEMPLATE_RENDER_FAILED');
         } catch (Throwable $exception) {
-            throw new TemplateRenderException($exception->getMessage(), '/', '', 'TEMPLATE_RENDER_FAILED');
+            Log::error('TemplateRenderer: unexpected rendering exception', ['exception' => $exception]);
+            throw new TemplateRenderException('An unexpected error occurred during template rendering.', '/', '', 'TEMPLATE_RENDER_FAILED');
         }
 
         $bytes = strlen($json);
@@ -287,7 +289,8 @@ final class TemplateRenderer
         try {
             return $this->catalog->invoke($method, $args, $this->locale);
         } catch (Throwable $exception) {
-            throw new TemplateRenderException($exception->getMessage(), $path, $token);
+            Log::error('TemplateRenderer: unexpected Faker invocation exception', ['exception' => $exception]);
+            throw new TemplateRenderException('An unexpected error occurred while invoking the Faker method.', $path, $token);
         }
     }
 

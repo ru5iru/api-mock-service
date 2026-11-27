@@ -12,7 +12,6 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/** Prepared for future routes; deliberately not attached to any production route in Phase 1. */
 final class AuthenticateMcpCredential
 {
     public function __construct(private readonly McpCredentialService $credentials) {}
