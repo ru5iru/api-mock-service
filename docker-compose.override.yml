@@ -1,0 +1,42 @@
+# docker-compose.override.yml — LOCAL DEVELOPMENT ONLY
+#
+# docker-compose.yml is the production baseline; it uses pre-built images and
+# should not be modified for local workflows.
+#
+# This file is automatically merged by Docker Compose when both files are
+# present (the default behaviour). It mounts live source code into the
+# containers so that PHP changes are reflected without a rebuild.
+#
+# Usage:
+#   docker compose up          # merges this file automatically
+#   docker compose -f docker-compose.yml up   # production baseline only (no override)
+
+services:
+  app:
+    build:
+      args:
+        APP_ENV: local
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      LOG_CHANNEL: stack
+      LOG_LEVEL: debug
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor   # keep vendor from the image; don't overwrite with host
+
+  callback-worker:
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+
+  scheduler:
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
