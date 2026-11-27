@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\DashboardAccess;
 use App\Http\Middleware\VerifyApiToken;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -26,6 +27,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'dashboard.access' => DashboardAccess::class,
         ]);
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        // Prune the most recent 50 revisions per entity; run nightly at 02:00.
+        $schedule->command('mockdeck:prune-revisions', ['--keep=50'])->dailyAt('02:00');
+        // Keep 90 days of callback-attempt and MCP-invocation history.
+        $schedule->command('mockdeck:prune-callback-attempts', ['--days=90'])->dailyAt('02:15');
+        $schedule->command('mockdeck:prune-mcp-invocations', ['--days=90'])->dailyAt('02:30');
+        // Short-lived MCP idempotency keys and unmatched evidence (existing command).
+        $schedule->command('mockdeck:mcp-prune')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

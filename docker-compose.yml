@@ -68,6 +68,17 @@ services:
       app:
         condition: service_healthy
 
+  scheduler:
+    image: mockdeck-laravel-app:latest
+    restart: unless-stopped
+    command: ["php", "artisan", "schedule:work"]
+    environment:
+      <<: *app-environment
+      RUN_MIGRATIONS: "false"
+    depends_on:
+      app:
+        condition: service_healthy
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped
