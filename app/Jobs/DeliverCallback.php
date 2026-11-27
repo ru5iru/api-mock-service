@@ -75,11 +75,11 @@ final class DeliverCallback implements ShouldBeEncrypted, ShouldQueue
     public function failed(Throwable $exception): void
     {
         Log::error('MockDeck callback job exhausted all attempts', [
-            'response_id'      => $this->responseId,
-            'request_log_id'   => $this->requestLogId,
-            'environment_id'   => $this->environmentId,
+            'response_id' => $this->responseId,
+            'request_log_id' => $this->requestLogId,
+            'environment_id' => $this->environmentId,
             'resend_attempt_id' => $this->resendAttemptId,
-            'exception_class'  => $exception::class,
+            'exception_class' => $exception::class,
             'exception_message' => $exception->getMessage(),
         ]);
     }
