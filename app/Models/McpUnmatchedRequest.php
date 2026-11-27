@@ -12,7 +12,7 @@ final class McpUnmatchedRequest extends Model
 
     protected $keyType = 'string';
 
-    protected $guarded = [];
+    protected $fillable = ['id', 'run_id', 'request', 'complete'];
 
     protected $hidden = ['request'];
 
