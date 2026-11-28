@@ -22,5 +22,6 @@ RUN mkdir -p bootstrap/cache storage/app/private storage/framework/cache/data \
 
 COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
+USER www-data
 ENTRYPOINT ["docker/entrypoint.sh"]
 CMD ["php-fpm", "-F"]

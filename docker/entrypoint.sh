@@ -7,8 +7,9 @@ if [ ! -f .env ]; then
     cp .env.example .env
 fi
 
+# mkdir is retained for volumes mounted at runtime that may lack the directory;
+# chown is handled in the Dockerfile RUN layer and is not needed here.
 mkdir -p storage/logs storage/framework/cache/data storage/framework/sessions storage/framework/views bootstrap/cache
-chown -R www-data:www-data storage bootstrap/cache
 
 if [ "${APP_ENV:-production}" = "production" ]; then
     case "${APP_KEY:-}" in
