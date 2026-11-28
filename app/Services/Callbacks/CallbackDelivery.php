@@ -149,7 +149,16 @@ final readonly class CallbackDelivery
         // lookups are vulnerable to DNS rebinding and add latency; egress firewall rules
         // (e.g. a Docker network policy or cloud security group) are the recommended
         // control for hostname-based SSRF.
-        $ip = filter_var($host, FILTER_VALIDATE_IP);
+        //
+        // parse_url() on some PHP builds (observed on PHP 8.3-alpine) returns IPv6 hosts
+        // with the RFC-3986 brackets intact, e.g. '[::1]' instead of '::1'.
+        // filter_var() rejects bracketed strings as invalid IPs, so we strip the brackets
+        // before the IP check to ensure no IPv6 literal can bypass the block.
+        $rawHost = $host;
+        if (str_starts_with($rawHost, '[') && str_ends_with($rawHost, ']')) {
+            $rawHost = substr($rawHost, 1, -1);
+        }
+        $ip = filter_var($rawHost, FILTER_VALIDATE_IP);
         if ($ip !== false) {
             if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
                 throw new InvalidArgumentException('Callback target IP address is in a private or reserved range.');
