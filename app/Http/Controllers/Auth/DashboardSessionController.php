@@ -39,6 +39,10 @@ final class DashboardSessionController extends Controller
             'Dashboard authentication is not configured.',
         );
 
+        // The dashboard password is a pre-shared plaintext env string, not a bcrypt/argon2 hash.
+        // hash_equals() prevents timing-based enumeration. For this single-operator tool
+        // the security boundary is .env confidentiality; operators must restrict .env access
+        // accordingly and use a strong, unique MOCK_DASHBOARD_PASSWORD value.
         $usernameMatches = hash_equals($configuredUsername, $credentials['username']);
         $passwordMatches = hash_equals($configuredPassword, $credentials['password']);
 

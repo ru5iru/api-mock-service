@@ -27,6 +27,8 @@ MOCK_DASHBOARD_PASSWORD=a-unique-dashboard-password
 
 Login attempts are rate-limited. Use the user menu to sign out. Setting `MOCK_DASHBOARD_AUTH_ENABLED=false` is intended only for a trusted local environment.
 
+> **Security note:** The dashboard password is a pre-shared plaintext env string, not a bcrypt or argon2 hash. The comparison uses `hash_equals()` to prevent timing-based enumeration. Because the password lives in `.env`, its security depends entirely on protecting that file. Use a strong, unique `MOCK_DASHBOARD_PASSWORD` value and ensure `.env` is not readable by other system users or committed to version control.
+
 ## 2. Dashboard navigation and preferences
 
 The workbench uses a persistent top bar, a left navigation rail and a contextual sidebar. The rail opens Endpoints, Logs, Import / export, Environments and Documentation. Use **Toggle workspace sidebar** to recover editing space; its desktop collapsed state is remembered. At narrower widths it opens a temporary sidebar; Escape closes it and returns focus to the toggle. Mobile uses the labelled Menu for global destinations.
